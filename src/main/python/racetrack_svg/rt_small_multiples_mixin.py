@@ -82,6 +82,7 @@ class RTSmallMultiplesMixin(object):
                        y_ins                 = 2,          # Top/bottom inserts
                        x_inter               = 2,          # Horizontal spacing between small multiples
                        y_inter               = 4,          # Vertical spacing between small multiples
+                       background_override   = None,       # Override the background color
                        draw_labels           = True,       # Draw label under each small multiple
                        draw_border           = True):      # Draw border around the whole chart
         
@@ -489,7 +490,10 @@ class RTSmallMultiplesMixin(object):
 
         # Start the SVG return result
         svg = f'<svg id="{widget_id}" x="{x_view}" y="{y_view}" width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg">'
-        background_color = self.co_mgr.getTVColor('background','default')
+        if background_override is None:
+            background_color = self.co_mgr.getTVColor('background','default')
+        else:
+            background_color = background_override
         svg += f'<rect width="{w-1}" height="{h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />'
                 
         text_fg     = self.co_mgr.getTVColor('label','defaultfg')

@@ -353,6 +353,7 @@ class RTXYMixin(object):
            h                  = 256,           # height of the view
            txt_h              = 12,            # text height for labeling
            background_opacity = 1.0,
+           background_override= None,          # override the background color // hex value
            draw_labels        = True,          # draw labels flag
            draw_border        = True,          # draw a border around the histogram
            draw_context       = True):         # draw temporal context information if (and only if) x_axis is time
@@ -368,7 +369,7 @@ class RTXYMixin(object):
                           distribution_h_perc=distribution_h_perc, distribution_style=distribution_style,
                           bg_shape_lu=bg_shape_lu, bg_shape_label_color=bg_shape_label_color, bg_shape_opacity=bg_shape_opacity, bg_shape_fill=bg_shape_fill,
                           bg_shape_stroke_w=bg_shape_stroke_w, bg_shape_stroke=bg_shape_stroke, x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, txt_h=txt_h,
-                          background_opacity=background_opacity, draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
+                          background_opacity=background_opacity, background_override=background_override, draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
         return rt_xy.renderSVG()
 
     #
@@ -750,6 +751,7 @@ class RTXYMixin(object):
                    h                       = 256,        # height of the view
                    txt_h                   = 12,         # text height for labeling
                    background_opacity      = 1.0,        # background opacity
+                    background_override    = None,       # override the background color // hex value
                    draw_labels             = True,       # draw labels flag
                    draw_border             = True,       # draw a border around the histogram
                    draw_context            = True):      # draw temporal context information if (and only if) x_axis is time)
@@ -765,7 +767,7 @@ class RTXYMixin(object):
                          distribution_h_perc=distribution_h_perc, distribution_style=distribution_style,
                          bg_shape_lu=bg_shape_lu, bg_shape_label_color=bg_shape_label_color, bg_shape_opacity=bg_shape_opacity, bg_shape_fill=bg_shape_fill,
                          bg_shape_stroke_w=bg_shape_stroke_w, bg_shape_stroke=bg_shape_stroke, x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, txt_h=txt_h,
-                         background_opacity=background_opacity, draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
+                         background_opacity=background_opacity, background_override=background_override, draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
 
     #
     # RTXy
@@ -849,6 +851,7 @@ class RTXYMixin(object):
                      h                       = 256,        # height of the view
                      txt_h                   = 12,         # text height for labeling
                      background_opacity      = 1.0,        # background opacity
+                     background_override     = None,       # override the background color // hex value
                      draw_labels             = True,       # draw labels flag
                      draw_border             = True,       # draw a border around the histogram
                      draw_context            = True):      # draw temporal context information if (and only if) x_axis is time):
@@ -934,7 +937,8 @@ class RTXYMixin(object):
             self.w                       = w
             self.h                       = h
             self.txt_h                   = txt_h
-            self.background_opacity      = background_opacity            
+            self.background_opacity      = background_opacity
+            self.background_override     = background_override
             self.draw_labels             = draw_labels
             self.draw_border             = draw_border
             self.draw_context            = draw_context
@@ -1117,7 +1121,10 @@ class RTXYMixin(object):
 
             # Create the SVG ... render the background
             svg = f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
-            background_color = self.rt_self.co_mgr.getTVColor('background','default')
+            if self.background_override is None:
+                background_color = self.rt_self.co_mgr.getTVColor('background','default')
+            else:
+                background_color = self.background_override                
             svg += f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" fill-opacity="{self.background_opacity}" stroke="{background_color}" stroke-opacity="{self.background_opacity}" />'
 
             # Draw the temporal context
