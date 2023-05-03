@@ -13,7 +13,8 @@
 # limitations under the License.
 #
 
-from shapely.geometry import Point, Polygon
+from shapely.geometry              import Point, Polygon
+from shapely.geometry.multipolygon import MultiPolygon
 from math import sqrt,acos
 
 import heapq
@@ -30,21 +31,29 @@ class RTGeometryMixin(object):
     # ... assumes that the ordering (CW, CCW) of both the exterior and interior points is correct...
     #
     def shapelyPolygonToSVGPathDescription(self, _poly):
-        # Draw the exterior shape first
-        xx, yy = _poly.exterior.coords.xy
-        path_str = f'M {xx[0]} {yy[0]} '
-        for i in range(1,len(xx)):
-            path_str += f' L {xx[i]} {yy[i]}'
+        if type(_poly) == MultiPolygon:
+            path_str = ''
+            for _subpoly in _poly.geoms:
+                if len(path_str) > 0:
+                    path_str += ' '
+                path_str += self.shapelyPolygonToSVGPathDescription(_poly)
+            return path_str
+        else:
+            # Draw the exterior shape first
+            xx, yy = _poly.exterior.coords.xy
+            path_str = f'M {xx[0]} {yy[0]} '
+            for i in range(1,len(xx)):
+                path_str += f' L {xx[i]} {yy[i]}'
 
-        # Determine if the interior exists... and then render that...
-        interior_len = len(list(_poly.interiors))
-        if interior_len > 0:
-            for interior_i in range(0, interior_len):
-                xx,yy = _poly.interiors[interior_i].coords.xy
-                path_str += f' M {xx[0]} {yy[0]}'
-                for i in range(1,len(xx)):
-                    path_str += f' L {xx[i]} {yy[i]}'
-        return path_str + ' Z'
+            # Determine if the interior exists... and then render that...
+            interior_len = len(list(_poly.interiors))
+            if interior_len > 0:
+                for interior_i in range(0, interior_len):
+                    xx,yy = _poly.interiors[interior_i].coords.xy
+                    path_str += f' M {xx[0]} {yy[0]}'
+                    for i in range(1,len(xx)):
+                        path_str += f' L {xx[i]} {yy[i]}'
+            return path_str + ' Z'
 
     #
     # Determine counterclockwise angle
