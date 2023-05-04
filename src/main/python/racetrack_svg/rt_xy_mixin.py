@@ -343,20 +343,21 @@ class RTXYMixin(object):
            distribution_h_perc         = 0.33,       # height of the distribution as a function of the overall h of xy chart     
            distribution_style          = 'outside',  # 'outside' - outside of xy... 'inside' - inside of xy
 
-           # -----------------------      # visualization geometry / etc.
+           # ---------------------------------------  # visualization geometry / etc.
 
-           x_view             = 0,             # x offset for the view
-           y_view             = 0,             # y offset for the view
-           x_ins              = 3,             # side inserts
-           y_ins              = 3,             # top & bottom inserts
-           w                  = 256,           # width of the view
-           h                  = 256,           # height of the view
-           txt_h              = 12,            # text height for labeling
-           background_opacity = 1.0,
-           background_override= None,          # override the background color // hex value
-           draw_labels        = True,          # draw labels flag
-           draw_border        = True,          # draw a border around the histogram
-           draw_context       = True):         # draw temporal context information if (and only if) x_axis is time
+           x_view                    = 0,             # x offset for the view
+           y_view                    = 0,             # y offset for the view
+           x_ins                     = 3,             # side inserts
+           y_ins                     = 3,             # top & bottom inserts
+           w                         = 256,           # width of the view
+           h                         = 256,           # height of the view
+           txt_h                     = 12,            # text height for labeling
+           background_opacity        = 1.0,
+           background_override       = None,          # override the background color // hex value
+           plot_background_override  = None,          # override the background for the plot area // hex value
+           draw_labels               = True,          # draw labels flag
+           draw_border               = True,          # draw a border around the histogram
+           draw_context              = True):         # draw temporal context information if (and only if) x_axis is time
         rt_xy = self.RTXy(self, df, x_field, y_field, x_field_is_scalar=x_field_is_scalar, y_field_is_scalar=y_field_is_scalar, color_by=color_by, color_magnitude=color_magnitude,                         
                           count_by=count_by, count_by_set=count_by_set, dot_size=dot_size, dot_shape=dot_shape, max_dot_size=max_dot_size, opacity=opacity, vary_opacity=vary_opacity, align_pixels=align_pixels,
                           widget_id=widget_id, x_axis_col=x_axis_col, x_is_time=x_is_time, x_label_min=x_label_min, x_label_max=x_label_max, x_trans_func=x_trans_func, y_axis_col=y_axis_col,
@@ -369,7 +370,8 @@ class RTXYMixin(object):
                           distribution_h_perc=distribution_h_perc, distribution_style=distribution_style,
                           bg_shape_lu=bg_shape_lu, bg_shape_label_color=bg_shape_label_color, bg_shape_opacity=bg_shape_opacity, bg_shape_fill=bg_shape_fill,
                           bg_shape_stroke_w=bg_shape_stroke_w, bg_shape_stroke=bg_shape_stroke, x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, txt_h=txt_h,
-                          background_opacity=background_opacity, background_override=background_override, draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
+                          background_opacity=background_opacity, background_override=background_override, plot_background_override=plot_background_override,
+                          draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
         return rt_xy.renderSVG()
 
     #
@@ -742,19 +744,20 @@ class RTXYMixin(object):
                    render_distribution_opacity = 0.5,        # Opacity of the distribution render
                    distribution_h_perc         = 0.33,       # height of the distribution as a function of the overall h of xy chart     
                    distribution_style          = 'outside',  # 'outside' - outside of xy... 'inside' - inside of xy
-                   # ----------------------------------- # visualization geometry / etc.
-                   x_view                  = 0,          # x offset for the view
-                   y_view                  = 0,          # y offset for the view
-                   x_ins                   = 3,          # side inserts
-                   y_ins                   = 3,          # top & bottom inserts
-                   w                       = 256,        # width of the view
-                   h                       = 256,        # height of the view
-                   txt_h                   = 12,         # text height for labeling
-                   background_opacity      = 1.0,        # background opacity
-                    background_override    = None,       # override the background color // hex value
-                   draw_labels             = True,       # draw labels flag
-                   draw_border             = True,       # draw a border around the histogram
-                   draw_context            = True):      # draw temporal context information if (and only if) x_axis is time)
+                   # ------------------------------------ # visualization geometry / etc.
+                   x_view                   = 0,          # x offset for the view
+                   y_view                   = 0,          # y offset for the view
+                   x_ins                    = 3,          # side inserts
+                   y_ins                    = 3,          # top & bottom inserts
+                   w                        = 256,        # width of the view
+                   h                        = 256,        # height of the view
+                   txt_h                    = 12,         # text height for labeling
+                   background_opacity       = 1.0,        # background opacity
+                   background_override      = None,       # override the background color // hex value
+                   plot_background_override = None,       # plot background override // hex value
+                   draw_labels              = True,       # draw labels flag
+                   draw_border              = True,       # draw a border around the histogram
+                   draw_context             = True):      # draw temporal context information if (and only if) x_axis is time)
         return self.RTXy(self, df, x_field, y_field, x_field_is_scalar=x_field_is_scalar, y_field_is_scalar=y_field_is_scalar, color_by=color_by, color_magnitude=color_magnitude,                         
                          count_by=count_by, count_by_set=count_by_set, dot_size=dot_size, dot_shape=dot_shape, max_dot_size=max_dot_size, opacity=opacity, vary_opacity=vary_opacity, align_pixels=align_pixels,
                          widget_id=widget_id, x_axis_col=x_axis_col, x_is_time=x_is_time, x_label_min=x_label_min, x_label_max=x_label_max, x_trans_func=x_trans_func, y_axis_col=y_axis_col,
@@ -767,7 +770,8 @@ class RTXYMixin(object):
                          distribution_h_perc=distribution_h_perc, distribution_style=distribution_style,
                          bg_shape_lu=bg_shape_lu, bg_shape_label_color=bg_shape_label_color, bg_shape_opacity=bg_shape_opacity, bg_shape_fill=bg_shape_fill,
                          bg_shape_stroke_w=bg_shape_stroke_w, bg_shape_stroke=bg_shape_stroke, x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, txt_h=txt_h,
-                         background_opacity=background_opacity, background_override=background_override, draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
+                         background_opacity=background_opacity, background_override=background_override, plot_background_override=plot_background_override,
+                         draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
 
     #
     # RTXy
@@ -842,19 +846,20 @@ class RTXYMixin(object):
                      render_distribution_opacity = 0.5,       # Opacity of the distribution render
                      distribution_h_perc         = 0.33,      # height of the distribution as a function of the overall h of xy chart     
                      distribution_style          = 'outside', # 'outside' - outside of xy... 'inside' - inside of xy
-                     # ----------------------------------- # visualization geometry / etc.
-                     x_view                  = 0,          # x offset for the view
-                     y_view                  = 0,          # y offset for the view
-                     x_ins                   = 3,          # side inserts
-                     y_ins                   = 3,          # top & bottom inserts
-                     w                       = 256,        # width of the view
-                     h                       = 256,        # height of the view
-                     txt_h                   = 12,         # text height for labeling
-                     background_opacity      = 1.0,        # background opacity
-                     background_override     = None,       # override the background color // hex value
-                     draw_labels             = True,       # draw labels flag
-                     draw_border             = True,       # draw a border around the histogram
-                     draw_context            = True):      # draw temporal context information if (and only if) x_axis is time):
+                     # ------------------------------------ # visualization geometry / etc.
+                     x_view                   = 0,          # x offset for the view
+                     y_view                   = 0,          # y offset for the view
+                     x_ins                    = 3,          # side inserts
+                     y_ins                    = 3,          # top & bottom inserts
+                     w                        = 256,        # width of the view
+                     h                        = 256,        # height of the view
+                     txt_h                    = 12,         # text height for labeling
+                     background_opacity       = 1.0,        # background opacity
+                     background_override      = None,       # override the background color // hex value
+                     plot_background_override = None,       # override the plot bckground // hex value
+                     draw_labels              = True,       # draw labels flag
+                     draw_border              = True,       # draw a border around the histogram
+                     draw_context             = True):      # draw temporal context information if (and only if) x_axis is time):
             self.parms                   = locals().copy()
             self.rt_self                 = rt_self
             self.df                      = df.copy()
@@ -930,18 +935,19 @@ class RTXYMixin(object):
             self.distribution_h_perc         = distribution_h_perc
             self.distribution_style          = distribution_style
 
-            self.x_view                  = x_view
-            self.y_view                  = y_view
-            self.x_ins                   = x_ins
-            self.y_ins                   = y_ins
-            self.w                       = w
-            self.h                       = h
-            self.txt_h                   = txt_h
-            self.background_opacity      = background_opacity
-            self.background_override     = background_override
-            self.draw_labels             = draw_labels
-            self.draw_border             = draw_border
-            self.draw_context            = draw_context
+            self.x_view                   = x_view
+            self.y_view                   = y_view
+            self.x_ins                    = x_ins
+            self.y_ins                    = y_ins
+            self.w                        = w
+            self.h                        = h
+            self.txt_h                    = txt_h
+            self.background_opacity       = background_opacity
+            self.background_override      = background_override
+            self.plot_background_override = plot_background_override
+            self.draw_labels              = draw_labels
+            self.draw_border              = draw_border
+            self.draw_context             = draw_context
 
             # Check the dot information
             if self.dot_shape == 'small_multiple':
@@ -1126,6 +1132,10 @@ class RTXYMixin(object):
             else:
                 background_color = self.background_override                
             svg += f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" fill-opacity="{self.background_opacity}" stroke="{background_color}" stroke-opacity="{self.background_opacity}" />'
+
+            if self.plot_background_override is not None:
+                _co = self.plot_background_override
+                svg += f'<rect x="{self.x_left}" y="{self.y_ins}" width="{self.w_usable}" height="{self.h_usable+1}" fill="{_co}" stroke="{_co}" />'
 
             # Draw the temporal context
             if self.x_is_time and self.draw_context:
