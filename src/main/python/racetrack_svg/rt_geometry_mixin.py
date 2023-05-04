@@ -36,7 +36,7 @@ class RTGeometryMixin(object):
             for _subpoly in _poly.geoms:
                 if len(path_str) > 0:
                     path_str += ' '
-                path_str += self.shapelyPolygonToSVGPathDescription(_poly)
+                path_str += self.shapelyPolygonToSVGPathDescription(_subpoly)
             return path_str
         else:
             # Draw the exterior shape first

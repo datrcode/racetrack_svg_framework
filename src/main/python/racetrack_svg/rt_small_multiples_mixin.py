@@ -42,6 +42,7 @@ class RTSmallMultiplesMixin(object):
                        #-----------------------------------# Defaults after this line
 
                        sm_params             = {},         # Dictionary for customizing widget
+                       customize_params_fn   = None,       # Customize the parameters function
 
                        ts_field              = None,       # For any temporal components
                        count_by              = None,       # Passed to the widgets
@@ -510,6 +511,9 @@ class RTSmallMultiplesMixin(object):
             my_params['widget_id'] = widget_id + "_all" 
             my_params.pop('global_max',None) # Global Max is just for the categories...
 
+            if customize_params_fn is not None:
+                customize_params_fn(None, my_params)
+
             sm_svg = widget_func(**my_params)
             svg += sm_svg
 
@@ -551,6 +555,10 @@ class RTSmallMultiplesMixin(object):
                 my_params['x_view']    = x_sm
                 my_params['y_view']    = y_sm
                 my_params['widget_id'] = widget_id + "_" + str(tile_i)
+
+                if customize_params_fn is not None:
+                    customize_params_fn(key, my_params)
+
                 sm_svg = widget_func(**my_params)
                 svg += sm_svg
 
@@ -610,6 +618,10 @@ class RTSmallMultiplesMixin(object):
                 my_params['x_view']    = x_sm
                 my_params['y_view']    = y_sm
                 my_params['widget_id'] = widget_id + "_" + str(tile_i)
+
+                if customize_params_fn is not None:
+                    customize_params_fn(key, my_params)
+
                 sm_svg = widget_func(**my_params)
                 svg += sm_svg
 
