@@ -306,15 +306,16 @@ class RTXYMixin(object):
 
            # ------------------------     # secondary axis settings # probably not small multiple safe...
 
-           df2                     = None,   # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
-           df2_ts_field            = None,   # secondary axis x timestamp field ... if not set but the y2_field is, then this be set to the x_field
-           y2_field                = None,   # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
-           y2_field_is_scalar      = True,   # default... logic will check in the method to determine if this is true
-           y2_axis_col             = None,   # y2 axis column name
-           line2_groupby_field     = None,   # secondary line field ... will NOT be set
-           line2_groupby_w         = 0.75,   # secondary line field width
-           line2_groupby_color     = None,   # line2 color... if none, pulls from the color_by field
-           line2_groupby_dasharray = "4 2",  # line2 dasharray
+           df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
+           df2_ts_field            = None,       # secondary axis x timestamp field ... if not set but the y2_field is, then this be set to the x_field
+           y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
+           y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
+           y2_axis_col             = None,       # y2 axis column name
+           line2_groupby_field     = None,       # secondary line field ... will NOT be set
+           line2_groupby_w         = 0.75,       # secondary line field width
+           line2_groupby_color     = None,       # line2 color... if none, pulls from the color_by field
+           line2_groupby_dasharray = "4 2",      # line2 dasharray
+           dot2_size               = 'inherit',  # dot2 size... 'inherit' means take from the dot_size...
 
            # -----------------------      # small multiple options
 
@@ -364,7 +365,7 @@ class RTXYMixin(object):
                           x_order=x_order,y_order=y_order,
                           y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
                           df2=df2, df2_ts_field=df2_ts_field, y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, line2_groupby_field=line2_groupby_field,
-                          line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray,
+                          line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
                           sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
                           render_x_distribution=render_x_distribution,render_y_distribution=render_y_distribution,render_distribution_opacity=render_distribution_opacity,
                           distribution_h_perc=distribution_h_perc, distribution_style=distribution_style,
@@ -722,6 +723,7 @@ class RTXYMixin(object):
                    line2_groupby_w         = 0.75,       # secondary line field width
                    line2_groupby_color     = None,       # line2 color... if none, pulls from the color_by field
                    line2_groupby_dasharray = "4 2",      # line2 dasharray
+                   dot2_size               = 'inherit',  # dot2 size... 'inherit' means to take from dot_size
                    # ----------------------------------- # small multiple options
                    sm_type                 = None,       # should be the method name // similar to the smallMultiples method
                    sm_w                    = None,       # override the width of the small multiple
@@ -764,7 +766,7 @@ class RTXYMixin(object):
                          y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, x_order=x_order, y_order=y_order,
                          line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
                          df2=df2, df2_ts_field=df2_ts_field, y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, line2_groupby_field=line2_groupby_field,
-                         line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray,
+                         line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
                          sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
                          render_x_distribution=render_x_distribution, render_y_distribution=render_y_distribution, render_distribution_opacity=render_distribution_opacity,
                          distribution_h_perc=distribution_h_perc, distribution_style=distribution_style,
@@ -822,7 +824,8 @@ class RTXYMixin(object):
                      line2_groupby_field     = None,       # secondary line field ... will NOT be set // wish i had given this "not be set" a description
                      line2_groupby_w         = 0.75,       # width of the line2 groupby
                      line2_groupby_color     = None,       # line2 color... if none, pulls from the color_by field
-                     line2_groupby_dasharray ="4 2",       # line2 dasharray
+                     line2_groupby_dasharray = "4 2",      # line2 dasharray
+                     dot2_size               = 'inherit',  # dot2 size -- 'inherit' means to take from the dot_size
                      # ----------------------------------- # small multiple options
                      sm_type                 = None,       # should be the method name // similar to the smallMultiples method
                      sm_w                    = None,       # override the width of the small multiple
@@ -914,6 +917,9 @@ class RTXYMixin(object):
             self.line2_groupby_w         = line2_groupby_w
             self.line2_groupby_color     = line2_groupby_color
             self.line2_groupby_dasharray = line2_groupby_dasharray
+            self.dot2_size               = dot2_size
+            if dot2_size == 'inherit':
+                self.dot2_size = dot_size
 
             self.sm_type                 = sm_type
             self.sm_w                    = sm_w
@@ -1079,7 +1085,19 @@ class RTXYMixin(object):
                 dot_w =  3
             else:
                 dot_w = -1
-                
+
+            # dot2_w ... should refactor...
+            if self.dot2_size is None or self.dot2_size == 'hidden':
+                dot2_w =  None
+            elif self.dot2_size == 'medium':
+                dot2_w =  2
+            elif self.dot2_size == 'small':
+                dot2_w =  1
+            elif self.dot2_size == 'large':
+                dot2_w =  3
+            else:
+                dot2_w = -1
+
             # Create the extra columns for the x and y coordinates
             if self.x_axis_col is None:
                 self.x_axis_col = 'my_x_' + self.widget_id
@@ -1281,16 +1299,19 @@ class RTXYMixin(object):
             node_to_xy  = {} # for small multiples
             node_to_dfs = {} # for small multiples
 
-            if dot_w:
+            if dot_w is not None or dot2_w is not None:
                 #
                 # Repeat for both axes
                 #
                 for y_axis_i in range(0,2):
                     if y_axis_i == 0:
-                        _df,_x_axis_col,_y_axis_col,_local_color_by     = self.df,self.x_axis_col,self.y_axis_col,self.color_by
+                        if dot_w is not None:
+                            _df,_x_axis_col,_y_axis_col,_local_color_by,_local_dot_w = self.df,self.x_axis_col,self.y_axis_col,self.color_by,dot_w
+                        else:
+                            continue
                     else:
-                        if self.y2_field:
-                            _df,_x_axis_col,_y_axis_col,_local_color_by = self.df2,self.x2_axis_col,self.y2_axis_col,self.line2_groupby_color
+                        if self.y2_field and dot2_w is not None:
+                            _df,_x_axis_col,_y_axis_col,_local_color_by,_local_dot_w = self.df2,self.x2_axis_col,self.y2_axis_col,self.line2_groupby_color,dot2_w
                             if _local_color_by is None:
                                 _local_color_by = self.color_by
                         else:
@@ -1303,7 +1324,7 @@ class RTXYMixin(object):
 
                     # Determine the min and max counts for the dot width / for contrast stretching, track counts
                     max_xy,self.stretch_histogram,self.stretch_total = 0,{},0
-                    if dot_w <= 0 or self.vary_opacity or self.color_magnitude is not None:
+                    if _local_dot_w <= 0 or self.vary_opacity or self.color_magnitude is not None:
                         for k,k_df in gb:
                             # count by rows
                             if   self.count_by is None:
@@ -1391,11 +1412,11 @@ class RTXYMixin(object):
                             
                             # Render the dot
                             # - Simple Render
-                            if dot_w > 0 and self.vary_opacity == False:
+                            if _local_dot_w > 0 and self.vary_opacity == False:
                                 _my_dot_shape = self.dot_shape
                                 if callable(self.dot_shape):
-                                    _my_dot_shape = self.dot_shape(k_df, k, x, y, dot_w, color, self.opacity)
-                                svg += self.rt_self.renderShape(_my_dot_shape, x, y, dot_w, color, None, self.opacity)
+                                    _my_dot_shape = self.dot_shape(k_df, k, x, y, _local_dot_w, color, self.opacity)
+                                svg += self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity)
                                 
                             # - Complex Render
                             else:
@@ -1409,12 +1430,12 @@ class RTXYMixin(object):
                                 else:
                                     my_count = k_df[self.count_by].sum()
                                 
-                                var_w = dot_w
+                                var_w = _local_dot_w
                                 var_o = 1.0 
-                                if dot_w <= 0 and self.vary_opacity:                    
+                                if _local_dot_w <= 0 and self.vary_opacity:                    
                                     var_w = 0.2 + self.max_dot_size  * my_count/max_xy
                                     var_o = 0.2 + 0.8           * my_count/max_xy                    
-                                elif dot_w <= 0:
+                                elif _local_dot_w <= 0:
                                     var_w = 0.2 + self.max_dot_size  * my_count/max_xy                    
                                 else:
                                     var_o = 0.2 + 0.8           * my_count/max_xy
