@@ -213,13 +213,14 @@ class RTPieChartMixin(object):
                 background_color = self.rt_self.co_mgr.getTVColor('background','default')
                 svg += f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />'
             
-            # Render the different styles
-            if self.style   == 'pie':
-                svg += self.__renderPieStyle__(w_usable, h_usable)
-            elif self.style == 'waffle':
-                svg += self.__renderWaffleStyle__(w_usable, h_usable)
-            else:
-                raise Exception(f'RTPieChart() - do not under style "{self.style}"')
+            if len(self.df) > 0:
+                # Render the different styles
+                if self.style   == 'pie':
+                    svg += self.__renderPieStyle__(w_usable, h_usable)
+                elif self.style == 'waffle':
+                    svg += self.__renderWaffleStyle__(w_usable, h_usable)
+                else:
+                    raise Exception(f'RTPieChart() - do not under style "{self.style}"')
 
             svg += '</svg>'
             return svg

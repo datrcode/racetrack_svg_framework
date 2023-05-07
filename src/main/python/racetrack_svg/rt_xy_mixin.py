@@ -356,6 +356,8 @@ class RTXYMixin(object):
            background_opacity        = 1.0,
            background_override       = None,          # override the background color // hex value
            plot_background_override  = None,          # override the background for the plot area // hex value
+           draw_x_gridlines          = False,         # draw the x gridlines for scalar values
+           draw_y_gridlines          = False,         # draw the y gridlines for scalar values
            draw_labels               = True,          # draw labels flag
            draw_border               = True,          # draw a border around the histogram
            draw_context              = True):         # draw temporal context information if (and only if) x_axis is time
@@ -372,6 +374,7 @@ class RTXYMixin(object):
                           bg_shape_lu=bg_shape_lu, bg_shape_label_color=bg_shape_label_color, bg_shape_opacity=bg_shape_opacity, bg_shape_fill=bg_shape_fill,
                           bg_shape_stroke_w=bg_shape_stroke_w, bg_shape_stroke=bg_shape_stroke, x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, txt_h=txt_h,
                           background_opacity=background_opacity, background_override=background_override, plot_background_override=plot_background_override,
+                          draw_x_gridlines=draw_x_gridlines, draw_y_gridlines=draw_y_gridlines,
                           draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
         return rt_xy.renderSVG()
 
@@ -757,6 +760,8 @@ class RTXYMixin(object):
                    background_opacity       = 1.0,        # background opacity
                    background_override      = None,       # override the background color // hex value
                    plot_background_override = None,       # plot background override // hex value
+                   draw_x_gridlines         = False,      # draw x gridlines for scalar values
+                   draw_y_gridlines         = False,      # draw y gridlines for scalar values
                    draw_labels              = True,       # draw labels flag
                    draw_border              = True,       # draw a border around the histogram
                    draw_context             = True):      # draw temporal context information if (and only if) x_axis is time)
@@ -773,6 +778,7 @@ class RTXYMixin(object):
                          bg_shape_lu=bg_shape_lu, bg_shape_label_color=bg_shape_label_color, bg_shape_opacity=bg_shape_opacity, bg_shape_fill=bg_shape_fill,
                          bg_shape_stroke_w=bg_shape_stroke_w, bg_shape_stroke=bg_shape_stroke, x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, txt_h=txt_h,
                          background_opacity=background_opacity, background_override=background_override, plot_background_override=plot_background_override,
+                         draw_x_gridlines=draw_x_gridlines, draw_y_gridlines=draw_y_gridlines,
                          draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
 
     #
@@ -860,6 +866,8 @@ class RTXYMixin(object):
                      background_opacity       = 1.0,        # background opacity
                      background_override      = None,       # override the background color // hex value
                      plot_background_override = None,       # override the plot bckground // hex value
+                     draw_x_gridlines         = False,      # draw x gridlines for scalar values
+                     draw_y_gridlines         = False,      # draw y gridlines for scalar values
                      draw_labels              = True,       # draw labels flag
                      draw_border              = True,       # draw a border around the histogram
                      draw_context             = True):      # draw temporal context information if (and only if) x_axis is time):
@@ -951,6 +959,8 @@ class RTXYMixin(object):
             self.background_opacity       = background_opacity
             self.background_override      = background_override
             self.plot_background_override = plot_background_override
+            self.draw_x_gridlines         = draw_x_gridlines
+            self.draw_y_gridlines         = draw_y_gridlines
             self.draw_labels              = draw_labels
             self.draw_border              = draw_border
             self.draw_context             = draw_context
@@ -973,31 +983,6 @@ class RTXYMixin(object):
                 self.y_field = [self.y_field]
             if self.y2_field is not None and type(self.y2_field) != list: # Make it into a list for consistency
                 self.y2_field = [self.y2_field]
-
-            # Setup the y2 info (if the y2_field is set)
-            self.timestamp_min = None
-            self.timestamp_max = None
-            if len(self.x_field) == 1 and is_datetime(self.df[self.x_field[0]]):
-                self.timestamp_min = self.df[self.x_field[0]].min()
-                self.timestamp_max = self.df[self.x_field[0]].max()
-                if self.y2_field is not None:
-                    if self.df2 is None:
-                        self.df2 = self.df
-                        self.df2_is_df = True
-                    else:
-                        self.df2_is_df = False
-                    if self.df2_ts_field is None:
-                        self.df2_ts_field = self.x_field
-                    if type(self.df2_ts_field) != list:
-                        self.df2_ts_field = [self.df2_ts_field]
-                    
-                    # Determine actual timestamp min and max 
-                    if self.df2[self.df2_ts_field[0]].min() < self.timestamp_min:
-                        self.timestamp_min = df2[df2_ts_field[0]].min()
-                    if self.df2[self.df2_ts_field[0]].max() > self.timestamp_max:
-                        self.timestamp_max = self.df2[self.df2_ts_field[0]].max()
-                else:
-                    self.y2_field = self.df2 = self.line2_groupby_field = self.df2_ts_field = None
 
             #
             # Transforms section
@@ -1024,6 +1009,31 @@ class RTXYMixin(object):
             # Check the count_by column
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
+
+            # Setup the y2 info (if the y2_field is set)
+            self.timestamp_min = None
+            self.timestamp_max = None
+            if len(self.x_field) == 1 and is_datetime(self.df[self.x_field[0]]):
+                self.timestamp_min = self.df[self.x_field[0]].min()
+                self.timestamp_max = self.df[self.x_field[0]].max()
+                if self.y2_field is not None:
+                    if self.df2 is None:
+                        self.df2 = self.df
+                        self.df2_is_df = True
+                    else:
+                        self.df2_is_df = False
+                    if self.df2_ts_field is None:
+                        self.df2_ts_field = self.x_field
+                    if type(self.df2_ts_field) != list:
+                        self.df2_ts_field = [self.df2_ts_field]
+                    
+                    # Determine actual timestamp min and max 
+                    if self.df2[self.df2_ts_field[0]].min() < self.timestamp_min:
+                        self.timestamp_min = df2[df2_ts_field[0]].min()
+                    if self.df2[self.df2_ts_field[0]].max() > self.timestamp_max:
+                        self.timestamp_max = self.df2[self.df2_ts_field[0]].max()
+                else:
+                    self.y2_field = self.df2 = self.line2_groupby_field = self.df2_ts_field = None
 
         #
         # renderSVG() - render as SVG
@@ -1163,6 +1173,12 @@ class RTXYMixin(object):
                 else:
                     svg += self.rt_self.drawXYTemporalContext(self.x_left, self.y_ins, self.w_usable, self.h_usable, self.txt_h, self.timestamp_min, self.timestamp_max, self.draw_labels)
 
+            # Draw grid lines (if enabled)
+            if self.draw_x_gridlines and self.x_field_is_scalar:
+                svg += self.__drawGridlines__(True,  self.x_label_min, self.x_label_max, self.x_trans_norm_func, self.w_usable, self.y_ins,  self.y_ins  + self.h_usable)
+            if self.draw_y_gridlines and self.y_field_is_scalar:
+                svg += self.__drawGridlines__(False, self.y_label_min, self.y_label_max, self.y_trans_norm_func, self.h_usable, self.x_left, self.x_left + self.w_usable)
+                
             # Draw the background shapes
             if self.bg_shape_lu is not None and self.x_trans_func is not None and self.y_trans_func is not None:
                 _bg_shape_labels = []
@@ -1542,6 +1558,90 @@ class RTXYMixin(object):
             else:
                 return as_str
         
+        #
+        # Draw gridlines
+        #
+        def __drawGridlines__(self,
+                              x_axis_flag,        # true if this is for the x-axis
+                              _label_min,         # min realworld coordinate // should be convertible to a float
+                              _label_max,         # max realworld coordinate // should be convertible to a float
+                              _trans_norm_func,   # transform into pixel space for axis specified by the x_axis_flag
+                              _pixel_dims,        # total pixels across (or vertically)
+                              _base_coord,        # base pixel coordinate in the other dimension
+                              _max_coord):        # max pixel coordinate in the other dimension
+            _label_max,_label_min = float(_label_max),float(_label_min)
+            _delta = _label_max - _label_min
+            if   _delta > 100000:
+                _inc = None
+            elif _delta > 10000:
+                _inc   = 2500
+                _inc_m = 500
+                _start = int(_label_min/1000)*1000
+            elif _delta > 1000:
+                _inc   = 1000
+                _inc_m = 100
+                _start = int(_label_min/1000)*1000
+            elif _delta > 500:
+                _inc   = 100
+                _inc_m = 25
+                _start = int(_label_min/500)*500
+            elif _delta > 100:
+                _inc   = 25
+                _inc_m = 5
+                _start = int(_label_min/100)*100
+            elif _delta > 10:
+                _inc   = 5
+                _inc_m = 1
+                _start = int(_label_min/10)*10
+            elif _delta > 1:
+                _inc   = 1
+                _inc_m = 0.25
+                _start = int(_label_min)
+            elif _delta > .1:
+                _inc   = .1
+                _inc_m = 0.02
+                _start = int(_label_min*10)/10.0
+            else:
+                _inc = None
+
+            _svg = ''
+            if _inc is not None:
+                axis_major_co = self.rt_self.co_mgr.getTVColor('axis',   'major')
+                axis_minor_co = self.rt_self.co_mgr.getTVColor('axis',   'minor')
+                _txt_co       = self.rt_self.co_mgr.getTVColor('context','text')
+                _txt_h        = self.txt_h - 2
+
+                _drawn = set()
+                i = _start
+                while i < _label_max:
+                    if x_axis_flag:
+                        x = _trans_norm_func(i)
+                        _svg += f'<line x1="{x}" y1="{_base_coord+_txt_h}" x2="{x}" y2="{_max_coord}" stroke="{axis_major_co}" stroke-width="1" />'
+                        _svg += self.rt_self.svgText(str(i), x, _base_coord+_txt_h-2, _txt_h, _txt_co, anchor='middle')
+                    else:
+                        y = _trans_norm_func(i)
+                        _svg += f'<line x1="{_base_coord}" y1="{y}" x2="{_max_coord}" y2="{y}" stroke="{axis_major_co}" stroke-width="1" />'
+                        _svg += self.rt_self.svgText(str(i), _base_coord+3, y-1, _txt_h, _txt_co)
+                    _drawn.add(i)
+                    i += _inc
+
+                hashmarks = 8
+                i = _start
+                while i < _label_max:
+                    if x_axis_flag:
+                        if i not in _drawn:
+                            x = _trans_norm_func(i)
+                            _svg += f'<line x1="{x}" y1="{_base_coord+hashmarks}" x2="{x}" y2="{_base_coord}" stroke="{axis_minor_co}" stroke-width="1" />'
+                            _svg += f'<line x1="{x}" y1="{_max_coord-hashmarks}"  x2="{x}" y2="{_max_coord}"  stroke="{axis_minor_co}" stroke-width="1" />'
+                    else:
+                        if i not in _drawn:
+                            y = _trans_norm_func(i)
+                            _svg += f'<line x1="{_max_coord-hashmarks}"  y1="{y}" x2="{_max_coord}"  y2="{y}" stroke="{axis_minor_co}" stroke-width="1" />'
+                            _svg += f'<line x1="{_base_coord+hashmarks}" y1="{y}" x2="{_base_coord}" y2="{y}" stroke="{axis_minor_co}" stroke-width="1" />'
+                    i += _inc_m
+
+            return _svg
+
         #
         # Render background distributions
         #
