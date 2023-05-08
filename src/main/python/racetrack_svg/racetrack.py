@@ -90,6 +90,7 @@ class RACETrack(RTAnnotationsMixin,
                                   'year_month_day',    # year, month, and day
                                   'day',               # day (of the month)
                                   'day_of_year',       # day of the year
+                                  'day_of_year_hour',  # day of the year w/ hour
                                   'hour',              # hour (of the day)
                                   'minute',            # minute (of the hour)
                                   'second',            # second (of the minute)
@@ -287,6 +288,8 @@ class RACETrack(RTAnnotationsMixin,
                 df[tfield] = df[field].apply(lambda x: f'{x.day:02}')
             elif transform == 'day_of_year':
                 df[tfield] = df[field].apply(lambda x: f'{x.day_of_year:03}')
+            elif transform == 'day_of_year_hour':
+                df[tfield] = df[field].apply(lambda x: f'{x.day_of_year:03}_{x.hour:02}')
             elif transform == 'hour':
                 df[tfield] = df[field].apply(lambda x: f'{x.hour:02}')
             elif transform == 'minute':
