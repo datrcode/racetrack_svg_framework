@@ -949,6 +949,28 @@ class RTSmallMultiplesMixin(object):
                 h_overall += h
             return svg + '</svg>'
 
+
+    #
+    # xyGrid() in the style of the all parameters?
+    #
+    def xyGrid(self, 
+               df, 
+               w_tile=128, 
+               h_tile=128):
+        _fields = df.columns
+        _rows   = []
+        for row_field in _fields:
+            _row = []
+            for col_field in _fields:
+                if row_field == col_field:
+                    _row.append(self.xy(df, x_field=row_field, y_field=col_field, dot_size=None,    w=w_tile, h=h_tile, 
+                                        render_x_distribution=int(w_tile/3), distribution_style='inside',
+                                        background_override='#e0e0e0'))
+                else:
+                    _row.append(self.xy(df, x_field=row_field, y_field=col_field, dot_size='small', w=w_tile, h=h_tile, color_magnitude='stretch'))
+            _rows.append(self.tile(_row))
+        return self.tile(_rows, horz=False)
+
 #
 # Find optimal fit for small multiples
 # 
