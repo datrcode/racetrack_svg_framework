@@ -351,12 +351,12 @@ class RTHistogramMixin(object):
                 order = self.df.groupby(by=self.bin_by).size().sort_values(ascending=False)
             elif  self.count_by_set:
                 if self.count_by in self.bin_by:
-                    _df = self.df.groupby(by=self.bin_by).size()
+                    _df = self.df.groupby(by=self.bin_by).size().reset_index()
                     order = _df.groupby(by=self.bin_by).size().sort_values(ascending=False)
                 else:
                     _combined =  self.bin_by.copy()
                     _combined.append(self.count_by)
-                    _df = self.df.groupby(by=_combined).size()
+                    _df = self.df.groupby(by=_combined).size().reset_index()
                     order = _df.groupby(by=self.bin_by).size().sort_values(ascending=False)
             else:
                 if self.count_by in self.bin_by:
