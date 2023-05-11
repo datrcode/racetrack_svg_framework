@@ -955,6 +955,8 @@ class RTSmallMultiplesMixin(object):
     #
     def xyGrid(self, 
                df, 
+               color_by=None,
+               dot_size='small',
                w_tile=128, 
                h_tile=128):
         _fields = df.columns
@@ -967,7 +969,10 @@ class RTSmallMultiplesMixin(object):
                                         render_x_distribution=int(w_tile/3), distribution_style='inside',
                                         background_override='#e0e0e0'))
                 else:
-                    _row.append(self.xy(df, x_field=row_field, y_field=col_field, dot_size='small', w=w_tile, h=h_tile, color_magnitude='stretch'))
+                    if color_by is None:
+                        _row.append(self.xy(df, x_field=row_field, y_field=col_field, dot_size=dot_size, w=w_tile, h=h_tile, color_magnitude='stretch'))
+                    else:
+                        _row.append(self.xy(df, x_field=row_field, y_field=col_field, dot_size=dot_size, w=w_tile, h=h_tile, color_by=color_by))
             _rows.append(self.tile(_row))
         return self.tile(_rows, horz=False)
 
