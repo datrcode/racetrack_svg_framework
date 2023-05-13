@@ -300,7 +300,71 @@ class RACETrack(RTAnnotationsMixin,
                 df[tfield] = df[field].apply(lambda x: self.transformLogBins(x))
 
         return df,tfield
-        
+
+    #
+    # Define the natural order for the elements returned by a tfield
+    # - a few degenerate cases exist -- for example, year_month_day if give many centuries...
+    #
+    def transformNaturalOrder(self, df, tfield):
+        _order = []
+        _order_dow     = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+        _order_quarter = ['Q1','Q2','Q3','Q4']
+        _order_month   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+        if tfield is not None and tfield.startswith('|tr|'):
+            transform = tfield.split('|')[2]
+            field     = '|'.join(tfield.split('|')[3:])
+            if   transform == 'day_of_week':
+                _order = _order_dow
+            elif transform == 'day_of_week_hour':
+                for _dow in _order_dow:
+                    for _hour in range(0,24):
+                        _order.append(f'{_dow}-{_hour:02}')
+            elif transform == 'year':
+                for _year in range(df[field].min().year, df[field].max().year+1):
+                    _order.append(f'{_year}')
+            elif transform == 'year_quarter':
+                for _year in range(df[field].min().year, df[field].max().year+1):
+                    for _quarter in range(1,5):
+                        _order.append(f'{_year}Q{_quarter}')
+            elif transform == 'quarter':
+                _order = _order_quarter
+            elif transform == 'month':
+                _order = _order_month
+            elif transform == 'year_month':
+                for _date in pd.date_range(start=df['timestamp'].min(), end=df['timestamp'].max(), freq='M'):
+                    _order.append(f'{_date.year}-{_date.month:02}')
+            elif transform == 'year_month_day':
+                for _date in pd.date_range(start=df['timestamp'].min(), end=df['timestamp'].max(), freq='D'):
+                    _order.append(f'{_date.year}-{_date.month:02}-{_date.day:02}')
+            elif transform == 'day':
+                for _day in range(1,32):
+                    _order.append(f'{_day:02}')
+            elif transform == 'day_of_year':
+                if df[field].min().year == df[field].max().year:
+                    for _day in range(df[field].min().day_of_year, df[field].max().day_of_year+1):
+                        _order.append(f'{_day:03}')
+                else:
+                    for _day in range(1,366):
+                        _order.append(f'{_day:03}')
+            elif transform == 'day_of_year_hour':
+                if df[field].min().year == df[field].max().year:
+                    for _day in range(df[field].min().day_of_year, df[field].max().day_of_year+1):
+                        for _hour in range(0,24):
+                            _order.append(f'{_day:03}_{_hour:02}')
+                else:
+                    for _day in range(1,366):
+                        for _hour in range(0,24):
+                            _order.append(f'{_day:03}_{_hour:02}')
+            elif transform == 'hour':
+                for _hour in range(0,24):
+                    _order.append(f'{_hour:02}')
+            elif transform == 'minute' or transform == 'second':
+                for _minute in range(0,60):
+                    _order.append(f'{_minute:02}')
+            elif transform == 'log_bins':
+                _order = ['< 0', '= 0', '<= 1', '<= 10','<= 100', '<= 1K', '<= 100K', '<= 1M', '> 1M']
+        return _order
+
     #
     # Create a tranformation field (tfield)
     #

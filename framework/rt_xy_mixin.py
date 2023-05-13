@@ -290,6 +290,7 @@ class RTXYMixin(object):
            x_label_max       = None,      # max label on the x axis
            x_trans_func      = None,      # lambda transform function for x axis
            x_order           = None,      # order of categorical values on the x axis
+           x_fill_transforms = True,      # for t-fields, fill in all the values to properly space out data
 
            y_axis_col        = None,      # y axis column name
            y_is_time         = False,     # y is time flag
@@ -364,7 +365,7 @@ class RTXYMixin(object):
         rt_xy = self.RTXy(self, df, x_field, y_field, x_field_is_scalar=x_field_is_scalar, y_field_is_scalar=y_field_is_scalar, color_by=color_by, color_magnitude=color_magnitude,                         
                           count_by=count_by, count_by_set=count_by_set, dot_size=dot_size, dot_shape=dot_shape, max_dot_size=max_dot_size, opacity=opacity, vary_opacity=vary_opacity, align_pixels=align_pixels,
                           widget_id=widget_id, x_axis_col=x_axis_col, x_is_time=x_is_time, x_label_min=x_label_min, x_label_max=x_label_max, x_trans_func=x_trans_func, y_axis_col=y_axis_col,
-                          x_order=x_order,y_order=y_order,
+                          x_order=x_order,y_order=y_order, x_fill_transforms=x_fill_transforms,
                           y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
                           df2=df2, df2_ts_field=df2_ts_field, y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, line2_groupby_field=line2_groupby_field,
                           line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
@@ -387,9 +388,10 @@ class RTXYMixin(object):
                            field, 
                            is_scalar, 
                            new_axis_field,
-                           order         = None,   # order of the values on the axis
-                           timestamp_min = None,   # Minimum timestamp field
-                           timestamp_max = None):  # Maximum timestamp field
+                           order          = None,   # Order of the values on the axis
+                           fill_transform = True,   # Fill in missing transform values
+                           timestamp_min  = None,   # Minimum timestamp field
+                           timestamp_max  = None):  # Maximum timestamp field
         if type(field) != list:
             field = [field]
         is_time = False
@@ -437,6 +439,18 @@ class RTXYMixin(object):
         
         # Equal scaling
         else:
+            # This fills in the natural ordering of the data if the fill_transform is enabled (it's true by default)
+            # ... unclear what should be done if this is multifield and one or more transforms exists
+            if fill_transform and order is None and len(field) == 1 and self.isTField(f0):
+                order = self.transformNaturalOrder(df, f0)
+                order_filled_by_transform = True
+            else:
+                if fill_transform and order is None and len(field) > 1:
+                    for _field in field:
+                        if self.isTField(_field):
+                            raise Exception('xy - fill_transform is specified but there are multiple fields with a least one transform... not implemented')
+                order_filled_by_transform = False
+                
             gb = df.groupby(field)
             if order is None:
                 # 0...1 assignment
@@ -461,12 +475,12 @@ class RTXYMixin(object):
                 df[new_axis_field] = gb[field[0]].transform(lambda x: my_inc.nextValue(x))
                 # Labeling
                 label_min = order[0]
-                if order_is_complete:
+                if order_is_complete or order_filled_by_transform:
                     label_max = order[-1]
                 else:
                     label_max = 'ee' # everthing else
                 
-        return is_time, label_min, label_max, transFunc
+        return is_time, label_min, label_max, transFunc, order
 
     #
     # XYInc... simple incrememter to handle non-numeric coordinate axes
@@ -706,6 +720,7 @@ class RTXYMixin(object):
                    x_label_max             = None,       # max label on the x axis
                    x_trans_func            = None,       # lambda transform function for x axis
                    x_order                 = None,       # order of x axis for categorical values
+                   x_fill_transforms       = True,       # for t-fields, fill in all the values to properly space out data
                    y_axis_col              = None,       # y axis column name
                    y_is_time               = False,      # y is time flag
                    y_label_min             = None,       # min label on the y axis
@@ -768,7 +783,7 @@ class RTXYMixin(object):
         return self.RTXy(self, df, x_field, y_field, x_field_is_scalar=x_field_is_scalar, y_field_is_scalar=y_field_is_scalar, color_by=color_by, color_magnitude=color_magnitude,                         
                          count_by=count_by, count_by_set=count_by_set, dot_size=dot_size, dot_shape=dot_shape, max_dot_size=max_dot_size, opacity=opacity, vary_opacity=vary_opacity, align_pixels=align_pixels,
                          widget_id=widget_id, x_axis_col=x_axis_col, x_is_time=x_is_time, x_label_min=x_label_min, x_label_max=x_label_max, x_trans_func=x_trans_func, y_axis_col=y_axis_col,
-                         y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, x_order=x_order, y_order=y_order,
+                         y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, x_order=x_order, y_order=y_order, x_fill_transforms=x_fill_transforms,
                          line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
                          df2=df2, df2_ts_field=df2_ts_field, y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, line2_groupby_field=line2_groupby_field,
                          line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
@@ -811,6 +826,7 @@ class RTXYMixin(object):
                      x_label_max             = None,       # max label on the x axis
                      x_trans_func            = None,       # lambda transform function for x axis
                      x_order                 = None,       # order of categorical values on x axis
+                     x_fill_transforms       = True,       # for t-fields, fill in all the values to properly space out data
                      y_axis_col              = None,       # y axis column name
                      y_is_time               = False,      # y is time flag
                      y_label_min             = None,       # min label on the y axis
@@ -900,6 +916,7 @@ class RTXYMixin(object):
             self.x_label_max             = x_label_max
             self.x_trans_func            = x_trans_func
             self.x_order                 = x_order
+            self.x_fill_transforms       = x_fill_transforms
             self.y_axis_col              = y_axis_col
             self.y_is_time               = y_is_time
             self.y_label_min             = y_label_min
@@ -1111,10 +1128,10 @@ class RTXYMixin(object):
             # Create the extra columns for the x and y coordinates
             if self.x_axis_col is None:
                 self.x_axis_col = 'my_x_' + self.widget_id
-                self.x_is_time, self.x_label_min, self.x_label_max, self.x_trans_func = self.rt_self.xyCreateAxisColumn(self.df, self.x_field, self.x_field_is_scalar, self.x_axis_col, self.x_order, self.timestamp_min, self.timestamp_max)
+                self.x_is_time, self.x_label_min, self.x_label_max, self.x_trans_func, self.x_order = self.rt_self.xyCreateAxisColumn(self.df, self.x_field, self.x_field_is_scalar, self.x_axis_col, self.x_order, self.x_fill_transforms, self.timestamp_min, self.timestamp_max)
             if self.y_axis_col is None:
                 self.y_axis_col = 'my_y_' + self.widget_id
-                self.y_is_time, self.y_label_min, self.y_label_max, self.y_trans_func = self.rt_self.xyCreateAxisColumn(self.df, self.y_field, self.y_field_is_scalar, self.y_axis_col, self.y_order)
+                self.y_is_time, self.y_label_min, self.y_label_max, self.y_trans_func, self.y_order = self.rt_self.xyCreateAxisColumn(self.df, self.y_field, self.y_field_is_scalar, self.y_axis_col, self.y_order)
 
             # Secondary axis settings
             self.y2_label_min, self.y2_label_max = None,None
