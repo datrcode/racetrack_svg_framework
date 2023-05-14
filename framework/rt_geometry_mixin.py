@@ -25,7 +25,114 @@ __name__ = 'rt_geometry_mixin'
 # Geometry Methods
 #
 class RTGeometryMixin(object):
+    #
+    # pointWithinSegment()
+    #
+    def pointWithinSegment(self, x, y, x0, y0, x1, y1):
+        dx, dy = x1 - x0, y1 - y0
+        _xmin,_xmax = min(x0,x1),max(x0,x1)
+        _ymin,_ymax = min(y0,y1),max(y0,y1)
+        if x < _xmin or x > _xmax or y < _ymin or y > _ymax:
+            return False, 0.0
+        # xp = x0 + t * dx
+        # yp = y0 + t * dy
+        if dx == 0 and dy == 0: # segment is a point...
+            if x == x0 and y == y0:
+                return True, 0.0
+        elif dx == 0: # it's vertical...
+            t  = (y - y0)/dy
+            xp,yp = x0 + t*dx, y0 + t*dy
+            if xp == x and yp == y and t >= 0.0 and t <= 1.0:
+                return True, t
+        else: # it's horizontal... or at least conforms to f(x)
+            t  = (x - x0)/dx
+            xp,yp = x0 + t*dx, y0 + t*dy
+            if xp == x and yp == y and t >= 0.0 and t <= 1.0:
+                return True, t
+        return False, 0.0
 
+    #
+    # pointOnLine()
+    #
+    def pointOnLine(self, x, y, x0, y0, x1, y1):
+        dx, dy = x1 - x0, y1 - y0
+        # xp = x0 + t * dx
+        # yp = y0 + t * dy
+        if dx == 0 and dy == 0: # segment is a point...
+            if x == x0 and y == y0:
+                return True, 0.0
+        elif dx == 0: # it's vertical...
+            t  = (y - y0)/dy
+            xp,yp = x0 + t*dx, y0 + t*dy
+            if xp == x and yp == y:
+                return True, t
+        else: # it's horizontal... or at least conforms to f(x)
+            t  = (x - x0)/dx
+            xp,yp = x0 + t*dx, y0 + t*dy
+            if xp == x and yp == y:
+                return True, t
+        return False, 0.0
+
+    #
+    # segmentsIntersect()
+    # - do two segments intersect?
+    #
+    def segmentsIntersect(self, s0, s1):
+        x0,y0,x1,y1 = s0[0][0],s0[0][1],s0[1][0],s0[1][1]
+        x2,y2,x3,y3 = s1[0][0],s1[0][1],s1[1][0],s1[1][1]
+        _xmin,_ymin,_amin,_bmin = min(x0,x1),min(y0,y1),min(x2,x3),min(y2,y3)
+        _xmax,_ymax,_amax,_bmax = max(x0,x1),max(y0,y1),max(x2,x3),max(y2,y3)
+
+        # Simple overlapping bounds test... as inexpensive as it gets...
+        if _xmin > _amax or _amin > _xmax or _ymin > _bmax or _bmin > _ymax:
+            return False, 0.0, 0.0, 0.0, 0.0
+        # Both segments are points... Are they the same point?
+        if _xmin == _xmax and _ymin == _ymax and _amin == _amax and _bmin == _bmax:
+            if x0 == x2 and y0 == y2:
+                return True, x0, y0, 0.0, 0.0
+            return False,0.0,0.0,0.0,0.0
+
+        A,B,C,D = y3 - y2, x3 - x2, x1 - x0, y1 - y0
+
+        #x = x0 + t * C
+        #t = (x - x0) / C
+        #y = y0 + t * D
+        #t = (y - y0) / D
+
+        # Deal with parallel lines
+        denom = B * D - A * C                # Cross Product
+        if denom == 0.0:                     # Parallel...  and if co-linear, overlap because of the previous bounds test...
+            online0, t0 = self.pointOnLine(x2, y2, x0, y0, x1, y1)
+            online1, t1 = self.pointOnLine(x0, y0, x2, y2, x3, y3)
+            if online0 or online1:
+                onseg, t = self.pointWithinSegment(x0, y0, x2, y2, x3, y3)
+                if onseg:
+                    return True, x0, y0, 0.0, t
+                onseg, t = self.pointWithinSegment(x1, y1, x2, y2, x3, y3)
+                if onseg:
+                    return True, x1, y1, 1.0, t
+                onseg, t = self.pointWithinSegment(x2, y2, x0, y0, x1, y1)
+                if onseg:
+                    return True, x2, y2, t, 0.0
+                onseg, t = self.pointWithinSegment(x3, y3, x0, y0, x1, y1)
+                if onseg:
+                    return True, x3, y3, t, 1.0
+
+        # Normal calculation...
+        t0 = (A*(x0 - x2) - B*(y0 - y2))/denom
+        if t0 >= 0.0 and t0 <= 1.0:
+            x    = x0 + t0 * (x1 - x0)
+            y    = y0 + t0 * (y1 - y0)
+            if (x3 -x2) != 0:
+                t1   = (x - x2)/(x3 - x2)
+                if t1 >= 0.0 and t1 <= 1.0:
+                    return True, x, y, t0, t1
+            if (y3 - y2) != 0:
+                t1   = (y - y2)/(y3 - y2)
+                if t1 >= 0.0 and  t1 <= 1.0:
+                    return True, x, y, t0, t1
+        return False, 0.0, 0.0, 0.0, 0.0
+    
     #
     # Converts a shapely polygon to an SVG path...
     # ... assumes that the ordering (CW, CCW) of both the exterior and interior points is correct...
