@@ -1142,13 +1142,13 @@ class RTXYMixin(object):
             self.y2_label_min, self.y2_label_max = None,None
             if self.y2_field is not None and self.y2_axis_col is None:
                 self.y2_axis_col = 'my_y2_' + self.widget_id
-                self.y2_is_time, self.y2_label_min, self.y2_label_max, _throwaway_func = self.rt_self.xyCreateAxisColumn(self.df2, self.y2_field, self.y2_field_is_scalar, self.y2_axis_col)
+                self.y2_is_time, self.y2_label_min, self.y2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.y2_field, self.y2_field_is_scalar, self.y2_axis_col)
             if self.y2_field is not None:
                 if self.df2_is_df:
                     self.x2_axis_col = self.x_axis_col
                 else:
                     self.x2_axis_col = 'my_x2_' + self.widget_id
-                    self.x2_is_time, self.x2_label_min, self.x2_label_max, _throwaway_func = self.rt_self.xyCreateAxisColumn(self.df2, self.df2_ts_field, False, self.x2_axis_col, None, self.timestamp_min, self.timestamp_max)
+                    self.x2_is_time, self.x2_label_min, self.x2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.df2_ts_field, False, self.x2_axis_col, None, self.timestamp_min, self.timestamp_max)
 
             # Create the pixel-level columns
             self.df[self.x_axis_col+"_px"] = self.x_left                + self.df[self.x_axis_col]*self.w_usable

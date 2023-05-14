@@ -214,12 +214,20 @@ class RTSmallMultiplesMixin(object):
                 x_field_is_scalar = True # Default for the xy widget
                 if 'x_field_is_scalar' in sm_params.keys():
                     x_field_is_scalar = sm_params['x_field_is_scalar']
-                x_is_time,x_label_min,x_label_max,xTrans = self.xyCreateAxisColumn(df, sm_params['x_field'], x_field_is_scalar, sm_x_axis)
-                most_params['x_axis_col']  = sm_x_axis
-                most_params['x_is_time']   = x_is_time
-                most_params['x_label_min'] = x_label_min
-                most_params['x_label_max'] = x_label_max
-                most_params['x_trans_func'] = xTrans
+                xOrder = None
+                if 'x_order' in sm_params.keys():
+                    xOrder = sm_params['x_order']
+                xFillTransforms = True # Default Value...
+                if 'x_fill_transforms' in sm_params.keys():
+                    xFillTransforms = sm_params['x_fill_transforms']
+                x_is_time,x_label_min,x_label_max,xTrans,xOrder = self.xyCreateAxisColumn(df, sm_params['x_field'], x_field_is_scalar, sm_x_axis, xOrder, xFillTransforms)
+                most_params['x_axis_col']        = sm_x_axis
+                most_params['x_is_time']         = x_is_time
+                most_params['x_label_min']       = x_label_min
+                most_params['x_label_max']       = x_label_max
+                most_params['x_trans_func']      = xTrans
+                most_params['x_order']           = xOrder
+                most_params['x_fill_transforms'] = xFillTransforms
 
             #
             # xy and y-axis
@@ -229,13 +237,20 @@ class RTSmallMultiplesMixin(object):
                 y_field_is_scalar = True # Default for the xy widget
                 if 'y_field_is_scalar' in sm_params.keys():
                     y_field_is_scalar = sm_params['y_field_is_scalar']
-                y_is_time,y_label_min,y_label_max,yTrans = self.xyCreateAxisColumn(df, sm_params['y_field'], y_field_is_scalar, sm_y_axis)
-                most_params['y_axis_col']  = sm_y_axis
-                most_params['y_is_time']   = y_is_time
-                most_params['y_label_min'] = y_label_min
-                most_params['y_label_max'] = y_label_max
-                most_params['y_trans_func'] = yTrans
-            
+                yOrder = None
+                if 'y_order' in sm_params.keys():
+                    yOrder = sm_params['y_order']
+                yFillTransforms = True # Default Value...
+                if 'y_fill_transforms' in sm_params.keys():
+                    yFillTransforms = sm_params['y_fill_transforms']
+                y_is_time,y_label_min,y_label_max,yTrans,yOrder = self.xyCreateAxisColumn(df, sm_params['y_field'], y_field_is_scalar, sm_y_axis, yOrder, yFillTransforms)
+                most_params['y_axis_col']        = sm_y_axis
+                most_params['y_is_time']         = y_is_time
+                most_params['y_label_min']       = y_label_min
+                most_params['y_label_max']       = y_label_max
+                most_params['y_trans_func']      = yTrans
+                most_params['y_order']           = yOrder
+                most_params['y_fill_transforms'] = yFillTransforms
             #
             # temporalBarChart and x-axis
             #
