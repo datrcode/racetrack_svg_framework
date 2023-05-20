@@ -251,7 +251,7 @@ class RTXYMixin(object):
         self.identifyColumnsFromParameters('color_by', kwargs, columns_set)
         self.identifyColumnsFromParameters('count_by', kwargs, columns_set)
         self.identifyColumnsFromParameters('line_groupby_field',  kwargs, columns_set)
-        self.identifyColumnsFromParameters('df2_ts_field',        kwargs, columns_set)
+        self.identifyColumnsFromParameters('x2_field',            kwargs, columns_set)
         self.identifyColumnsFromParameters('y2_field',            kwargs, columns_set)
         self.identifyColumnsFromParameters('line2_groupby_field', kwargs, columns_set)
         return columns_set
@@ -309,7 +309,9 @@ class RTXYMixin(object):
            # ------------------------     # secondary axis settings # probably not small multiple safe...
 
            df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
-           df2_ts_field            = None,       # secondary axis x timestamp field ... if not set but the y2_field is, then this be set to the x_field
+           x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the x_field
+           x2_field_is_scalar      = None,       # x2 field is scalar
+           x2_axis_col             = None,       # x2 axis column name
            y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
            y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
            y2_axis_col             = None,       # y2 axis column name
@@ -363,13 +365,18 @@ class RTXYMixin(object):
            draw_labels               = True,          # draw labels flag
            draw_border               = True,          # draw a border around the histogram
            draw_context              = True):         # draw temporal context information if (and only if) x_axis is time
-        rt_xy = self.RTXy(self, df, x_field, y_field, x_field_is_scalar=x_field_is_scalar, y_field_is_scalar=y_field_is_scalar, color_by=color_by, color_magnitude=color_magnitude,                         
-                          count_by=count_by, count_by_set=count_by_set, dot_size=dot_size, dot_shape=dot_shape, max_dot_size=max_dot_size, opacity=opacity, vary_opacity=vary_opacity, align_pixels=align_pixels,
-                          widget_id=widget_id, x_axis_col=x_axis_col, x_is_time=x_is_time, x_label_min=x_label_min, x_label_max=x_label_max, x_trans_func=x_trans_func, y_axis_col=y_axis_col,
+        rt_xy = self.RTXy(self, df, x_field, y_field, x_field_is_scalar=x_field_is_scalar, y_field_is_scalar=y_field_is_scalar, 
+                          color_by=color_by, color_magnitude=color_magnitude,                         
+                          count_by=count_by, count_by_set=count_by_set, 
+                          dot_size=dot_size, dot_shape=dot_shape, max_dot_size=max_dot_size, opacity=opacity, vary_opacity=vary_opacity, 
+                          align_pixels=align_pixels,
+                          widget_id=widget_id, 
+                          x_axis_col=x_axis_col, x_is_time=x_is_time, x_label_min=x_label_min, x_label_max=x_label_max, x_trans_func=x_trans_func, 
+                          y_axis_col=y_axis_col, y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, 
                           x_order=x_order,y_order=y_order, x_fill_transforms=x_fill_transforms, y_fill_transforms=y_fill_transforms,
-                          y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
-                          df2=df2, df2_ts_field=df2_ts_field, y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, line2_groupby_field=line2_groupby_field,
-                          line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
+                          line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
+                          df2=df2, x2_field=x2_field, x2_field_is_scalar=x2_field_is_scalar, x2_axis_col=x2_axis_col, y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, 
+                          line2_groupby_field=line2_groupby_field, line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
                           sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
                           render_x_distribution=render_x_distribution,render_y_distribution=render_y_distribution,render_distribution_opacity=render_distribution_opacity,
                           distribution_h_perc=distribution_h_perc, distribution_style=distribution_style,
@@ -432,8 +439,8 @@ class RTXYMixin(object):
             if my_min == my_max:
                 my_max += timedelta(seconds=1)
             df[new_axis_field] = ((df[f0] - my_min)/(my_max - my_min))
-            label_min = df[f0].min()
-            label_max = df[f0].max()
+            label_min = timestamp_min # df[f0].min()
+            label_max = timestamp_max # df[f0].max()
             is_time = True
 
             transFunc = lambda x: ((x - my_min)/(my_max - my_min))
@@ -735,7 +742,9 @@ class RTXYMixin(object):
                    line_groupby_w          = 1,          # width of the line for the line chart
                    # ----------------------------------- # secondary axis settings # probably not small multiple safe...
                    df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
-                   df2_ts_field            = None,       # secondary axis x timestamp field ... if not set but the y2_field is, then this be set to the x_field
+                   x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the x_field
+                   x2_field_is_scalar      = None,       # x2 field is scalar
+                   x2_axis_col             = None,       # x2 axis column name
                    y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
                    y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
                    y2_axis_col             = None,       # y2 axis column name
@@ -788,7 +797,8 @@ class RTXYMixin(object):
                          y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, x_order=x_order, y_order=y_order, 
                          x_fill_transforms=x_fill_transforms, y_fill_transforms=y_fill_transforms,
                          line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
-                         df2=df2, df2_ts_field=df2_ts_field, y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, line2_groupby_field=line2_groupby_field,
+                         df2=df2, x2_field=x2_field, x2_field_is_scalar=x2_field_is_scalar, x2_axis_col=x2_axis_col, 
+                         y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, line2_groupby_field=line2_groupby_field,
                          line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
                          sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
                          render_x_distribution=render_x_distribution, render_y_distribution=render_y_distribution, render_distribution_opacity=render_distribution_opacity,
@@ -843,7 +853,9 @@ class RTXYMixin(object):
                      line_groupby_w          = 1,          # width of the line for the line chart
                      # ----------------------------------- # secondary axis settings # probably not small multiple safe...
                      df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
-                     df2_ts_field            = None,       # secondary axis x timestamp field ... if not set but the y2_field is, then this be set to the x_field
+                     x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the x_field
+                     x2_field_is_scalar      = None,       # x2 field is scalar
+                     x2_axis_col             = None,       # x2 axis column name
                      y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
                      y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
                      y2_axis_col             = None,       # y2 axis column name
@@ -931,18 +943,34 @@ class RTXYMixin(object):
             self.line_groupby_field      = line_groupby_field
             self.line_groupby_w          = line_groupby_w
 
-            if df2 is not None:
-                self.df2                 = df2.copy()
-            elif y2_field is not None:
-                self.df2                 = df.copy()
-                self.df2_ts_field        = x_field
-            else:
-                self.df2                 = None
-
-            self.df2_ts_field            = df2_ts_field
+            self.x2_field                = x2_field
+            self.x2_field_is_scalar      = x2_field_is_scalar
+            self.x2_axis_col             = x2_axis_col
             self.y2_field                = y2_field
             self.y2_field_is_scalar      = y2_field_is_scalar
             self.y2_axis_col             = y2_axis_col
+
+            # y2_field is really the only required param to make the df2 work...
+            if y2_field is not None:
+                if df2 is not None:
+                    self.df2 = df2.copy()
+                    self.df2_is_df = False
+                else:
+                    self.df2 = self.df
+                    self.df2_is_df = True
+
+                if x2_field is None:
+                    self.x2_field           = self.x_field
+                    self.x2_field_is_scalar = self.x_field_is_scalar
+                    self.x2_axis_col        = self.x2_axis_col 
+            else:
+                self.df2 = None
+
+            if self.x2_field is not None and type(self.x2_field) != list:
+                self.x2_field = [self.x2_field]
+            if self.y2_field is not None and type(self.y2_field) != list:
+                self.y2_field = [self.y2_field]
+
             self.line2_groupby_field     = line2_groupby_field
             self.line2_groupby_w         = line2_groupby_w
             self.line2_groupby_color     = line2_groupby_color
@@ -1038,24 +1066,16 @@ class RTXYMixin(object):
             if len(self.x_field) == 1 and is_datetime(self.df[self.x_field[0]]):
                 self.timestamp_min = self.df[self.x_field[0]].min()
                 self.timestamp_max = self.df[self.x_field[0]].max()
-                if self.y2_field is not None:
-                    if self.df2 is None:
-                        self.df2 = self.df
-                        self.df2_is_df = True
-                    else:
-                        self.df2_is_df = False
-                    if self.df2_ts_field is None:
-                        self.df2_ts_field = self.x_field
-                    if type(self.df2_ts_field) != list:
-                        self.df2_ts_field = [self.df2_ts_field]
-                    
+                if self.y2_field is not None:                    
                     # Determine actual timestamp min and max 
-                    if self.df2[self.df2_ts_field[0]].min() < self.timestamp_min:
-                        self.timestamp_min = df2[df2_ts_field[0]].min()
-                    if self.df2[self.df2_ts_field[0]].max() > self.timestamp_max:
-                        self.timestamp_max = self.df2[self.df2_ts_field[0]].max()
-                else:
-                    self.y2_field = self.df2 = self.line2_groupby_field = self.df2_ts_field = None
+                    if self.df2[self.x2_field[0]].min() < self.timestamp_min:
+                        self.timestamp_min = self.df2[self.x2_field[0]].min()
+                    if self.df2[self.x2_field[0]].max() > self.timestamp_max:
+                        self.timestamp_max = self.df2[self.x2_field[0]].max()
+            elif self.y2_field is not None:
+                raise Exception('xy() - do not know how to determine x2 field min and max when not a timestamp')
+                # Will require modes to xyCreateAxisColumn
+                # ... unless we say "it's got be a proper subset of the df x_axis..."
 
         #
         # renderSVG() - render as SVG
@@ -1143,12 +1163,11 @@ class RTXYMixin(object):
             if self.y2_field is not None and self.y2_axis_col is None:
                 self.y2_axis_col = 'my_y2_' + self.widget_id
                 self.y2_is_time, self.y2_label_min, self.y2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.y2_field, self.y2_field_is_scalar, self.y2_axis_col)
-            if self.y2_field is not None:
                 if self.df2_is_df:
                     self.x2_axis_col = self.x_axis_col
                 else:
                     self.x2_axis_col = 'my_x2_' + self.widget_id
-                    self.x2_is_time, self.x2_label_min, self.x2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.df2_ts_field, False, self.x2_axis_col, None, self.timestamp_min, self.timestamp_max)
+                    self.x2_is_time, self.x2_label_min, self.x2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.x2_field, self.x2_field_is_scalar, self.x2_axis_col, self.x_order, self.x_fill_transforms, self.timestamp_min, self.timestamp_max)
 
             # Create the pixel-level columns
             self.df[self.x_axis_col+"_px"] = self.x_left                + self.df[self.x_axis_col]*self.w_usable
@@ -1566,7 +1585,7 @@ class RTXYMixin(object):
                 svg += f'<rect width="{self.w-1}" height="{self.h}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />'
             
             svg += '</svg>'
-                    
+
             return svg
         #
         # Format min/max labels
