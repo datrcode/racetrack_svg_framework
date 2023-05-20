@@ -1086,7 +1086,7 @@ class RTXYMixin(object):
 
             # Setup the y2 info (if the y2_field is set)
             self.timestamp_min, self.timestamp_max, self.x_min, self.x_max = None,None,None,None
-            if len(self.x_field) == 1 and is_datetime(self.df[self.x_field[0]]):
+            if len(self.x_field) == 1 and is_datetime(self.df[self.x_field[0]]): # TIME
                 self.timestamp_min = self.df[self.x_field[0]].min()
                 self.timestamp_max = self.df[self.x_field[0]].max()
                 if self.y2_field is not None:                    
@@ -1095,7 +1095,7 @@ class RTXYMixin(object):
                         self.timestamp_min = self.df2[self.x2_field[0]].min()
                     if self.df2[self.x2_field[0]].max() > self.timestamp_max:
                         self.timestamp_max = self.df2[self.x2_field[0]].max()
-            elif len(self.x_field) == 1 and self.x_field_is_scalar:
+            elif len(self.x_field) == 1 and self.x_field_is_scalar:              # SCALARS
                 self.x_min = self.df[self.x_field[0]].min()
                 self.x_max = self.df[self.x_field[0]].max()
 
@@ -1111,10 +1111,10 @@ class RTXYMixin(object):
                         self.x_min = self.df2[self.x2_field[0]].min()
                     if self.df2[self.x2_field[0]].max() > self.x_max:
                         self.x_max = self.df2[self.x2_field[0]].max()
-            elif self.y2_field is not None:
-                raise Exception('xy() - do not know how to determine x2 field min and max for categorical or multi-group axis')
-                # Will require modes to xyCreateAxisColumn
-                # ... unless we say "it's got be a proper subset of the df x_axis..."
+            elif self.y2_field is not None and self.df2_is_df == False and self.x_order is None: # CATEGORICALS
+                _set0 = set(self.df. groupby(self.x_field). groups.keys())
+                _set1 = set(self.df2.groupby(self.x2_field).groups.keys())
+                self.x_order = sorted(list(_set0 | _set1))
 
         #
         # renderSVG() - render as SVG
