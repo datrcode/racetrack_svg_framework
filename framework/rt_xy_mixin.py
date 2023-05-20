@@ -310,7 +310,7 @@ class RTXYMixin(object):
 
            df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
            x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the x_field
-           x2_field_is_scalar      = None,       # x2 field is scalar
+           x2_field_is_scalar      = True,       # x2 field is scalar
            x2_axis_col             = None,       # x2 axis column name
            y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
            y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
@@ -399,7 +399,9 @@ class RTXYMixin(object):
                            order          = None,   # Order of the values on the axis
                            fill_transform = True,   # Fill in missing transform values
                            timestamp_min  = None,   # Minimum timestamp field
-                           timestamp_max  = None):  # Maximum timestamp field
+                           timestamp_max  = None,   # Maximum timestamp field
+                           _min           = None,   # Minimum for scalar axis
+                           _max           = None):  # Maximum for scalar axis
         if type(field) != list:
             field = [field]
         is_time = False
@@ -411,8 +413,16 @@ class RTXYMixin(object):
 
         # Numeric scaling
         if field_countable and is_scalar and len(field) == 1:
-            my_min = df[f0].min()
-            my_max = df[f0].max()
+            if _min is None:
+                my_min = df[f0].min()
+            else:
+                my_min = _min
+
+            if _max is None:
+                my_max = df[f0].max()
+            else:
+                my_max = _max
+
             if my_min == my_max:
                 my_min -= 0.5
                 my_max += 0.5
@@ -456,7 +466,7 @@ class RTXYMixin(object):
                 if fill_transform and order is None and len(field) > 1:
                     for _field in field:
                         if self.isTField(_field):
-                            raise Exception('xy - fill_transform is specified but there are multiple fields with a least one transform... create your own order...')
+                            raise Exception('xy - fill_transform is specified but there are multiple fields with at least one transform... create your own order...')
                 order_filled_by_transform = False
                 
             gb = df.groupby(field)
@@ -743,7 +753,7 @@ class RTXYMixin(object):
                    # ----------------------------------- # secondary axis settings # probably not small multiple safe...
                    df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
                    x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the x_field
-                   x2_field_is_scalar      = None,       # x2 field is scalar
+                   x2_field_is_scalar      = True,       # x2 field is scalar
                    x2_axis_col             = None,       # x2 axis column name
                    y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
                    y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
@@ -854,7 +864,7 @@ class RTXYMixin(object):
                      # ----------------------------------- # secondary axis settings # probably not small multiple safe...
                      df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
                      x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the x_field
-                     x2_field_is_scalar      = None,       # x2 field is scalar
+                     x2_field_is_scalar      = True,       # x2 field is scalar
                      x2_axis_col             = None,       # x2 axis column name
                      y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
                      y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
@@ -1031,18 +1041,32 @@ class RTXYMixin(object):
                 self.x_field = [self.x_field]
             if type(self.y_field) != list: # Make it into a list for consistency
                 self.y_field = [self.y_field]
+            if self.x2_field is not None and type(self.x2_field) != list: # Make it into a list for consistency
+                self.x2_field = [self.x2_field]
             if self.y2_field is not None and type(self.y2_field) != list: # Make it into a list for consistency
                 self.y2_field = [self.y2_field]
 
             #
             # Transforms section
             #
-                
-            # Apply bin-by transforms
+
+            # Apply axes transforms
             self.df, self.x_field   = rt_self.transformFieldListAndDataFrame(self.df, self.x_field)
             self.df, self.y_field   = rt_self.transformFieldListAndDataFrame(self.df, self.y_field)
-            if self.y2_field: # just the y2_field here... not the corresponding x2_field
+            if self.x2_field is not None:
+                self.df2, self.x2_field = rt_self.transformFieldListAndDataFrame(self.df2, self.x2_field)
+            if self.y2_field is not None:
                 self.df2, self.y2_field = rt_self.transformFieldListAndDataFrame(self.df2, self.y2_field)
+
+            # Make sure we understand what's scalar... and what's not...
+            if self.x_field_is_scalar:
+                self.x_field_is_scalar = len(self.x_field)   == 1 and self.rt_self.fieldIsArithmetic(self.df,  self.x_field[0])
+            if self.y_field_is_scalar:
+                self.y_field_is_scalar = len(self.y_field)   == 1 and self.rt_self.fieldIsArithmetic(self.df,  self.y_field[0])
+            if self.x2_field is not None and self.x2_field_is_scalar:
+                self.x2_field_is_scalar = len(self.x2_field) == 1 and self.rt_self.fieldIsArithmetic(self.df2, self.x2_field[0])
+            if self.y2_field is not None and self.y2_field_is_scalar:
+                self.y2_field_is_scalar = len(self.y2_field) == 1 and self.rt_self.fieldIsArithmetic(self.df2, self.y2_field[0])
 
             # Apply count-by transforms
             if self.count_by is not None and rt_self.isTField(self.count_by):
@@ -1061,8 +1085,7 @@ class RTXYMixin(object):
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
 
             # Setup the y2 info (if the y2_field is set)
-            self.timestamp_min = None
-            self.timestamp_max = None
+            self.timestamp_min, self.timestamp_max, self.x_min, self.x_max = None,None,None,None
             if len(self.x_field) == 1 and is_datetime(self.df[self.x_field[0]]):
                 self.timestamp_min = self.df[self.x_field[0]].min()
                 self.timestamp_max = self.df[self.x_field[0]].max()
@@ -1072,8 +1095,24 @@ class RTXYMixin(object):
                         self.timestamp_min = self.df2[self.x2_field[0]].min()
                     if self.df2[self.x2_field[0]].max() > self.timestamp_max:
                         self.timestamp_max = self.df2[self.x2_field[0]].max()
+            elif len(self.x_field) == 1 and self.x_field_is_scalar:
+                self.x_min = self.df[self.x_field[0]].min()
+                self.x_max = self.df[self.x_field[0]].max()
+
+                if self.y2_field is not None:
+                    # Check some assumptions
+                    if self.x2_field is not None and len(self.x2_field) != 1:
+                        raise Exception('xy() - x2_field must be a single field')
+                    if self.x2_field_is_scalar == False:
+                        raise Exception('xy() - x2_field must be a scalar field')
+                    
+                    # Perform the comparisons
+                    if self.df2[self.x2_field[0]].min() < self.x_min:
+                        self.x_min = self.df2[self.x2_field[0]].min()
+                    if self.df2[self.x2_field[0]].max() > self.x_max:
+                        self.x_max = self.df2[self.x2_field[0]].max()
             elif self.y2_field is not None:
-                raise Exception('xy() - do not know how to determine x2 field min and max when not a timestamp')
+                raise Exception('xy() - do not know how to determine x2 field min and max for categorical or multi-group axis')
                 # Will require modes to xyCreateAxisColumn
                 # ... unless we say "it's got be a proper subset of the df x_axis..."
 
@@ -1153,7 +1192,8 @@ class RTXYMixin(object):
             # Create the extra columns for the x and y coordinates
             if self.x_axis_col is None:
                 self.x_axis_col = 'my_x_' + self.widget_id
-                self.x_is_time, self.x_label_min, self.x_label_max, self.x_trans_func, self.x_order = self.rt_self.xyCreateAxisColumn(self.df, self.x_field, self.x_field_is_scalar, self.x_axis_col, self.x_order, self.x_fill_transforms, self.timestamp_min, self.timestamp_max)
+                self.x_is_time, self.x_label_min, self.x_label_max, self.x_trans_func, self.x_order = self.rt_self.xyCreateAxisColumn(self.df, self.x_field, self.x_field_is_scalar, self.x_axis_col, self.x_order, self.x_fill_transforms, 
+                                                                                                                                      self.timestamp_min, self.timestamp_max, self.x_min, self.x_max)
             if self.y_axis_col is None:
                 self.y_axis_col = 'my_y_' + self.widget_id
                 self.y_is_time, self.y_label_min, self.y_label_max, self.y_trans_func, self.y_order = self.rt_self.xyCreateAxisColumn(self.df, self.y_field, self.y_field_is_scalar, self.y_axis_col, self.y_order, self.y_fill_transforms)
@@ -1167,7 +1207,8 @@ class RTXYMixin(object):
                     self.x2_axis_col = self.x_axis_col
                 else:
                     self.x2_axis_col = 'my_x2_' + self.widget_id
-                    self.x2_is_time, self.x2_label_min, self.x2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.x2_field, self.x2_field_is_scalar, self.x2_axis_col, self.x_order, self.x_fill_transforms, self.timestamp_min, self.timestamp_max)
+                    self.x2_is_time, self.x2_label_min, self.x2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.x2_field, self.x2_field_is_scalar, self.x2_axis_col, self.x_order, self.x_fill_transforms, 
+                                                                                                                                               self.timestamp_min, self.timestamp_max, self.x_min, self.x_max)
 
             # Create the pixel-level columns
             self.df[self.x_axis_col+"_px"] = self.x_left                + self.df[self.x_axis_col]*self.w_usable
