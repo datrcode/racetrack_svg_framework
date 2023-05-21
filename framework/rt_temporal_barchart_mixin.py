@@ -377,6 +377,21 @@ class RTTemporalBarChartMixin(object):
                          style                 = 'barchart', # 'barchart' or 'boxplot' or 'boxplot_w_swarm'
                          cap_swarm_at          = 200,        # cap the swarm plot at the specified number... if set to None, then no caps
 
+                         # ----------------------------------- # secondary axis settings # probably not small multiple safe...
+                         df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
+                         df2_fade                = 0.1,        # amount to fade the background prior to the line renders / None == no fade
+                         x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the ts_field
+                         x2_field_is_scalar      = True,       # x2 field is scalar // doesn't make sense for this view... but leaving it in for consistency
+                         x2_axis_col             = None,       # x2 axis column name
+                         y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
+                         y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
+                         y2_axis_col             = None,       # y2 axis column name
+                         line2_groupby_field     = None,       # secondary line field ... will NOT be set
+                         line2_groupby_w         = 1.5,        # secondary line field width
+                         line2_groupby_color     = None,       # line2 color... if none, pulls from the color_by field
+                         line2_groupby_dasharray = "4 2",      # line2 dasharray
+                         dot2_size               = 'medium',   # dot2 size ... 'small', 'medium', 'large', 'vary'
+
                          # -----------------------     # small multiple options
 
                          sm_type               = None, # should be the method name // similar to the smallMultiples method
@@ -406,7 +421,13 @@ class RTTemporalBarChartMixin(object):
         rt_temporal_barchart = self.RTTemporalBarChart(self, df, ts_field=ts_field, ts_min=ts_min, ts_max=ts_max,
                                                        temporal_granularity=temporal_granularity, color_by=color_by, global_color_order=global_color_order,
                                                        count_by=count_by, count_by_set=count_by_set, widget_id=widget_id, ignore_unintuitive=ignore_unintuitive,
-                                                       global_max=global_max, global_min=global_min, style=style, cap_swarm_at=cap_swarm_at, sm_type=sm_type, sm_w=sm_w,
+                                                       global_max=global_max, global_min=global_min, style=style, cap_swarm_at=cap_swarm_at, 
+                                                       df2=df2, df2_fade=df2_fade, x2_field=x2_field, x2_field_is_scalar=x2_field_is_scalar, x2_axis_col=x2_axis_col, 
+                                                       y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col,
+                                                       line2_groupby_field=line2_groupby_field, line2_groupby_w=line2_groupby_w,
+                                                       line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray,
+                                                       dot2_size=dot2_size,
+                                                       sm_type=sm_type, sm_w=sm_w,
                                                        sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
                                                        x_view=x_view, y_view=y_view, w=w, h=h, h_gap=h_gap, min_bar_w=min_bar_w, txt_h=txt_h, x_ins=x_ins, y_ins=y_ins,
                                                        background_opacity=background_opacity,draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
@@ -442,6 +463,22 @@ class RTTemporalBarChartMixin(object):
                                  # --------------------------- # style
                                  style                 = 'barchart', # 'barchart' or 'boxplot' or 'boxplot_w_swarm'
                                  cap_swarm_at          = 200,        # cap the swarm plot at the specified number... if set to None, then no caps
+
+                                 # ----------------------------------- # secondary axis settings # probably not small multiple safe...
+                                 df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
+                                 df2_fade                = 0.1,        # amount to fade the background prior to the line renders / None == no fade
+                                 x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the ts_field
+                                 x2_field_is_scalar      = True,       # x2 field is scalar // doesn't make sense for this view... but leaving it in for consistency
+                                 x2_axis_col             = None,       # x2 axis column name
+                                 y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
+                                 y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
+                                 y2_axis_col             = None,       # y2 axis column name
+                                 line2_groupby_field     = None,       # secondary line field ... will NOT be set
+                                 line2_groupby_w         = 1.5,        # secondary line field width
+                                 line2_groupby_color     = None,       # line2 color... if none, pulls from the color_by field
+                                 line2_groupby_dasharray = "4 2",      # line2 dasharray
+                                 dot2_size               = 'medium',   # dot2 size ... 'small', 'medium', 'large', 'vary'
+
                                  # -----------------------     # small multiple options
                                  sm_type               = None, # should be the method name // similar to the smallMultiples method
                                  sm_w                  = None, # override the width of the small multiple
@@ -466,7 +503,13 @@ class RTTemporalBarChartMixin(object):
         return self.RTTemporalBarChart(self, df, ts_field=ts_field, ts_min=ts_min, ts_max=ts_max,
                                        temporal_granularity=temporal_granularity, color_by=color_by, global_color_order=global_color_order,
                                        count_by=count_by, count_by_set=count_by_set, widget_id=widget_id, ignore_unintuitive=ignore_unintuitive,
-                                       global_max=global_max, global_min=global_min, style=style, cap_swarm_at=cap_swarm_at, sm_type=sm_type, sm_w=sm_w,
+                                       global_max=global_max, global_min=global_min, style=style, cap_swarm_at=cap_swarm_at, 
+                                       df2=df2, df2_fade=df2_fade, x2_field=x2_field, x2_field_is_scalar=x2_field_is_scalar, x2_axis_col=x2_axis_col, 
+                                       y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col,
+                                       line2_groupby_field=line2_groupby_field, line2_groupby_w=line2_groupby_w,
+                                       line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray,
+                                       dot2_size=dot2_size,
+                                       sm_type=sm_type, sm_w=sm_w,
                                        sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
                                        x_view=x_view, y_view=y_view, w=w, h=h, h_gap=h_gap, min_bar_w=min_bar_w, txt_h=txt_h, x_ins=x_ins, y_ins=y_ins,
                                        background_opacity=background_opacity, draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
@@ -499,6 +542,22 @@ class RTTemporalBarChartMixin(object):
                      # --------------------------- # style
                      style                 = 'barchart', # 'barchart' or 'boxplot' or 'boxplot_w_swarm'
                      cap_swarm_at          = 200,        # cap the swarm plot at the specified number... if set to None, then no caps
+
+                     # ----------------------------------- # secondary axis settings # probably not small multiple safe...
+                     df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
+                     df2_fade                = 0.1,        # amount to fade the background prior to the line renders / None == no fade
+                     x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the ts_field
+                     x2_field_is_scalar      = True,       # x2 field is scalar // doesn't make sense for this view... but leaving it in for consistency
+                     x2_axis_col             = None,       # x2 axis column name
+                     y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
+                     y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
+                     y2_axis_col             = None,       # y2 axis column name
+                     line2_groupby_field     = None,       # secondary line field ... will NOT be set
+                     line2_groupby_w         = 1.5,        # secondary line field width
+                     line2_groupby_color     = None,       # line2 color... if none, pulls from the color_by field
+                     line2_groupby_dasharray = "4 2",      # line2 dasharray
+                     dot2_size               = 'medium',   # dot2 size ... 'small', 'medium', 'large', 'vary'
+
                      # -----------------------     # small multiple options
                      sm_type               = None, # should be the method name // similar to the smallMultiples method
                      sm_w                  = None, # override the width of the small multiple
@@ -542,6 +601,21 @@ class RTTemporalBarChartMixin(object):
             self.global_min            = global_min
             self.style                 = style
             self.cap_swarm_at          = cap_swarm_at
+
+            self.df2                        = df2
+            self.df2_fade                   = df2_fade
+            self.x2_field                   = x2_field
+            self.x2_field_is_scalar         = x2_field_is_scalar
+            self.x2_axis_col                = x2_axis_col
+            self.y2_field                   = y2_field
+            self.y2_field_is_scalar         = y2_field_is_scalar
+            self.y2_axis_col                = y2_axis_col
+            self.line2_groupby_field        = line2_groupby_field
+            self.line2_groupby_w            = line2_groupby_w
+            self.line2_groupby_color        = line2_groupby_color
+            self.line2_groupby_dasharray    = line2_groupby_dasharray
+            self.dot2_size                  = dot2_size
+
             self.sm_type               = sm_type
             self.sm_w                  = sm_w
             self.sm_h                  = sm_h
@@ -577,6 +651,37 @@ class RTTemporalBarChartMixin(object):
                 else:
                     raise Exception('no timestamp field supplied to RTTemporalBarChart(), cannot automatically determine field')
 
+            # Figure out the y2_field settings
+            if self.y2_field is not None:
+                if self.df2 is None:
+                    self.df2 = self.df
+                    self.df2_is_df = True
+                else:
+                    self.df2 = self.df2.copy()
+                    self.df2_is_df = False
+
+                if self.x2_field is None:
+                    if self.df2_is_df:
+                        self.x2_field = self.ts_field
+                    else:
+                        choices = self.df2.select_dtypes(np.datetime64).columns
+                        if len(choices) == 1:
+                            self.x2_field = choices[0]
+                        elif len(choices) > 1:
+                            print('multiple timestamp fields [df2]... choosing the first (RTTemporalBarChart)')
+                            self.x2_field = choices[0]
+                        else:
+                            raise Exception('no timestamp field supplied to RTTemporalBarChart() for df2, cannot automatically determine field')
+
+                if type(self.y2_field) != list:
+                    self.y2_field = [self.y2_field]
+                
+                if self.y2_field_is_scalar:
+                    if len(self.y2_field) == 1:
+                        self.y2_field_is_scalar = self.rt_self.fieldIsArithmetic(self.df2, self.y2_field[0])
+                    else:
+                        self.y2_field_is_scalar = False
+
             # Perform the transforms
             # Apply count-by transofmrs
             if self.count_by is not None and rt_self.isTField(self.count_by):
@@ -589,6 +694,9 @@ class RTTemporalBarChartMixin(object):
             # Check the count_by column
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
+
+            if self.y2_field is not None and rt_self.isTField(self.y2_field):
+                self.df2,self.y2_field = rt_self.applyTransform(self.df2, self.y2_field)
 
         #
         # renderSVG() - create the SVG
@@ -633,7 +741,9 @@ class RTTemporalBarChartMixin(object):
             if self.draw_labels:
                 x_left    = 2*self.y_ins + self.txt_h
                 w_usable  = self.w - (3*self.y_ins + self.txt_h)
-        
+                if self.y2_field is not None:
+                    w_usable  = self.w - (3*self.y_ins + 2*self.txt_h)
+
             # Determine the temporal granularity of the data ... should preclude finer resolution renders...
             if self.temporal_granularity is None:
                 self.temporal_granularity = self.rt_self.temporalGranularity(self.df, self.ts_field) # Too expensive as written...
@@ -811,12 +921,119 @@ class RTTemporalBarChartMixin(object):
 
                 for node_str in sm_lu.keys():
                     svg += sm_lu[node_str]
-                
+            
+            # ***********************************************************************************************************************************************************
+            # ***********************************************************************************************************************************************************
+            # ***********************************************************************************************************************************************************
+
+            # Handle the xy overlay
+            self.df2_extends_beyond = False
+            if self.y2_field is not None:
+                # Apply the fade (if set)
+                if self.df2_fade is not None:
+                    _co  =  self.rt_self.co_mgr.getTVColor('background', 'default')
+                    svg  += f'<rect x="{x_left}" y="{y_baseline-max_bar_h}" width="{w_usable}" height="{max_bar_h}" fill="{_co}" fill-opacity="{self.df2_fade}" />'
+
+                # Find the end timestamp
+                _df   = pd.DataFrame({self.ts_field:[self.ts_min, self.ts_max]}) # tricky because the param extents may be more than the df ones...
+                _gb   = _df.groupby(pd.Grouper(key=self.ts_field,freq=self.rt_self.time_rezes[time_rez_i]))
+                _bins = len(_gb) 
+                _ts0,_ts1 = None,None
+                for k,k_df in _gb:
+                    if _ts0 is None:
+                        _ts0 = k
+                        break
+                for _ts in pd.date_range(start=_ts0, periods=_bins+1, freq=self.rt_self.time_rezes[time_rez_i]):
+                    _ts1 = _ts
+                # Determine if any of the frame falls outside of this range / clamp it if so...
+                if self.df2[self.x2_field].min() < _ts0 or self.df2[self.x2_field].max() > _ts1:
+                    self.df2_extends_beyond = True
+                    self.df2 = self.df2.query(f"`{self.x2_field}` >= @_ts0 and `{self.x2_field}` <= @_ts1")
+                # Scale the x coordinates
+                if self.x2_axis_col is None:
+                    self.x2_axis_col = f'my_x2_{self.widget_id}'
+                    self.df2[self.x2_axis_col] = (self.df2[self.x2_field] - _ts0)/(_ts1 - _ts0)
+                # Scale the y coordinates
+                if self.y2_axis_col is None:
+                    self.y2_axis_col = f'my_y2_{self.widget_id}'
+                    if self.y2_field_is_scalar:
+                        _min,_max = self.df2[self.y2_field].min().iloc[0],self.df2[self.y2_field].max().iloc[0]
+                        print(_min)
+                        print(_max)
+                        if _min == _max:
+                            _min -= 0.5
+                            _max += 0.5
+                        self.df2[self.y2_axis_col] = (self.df2[self.y2_field] - _min)/(_max - _min)
+                    else:
+                        raise Exception('temporalBarChart() - y2_field in non-scalar modes not implemented yet')
+                # Create the pixels columns
+                self.df2[self.x2_axis_col+'_px'] = x_left     + self.df2[self.x2_axis_col]*w_usable
+                self.df2[self.y2_axis_col+'_px'] = y_baseline - self.df2[self.y2_axis_col]*max_bar_h
+                # Pixelize it...
+                self.df2[self.x2_axis_col+'_px'] = self.df2[self.x2_axis_col+'_px'].astype(np.int32)
+                self.df2[self.y2_axis_col+'_px'] = self.df2[self.y2_axis_col+'_px'].astype(np.int32)
+                # Draw the lines (if configured)
+                if self.line2_groupby_field is not None:
+                    _gb = self.df2.groupby(by=self.line2_groupby_field)
+                    for k,k_df in _gb:
+                        _points,gbxy = '',k_df.groupby([self.x2_axis_col+'_px',self.y2_axis_col+'_px'])
+                        for xy,xy_df in gbxy:
+                            _points += f'{xy[0]},{xy[1]} '
+                        _co = self.rt_self.co_mgr.getTVColor('data','default')
+
+                        if self.line2_groupby_color is None and self.color_by is not None and self.color_by in k_df.columns:
+                            _set = set(k_df[self.color_by])
+                            if len(_set) == 1:
+                                _co = self.rt_self.co_mgr.getColor(_set.pop())
+                        elif self.line2_groupby_color is not None and self.line2_groupby_color in k_df.columns:
+                            _set = set(k_df[self.line2_groupby_color])
+                            if len(_set) == 1:
+                                _co = self.rt_self.co_mgr.getColor(_set.pop())
+                        elif self.line2_groupby_color is not None and len(self.line2_groupby_color) == 7 and self.line2_groupby_color[0] == '#':
+                            _co = self.line2_groupby_color
+
+                        if self.line2_groupby_dasharray:
+                            svg += f'<polyline points="{_points}" fill-opacity="0.0" fill="None" stroke="{_co}" stroke-width="{self.line2_groupby_w}" stroke-dasharray="{self.line2_groupby_dasharray}" />'
+                        else:
+                            svg += f'<polyline points="{_points}" fill-opacity="0.0" fill="None" stroke="{_co}" stroke-width="{self.line2_groupby_w}" />'
+
+                # Draw the points
+                if self.dot2_size is not None and self.dot2_size != 'hidden':
+                    _dot_r = 2
+                    if   self.dot2_size == 'small':
+                        _dot_r = 1
+                    elif self.dot2_size == 'large':
+                        _dot_r = 3
+                    _co = self.rt_self.co_mgr.getTVColor('data','default')
+                    _gb = self.df2.groupby(by=[self.x2_axis_col+'_px', self.y2_axis_col+'_px'])
+                    for k,k_df in _gb:
+                        _x  = k[0]
+                        _y  = k[1]
+
+                        # Exact copy of above... should be re-factored... <Starting Here>
+                        if self.line2_groupby_color is None and self.color_by is not None and self.color_by in k_df.columns:
+                            _set = set(k_df[self.color_by])
+                            if len(_set) == 1:
+                                _co = self.rt_self.co_mgr.getColor(_set.pop())
+                        elif self.line2_groupby_color is not None and self.line2_groupby_color in k_df.columns:
+                            _set = set(k_df[self.line2_groupby_color])
+                            if len(_set) == 1:
+                                _co = self.rt_self.co_mgr.getColor(_set.pop())
+                        elif self.line2_groupby_color is not None and len(self.line2_groupby_color) == 7 and self.line2_groupby_color[0] == '#':
+                            _co = self.line2_groupby_color
+                        # <Ending Here>
+
+                        svg += f'<circle cx="{_x}" cy="{_y}" r="{_dot_r}" fill="{_co}"/>'
+
+            # ***********************************************************************************************************************************************************
+            # ***********************************************************************************************************************************************************
+            # ***********************************************************************************************************************************************************
+
             # Draw the labels // mirrors the rt_periodic_barchart_mixin codeblock
             if self.draw_labels:
-                svg += self.rt_self.svgText(self.rt_self.relevantTimeLabel(groupby.size().index[0], time_rez_i),              x_left,                self.h-3,                          self.txt_h)
-                svg += self.rt_self.svgText(self.rt_self.relevantTimeLabel(groupby.size().index[len(groupby)-1], time_rez_i), self.w - self.x_ins,   self.h-3,                          self.txt_h, anchor='end')
-                svg += self.rt_self.svgText(self.rt_self.time_rezes_str[time_rez_i],                                          x_left + w_usable/2,   self.h-3,                          self.txt_h, anchor='middle')
+                svg += self.rt_self.svgText(self.rt_self.relevantTimeLabel(groupby.size().index[0], time_rez_i),              x_left,              self.h-3, self.txt_h)
+                svg += self.rt_self.svgText(self.rt_self.relevantTimeLabel(groupby.size().index[len(groupby)-1], time_rez_i), x_left + w_usable,   self.h-3, self.txt_h, anchor='end')
+                svg += self.rt_self.svgText(self.rt_self.time_rezes_str[time_rez_i],                                          x_left + w_usable/2, self.h-3, self.txt_h, anchor='middle')
 
                 # Max Label
                 _str_max,_str_min = f'{group_by_max:{self.rt_self.fformat}}',''
