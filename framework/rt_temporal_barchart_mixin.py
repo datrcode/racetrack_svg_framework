@@ -699,6 +699,12 @@ class RTTemporalBarChartMixin(object):
                 self.df2,self.y2_field = rt_self.applyTransform(self.df2, self.y2_field)
 
         #
+        # SVG Representation Renderer
+        #
+        def _repr_svg_(self):
+            return self.renderSVG()
+
+        #
         # renderSVG() - create the SVG
         #
         def renderSVG(self,just_calc_max=False):

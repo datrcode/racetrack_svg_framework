@@ -207,6 +207,12 @@ class RTTimelineMixin(object):
                 raise Exception('either need a df an ts_field... of a timestamp, timestamp_end in RTTimeline()')
 
         #
+        # SVG Representation Renderer
+        #
+        def _repr_svg_(self):
+            return self.renderSVG()
+
+        #
         # renderSVG() - render as SVG
         #
         def renderSVG(self):

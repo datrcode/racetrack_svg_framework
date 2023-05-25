@@ -1117,6 +1117,12 @@ class RTXYMixin(object):
                 self.x_order = sorted(list(_set0 | _set1))
 
         #
+        # SVG Representation Renderer
+        #
+        def _repr_svg_(self):
+            return self.renderSVG()
+
+        #
         # renderSVG() - render as SVG
         #
         def renderSVG(self):

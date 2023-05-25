@@ -1134,6 +1134,12 @@ class RTLinkNodeMixin(object):
             return svg
 
         #
+        # SVG Representation Renderer
+        #
+        def _repr_svg_(self):
+            return self.renderSVG()
+
+        #
         # renderSVG() - render as SVG
         #
         def renderSVG(self):

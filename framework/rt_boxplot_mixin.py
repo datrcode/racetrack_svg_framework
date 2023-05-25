@@ -284,7 +284,13 @@ class RTBoxplotMixin(object):
             # For boxplot mode, we have to have a numerical count-by -- verify the style works with the parameters
             if (self.count_by is None or self.count_by_set) and (self.style == 'boxplot' or self.style == 'boxplot_w_swarm'):
                 raise Exception("RTBoxplot - boxplot render style must use a scalar count_by")
-    
+
+        #
+        # SVG Representation Renderer
+        #
+        def _repr_svg_(self):
+            return self.renderSVG()
+
         #
         # renderSVG() - create the SVG
         #

@@ -442,7 +442,13 @@ class RTPeriodicBarChartMixin(object):
             # Check the count_by column
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
-            
+
+        #
+        # SVG Representation Renderer
+        #
+        def _repr_svg_(self):
+            return self.renderSVG()
+
         #
         # renderSVG()
         #

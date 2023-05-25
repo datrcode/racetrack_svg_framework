@@ -336,6 +336,12 @@ class RTHistogramMixin(object):
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
     
         #
+        # SVG Representation Renderer
+        #
+        def _repr_svg_(self):
+            return self.renderSVG()
+
+        #
         # renderSVG() - create the SVG
         #
         def renderSVG(self,just_calc_max=False):

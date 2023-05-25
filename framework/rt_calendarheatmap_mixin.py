@@ -335,6 +335,12 @@ class RTCalendarHeatmapMixin(object):
                     self.h = 2*self.y_ins                  + 54*self.cell_h                + 11*self.month_gap
 
         #
+        # SVG Representation Renderer
+        #
+        def _repr_svg_(self):
+            return self.renderSVG()
+
+        #
         # renderSVG() - render the SVG for the view
         #
         def renderSVG(self, just_calc_max):
