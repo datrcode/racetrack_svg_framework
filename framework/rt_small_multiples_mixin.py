@@ -929,6 +929,22 @@ class RTSmallMultiplesMixin(object):
         return _width,_height
     
     #
+    # Make a table out of SVG tiles
+    # - for equal sized elements (doesn't really need to be...  but let's just assume)
+    # - place into a grid
+    #
+    def table(self, svg_list, per_row=4):
+        rows,so_far = [],[]
+        for _svg_ in svg_list:
+            so_far.append(_svg_)
+            if len(so_far) >= per_row:
+                rows.append(self.tile(so_far))
+                so_far = []
+        if len(so_far) > 0:
+            rows.append(self.tile(so_far))
+        return self.tile(rows, horz=False)
+
+    #
     # Tile a list of SVG's
     #
     def tile(self, svg_list, horz=True):
