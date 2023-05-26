@@ -435,7 +435,8 @@ class RTHistogramMixin(object):
 
                 # Render the label
                 if self.draw_labels:
-                    defer_labels.append(self.rt_self.svgText(str(bin_text), 2, y+self.bar_h-1, self.bar_h-2))
+                    cropped_bin_text = self.rt_self.cropText(str(bin_text), self.bar_h-2, max_bar_w)
+                    defer_labels.append(self.rt_self.svgText(cropped_bin_text, 2, y+self.bar_h-1, self.bar_h-2))
                 
                 i += 1
                 y += self.bar_h+1+self.v_gap
