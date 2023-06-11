@@ -306,6 +306,10 @@ class RTXYMixin(object):
                                           # calling app should make sure that all timeslots are filled in...
            line_groupby_w      = 1,       # width of the line for the line chart
 
+           # ------------------------     # secondary axis override for polynomial best fit
+
+           poly_fit_degree     = None,    # integer value for polynomial degree -- will overrride all of the other df2 settings if set...
+
            # ------------------------     # secondary axis settings # probably not small multiple safe...
 
            df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
@@ -375,6 +379,7 @@ class RTXYMixin(object):
                           y_axis_col=y_axis_col, y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, 
                           x_order=x_order,y_order=y_order, x_fill_transforms=x_fill_transforms, y_fill_transforms=y_fill_transforms,
                           line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
+                          poly_fit_degree=poly_fit_degree,
                           df2=df2, x2_field=x2_field, x2_field_is_scalar=x2_field_is_scalar, x2_axis_col=x2_axis_col, y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, 
                           line2_groupby_field=line2_groupby_field, line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
                           sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
@@ -750,6 +755,10 @@ class RTXYMixin(object):
                    line_groupby_field      = None,       # will use a field to perform a groupby for a line chart
                                                          # calling app should make sure that all timeslots are filled in...
                    line_groupby_w          = 1,          # width of the line for the line chart
+                   # ----------------------------------- # secondary axis override for polynomial best fit
+
+                   poly_fit_degree         = None,       # integer value for polynomial degree -- will overrride all of the other df2 settings if set...
+
                    # ----------------------------------- # secondary axis settings # probably not small multiple safe...
                    df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
                    x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the x_field
@@ -807,6 +816,7 @@ class RTXYMixin(object):
                          y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, x_order=x_order, y_order=y_order, 
                          x_fill_transforms=x_fill_transforms, y_fill_transforms=y_fill_transforms,
                          line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
+                         poly_fit_degree=poly_fit_degree,
                          df2=df2, x2_field=x2_field, x2_field_is_scalar=x2_field_is_scalar, x2_axis_col=x2_axis_col, 
                          y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, line2_groupby_field=line2_groupby_field,
                          line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
@@ -861,6 +871,8 @@ class RTXYMixin(object):
                      line_groupby_field      = None,       # will use a field to perform a groupby for a line chart
                                                            # calling app should make sure that all timeslots are filled in...
                      line_groupby_w          = 1,          # width of the line for the line chart
+                     # ----------------------------------- # secondary axis override for polynomial best fit
+                     poly_fit_degree         = None,       # integer value for polynomial degree -- will overrride all of the other df2 settings if set...
                      # ----------------------------------- # secondary axis settings # probably not small multiple safe...
                      df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
                      x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the x_field
@@ -953,33 +965,75 @@ class RTXYMixin(object):
             self.line_groupby_field      = line_groupby_field
             self.line_groupby_w          = line_groupby_w
 
-            self.x2_field                = x2_field
-            self.x2_field_is_scalar      = x2_field_is_scalar
-            self.x2_axis_col             = x2_axis_col
-            self.y2_field                = y2_field
-            self.y2_field_is_scalar      = y2_field_is_scalar
-            self.y2_axis_col             = y2_axis_col
+            #
+            # Are we fitting to something?  Or just diplaying what the user wants to show as a secondary?
+            #
+            if poly_fit_degree is None:
+                self.x2_field                = x2_field
+                self.x2_field_is_scalar      = x2_field_is_scalar
+                self.x2_axis_col             = x2_axis_col
+                self.y2_field                = y2_field
+                self.y2_field_is_scalar      = y2_field_is_scalar
+                self.y2_axis_col             = y2_axis_col
 
-            # y2_field is really the only required param to make the df2 work...
-            if y2_field is not None:
-                if df2 is not None:
-                    self.df2 = df2.copy()
-                    self.df2_is_df = False
+                # y2_field is really the only required param to make the df2 work...
+                if y2_field is not None:
+                    if df2 is not None:
+                        self.df2 = df2.copy()
+                        self.df2_is_df = False
+                    else:
+                        self.df2 = self.df
+                        self.df2_is_df = True
+
+                    if x2_field is None:
+                        self.x2_field           = self.x_field
+                        self.x2_field_is_scalar = self.x_field_is_scalar
+                        self.x2_axis_col        = self.x_axis_col
                 else:
-                    self.df2 = self.df
-                    self.df2_is_df = True
+                    self.df2 = None
 
-                if x2_field is None:
-                    self.x2_field           = self.x_field
-                    self.x2_field_is_scalar = self.x_field_is_scalar
-                    self.x2_axis_col        = self.x2_axis_col 
+                if self.x2_field is not None and type(self.x2_field) != list:
+                    self.x2_field = [self.x2_field]
+                if self.y2_field is not None and type(self.y2_field) != list:
+                    self.y2_field = [self.y2_field]
+
+            #
+            # Fitting ... which overrides df2, df2_is_df, x2_field, (x2_field specifics), y2_field, (y2_field specifics)
+            # ... doesn't work with timestamps...
+            # ... xmins and xmaxes are messed up ... i.e., not aligned with the primary y-axis column...
+            # ... ... pros and cons with that approach... visually more accurate to align it... but you may not see the whole shape...
+            #
             else:
-                self.df2 = None
+                # Figure out the x-range
+                _min,_max = self.df[self.x_field].min(),self.df[self.x_field].max()
+                if _min == _max:
+                    _max = _min + 1
+                _x,_x_inc,_x_values = _min, (_max - _min)/w, []
+                while _x <= _max:
+                    _x_values.append(_x)
+                    _x += _x_inc
 
-            if self.x2_field is not None and type(self.x2_field) != list:
-                self.x2_field = [self.x2_field]
-            if self.y2_field is not None and type(self.y2_field) != list:
-                self.y2_field = [self.y2_field]
+                # Differentiate between groupby version and non-groupby version
+                if line_groupby_field is None:
+                    _fit      = np.polyfit(self.df[self.x_field], self.df[self.y_field], poly_fit_degree)
+                    _y_values = np.polyval(_fit, _x_values)
+                    self.df2            = pd.DataFrame({'x':_x_values,'y':_y_values})
+                    self.df2['groupby'] = 'all'
+                else:
+                    _dfs = []
+                    for k,k_df in self.df.groupby(line_groupby_field):
+                        _fit           = np.polyfit(k_df[self.x_field], k_df[self.y_field], poly_fit_degree)
+                        _y_values      = np.polyval(_fit, _x_values)
+                        _df            = pd.DataFrame({'x':_x_values,'y':_y_values})
+                        _df['groupby'] = k
+                        _dfs.append(_df)
+                    self.df2 = pd.concat(_dfs)
+
+                # Common settings once the df2 is created
+                line2_groupby_field = 'groupby'
+                self.df2_is_df      = False
+                self.x2_field,self.y2_field,self.x2_field_is_scalar,self.y2_field_is_scalar = ['x'],['y'],True,True
+                self.x2_axis_col,self.y2_axis_col = None,None
 
             self.line2_groupby_field     = line2_groupby_field
             self.line2_groupby_w         = line2_groupby_w
