@@ -222,3 +222,20 @@ class RTDataManipMixin(object):
 
         return _df
 
+    #
+    # rowContainsSubstring()
+    # - use it as follows:  df[df.apply(lambda x: rt.rowContainsSubstring(x, 'sub'),axis=1)]
+    #
+    def rowContainsSubstring(self,
+                             _row,
+                             _substring,
+                             _match_case=False):
+        if _match_case == False:
+            _substring = _substring.lower()
+        for x in _row:
+            if _match_case == False:
+                x = x.lower()
+            if _substring in x:
+                return True
+        return False
+    
