@@ -19,6 +19,8 @@ import random
 
 import numpy as np
 
+from math import ceil
+
 __name__ = 'rt_layouts_mixin'
 
 #
@@ -54,7 +56,7 @@ class RTLayoutsMixin(object):
         elif re.match(r"[-]{0,1}[0-9]+",x): # FlowLayout Vertical
             return 'flowLayoutVertical'
         else: # Unknown -- throw exception
-            raise Exception(f'unknown layout mnemonic "{key}"')
+            raise Exception(f'unknown layout mnemonic "{x}"')
 
     #
     # Flow Layout (Vertical) Calculation
@@ -411,7 +413,7 @@ class RTLayoutsMixin(object):
             # Error...
             #
             else:
-                raise Exception(f'unknown layout mnemonic "{child}" / "{child_layout}"')
+                raise Exception(f'unknown layout mnemonic "{my_node}" / "{child_layout}"')
 
     #
     # Create a spatial dimension lookup based on a dashboard specification (as a dictionary)
@@ -576,6 +578,119 @@ class RTLayoutsMixin(object):
                 func = getattr(self, widget_method)
                 
                 svg += func(**my_params)
+
+        svg += '</svg>'
+        return svg
+
+    #
+    # Create the SVG multipanel widget using a gridbag-like layout method.
+    # ... spec --> spec[x,y,w,h - tuple] -> ('component',{'param1':'value1', ... })
+    #
+    def gridBagLayout(self,
+                      spec,                                # Multiwidget specification
+                      df,                                  # Dataframe to render
+                      #------------------------------------#
+                      widget_id      = None,               # Widget ID
+                      #------------------------------------#
+                      w              = 1024,               # Width of the multi-widget panel
+                      h              = 1024,               # Height of the multi-widget panel
+                      h_gap          = 0,                  # Horizontal left/right gap
+                      v_gap          = 0,                  # Verticate top/bottom gap
+                      widget_h_gap   = 1,                  # Horizontal gap between widgets
+                      widget_v_gap   = 1,                  # Vertical gap between widgets
+                      **kwargs):
+        # Widget ID
+        if widget_id is None:
+            widget_id = 'panel_' + str(random.randint(0,65535))
+        
+        # Validate the layout first
+        # - Determine the max coordinate
+        widgets_set = set()
+        _tile_x_max,_tile_y_max = 1,1
+        for xywh_tuple in spec.keys():
+            _x0,_y0,_tile_w,_tile_h = xywh_tuple
+            if (_x0 + _tile_w) > _tile_x_max:
+                _tile_x_max = _x0 + _tile_w
+            if (_y0 + _tile_h) > _tile_y_max:
+                _tile_y_max = _y0 + _tile_h
+            if type(spec[xywh_tuple]) == tuple:
+                widgets_set.add(spec[xywh_tuple][0])
+            else:
+                widgets_set.add(spec[xywh_tuple])
+        # - Allocate a representation
+        cells = [[0 for i in range(_tile_x_max)] for j in range(_tile_y_max)] # cells[y][x]
+        for _y in range(_tile_y_max):
+            for _x in range(_tile_x_max):
+                cells[_y][_x] = -1
+        # - Place tuples into representation - checking to make sure there isn't overlap
+        for xywh_tuple in spec.keys():
+            _x0,_y0,_tile_w,_tile_h = xywh_tuple
+            for _x in range(_x0,_x0+_tile_w):
+                for _y in range(_y0,_y0+_tile_h):
+                    if cells[_y][_x] != -1:
+                        raise Exception(f'gridBagLayout() - overlapping coordinate @ {_x},{_y}')
+                    cells[_y][_x] = xywh_tuple
+        
+        # Determine the tile size -- make it into actual pixels... x-pixels-per-tile (xppt)
+        _xppt,_yppt = ceil((w-2*h_gap)/_tile_x_max),ceil((h-2*v_gap)/_tile_y_max)
+        w,h         = _xppt * _tile_x_max, _yppt * _tile_y_max
+
+        # Determine temporal granularity if there's a temporalBarChart...
+        if ('temporal_granularity' not in kwargs.keys()) and 'temporalBarChart' in widgets_set:
+            if ('ts_field' not in kwargs.keys()) or kwargs['ts_field'] is None:
+                choices = df.select_dtypes(np.datetime64).columns
+                if len(choices) == 1:
+                    ts_field = choices[0]
+                elif len(choices) > 1:
+                    print('multiple timestamp fields... choosing the first (gridBagLayout)')
+                    ts_field = choices[0]
+                else:
+                    raise Exception('no timestamp field supplied to gridBagLayout(), cannot automatically determine field')
+            else:
+                ts_field = kwargs['ts_field']
+            temporal_granularity = self.temporalGranularity(df, ts_field)
+
+        # Start the SVG
+        svg =  f'<svg id="{widget_id}" width="{w+1}" height="{h+1}" xmlns="http://www.w3.org/2000/svg">'
+        for xywh_tuple in spec.keys():
+            _x0,_y0,_tile_w,_tile_h = xywh_tuple
+            spec_tuple = spec[xywh_tuple]
+                
+            # Create the custom params for the widget creation
+            my_params = kwargs.copy()
+            my_params['df']     = df
+            my_params['x_view'] = h_gap + _x0 * _xppt + widget_h_gap
+            my_params['y_view'] = v_gap + _y0 * _yppt + widget_v_gap
+            my_params['w']      = _tile_w * _xppt - 2 * widget_h_gap
+            my_params['h']      = _tile_h * _yppt - 2 * widget_v_gap
+                
+            # If the spec_tuple is actually a tuple, then copy those parts into the params as well
+            # - these should override any passed from this method (the kwargs.copy())
+            if type(spec_tuple) == tuple:
+                widget_method = spec_tuple[0]
+                for k in spec_tuple[1].keys():
+                    v = spec_tuple[1][k]
+                    my_params[k] = v
+            else:
+                widget_method = spec_tuple
+
+            # Need to remove any args that aren't applicable to this widget
+            accepted_args = set(inspect.getfullargspec(getattr(self, widget_method)).args)
+            to_remove = set()
+            for k in my_params.keys():
+                if k not in accepted_args:
+                    to_remove.add(k)
+            for x in to_remove:
+                my_params.pop(x)
+
+            # General application parameters
+            if 'temporal_granularity' in accepted_args and 'temporal_granularity' not in my_params:
+                my_params['temporal_granularity'] = temporal_granularity
+                
+            # Resolve the method name and invoke it adding to the svg string
+            func = getattr(self, widget_method)
+            
+            svg += func(**my_params)
 
         svg += '</svg>'
         return svg
