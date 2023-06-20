@@ -481,6 +481,38 @@ class RTLayoutsMixin(object):
         return svg
     
     #
+    # Generic layout method -- will choose proper layout method...
+    #
+    def layout(self,
+               spec,                                # Multiwidget specification
+               df,                                  # Dataframe to render
+               #------------------------------------#
+               widget_id      = None,               # Widget ID
+               #------------------------------------#
+               w              = 1024,               # Width of the multi-widget panel
+               h              = 1024,               # Height of the multi-widget panel
+               h_gap          = 0,                  # Horizontal left/right gap
+               v_gap          = 0,                  # Verticate top/bottom gap
+               widget_h_gap   = 1,                  # Horizontal gap between widgets
+               widget_v_gap   = 1,                  # Vertical gap between widgets
+               **kwargs):
+        # Determine type of specification...
+        str_count,tup_count,unk_count = 0,0,0
+        for k in spec.keys():
+            if type(k) == str:
+                str_count += 1
+            elif type(k) == tuple:
+                tup_count += 1
+            else:
+                unk_count += 1
+        if    str_count >  0 and tup_count == 0 and unk_count == 0:
+            return self.multiWidgetPanel(spec,df,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,**kwargs)
+        elif  str_count == 0 and tup_count >  0 and unk_count == 0:
+            return self.gridBagLayout   (spec,df,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,**kwargs)
+        else:
+            raise Exception(f'rt.layout() failed to recognize specification type {str_count}/{tup_count}/{unk_count}')
+
+    #
     # Create the SVG multipanel widget based on the spec, the dataframe, and the dynamic variables
     #
     def multiWidgetPanel(self,

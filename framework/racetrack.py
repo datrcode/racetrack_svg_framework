@@ -41,6 +41,7 @@ from rt_graph_layouts_mixin     import RTGraphLayoutsMixin
 from rt_histogram_mixin         import RTHistogramMixin
 from rt_layouts_mixin           import RTLayoutsMixin
 from rt_linknode_mixin          import RTLinkNodeMixin
+from rt_panel_mixin             import RTPanelMixin
 from rt_periodic_barchart_mixin import RTPeriodicBarChartMixin
 from rt_piechart_mixin          import RTPieChartMixin
 from rt_shapes_mixin            import RTShapesMixin
@@ -60,6 +61,7 @@ class RACETrack(RTAnnotationsMixin,
                 RTHistogramMixin,
                 RTLayoutsMixin,                
                 RTLinkNodeMixin,
+                RTPanelMixin,
                 RTPeriodicBarChartMixin,
                 RTPieChartMixin,
                 RTShapesMixin,
@@ -115,6 +117,7 @@ class RACETrack(RTAnnotationsMixin,
         
         # Inits for mixins...  probably a better way to do this...
         self.__annotations_mixin_init__()
+        self.__panel_mixin_init__()
         self.__periodic_barchart_mixin_init__()
         self.__temporal_barchart_mixin_init__()
 
