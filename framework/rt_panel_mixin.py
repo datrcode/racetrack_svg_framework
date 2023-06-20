@@ -45,7 +45,7 @@ class RTPanelMixin(object):
                          widget_h_gap   = 1,  # Horizontal gap between widgets
                          widget_v_gap   = 1,  # Vertical gap between widgets
                          **kwargs):           # Other arguments to pass to the layout instance
-        pass
+        return RTReactiveHTML(self, spec, df, w, h, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
 
 #
 # ReactiveHTML Class for Panel Implementation
@@ -104,12 +104,10 @@ class RTReactiveHTML(ReactiveHTML):
         self.widget_h_gap = widget_h_gap
         self.widget_v_gap = widget_v_gap
         self.kwargs       = kwargs 
-        # - Create the base SVG
-        self.mod_inner = rt_self.layout(spec,df,w=w,h=h,h_gap=h_gap,v_gap=v_gap,widget_h_gap=widget_h_gap,widget_v_gap=widget_v_gap,**kwargs)
         # - Create the template ... copy of the above with variables filled in...
         self._template = f'<svg id="parent" width="{w}" height="{h}">'                                              + \
                             f'<svg id="mod" width="{w}" height="{h}">'                                              + \
-                                """${mod_inner}"""                                                                  + \
+                                """\n${mod_inner}\n"""                                                                  + \
                             '</svg>'                                                                                + \
                             '<rect id="drag" x="-10" y="-10" width="5" height="5" fill="#ffffff" opacity="0.6" />'  + \
                             f'<rect id="screen" x="0" y="0" width="{w}" height="{h}" opacity="0.05"'                + \
@@ -118,6 +116,10 @@ class RTReactiveHTML(ReactiveHTML):
                             """ onmouseup="${script('_onmouseup_')}"     """                                        + \
                             '/>'                                                                                    + \
                          '</svg>' 
+        # - Create the base SVG
+        self.mod_inner = rt_self.layout(spec,df,w=w,h=h,h_gap=h_gap,v_gap=v_gap,
+                                        widget_h_gap=widget_h_gap,widget_v_gap=widget_v_gap,
+                                        **kwargs)
         # Execute the super initialization
         super().__init__(**kwargs)
         # Watch for callbacks
