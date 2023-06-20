@@ -58,8 +58,7 @@ class RTReactiveHTML(ReactiveHTML):
     mod_inner = param.String(default="""
         <rect x="0" y="0" width="100" height="100" fill="#808080" />
         <circle cx="50" cy="50" r="40" fill="#000000" />
-    """)
-
+    """)    
     #
     # Panel Template
     # - The following is re-written in the constructor
@@ -105,21 +104,23 @@ class RTReactiveHTML(ReactiveHTML):
         self.widget_v_gap = widget_v_gap
         self.kwargs       = kwargs 
         # - Create the template ... copy of the above with variables filled in...
-        self._template = f'<svg id="parent" width="{w}" height="{h}">'                                              + \
-                            f'<svg id="mod" width="{w}" height="{h}">'                                              + \
-                                """\n${mod_inner}\n"""                                                                  + \
-                            '</svg>'                                                                                + \
-                            '<rect id="drag" x="-10" y="-10" width="5" height="5" fill="#ffffff" opacity="0.6" />'  + \
-                            f'<rect id="screen" x="0" y="0" width="{w}" height="{h}" opacity="0.05"'                + \
-                            """ onmousedown="${script('_onmousedown_')}" """                                        + \
-                            """ onmousemove="${script('_onmousemove_')}" """                                        + \
-                            """ onmouseup="${script('_onmouseup_')}"     """                                        + \
-                            '/>'                                                                                    + \
+        self._template = f'<svg id="parent" width="{w}" height="{h}">'                               + \
+                            f'<svg id="mod" width="{w}" height="{h}">'                               + \
+                                """\n${mod_inner}\n"""                                               + \
+                            '</svg>'                                                                 + \
+                            '<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" ' + \
+                                  'fill="#ffffff" opacity="0.6" />'                                  + \
+                            f'<rect id="screen" x="0" y="0" width="{w}" height="{h}" opacity="0.05"' + \
+                            """ onmousedown="${script('_onmousedown_')}"   """                       + \
+                            """ onmousemove="${script('_onmousemove_')}"   """                       + \
+                            """ onmouseup="${script('_onmouseup_')}"       """                       + \
+                            '/>'                                                                     + \
                          '</svg>' 
         # - Create the base SVG
+        # - Assign the base to the mod inner // THIS PART DOESN"T WORK...
         self.mod_inner = rt_self.layout(spec,df,w=w,h=h,h_gap=h_gap,v_gap=v_gap,
-                                        widget_h_gap=widget_h_gap,widget_v_gap=widget_v_gap,
-                                        **kwargs)
+                                       widget_h_gap=widget_h_gap,widget_v_gap=widget_v_gap,
+                                       **kwargs)
         # Execute the super initialization
         super().__init__(**kwargs)
         # Watch for callbacks
