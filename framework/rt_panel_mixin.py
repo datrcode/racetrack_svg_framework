@@ -35,17 +35,17 @@ class RTPanelMixin(object):
     # Create an interactive panel
     #
     def interactivePanel(self,
-                         spec,                # Layout specification
-                         df,                  # Root dataframe
-                         w,                   # Width of the panel
-                         h,                   # Heght of the panel
-                         # ------------------ #
-                         h_gap          = 0,  # Horizontal left/right gap
-                         v_gap          = 0,  # Verticate top/bottom gap
-                         widget_h_gap   = 1,  # Horizontal gap between widgets
-                         widget_v_gap   = 1,  # Vertical gap between widgets
-                         **kwargs):           # Other arguments to pass to the layout instance
-        return RTReactiveHTML(self, spec, df, w, h, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
+                         spec,                  # Layout specification
+                         w,                     # Width of the panel
+                         h,                     # Heght of the panel
+                         rt_params      = {},   # Racetrack params -- dictionary of param:value
+                         # -------------------- #
+                         h_gap          = 0,    # Horizontal left/right gap
+                         v_gap          = 0,    # Verticate top/bottom gap
+                         widget_h_gap   = 1,    # Horizontal gap between widgets
+                         widget_v_gap   = 1,    # Vertical gap between widgets
+                         **kwargs):             # Other arguments to pass to the layout instance
+        return RTReactiveHTML(self, spec, w, h, rt_params, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
 
 #
 # ReactiveHTML Class for Panel Implementation
@@ -83,9 +83,9 @@ class RTReactiveHTML(ReactiveHTML):
     def __init__(self,
                  rt_self,
                  spec,                # Layout specification
-                 df,                  # Root dataframe
                  w,                   # Width of the panel
                  h,                   # Heght of the panel
+                 rt_params,           # Racetrack params -- dictionary of param=value
                  # ------------------ #
                  h_gap          = 0,  # Horizontal left/right gap
                  v_gap          = 0,  # Verticate top/bottom gap
@@ -94,10 +94,11 @@ class RTReactiveHTML(ReactiveHTML):
                  **kwargs):
         # Setup specific instance information
         # - Copy the member variables
+        self.rt_self      = rt_self
         self.spec         = spec
-        self.df_root      = df
         self.w            = w
         self.h            = h
+        self.rt_params    = rt_params
         self.h_gap        = h_gap
         self.v_gap        = v_gap
         self.widget_h_gap = widget_h_gap
@@ -116,22 +117,60 @@ class RTReactiveHTML(ReactiveHTML):
                             """ onmouseup="${script('_onmouseup_')}"       """                       + \
                             '/>'                                                                     + \
                          '</svg>' 
-        # - Create the base SVG
-        # - Assign the base to the mod inner // THIS PART DOESN"T WORK...
-        self.mod_inner = rt_self.layout(spec,df,w=w,h=h,h_gap=h_gap,v_gap=v_gap,
-                                       widget_h_gap=widget_h_gap,widget_v_gap=widget_v_gap,
-                                       **kwargs)
+        # - Assign place holders
+        self.dfs       = [pd.DataFrame()]
+        self.dfs_svg   = [f'<svg width="{w}" height="{h}"> <circle cx="{w/2}" cy="{h/2}" r="{h/2}" fill="#ff0000" /> </svg>']
+        self.mod_inner = self.dfs_svg[0]
+        
         # Execute the super initialization
         super().__init__(**kwargs)
         # Watch for callbacks
         self.param.watch(self.applyDragOp,'drag_op_finished')
         self.param.trigger('drag_op_finished')
     
-    drag_op_finished = param.Boolean(default=False)    
+    #
+    # Set the root dataframe... because I can't figure out how to do this in the constructor
+    #
+    def setRoot(self, df):
+        self.dfs     = [df.copy()]
+        self.dfs_svg = [self.rt_self.layout(self.spec, df, w=self.w, h=self.h,
+                                            h_gap=self.h_gap,v_gap=self.v_gap,
+                                            widget_h_gap=self.widget_h_gap,widget_v_gap=self.widget_v_gap,
+                                            **self.rt_params)]
+        self.mod_inner = self.dfs_svg[0]
+
+    #
+    # Drag operation state & method
+    #
+    drag_op_finished = param.Boolean(default=False)
+    drag_x0          = param.Integer(default=0)
+    drag_y0          = param.Integer(default=0)
+    drag_x1          = param.Integer(default=10)
+    drag_y1          = param.Integer(default=10)
     async def applyDragOp(self,event):
         if self.drag_op_finished:
+            _df = self.rt_self.subsetOperation(self.spec,                      self.dfs_svg[-1], 
+                                               w=self.w,                       h=self.h, 
+                                               h_gap=self.h_gap,               v_gap=self.v_gap,
+                                               widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap)
+            if _df is None or len(_df) == 0:
+                if len(self.dfs) > 1:
+                    self.dfs       = self.dfs    [:-1]
+                    self.dfs_svg   = self.dfs_svg[:-1]
+                    self.mod_inner = self.dfs_svg[-1]
+            else:
+                _svg = self.rt_self.layout(self.spec,                      _df,
+                                           w=self.w,                       h=self.h, 
+                                           h_gap=self.h_gap,               v_gap=self.v_gap,
+                                           widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap)
+                self.dfs.    append(_df)
+                self.dfs_svg.append(_svg)
+                self.mod_inner = _svg
             self.drag_op_finished = False
-        
+    
+    #
+    # Panel Javascript Definitions
+    #
     _scripts = {
         'render':"""
             mod.innerHTML = data.mod_inner;
@@ -160,6 +199,10 @@ class RTReactiveHTML(ReactiveHTML):
                 state.y1_drag = event.offsetY;            
                 state.drag_op = false;
                 self._updateDragRect_();
+                data.drag_x0          = state.x0_drag;
+                data.drag_y0          = state.y0_drag;
+                data.drag_x1          = state.x1_drag;
+                data.drag_y1          = state.y1_drag;
                 data.drag_op_finished = true;
             }
         """,
