@@ -1,4 +1,4 @@
-# Copyright 2022 David Trimm
+# Copyright 2023 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ import pandas as pd
 import numpy as np
 import random
 
+from shapely.geometry import Polygon
 from math import sqrt
 
 __name__ = 'rt_histogram_mixin'
@@ -334,6 +335,9 @@ class RTHistogramMixin(object):
             # Check the count_by column
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
+            
+            # Geometry lookup
+            self.geom_to_df = {}
     
         #
         # SVG Representation Renderer
@@ -427,6 +431,7 @@ class RTHistogramMixin(object):
 
                 # Render the bar ... next section does the color... but this makes sure it's at least filled in...
                 svg += f'<rect id="{element_id}" width="{px}" height="{self.bar_h}" x="0" y="{y}" fill="{color}" stroke="{color}"/>'
+                self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = gb.get_group(order.index[i])
 
                 # 'Color By' options
                 if self.color_by is not None:
@@ -529,8 +534,16 @@ class RTHistogramMixin(object):
                 fv_norm[k] = fv[k]/sq_sum
 
             return fv_norm
-
-
-
-
-
+        
+        #
+        # Determine which dataframe geometries overlap with a specific
+        #
+        def overlappingDataFrames(self, to_intersect):
+            _dfs = []
+            for _poly in self.geom_to_df.keys():
+                if _poly.intersects(to_intersect):
+                    _dfs.append(self.geom_to_df[_poly])
+            if len(_dfs) > 0:
+                return pd.concat(_dfs)
+            else:
+                return None

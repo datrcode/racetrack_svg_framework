@@ -19,6 +19,9 @@ import random
 
 import numpy as np
 
+from shapely.affinity import translate
+from shapely.geometry import Polygon, Point
+
 from math import ceil
 
 __name__ = 'rt_layouts_mixin'
@@ -683,7 +686,7 @@ class RTLayoutsMixin(object):
             temporal_granularity = self.temporalGranularity(df, ts_field)
 
         # Start the SVG
-        svg =  f'<svg id="{widget_id}" width="{w+1}" height="{h+1}" xmlns="http://www.w3.org/2000/svg">'
+        svg,_instance_lu =  f'<svg id="{widget_id}" width="{w+1}" height="{h+1}" xmlns="http://www.w3.org/2000/svg">',{}
         for xywh_tuple in spec.keys():
             _x0,_y0,_tile_w,_tile_h = xywh_tuple
             spec_tuple = spec[xywh_tuple]
@@ -720,9 +723,55 @@ class RTLayoutsMixin(object):
                 my_params['temporal_granularity'] = temporal_granularity
                 
             # Resolve the method name and invoke it adding to the svg string
-            func = getattr(self, widget_method)
+            _func      = getattr(self, widget_method + 'Instance')
+            _instance  = _func(**my_params)
+            svg       += _instance.renderSVG()
             
-            svg += func(**my_params)
-
+            _px0,_py0,_px1,_py1 = my_params['x_view'], my_params['y_view'], my_params['x_view']+my_params['w'], my_params['y_view']+my_params['h']
+            _instance_bounds = Polygon([[_px0,_py0],[_px0,_py1],[_px1,_py1],[_px1,_py0]])
+            _instance_lu[_instance_bounds] = _instance
         svg += '</svg>'
-        return svg
+        return RTLayout(self, _instance_lu, svg)
+
+#
+# RT Layout Instance
+#
+class RTLayout(object):
+    #
+    # Constructor
+    #
+    def __init__(self, rt_self, instance_lu, svg):
+        self.rt_self     = rt_self
+        self.instance_lu = instance_lu
+        self.svg         = svg
+    
+    #
+    # SVG Representation
+    #
+    def _repr_svg_(self):
+        return self.svg
+    
+    #
+    # Return Overlapping Dataframes
+    #
+    def overlappingDataFrames(self, to_intersect):
+        if type(to_intersect) == tuple:
+            _x0,_y0,_x1,_y1 = to_intersect
+            if _x0 > _x1:
+                _x0,_x1 = _x1,_x0
+            if _y0 > _y1:
+                _y0,_y1 = _y1,_y0
+            to_intersect = Polygon([[_x0,_y0],[_x0,_y1],[_x1,_y1],[_x1,_y0]])
+        _dfs = []
+        for _poly in instance_lu.keys():
+            if _poly.intersects(to_intersect):
+                adj_to_intersect = translate(to_intersect, -_poly.bounds[0], -_poly.bounds[1])
+                _df = instance_lu[_poly].overlappingDataFrames(adj_to_intersect)
+                if _df is not None and len(_df) > 0:
+                    _dfs.append(_df)
+        if len(_dfs) > 0:
+            return pd.concat(_dfs)
+        else:
+            return None
+        
+    

@@ -19,6 +19,8 @@ import panel as pn
 from panel.reactive import ReactiveHTML
 import param
 
+from rt_layouts_mixin import RTLayout
+
 __name__ = 'rt_panel_mixin'
 
 #
@@ -118,9 +120,9 @@ class RTReactiveHTML(ReactiveHTML):
                             '/>'                                                                     + \
                          '</svg>' 
         # - Assign place holders
-        self.dfs       = [pd.DataFrame()]
-        self.dfs_svg   = [f'<svg width="{w}" height="{h}"> <circle cx="{w/2}" cy="{h/2}" r="{h/2}" fill="#ff0000" /> </svg>']
-        self.mod_inner = self.dfs_svg[0]
+        self.dfs        = [pd.DataFrame()]
+        self.dfs_layout = [RTLayout(rt_self,{},str(self.mod_inner))]
+        self.mod_inner  = self.dfs_layout[0]._repr_svg_()
         
         # Execute the super initialization
         super().__init__(**kwargs)
@@ -132,12 +134,12 @@ class RTReactiveHTML(ReactiveHTML):
     # Set the root dataframe... because I can't figure out how to do this in the constructor
     #
     def setRoot(self, df):
-        self.dfs     = [df.copy()]
-        self.dfs_svg = [self.rt_self.layout(self.spec, df, w=self.w, h=self.h,
+        self.dfs        = [df.copy()]
+        self.dfs_layout = [self.rt_self.layout(self.spec, df, w=self.w, h=self.h,
                                             h_gap=self.h_gap,v_gap=self.v_gap,
                                             widget_h_gap=self.widget_h_gap,widget_v_gap=self.widget_v_gap,
                                             **self.rt_params)]
-        self.mod_inner = self.dfs_svg[0]
+        self.mod_inner = self.dfs_layout[0]._repr_svg_()
 
     #
     # Drag operation state & method
@@ -149,23 +151,20 @@ class RTReactiveHTML(ReactiveHTML):
     drag_y1          = param.Integer(default=10)
     async def applyDragOp(self,event):
         if self.drag_op_finished:
-            _df = self.rt_self.subsetOperation(self.spec,                      self.dfs_svg[-1], 
-                                               w=self.w,                       h=self.h, 
-                                               h_gap=self.h_gap,               v_gap=self.v_gap,
-                                               widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap)
+            _df = self.dfs_layout.overlappingDataFrames((drag_x0,drag_y0,drag_x1,drag_y1))
             if _df is None or len(_df) == 0:
                 if len(self.dfs) > 1:
-                    self.dfs       = self.dfs    [:-1]
-                    self.dfs_svg   = self.dfs_svg[:-1]
-                    self.mod_inner = self.dfs_svg[-1]
+                    self.dfs        = self.dfs    [:-1]
+                    self.dfs_layout = self.dfs_layout[:-1]
+                    self.mod_inner  = self.dfs_layout[-1]._repr_svg_()
             else:
-                _svg = self.rt_self.layout(self.spec,                      _df,
-                                           w=self.w,                       h=self.h, 
-                                           h_gap=self.h_gap,               v_gap=self.v_gap,
-                                           widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap)
-                self.dfs.    append(_df)
-                self.dfs_svg.append(_svg)
-                self.mod_inner = _svg
+                _layout = self.rt_self.layout(self.spec,                      _df,
+                                              w=self.w,                       h=self.h, 
+                                              h_gap=self.h_gap,               v_gap=self.v_gap,
+                                              widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap)
+                self.dfs.       append(_df)
+                self.dfs_layout.append(_layout)
+                self.mod_inner = _layout._repr_svg_()
             self.drag_op_finished = False
     
     #
