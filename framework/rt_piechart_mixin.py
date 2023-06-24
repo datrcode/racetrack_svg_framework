@@ -19,7 +19,7 @@ import numpy as np
 from shapely.geometry import Polygon
 
 import math
-from math import sqrt, pi, cos, sin
+from math import sqrt, pi, cos, sin, floor, ceil
 
 import random
 
@@ -332,6 +332,10 @@ class RTPieChartMixin(object):
                     totals = tmp_df[self.count_by].sum()
                     total_i = self.count_by
 
+                # Create a groupby just for state tracking
+                if track_state:
+                    tracking_gb = self.df.groupby(self.color_by)
+                    
                 # Common render code
                 deg = 0
                 my_intersection = self.rt_self.__myIntersection__(self.global_color_order.index,tmp_df.index)
@@ -350,10 +354,10 @@ class RTPieChartMixin(object):
 
                             if track_state:
                                 _poly_points = [[cx,cy]]
-                                for _poly_degree in range(deg,deg_end+1,1):
-                                    _poly_angle = pi * _poly_degree / 180.0 
+                                for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
+                                    _poly_angle = pi * (_poly_degree-90) / 180.0 
                                     _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
-                                self.geom_to_df[Polygon(_poly_points)] = tmp_df
+                                self.geom_to_df[Polygon(_poly_points)] = tracking_gb.get_group(cb_bin)
 
                         deg = deg_end
 
