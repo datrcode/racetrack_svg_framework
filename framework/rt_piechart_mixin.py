@@ -21,6 +21,8 @@ from math import sqrt
 
 import random
 
+from rt_component import RTComponent
+
 __name__ = 'rt_piechart_mixin'
 
 #
@@ -118,7 +120,7 @@ class RTPieChartMixin(object):
     #
     # RTPieChart
     #
-    class RTPieChart(object):
+    class RTPieChart(RTComponent):
         #
         # Constructor
         #

@@ -23,6 +23,8 @@ from dateutil.relativedelta import relativedelta
 
 import random
 
+from rt_component import RTComponent
+
 __name__ = 'rt_timeline_mixin'
 
 #
@@ -129,7 +131,10 @@ class RTTimelineMixin(object):
     #
     # RTTimeline
     #
-    class RTTimeline(object):
+    class RTTimeline(RTComponent):
+        #
+        # Constructor
+        #
         def __init__(self,
                      rt_self,                       # outer class
                      df                    = None,  # dataframe to render // if none, pull from the timestamp, timestamp_end field

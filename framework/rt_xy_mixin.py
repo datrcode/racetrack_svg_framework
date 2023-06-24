@@ -25,6 +25,8 @@ from math import log10
 
 import random
 
+from rt_component import RTComponent
+
 __name__ = 'rt_xy_mixin'
 
 #
@@ -832,7 +834,10 @@ class RTXYMixin(object):
     #
     # RTXy
     #
-    class RTXy(object):
+    class RTXy(RTComponent):
+        #
+        # Constructor
+        #
         def __init__(self,
                      rt_self,                              # outer class
                      df,                                   # dataframe to render

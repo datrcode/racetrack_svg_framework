@@ -23,6 +23,8 @@ from datetime import datetime
 
 from math import sqrt
 
+from rt_component import RTComponent
+
 __name__ = 'rt_temporal_barchart_mixin'
 
 #
@@ -517,7 +519,7 @@ class RTTemporalBarChartMixin(object):
     #
     # RTTemporalBarChart Class
     #
-    class RTTemporalBarChart(object):
+    class RTTemporalBarChart(RTComponent):
         #
         # Constructor
         #

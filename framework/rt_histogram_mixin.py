@@ -20,6 +20,8 @@ import random
 from shapely.geometry import Polygon
 from math import sqrt
 
+from rt_component import RTComponent
+
 __name__ = 'rt_histogram_mixin'
 
 #
@@ -265,7 +267,7 @@ class RTHistogramMixin(object):
     #
     # RTHistogram Class
     #
-    class RTHistogram(object):
+    class RTHistogram(RTComponent):
         #
         # Constructor
         #

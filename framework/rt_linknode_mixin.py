@@ -22,6 +22,8 @@ import re
 
 from math import sqrt
 
+from rt_component import RTComponent
+
 __name__ = 'rt_linknode_mixin'
 
 #
@@ -391,7 +393,7 @@ class RTLinkNodeMixin(object):
     #
     # RTLinkNode Class
     #
-    class RTLinkNode(object):
+    class RTLinkNode(RTComponent):
         #
         # Constructor
         #

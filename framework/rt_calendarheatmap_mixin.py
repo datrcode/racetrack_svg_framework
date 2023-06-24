@@ -21,6 +21,8 @@ from pandas.tseries.offsets import MonthEnd
 
 from datetime import datetime
 
+from rt_component import RTComponent
+
 __name__ = 'rt_calendarheatmap_mixin'
 
 #
@@ -160,7 +162,7 @@ class RTCalendarHeatmapMixin(object):
     #
     # RTCalendarHeatmap() - Inner Class for Calendar Heatmap
     #
-    class RTCalendarHeatmap(object):
+    class RTCalendarHeatmap(RTComponent):
         #
         #
         #

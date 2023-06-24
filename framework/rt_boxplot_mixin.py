@@ -18,6 +18,8 @@ import numpy as np
 import random
 import re
 
+from rt_component import RTComponent
+
 __name__ = 'rt_boxplot_mixin'
 
 #
@@ -169,7 +171,7 @@ class RTBoxplotMixin(object):
     #
     # RTBoxplot Class
     #
-    class RTBoxplot(object):
+    class RTBoxplot(RTComponent):
         #
         # Member Variables
         #

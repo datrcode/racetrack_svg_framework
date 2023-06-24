@@ -20,6 +20,8 @@ import re
 
 from math import sqrt
 
+from rt_component import RTComponent
+
 __name__ = 'rt_periodic_barchart_mixin'
 
 #
@@ -340,7 +342,10 @@ class RTPeriodicBarChartMixin(object):
     #
     # RTPeriodicBarChart()
     #
-    class RTPeriodicBarChart(object):
+    class RTPeriodicBarChart(RTComponent):
+        #
+        # Constructor
+        #
         def __init__(self,
                      rt_self,
                      df,                                    # dataframe to render
