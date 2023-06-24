@@ -338,7 +338,7 @@ class RTHistogramMixin(object):
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
             
-            # Geometry lookup
+            # Geometry lookup for tracking state
             self.geom_to_df = {}
     
         #
@@ -350,7 +350,7 @@ class RTHistogramMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self,just_calc_max=False):
+        def renderSVG(self, just_calc_max=False, track_state=False):
             # Leave space for a label
             max_bar_w = self.w - self.bar_h
                                             
@@ -433,7 +433,8 @@ class RTHistogramMixin(object):
 
                 # Render the bar ... next section does the color... but this makes sure it's at least filled in...
                 svg += f'<rect id="{element_id}" width="{px}" height="{self.bar_h}" x="0" y="{y}" fill="{color}" stroke="{color}"/>'
-                self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = gb.get_group(order.index[i])
+                if track_state:
+                    self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = gb.get_group(order.index[i])
 
                 # 'Color By' options
                 if self.color_by is not None:

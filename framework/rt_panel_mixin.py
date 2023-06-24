@@ -138,6 +138,7 @@ class RTReactiveHTML(ReactiveHTML):
         self.dfs_layout = [self.rt_self.layout(self.spec, df, w=self.w, h=self.h,
                                             h_gap=self.h_gap,v_gap=self.v_gap,
                                             widget_h_gap=self.widget_h_gap,widget_v_gap=self.widget_v_gap,
+                                            track_state=True,
                                             **self.rt_params)]
         self.mod_inner = self.dfs_layout[0]._repr_svg_()
 
@@ -164,6 +165,7 @@ class RTReactiveHTML(ReactiveHTML):
                                               w=self.w,                       h=self.h, 
                                               h_gap=self.h_gap,               v_gap=self.v_gap,
                                               widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap,
+                                              track_state=True,
                                               **self.rt_params)
                 self.dfs.       append(_df)
                 self.dfs_layout.append(_layout)

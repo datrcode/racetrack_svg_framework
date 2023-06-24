@@ -21,6 +21,8 @@ from pandas.api.types import is_datetime64_any_dtype as is_datetime
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 
+from shapely.geometry import Polygon
+
 from math import log10
 
 import random
@@ -1175,6 +1177,9 @@ class RTXYMixin(object):
                 _set1 = set(self.df2.groupby(self.x2_field).groups.keys())
                 self.x_order = sorted(list(_set0 | _set1))
 
+            # Geometry lookup for tracking state
+            self.geom_to_df = {}
+
         #
         # SVG Representation Renderer
         #
@@ -1184,7 +1189,7 @@ class RTXYMixin(object):
         #
         # renderSVG() - render as SVG
         #
-        def renderSVG(self):
+        def renderSVG(self, just_calc_max=False, track_state=False):
             #
             # Geometry
             #
@@ -1536,6 +1541,12 @@ class RTXYMixin(object):
                                 node_to_xy [xy_as_str] = (x,y)
                                 node_to_dfs[xy_as_str] = []
                             node_to_dfs[xy_as_str].append(k_df)
+                            if track_state:
+                                _poly = Polygon([[x-self.sm_w/2,y-self.sm_h/2],
+                                                 [x-self.sm_w/2,y+self.sm_h/2],
+                                                 [x+self.sm_w/2,y+self.sm_h/2],
+                                                 [x+self.sm_w/2,y-self.sm_h/2]])
+                                self.geom_to_df[_poly] = k_df
 
                         # Regular Version
                         else:                    
@@ -1572,7 +1583,6 @@ class RTXYMixin(object):
                             else:
                                 color = self.rt_self.co_mgr.getTVColor('data','default')
 
-                            
                             # Render the dot
                             # - Simple Render
                             if _local_dot_w > 0 and self.vary_opacity == False:
@@ -1580,7 +1590,15 @@ class RTXYMixin(object):
                                 if callable(self.dot_shape):
                                     _my_dot_shape = self.dot_shape(k_df, k, x, y, _local_dot_w, color, self.opacity)
                                 svg += self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity)
-                                
+
+                                # Track state (if requested)
+                                if track_state:
+                                    _poly = Polygon([[x-_local_dot_w,y-_local_dot_w],
+                                                     [x-_local_dot_w,y+_local_dot_w],
+                                                     [x+_local_dot_w,y+_local_dot_w],
+                                                     [x+_local_dot_w,y-_local_dot_w]])
+                                    self.geom_to_df[_poly] = k_df
+
                             # - Complex Render
                             else:
                                 # count by rows
@@ -1608,6 +1626,14 @@ class RTXYMixin(object):
                                     _my_dot_shape = self.dot_shape(k_df, k, x, y, var_w, color, var_o)
 
                                 svg += self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o)
+
+                                # Track state (if requested)
+                                if track_state:
+                                    _poly = Polygon([[x-var_w,y-var_w],
+                                                     [x-var_w,y+var_w],
+                                                     [x+var_w,y+var_w],
+                                                     [x+var_w,y-var_w]])
+                                    self.geom_to_df[_poly] = k_df
 
                 # Handle the small multiples // mostly a copy from the linknode version
                 if self.dot_shape == 'small_multiple':
@@ -1693,6 +1719,20 @@ class RTXYMixin(object):
             svg += '</svg>'
 
             return svg
+        
+        #
+        # Determine which dataframe geometries overlap with a specific
+        #
+        def overlappingDataFrames(self, to_intersect):
+            _dfs = []
+            for _poly in self.geom_to_df.keys():
+                if _poly.intersects(to_intersect):
+                    _dfs.append(self.geom_to_df[_poly])
+            if len(_dfs) > 0:
+                return pd.concat(_dfs)
+            else:
+                return None
+
         #
         # Format min/max labels
         #
@@ -2000,3 +2040,4 @@ class RTXYMixin(object):
             x = x[:-3]
             y = y[:-3]
         return x,y
+

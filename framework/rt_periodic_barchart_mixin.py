@@ -18,6 +18,8 @@ import numpy as np
 import random
 import re
 
+from shapely.geometry import Polygon
+
 from math import sqrt
 
 from rt_component import RTComponent
@@ -447,6 +449,9 @@ class RTPeriodicBarChartMixin(object):
             # Check the count_by column
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
+            
+            # Geometry lookup for tracking state
+            self.geom_to_df = {}
 
         #
         # SVG Representation Renderer
@@ -455,9 +460,9 @@ class RTPeriodicBarChartMixin(object):
             return self.renderSVG()
 
         #
-        # renderSVG()
+        # renderSVG() - create the SVG
         #
-        def renderSVG(self, just_calc_max=False):
+        def renderSVG(self, just_calc_max=False, track_state=False):
             # Color ordering
             if self.global_color_order is None:
                 self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
@@ -605,6 +610,10 @@ class RTPeriodicBarChartMixin(object):
                             
                     svg += self.rt_self.colorizeBar(k_df, self.global_color_order, self.color_by, self.count_by, self.count_by_set, x, y_baseline, px, bar_w, False)
 
+                    if track_state:
+                        _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-px],[x,y_baseline-px]])
+                        self.geom_to_df[_poly] = k_df
+
             elif self.style.startswith('boxplot'):
                 # Adjust the bar width to something reasonable
                 _bar_w = bar_w
@@ -622,6 +631,10 @@ class RTPeriodicBarChartMixin(object):
                     _cx = x + bar_w/2
 
                     svg += self.rt_self.renderBoxPlotColumn(self.style, k_df, _cx, yT, group_by_max, group_by_min, _bar_w, self.count_by, self.color_by, self.cap_swarm_at)
+
+                    if track_state:
+                        _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-max_bar_h],[x,y_baseline-max_bar_h]])
+                        self.geom_to_df[_poly] = k_df
 
             else:
                 raise Exception(f'RTPeriodicBarChart() - unknown style "{self.style}"')
@@ -761,3 +774,16 @@ class RTPeriodicBarChartMixin(object):
                 fv_norm[k] = fv[k]/sq_sum
 
             return fv_norm
+
+        #
+        # Determine which dataframe geometries overlap with a specific
+        #
+        def overlappingDataFrames(self, to_intersect):
+            _dfs = []
+            for _poly in self.geom_to_df.keys():
+                if _poly.intersects(to_intersect):
+                    _dfs.append(self.geom_to_df[_poly])
+            if len(_dfs) > 0:
+                return pd.concat(_dfs)
+            else:
+                return None

@@ -18,6 +18,8 @@ import numpy as np
 import random
 import re
 
+from shapely.geometry import Polygon
+
 from rt_component import RTComponent
 
 __name__ = 'rt_boxplot_mixin'
@@ -287,6 +289,9 @@ class RTBoxplotMixin(object):
             if (self.count_by is None or self.count_by_set) and (self.style == 'boxplot' or self.style == 'boxplot_w_swarm'):
                 raise Exception("RTBoxplot - boxplot render style must use a scalar count_by")
 
+            # Geometry lookup for tracking state
+            self.geom_to_df = {}
+
         #
         # SVG Representation Renderer
         #
@@ -296,7 +301,7 @@ class RTBoxplotMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self,just_calc_max=False):
+        def renderSVG(self, just_calc_max=False, track_state=False):
             # Determine the color order (for each bar)
             if self.global_color_order is None:
                 self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
@@ -461,6 +466,10 @@ class RTBoxplotMixin(object):
                 px     = max_bar_h * _value / group_by_max
                 _df    = gb.get_group(_index)
 
+                if track_state:
+                    _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-px],[x,y_baseline-px]])
+                    self.geom_to_df[_poly] = _df
+
                 node_to_xy  [_index] = [x + bar_w/2, self.y_ins/2 + self.sm_h/2]
                 node_to_dfs [_index] = _df
                 label_to_x  [_index] = x + bar_w/2
@@ -574,3 +583,15 @@ class RTBoxplotMixin(object):
             svg += '</svg>'
             return svg
 
+        #
+        # Determine which dataframe geometries overlap with a specific
+        #
+        def overlappingDataFrames(self, to_intersect):
+            _dfs = []
+            for _poly in self.geom_to_df.keys():
+                if _poly.intersects(to_intersect):
+                    _dfs.append(self.geom_to_df[_poly])
+            if len(_dfs) > 0:
+                return pd.concat(_dfs)
+            else:
+                return None

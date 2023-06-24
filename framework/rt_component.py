@@ -26,9 +26,9 @@ class RTComponent(object):
             pass
 
         #
-        # renderSVG() - create the SVG
+        # renderSVG() - create the SVG Rendering
         #
-        def renderSVG(self,just_calc_max=False):
+        def renderSVG(self, just_calc_max=False, track_state=False):
             pass
 
         #

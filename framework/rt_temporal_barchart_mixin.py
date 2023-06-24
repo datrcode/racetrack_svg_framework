@@ -21,6 +21,8 @@ import re
 
 from datetime import datetime
 
+from shapely.geometry import Polygon
+
 from math import sqrt
 
 from rt_component import RTComponent
@@ -700,6 +702,9 @@ class RTTemporalBarChartMixin(object):
             if self.y2_field is not None and rt_self.isTField(self.y2_field):
                 self.df2,self.y2_field = rt_self.applyTransform(self.df2, self.y2_field)
 
+            # Geometry lookup for tracking state
+            self.geom_to_df = {}
+
         #
         # SVG Representation Renderer
         #
@@ -709,7 +714,7 @@ class RTTemporalBarChartMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self,just_calc_max=False):
+        def renderSVG(self, just_calc_max=False, track_state=False):
             # Determine the color order (for each bar) // Copied in whole from histogram method
             if self.global_color_order is None:
                 self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
@@ -892,6 +897,10 @@ class RTTemporalBarChartMixin(object):
                     svg += self.rt_self.colorizeBar(k_df, self.global_color_order, self.color_by, self.count_by, self.count_by_set, x, y_baseline, px, bar_w, False)
                     self.ts_to_x[k] = (x,bar_w)
 
+                    if track_state:
+                        _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-px],[x,y_baseline-px]])
+                        self.geom_to_df[_poly] = k_df
+
             elif self.style.startswith('boxplot'):
                 # Adjust the bar width so that it's not excessively long
                 if bar_w > 16:
@@ -910,6 +919,14 @@ class RTTemporalBarChartMixin(object):
                     _cx = x + bar_w/2
                     svg += self.rt_self.renderBoxPlotColumn(self.style, k_df, _cx, yT, group_by_max, group_by_min, _bar_w, self.count_by, self.color_by, self.cap_swarm_at)
                     self.ts_to_x[k] = (x,bar_w)
+
+                    if track_state:
+                        _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-max_bar_h],[x,y_baseline-max_bar_h]])
+                        self.geom_to_df[_poly] = k_df
+
+            else:
+                raise Exception(f'RTTemporalBarChart() - unknown style "{self.style}"')
+
 
             # Handle the small multiple renders
             if self.sm_type is not None:
@@ -1276,4 +1293,16 @@ class RTTemporalBarChartMixin(object):
                 fv_norm[k] = fv[k]/sq_sum
 
             return fv_norm
-            
+
+        #
+        # Determine which dataframe geometries overlap with a specific
+        #
+        def overlappingDataFrames(self, to_intersect):
+            _dfs = []
+            for _poly in self.geom_to_df.keys():
+                if _poly.intersects(to_intersect):
+                    _dfs.append(self.geom_to_df[_poly])
+            if len(_dfs) > 0:
+                return pd.concat(_dfs)
+            else:
+                return None

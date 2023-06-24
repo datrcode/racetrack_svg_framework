@@ -16,8 +16,10 @@
 import pandas as pd
 import numpy as np
 
+from shapely.geometry import Polygon
+
 import math
-from math import sqrt
+from math import sqrt, pi, cos, sin
 
 import random
 
@@ -188,6 +190,9 @@ class RTPieChartMixin(object):
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
 
+            # Stateful tracking of geometry to dataframe
+            self.geom_to_df = {}
+
         #
         # SVG Representation Renderer
         #
@@ -197,7 +202,7 @@ class RTPieChartMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self):
+        def renderSVG(self, just_calc_max=False, track_state=False):
             # Color ordering
             if self.global_color_order is None:
                 self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
@@ -224,7 +229,7 @@ class RTPieChartMixin(object):
             if len(self.df) > 0:
                 # Render the different styles
                 if self.style   == 'pie':
-                    svg += self.__renderPieStyle__(w_usable, h_usable)
+                    svg += self.__renderPieStyle__(w_usable, h_usable, track_state)
                 elif self.style == 'waffle':
                     svg += self.__renderWaffleStyle__(w_usable, h_usable)
                 else:
@@ -296,7 +301,7 @@ class RTPieChartMixin(object):
         #
         # Render the standard pie chart style
         #
-        def __renderPieStyle__(self, w_usable, h_usable):
+        def __renderPieStyle__(self, w_usable, h_usable, track_state):
             cx = self.x_ins + w_usable/2
             cy = self.y_ins + h_usable/2
             if w_usable < h_usable:
@@ -342,6 +347,14 @@ class RTPieChartMixin(object):
                             svg += f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{_co}" stroke-opacity="0.0" />'
                         else:
                             svg += f'<path d="{arcPath(cx,cy,r,deg,deg_end)}" fill="{_co}" stroke-opacity="0.0" />'
+
+                            if track_state:
+                                _poly_points = [[cx,cy]]
+                                for _poly_degree in range(deg,deg_end+1,1):
+                                    _poly_angle = pi * _poly_degree / 180.0 
+                                    _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
+                                self.geom_to_df[Polygon(_poly_points)] = tmp_df
+
                         deg = deg_end
 
             return svg
@@ -388,6 +401,19 @@ class RTPieChartMixin(object):
                     fv_norm[k] = fv[k]/sq_sum
 
             return fv_norm
+
+        #
+        # Determine which dataframe geometries overlap with a specific
+        #
+        def overlappingDataFrames(self, to_intersect):
+            _dfs = []
+            for _poly in self.geom_to_df.keys():
+                if _poly.intersects(to_intersect):
+                    _dfs.append(self.geom_to_df[_poly])
+            if len(_dfs) > 0:
+                return pd.concat(_dfs)
+            else:
+                return None
 
 #
 # Converted from the following description

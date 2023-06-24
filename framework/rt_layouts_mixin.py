@@ -499,6 +499,7 @@ class RTLayoutsMixin(object):
                v_gap          = 0,                  # Verticate top/bottom gap
                widget_h_gap   = 1,                  # Horizontal gap between widgets
                widget_v_gap   = 1,                  # Vertical gap between widgets
+               track_state    = False,              # Track state of geometry to data frame // for Panel
                **kwargs):
         # Determine type of specification...
         str_count,tup_count,unk_count = 0,0,0
@@ -510,9 +511,9 @@ class RTLayoutsMixin(object):
             else:
                 unk_count += 1
         if    str_count >  0 and tup_count == 0 and unk_count == 0:
-            return self.multiWidgetPanel(spec,df,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,**kwargs)
+            return self.multiWidgetPanel(spec,df,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,**kwargs)
         elif  str_count == 0 and tup_count >  0 and unk_count == 0:
-            return self.gridBagLayout   (spec,df,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,**kwargs)
+            return self.gridBagLayout   (spec,df,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,**kwargs)
         else:
             raise Exception(f'rt.layout() failed to recognize specification type {str_count}/{tup_count}/{unk_count}')
 
@@ -531,6 +532,7 @@ class RTLayoutsMixin(object):
                          v_gap          = 0,                  # Verticate top/bottom gap
                          widget_h_gap   = 1,                  # Horizontal gap between widgets
                          widget_v_gap   = 1,                  # Vertical gap between widgets
+                         track_state    = False,              # Track state of geometry to data frame // for Panel 
                          **kwargs):
         # Widget ID
         if widget_id is None:
@@ -634,6 +636,7 @@ class RTLayoutsMixin(object):
                       v_gap          = 0,                  # Verticate top/bottom gap
                       widget_h_gap   = 1,                  # Horizontal gap between widgets
                       widget_v_gap   = 1,                  # Vertical gap between widgets
+                      track_state    = False,              # Track the state of the dataframe to geometry // for Panel
                       **kwargs):
         # Widget ID
         if widget_id is None:
@@ -726,7 +729,7 @@ class RTLayoutsMixin(object):
             # Resolve the method name and invoke it adding to the svg string
             _func      = getattr(self, widget_method + 'Instance')
             _instance  = _func(**my_params)
-            svg       += _instance.renderSVG()
+            svg       += _instance.renderSVG(track_state=track_state)
             
             _px0,_py0,_px1,_py1 = my_params['x_view'], my_params['y_view'], my_params['x_view']+my_params['w'], my_params['y_view']+my_params['h']
             _instance_bounds = Polygon([[_px0,_py0],[_px0,_py1],[_px1,_py1],[_px1,_py0]])
