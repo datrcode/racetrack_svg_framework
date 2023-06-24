@@ -125,6 +125,8 @@ class RACETrack(RTAnnotationsMixin,
     # Render the SVG as HTML and display it within a notebook
     #
     def displaySVG(self,_svg):
+        if type(_svg) != str:
+            _svg = _svg._repr_svg_()
         return display(HTML(_svg))
 
     #
@@ -133,6 +135,8 @@ class RACETrack(RTAnnotationsMixin,
     # - Image form should save processing power for complicated SVGs
     #
     def displaySVGAsImage(self, _svg):
+        if type(_svg) != str:
+            _svg = _svg._repr_svg_()
         b = io.BytesIO()
         renderPM.drawToFile(svg2rlg(io.StringIO(_svg)), b, 'PNG')
         return ipc_display.Image(data=b.getvalue(),format='png',embed=True)

@@ -151,17 +151,20 @@ class RTReactiveHTML(ReactiveHTML):
     drag_y1          = param.Integer(default=10)
     async def applyDragOp(self,event):
         if self.drag_op_finished:
-            _df = self.dfs_layout.overlappingDataFrames((drag_x0,drag_y0,drag_x1,drag_y1))
+            _df = self.dfs_layout[-1].overlappingDataFrames((self.drag_x0, self.drag_y0, self.drag_x1, self.drag_y1))
+            # Go back up the stack...
             if _df is None or len(_df) == 0:
                 if len(self.dfs) > 1:
                     self.dfs        = self.dfs    [:-1]
                     self.dfs_layout = self.dfs_layout[:-1]
                     self.mod_inner  = self.dfs_layout[-1]._repr_svg_()
+            # Filter and go down the stack
             else:
                 _layout = self.rt_self.layout(self.spec,                      _df,
                                               w=self.w,                       h=self.h, 
                                               h_gap=self.h_gap,               v_gap=self.v_gap,
-                                              widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap)
+                                              widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap,
+                                              **self.rt_params)
                 self.dfs.       append(_df)
                 self.dfs_layout.append(_layout)
                 self.mod_inner = _layout._repr_svg_()

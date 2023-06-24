@@ -17,6 +17,7 @@ import re
 import inspect
 import random
 
+import pandas as pd
 import numpy as np
 
 from shapely.affinity import translate
@@ -763,10 +764,10 @@ class RTLayout(object):
                 _y0,_y1 = _y1,_y0
             to_intersect = Polygon([[_x0,_y0],[_x0,_y1],[_x1,_y1],[_x1,_y0]])
         _dfs = []
-        for _poly in instance_lu.keys():
+        for _poly in self.instance_lu.keys():
             if _poly.intersects(to_intersect):
                 adj_to_intersect = translate(to_intersect, -_poly.bounds[0], -_poly.bounds[1])
-                _df = instance_lu[_poly].overlappingDataFrames(adj_to_intersect)
+                _df = self.instance_lu[_poly].overlappingDataFrames(adj_to_intersect)
                 if _df is not None and len(_df) > 0:
                     _dfs.append(_df)
         if len(_dfs) > 0:
