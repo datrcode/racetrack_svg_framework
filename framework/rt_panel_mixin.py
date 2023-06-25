@@ -15,6 +15,8 @@
 
 import pandas as pd
 
+import threading
+
 import panel as pn
 from panel.reactive import ReactiveHTML
 import param
@@ -123,6 +125,9 @@ class RTReactiveHTML(ReactiveHTML):
         self.dfs        = [pd.DataFrame()]
         self.dfs_layout = [RTLayout(rt_self,{},str(self.mod_inner))]
         self.mod_inner  = self.dfs_layout[0]._repr_svg_()
+
+        # - Create a lock for threading
+        self.lock = threading.Lock()
         
         # Execute the super initialization
         super().__init__(**kwargs)
@@ -150,68 +155,88 @@ class RTReactiveHTML(ReactiveHTML):
     drag_y0          = param.Integer(default=0)
     drag_x1          = param.Integer(default=10)
     drag_y1          = param.Integer(default=10)
+    drag_shiftkey    = param.Boolean(default=False)
     async def applyDragOp(self,event):
-        if self.drag_op_finished:
-            _x0,_y0,_x1,_y1 = self.drag_x0, self.drag_y0, self.drag_x1, self.drag_y1
-            if _x0 == _x1:
-                _x1 += 1
-            if _y0 == _y1:
-                _y1 += 1
-            _df = self.dfs_layout[-1].overlappingDataFrames((_x0,_y0,_x1,_y1))
-            # Go back up the stack...
-            if _df is None or len(_df) == 0:
-                if len(self.dfs) > 1:
-                    self.dfs        = self.dfs    [:-1]
-                    self.dfs_layout = self.dfs_layout[:-1]
-                    self.mod_inner  = self.dfs_layout[-1]._repr_svg_()
-            # Filter and go down the stack
-            else:
-                _layout = self.rt_self.layout(self.spec,                      _df,
-                                              w=self.w,                       h=self.h, 
-                                              h_gap=self.h_gap,               v_gap=self.v_gap,
-                                              widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap,
-                                              track_state=True,
-                                              **self.rt_params)
-                self.dfs.       append(_df)
-                self.dfs_layout.append(_layout)
-                self.mod_inner = _layout._repr_svg_()
-            self.drag_op_finished = False
-    
+        self.lock.acquire()
+        try:
+            if self.drag_op_finished:
+                _x0,_y0,_x1,_y1 = self.drag_x0, self.drag_y0, self.drag_x1, self.drag_y1
+                if _x0 == _x1:
+                    _x1 += 1
+                if _y0 == _y1:
+                    _y1 += 1
+                _df = self.dfs_layout[-1].overlappingDataFrames((_x0,_y0,_x1,_y1))
+                # Go back up the stack...
+                if _df is None or len(_df) == 0:
+                    if len(self.dfs) > 1:
+                        self.dfs        = self.dfs    [:-1]
+                        self.dfs_layout = self.dfs_layout[:-1]
+                        self.mod_inner  = self.dfs_layout[-1]._repr_svg_()
+                # Filter and go down the stack
+                else:
+                    # Remove data option...
+                    if len(self.dfs) > 0 and self.drag_shiftkey:
+                        _df = self.dfs[-1].query('index not in @_df.index')
+
+                    # Make sure we still have data...
+                    if len(_df) > 0:
+                        # Re-layout w/ new dataframe
+                        _layout = self.rt_self.layout(self.spec,                      _df,
+                                                      w=self.w,                       h=self.h, 
+                                                      h_gap=self.h_gap,               v_gap=self.v_gap,
+                                                      widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap,
+                                                      track_state=True,
+                                                      **self.rt_params)
+                        # Update the stack
+                        self.dfs.       append(_df)
+                        self.dfs_layout.append(_layout)
+                        self.mod_inner = _layout._repr_svg_()
+
+                # Mark operation as finished
+                self.drag_op_finished = False
+        finally:
+            self.lock.release()
+
     #
     # Panel Javascript Definitions
     #
     _scripts = {
         'render':"""
             mod.innerHTML = data.mod_inner;
-            state.x0_drag = state.y0_drag = -10;
-            state.x1_drag = state.y1_drag =  -5;
-            state.drag_op = false;            
+            state.x0_drag  = state.y0_drag = -10;
+            state.x1_drag  = state.y1_drag =  -5;
+            state.shiftkey = false;
+            state.drag_op  = false;            
         """,
         '_onmousemove_':"""
             if (state.drag_op) {
-                state.x1_drag = event.offsetX;
-                state.y1_drag = event.offsetY;
+                state.x1_drag  = event.offsetX;
+                state.y1_drag  = event.offsetY;
+                state.shiftkey = event.shiftKey;
                 self._updateDragRect_();
             }
         """,
         '_onmousedown_':"""
-            state.x0_drag = event.offsetX;
-            state.y0_drag = event.offsetY;
-            state.x1_drag = event.offsetX+1;
-            state.y1_drag = event.offsetY+1;
-            state.drag_op = true;
+            state.x0_drag  = event.offsetX;
+            state.y0_drag  = event.offsetY;
+            state.x1_drag  = event.offsetX+1;
+            state.y1_drag  = event.offsetY+1;
+            state.drag_op  = true;
+            state.shiftkey = event.shiftKey;
             self._updateDragRect_();
         """,
         '_onmouseup_':"""
             if (state.drag_op) {
-                state.x1_drag = event.offsetX;
-                state.y1_drag = event.offsetY;            
-                state.drag_op = false;
+                state.x1_drag  = event.offsetX;
+                state.y1_drag  = event.offsetY;
+                state.shiftkey = event.shiftKey;
+                state.drag_op  = false;
                 self._updateDragRect_();
                 data.drag_x0          = state.x0_drag;
                 data.drag_y0          = state.y0_drag;
                 data.drag_x1          = state.x1_drag;
                 data.drag_y1          = state.y1_drag;
+                data.drag_shiftkey    = state.shiftkey
                 data.drag_op_finished = true;
             }
         """,
@@ -228,6 +253,8 @@ class RTReactiveHTML(ReactiveHTML):
                 h = Math.abs(state.y1_drag - state.y0_drag)
                 drag.setAttribute('x',x);     drag.setAttribute('y',y);
                 drag.setAttribute('width',w); drag.setAttribute('height',h);
+                if (state.shiftkey) { drag.setAttribute('stroke','#ff0000'); }
+                else                { drag.setAttribute('stroke','#000000'); }
             } else {
                 drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
                 drag.setAttribute('width',5); drag.setAttribute('height',5);
