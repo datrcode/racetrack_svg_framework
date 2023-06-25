@@ -542,6 +542,8 @@ class RTLinkNodeMixin(object):
                                     _df,_throwaway = rt_self.applyTransform(_df, _tup_part)
 
             # Check the node information... make sure the parameters are set
+            if self.sm_type is not None:
+                self.node_shape = 'small_multiple'             
             if self.node_shape == 'small_multiple':
                 if self.sm_type is None:        # sm_type must be set to the widget type... else default back to small node size
                     self.node_shape = 'ellipse'
@@ -1011,7 +1013,10 @@ class RTLinkNodeMixin(object):
                                         node_to_xy[node_str] = (x,y)
 
                                         if track_state:
-                                            _poly = Polygon([[x,y],[x+self.sm_w,y],[x+self.sm_w,y+self.sm_h],[x,y+self.sm_h]])
+                                            _poly = Polygon([[x-self.sm_w/2,y-self.sm_h/2],
+                                                             [x+self.sm_w/2,y-self.sm_h/2],
+                                                             [x+self.sm_w/2,y+self.sm_h/2],
+                                                             [x-self.sm_w/2,y+self.sm_h/2]])
                                             if _poly not in self.geom_to_df.keys():
                                                 self.geom_to_df[_poly] = []
                                             self.geom_to_df[_poly].append(k_df)
@@ -1106,7 +1111,10 @@ class RTLinkNodeMixin(object):
 
                                         # Track state
                                         if track_state:
-                                            _poly = Polygon([[x,y],[x+_sz,y],[x+_sz,y+_sz],[x,y+_sz]])
+                                            _poly = Polygon([[x-_sz,y-_sz],
+                                                             [x+_sz,y-_sz],
+                                                             [x+_sz,y+_sz],
+                                                             [x-_sz,y+_sz]])
                                             if _poly not in self.geom_to_df.keys():
                                                 self.geom_to_df[_poly] = []
                                             self.geom_to_df[_poly].append(k_df)

@@ -1087,6 +1087,8 @@ class RTXYMixin(object):
             self.draw_context             = draw_context
 
             # Check the dot information
+            if self.sm_type is not None:
+                self.dot_shape = 'small_multiple'            
             if self.dot_shape == 'small_multiple':
                 self.dot_size = 'medium' # put a valid value in here
                 if self.sm_type is None:
