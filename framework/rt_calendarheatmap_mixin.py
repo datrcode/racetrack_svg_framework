@@ -21,6 +21,8 @@ from pandas.tseries.offsets import MonthEnd
 
 from datetime import datetime
 
+from shapely.geometry import Polygon
+
 from rt_component import RTComponent
 
 __name__ = 'rt_calendarheatmap_mixin'
@@ -164,7 +166,7 @@ class RTCalendarHeatmapMixin(object):
     #
     class RTCalendarHeatmap(RTComponent):
         #
-        #
+        # Constructor
         #
         def __init__(self,
                      rt_self,
@@ -274,6 +276,9 @@ class RTCalendarHeatmapMixin(object):
             self.num_years = 1 + self.ts_max.year - self.ts_min.year
             if self.num_years > 15:
                 raise Exception('calendarHeatmap only handles up to fifteen consecutive years')
+            
+            # For state tracking
+            self.geom_to_df = {}
 
         #
         # __calculateGeometry__() - calculate the geometry for the render
@@ -345,7 +350,7 @@ class RTCalendarHeatmapMixin(object):
         #
         # renderSVG() - render the SVG for the view
         #
-        def renderSVG(self, just_calc_max):
+        def renderSVG(self, just_calc_max=False, track_state=False):
             # Calculate the geometry
             self.__calculateGeometry__()
 
@@ -466,6 +471,11 @@ class RTCalendarHeatmapMixin(object):
             # Render cells that have data
             #
             if self.sm_type is None:
+                # Make a special groupby for tracking state
+                if track_state:
+                    tracking_gb = self.df.groupby(pd.Grouper(key=self.ts_field,freq='D'))
+
+                # Iterate over the values & render
                 for i in range(len(_gb)):
                     _value  = _gb[i]
                     if _value > 0:
@@ -478,6 +488,10 @@ class RTCalendarHeatmapMixin(object):
                         else:
                             svg += f'<rect width="{self.cell_w}" height="{self.cell_h}" x="{x}" y="{y}" stroke-opacity="0.0" fill="{_co}" />'
 
+                        if track_state:
+                            _poly = Polygon([[x,y],[x+self.cell_w,y],[x+self.cell_w,y+self.cell_h],[x,y+self.cell_h]])
+                            self.geom_to_df[_poly] = tracking_gb.get_group(_ts_str)
+
             #
             # Render by small multiples
             #
@@ -485,6 +499,12 @@ class RTCalendarHeatmapMixin(object):
                 node_to_dfs = {}
                 for k,k_df in self.df.groupby(pd.Grouper(key=self.ts_field,freq='D')):
                     node_to_dfs[k] = k_df
+                    if len(k_df) > 0 and track_state:
+                        x,y =  self.node_to_xy[node_str]
+                        x   -= self.sm_w/2
+                        y   -= self.sm_h/2
+                        _poly = Polygon([[x,y],[x+self.sm_w,y],[x+self.sm_w,y+self.sm_h],[x,y+self.sm_h]])
+                        self.geom_to_df[_poly] = k_df
 
                 sm_lu = self.rt_self.createSmallMultiples(self.df, node_to_dfs, node_to_xy,
                                                           self.count_by, self.count_by_set, self.color_by, self.ts_field, self.widget_id,
@@ -529,4 +549,16 @@ class RTCalendarHeatmapMixin(object):
             svg += '</svg>'
 
             return svg
-            
+
+        #
+        # Determine which dataframe geometries overlap with a specific
+        #
+        def overlappingDataFrames(self, to_intersect):
+            _dfs = []
+            for _poly in self.geom_to_df.keys():
+                if _poly.intersects(to_intersect):
+                    _dfs.append(self.geom_to_df[_poly])
+            if len(_dfs) > 0:
+                return pd.concat(_dfs)
+            else:
+                return None

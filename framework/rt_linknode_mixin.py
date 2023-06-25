@@ -22,6 +22,8 @@ import re
 
 from math import sqrt
 
+from shapely.geometry import Polygon,LineString
+
 from rt_component import RTComponent
 
 __name__ = 'rt_linknode_mixin'
@@ -553,6 +555,9 @@ class RTLinkNodeMixin(object):
             # don't work.. then it's count_by_set
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
+            
+            # Tracking state
+            self.geom_to_df = {}
 
         #
         # __calculateGeometry__() - determine the geometry for the view
@@ -793,7 +798,7 @@ class RTLinkNodeMixin(object):
         #
         # __renderLinks__() - return links
         #
-        def __renderLinks__(self):
+        def __renderLinks__(self,track_state=False):
             # Render links
             svg = ''
             if self.link_size is not None and self.link_size != 'hidden':
@@ -866,6 +871,13 @@ class RTLinkNodeMixin(object):
                                     _co = self.link_color
                                 else:
                                     _co = self.rt_self.co_mgr.getTVColor('data','default')
+
+                                # Capture the state
+                                if track_state:
+                                    _line = LineString([[x1,y1],[x2,y2]])
+                                    if _line not in self.geom_to_df.keys():
+                                        self.geom_to_df[_line] = []
+                                    self.geom_to_df[_line].append(k_df)
                                     
                                 # Determine the link style
                                 if    self.link_shape == 'line':
@@ -911,13 +923,12 @@ class RTLinkNodeMixin(object):
         #
         # __renderNodes__() - render the nodes
         #
-        def __renderNodes__(self):
+        def __renderNodes__(self, track_state=False):
             svg = ''
 
             # Small multiple structures
             node_to_dfs = {}
             node_to_xy  = {}
-            node_already_drawn = set()
 
             # Render nodes
             if self.node_size is not None and self.node_size != 'hidden':
@@ -998,12 +1009,14 @@ class RTLinkNodeMixin(object):
 
                                         node_to_dfs[node_str].append(k_df)
                                         node_to_xy[node_str] = (x,y)
-                                    else:
-                                        # Don't re-draw nodes...
-                                        if node_str in node_already_drawn:
-                                            continue
-                                        node_already_drawn.add(node_str)
 
+                                        if track_state:
+                                            _poly = Polygon([[x,y],[x+self.sm_w,y],[x+self.sm_w,y+self.sm_h],[x,y+self.sm_h]])
+                                            if _poly not in self.geom_to_df.keys():
+                                                self.geom_to_df[_poly] = []
+                                            self.geom_to_df[_poly].append(k_df)
+
+                                    else:
                                         # Determine the color
                                         if   type(self.node_color) == dict:
                                             if node_str in self.node_color.keys():
@@ -1091,6 +1104,13 @@ class RTLinkNodeMixin(object):
                                         else:
                                             svg += self.rt_self.renderShape(_shape, x, y, _sz, _co, _co_border, self.node_opacity)
 
+                                        # Track state
+                                        if track_state:
+                                            _poly = Polygon([[x,y],[x+_sz,y],[x+_sz,y+_sz],[x,y+_sz]])
+                                            if _poly not in self.geom_to_df.keys():
+                                                self.geom_to_df[_poly] = []
+                                            self.geom_to_df[_poly].append(k_df)
+
                                         # Prepare the label
                                         k_str = node_str
 
@@ -1144,7 +1164,7 @@ class RTLinkNodeMixin(object):
         #
         # renderSVG() - render as SVG
         #
-        def renderSVG(self):
+        def renderSVG(self, just_calc_max=False, track_state=False):
             # Determine geometry
             self.__calculateGeometry__()
 
@@ -1158,8 +1178,8 @@ class RTLinkNodeMixin(object):
 
             # Render convex hulls, links, and then nodes
             svg += self.__renderConvexHull__()
-            svg += self.__renderLinks__()
-            svg += self.__renderNodes__()
+            svg += self.__renderLinks__(track_state)
+            svg += self.__renderNodes__(track_state)
 
             # Defer render
             for x in self.defer_render:
@@ -1173,6 +1193,19 @@ class RTLinkNodeMixin(object):
             svg += '</svg>'
 
             return svg
+
+        #
+        # Determine which dataframe geometries overlap with a specific
+        #
+        def overlappingDataFrames(self, to_intersect):
+            _dfs = []
+            for _poly in self.geom_to_df.keys():
+                if _poly.intersects(to_intersect):
+                    _dfs.extend(self.geom_to_df[_poly]) # <== SLIGHTLY DIFFERENT THAN ALL OF THE OTHERS...
+            if len(_dfs) > 0:
+                return pd.concat(_dfs)
+            else:
+                return None
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------------------------------
