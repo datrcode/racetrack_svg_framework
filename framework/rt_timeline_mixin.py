@@ -210,12 +210,16 @@ class RTTimelineMixin(object):
                 self.timestamp_end = pd.to_datetime(self.rt_self.maxTimeForStringPrecision(_str))
             else:
                 raise Exception('either need a df an ts_field... of a timestamp, timestamp_end in RTTimeline()')
+            
+            self.last_render = None
 
         #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
-            return self.renderSVG()
+            if self.last_render is None:
+                self.renderSVG()
+            return self.last_render
 
         #
         # renderSVG() - render as SVG
@@ -247,7 +251,7 @@ class RTTimelineMixin(object):
             svg += self.rt_self.svgText(_max_str, _x1, self.line_width + self.txt_h + 3, self.txt_h)
 
             svg += '</svg>'
-
+            self.last_render = svg
             return svg
 
         #

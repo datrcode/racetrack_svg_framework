@@ -16,17 +16,23 @@
 __name__ = 'rt_component'
 
 #
-# Annotations Mixin
+# RTComponent Base Class
+# - Other than documentation, does this actually do any checking?
 #
 class RTComponent(object):
         #
         # SVG Representation Renderer
+        # - recommended that this method use a saved version of the last render:
+        #   - self.last_render
+        # - return value is an svg string
         #
         def _repr_svg_(self):
             pass
 
         #
         # renderSVG() - create the SVG Rendering
+        # - recommend that this method save the rendering into the last_render member variable.
+        # - return value is an svg string
         #
         def renderSVG(self, just_calc_max=False, track_state=False):
             pass
@@ -40,6 +46,8 @@ class RTComponent(object):
 
         #
         # Determine which dataframe geometries overlap with a specific
+        # - to_intersect should be a shapely shape
+        # - return value is a pandas dataframe
         #
         def overlappingDataFrames(self, to_intersect):
             pass

@@ -291,12 +291,15 @@ class RTBoxplotMixin(object):
 
             # Geometry lookup for tracking state
             self.geom_to_df = {}
+            self.last_render = None
 
         #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
-            return self.renderSVG()
+            if self.last_render is None:
+                self.renderSVG()
+            return self.last_render
 
         #
         # renderSVG() - create the SVG
@@ -581,6 +584,7 @@ class RTBoxplotMixin(object):
                         svg += self.rt_self.svgText(as_str, bpos[0], bpos[1] - usable_txt_h/3, usable_txt_h, rotation=_angle)
 
             svg += '</svg>'
+            self.last_render = svg
             return svg
 
         #

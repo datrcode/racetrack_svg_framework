@@ -452,12 +452,15 @@ class RTPeriodicBarChartMixin(object):
             
             # Geometry lookup for tracking state
             self.geom_to_df = {}
+            self.last_render = None
 
         #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
-            return self.renderSVG()
+            if self.last_render is None:
+                self.renderSVG()
+            return self.last_render
 
         #
         # renderSVG() - create the SVG
@@ -700,7 +703,7 @@ class RTPeriodicBarChartMixin(object):
                 svg += f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />'
 
             svg += '</svg>'
-                    
+            self.last_render = svg
             return svg
 
         #

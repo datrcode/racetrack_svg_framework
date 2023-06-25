@@ -1181,12 +1181,15 @@ class RTXYMixin(object):
 
             # Geometry lookup for tracking state
             self.geom_to_df = {}
+            self.last_render = None
 
         #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
-            return self.renderSVG()
+            if self.last_render is None:
+                self.renderSVG()
+            return self.last_render
 
         #
         # renderSVG() - render as SVG
@@ -1719,7 +1722,7 @@ class RTXYMixin(object):
                 svg += f'<rect width="{self.w-1}" height="{self.h}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />'
             
             svg += '</svg>'
-
+            self.last_render = svg
             return svg
         
         #

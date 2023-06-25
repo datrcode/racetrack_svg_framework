@@ -279,6 +279,7 @@ class RTCalendarHeatmapMixin(object):
             
             # For state tracking
             self.geom_to_df = {}
+            self.last_render = None
 
         #
         # __calculateGeometry__() - calculate the geometry for the render
@@ -345,7 +346,9 @@ class RTCalendarHeatmapMixin(object):
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
-            return self.renderSVG()
+            if self.last_render is None:
+                self.renderSVG()
+            return self.last_render
 
         #
         # renderSVG() - render the SVG for the view
@@ -547,7 +550,7 @@ class RTCalendarHeatmapMixin(object):
                         svg += self.rt_self.svgText(str(_date.day), x+2, y+self.txt_h, self.txt_h-4)
 
             svg += '</svg>'
-
+            self.last_render = svg
             return svg
 
         #
