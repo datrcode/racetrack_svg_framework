@@ -565,7 +565,7 @@ class RTLayoutsMixin(object):
             temporal_granularity = self.temporalGranularity(df, ts_field)
             
         # Start the SVG
-        svg =  f'<svg id="{widget_id}" width="{w+1}" height="{h+1}" xmlns="http://www.w3.org/2000/svg">'
+        svg,_instance_lu =  f'<svg id="{widget_id}" width="{w+1}" height="{h+1}" xmlns="http://www.w3.org/2000/svg">',{}
 
         # Go through the placement, identify the placement keys that are widgets... fill them in... then render them...
         for place in placement.keys():
@@ -613,12 +613,16 @@ class RTLayoutsMixin(object):
                     my_params['temporal_granularity'] = temporal_granularity
                     
                 # Resolve the method name and invoke it adding to the svg string
-                func = getattr(self, widget_method)
-                
-                svg += func(**my_params)
+                _func      = getattr(self, widget_method + 'Instance')
+                _instance  = _func(**my_params)
+                svg       += _instance.renderSVG(track_state=track_state)
+
+                _px0,_py0,_px1,_py1 = my_params['x_view'], my_params['y_view'], my_params['x_view']+my_params['w'], my_params['y_view']+my_params['h']
+                _instance_bounds = Polygon([[_px0,_py0],[_px0,_py1],[_px1,_py1],[_px1,_py0]])
+                _instance_lu[_instance_bounds] = _instance
 
         svg += '</svg>'
-        return svg
+        return RTLayout(self, _instance_lu, svg)
 
     #
     # Create the SVG multipanel widget using a gridbag-like layout method.
