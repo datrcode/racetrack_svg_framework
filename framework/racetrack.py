@@ -47,6 +47,7 @@ from rt_piechart_mixin          import RTPieChartMixin
 from rt_shapes_mixin            import RTShapesMixin
 from rt_small_multiples_mixin   import RTSmallMultiplesMixin
 from rt_temporal_barchart_mixin import RTTemporalBarChartMixin
+from rt_text_mixin              import RTTextMixin
 from rt_timeline_mixin          import RTTimelineMixin
 from rt_xy_mixin                import RTXYMixin
 
@@ -67,6 +68,7 @@ class RACETrack(RTAnnotationsMixin,
                 RTShapesMixin,
                 RTSmallMultiplesMixin,
                 RTTemporalBarChartMixin,
+                RTTextMixin,
                 RTTimelineMixin,
                 RTXYMixin):
     #
