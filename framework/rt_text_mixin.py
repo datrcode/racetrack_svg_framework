@@ -77,28 +77,75 @@ class RTTextMixin(object):
         while len(lines) > 0 and lines[-1] == '':
             lines = lines[:-1]
         
-        svg,y,iword,ipoly,line_no = '',txt_h+y_ins,{},{},0
+        svg,y,iword,ipoly,line_no,orig_to_xy,orig_i = '',txt_h+y_ins,{},{},0,{},-1
+        orig_to_xy[0] = (x_ins,y)
         for _line in lines:
-            words,x,word_no = _line.split(' '),x_ins,1
+            words,x,word_no = _line.split(' '),x_ins,0
             for _word in words:
                 svg += self.svgText(_word, x, y, txt_h)
-                word_len = self.textLength(_word, txt_h)
-                _poly = Polygon([[x,y],[x+word_len,y],[x+word_len,y-txt_h],[x,y-txt_h]])
-                _pos  = (line_no,word_no)
+                word_len_px = self.textLength(_word, txt_h)
+
+                orig_i = txt.index(_word, orig_i+1)
+                orig_to_xy[orig_i] = (x,y)
+                orig_to_xy[orig_i + len(_word)] = (x+word_len_px,y)
+
+                if False and len(_word) > 0: # Happens if multiple spaces occur together...
+                    so_far = self.textLength(_word[0], txt_h)
+                    for j in range(1,len(_word)):
+                        orig_to_xy[orig_i+j] = (x+so_far,y)
+                        so_far += self.textLength(_word[j], txt_h)
+
+                _pos  = (x, y, word_len_px, txt_h, orig_i, line_no, word_no)
                 iword[_pos] = _word
+
+                _poly = Polygon([[x,y],[x+word_len_px,y],[x+word_len_px,y-txt_h],[x,y-txt_h]])
                 ipoly[_pos] = _poly
-                x += word_len + self.textLength(' ', txt_h)
+
+                x += word_len_px + self.textLength(' ', txt_h)
                 word_no += 1
             y += txt_h + line_space_px
             line_no += 1
-        bounds = (0,0,w,y-txt_h+y_ins)
 
-        return RTTextBlock(self, txt, lines, svg, bounds, iword, ipoly, txt_h, line_space_px)
+        # Fill in missing originals...
+
+        bounds = (0,0,w,y-txt_h+y_ins)
+        return RTTextBlock(self, txt, lines, svg, bounds, iword, ipoly, orig_to_xy, txt_h, line_space_px)
+
+    #
+    # joinLines() - join lines together and remove extra spaces.
+    #
+    def joinNewLines(self, txt):
+        joined = ' '.join(txt.split('\n'))
+        while len(joined) > 0 and joined[0] == ' ':
+            joined = joined[1:]
+        while len(joined) > 0 and joined[-1] == ' ':
+            joined = joined[:-1]
+        words = joined.split(' ')
+        wout_blanks = []
+        for word in words:
+            if len(word) > 0:
+                wout_blanks.append(word)
+        return ' '.join(wout_blanks)
+    
+    #
+    # maxLinePixels() - determine the max line length (in pixels)
+    # - method first splits by newline character...
+    #
+    def maxLinePixels(self, txt, txt_h=14):
+        _max = 0
+        lines = txt.split('\n')
+        for _line in lines:
+            _len = self.textLength(_line, txt_h)
+            _max = max(_len,_max)
+        return _max + 6
 
 #
 # RTTextBlock - instance of rendered text block
 #
 class RTTextBlock(object):
+    #
+    # Constructor
+    #
     def __init__(self,
                  rt_self,
                  txt,
@@ -107,6 +154,7 @@ class RTTextBlock(object):
                  bounds,
                  iword,
                  ipoly,
+                 orig_to_xy,
                  txt_h,
                  line_space_px):
         self.rt_self       = rt_self
@@ -116,16 +164,35 @@ class RTTextBlock(object):
         self.bounds        = bounds
         self.pos_word      = iword
         self.pos_poly      = ipoly
+        self.orig_to_xy    = orig_to_xy
         self.txt_h         = txt_h
         self.line_space_px = line_space_px
     
     #
+    # SVG Representation -- adds the svg begin/end markup...
     #
-    #
-    def _svg_repr_(self):
+    def _repr_svg_(self):
         x,y,w,h = self.bounds
         _co     = self.rt_self.co_mgr.getTVColor('background','default')
         return f'<svg width="{w}" height="{h}">' + \
                f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />' + \
                self.svg + \
+               '</svg>'
+    
+    #
+    # Debugging Original Indices
+    #
+    def __debug_svgOfOverlayOriginalIndices__(self):
+        svg_overlay = ''
+        _co = self.rt_self.co_mgr.getTVColor('data','default')
+        for i in self.orig_to_xy:
+            x,y = self.orig_to_xy[i]
+            svg_overlay += f'<line x1="{x}" y1="{y}" x2="{x}" y2="{y-self.txt_h}" stroke="{_co}" />'
+
+        x,y,w,h = self.bounds
+        _co     = self.rt_self.co_mgr.getTVColor('background','default')
+        return f'<svg width="{w}" height="{h}">' + \
+               f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />' + \
+               self.svg + \
+               svg_overlay + \
                '</svg>'
