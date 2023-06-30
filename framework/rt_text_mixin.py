@@ -89,7 +89,7 @@ class RTTextMixin(object):
                 orig_to_xy[orig_i] = (x,y)
                 orig_to_xy[orig_i + len(_word)] = (x+word_len_px,y)
 
-                if False and len(_word) > 0: # Happens if multiple spaces occur together...
+                if len(_word) > 0: # Happens if multiple spaces occur together...
                     so_far = self.textLength(_word[0], txt_h)
                     for j in range(1,len(_word)):
                         orig_to_xy[orig_i+j] = (x+so_far,y)
@@ -108,6 +108,7 @@ class RTTextMixin(object):
 
         # Fill in missing originals...
 
+        # Calculate the bounds
         bounds = (0,0,w,y-txt_h+y_ins)
         return RTTextBlock(self, txt, lines, svg, bounds, iword, ipoly, orig_to_xy, txt_h, line_space_px)
 

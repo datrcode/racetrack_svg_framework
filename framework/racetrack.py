@@ -77,7 +77,7 @@ class RACETrack(RTAnnotationsMixin,
     def __init__(self):
         # Visualization globals
         self.co_mgr            = RTColorManager(self)
-        self.default_font      = "Times, serif"
+        self.default_font      = "Monospace"
         self.fformat           = '0.2f'
         
         # Field transformations
@@ -583,81 +583,24 @@ class RACETrack(RTAnnotationsMixin,
             font = self.default_font
         if color is None:
             color = self.co_mgr.getTVColor('label','defaultfg')
+
+        _html_txt = html.escape(txt)
+        if ' ' in _html_txt:
+            _html_txt = _html_txt.replace(' ','&nbsp;')
+
         if rotation is not None:
             return f'<text x="{x}" text-anchor="{anchor}" y="{y}" font-family="{font}" fill="{color}" font-size="{txt_h}px"' + \
-                   f' transform="rotate({rotation},{x},{y})">{html.escape(txt)}</text>'
+                   f' transform="rotate({rotation},{x},{y})">{_html_txt}</text>'
         else:
-            return f'<text x="{x}" text-anchor="{anchor}" y="{y}" font-family="{font}" fill="{color}" font-size="{txt_h}px">{html.escape(txt)}</text>'
+            return f'<text x="{x}" text-anchor="{anchor}" y="{y}" font-family="{font}" fill="{color}" font-size="{txt_h}px">{_html_txt}</text>'
 
     #
     # Empirically-derived font metrics -- see the next javascript code block on the initial generation of these numbers
     # ... this is really just a starting point
     # ... looks like correct for visual studio code with a txt_h of 19.5 // 2023-02-05
+    # ... updated on 2023-06-28 to load them from a file...
     #
-    _font_metrics_ = {
-        'a':9.100006103515625,
-        'b':10,
-        'c':9.100006103515625,
-        'd':10,
-        'e':9.100006103515625,
-        'f':7.350006103515625,
-        'g':10,
-        'h':10,
-        'i':6.4666595458984375,
-        'j':6.4666595458984375,
-        'k':10,
-        'l':6.4666595458984375,
-        'm':14.466659545898438,
-        'n':10,
-        'o':10,
-        'p':10,
-        'q':10,
-        'r':7.350006103515625,
-        's':8.25,
-        't':6.4666595458984375,
-        'u':10,
-        'v':10,
-        'w':13.566665649414062,
-        'x':10,
-        'y':10,
-        'z':9.100006103515625,
-        'A':13.566665649414062,
-        'B':12.699996948242188,
-        'C':12.699996948242188,
-        'D':13.566665649414062,
-        'E':11.76666259765625,
-        'F':10.916671752929688,
-        'G':13.566665649414062,
-        'H':13.566665649414062,
-        'I':7.350006103515625,
-        'J':8.25,
-        'K':13.566665649414062,
-        'L':11.76666259765625,
-        'M':16.25,
-        'N':13.566665649414062,
-        'O':13.566665649414062,
-        'P':10.916671752929688,
-        'Q':13.566665649414062,
-        'R':12.699996948242188,
-        'S':10.916671752929688,
-        'T':11.76666259765625,
-        'U':13.566665649414062,
-        'V':13.566665649414062,
-        'W':17.133331298828125,
-        'X':13.566665649414062,
-        'Y':13.566665649414062,
-        'Z':11.76666259765625,
-        '0':10,
-        '1':10,
-        '2':10,
-        '3':10,
-        '4':10,
-        '5':10,
-        '6':10,
-        '7':10,
-        '8':10,
-        '9':10
-    }
+    _font_metrics_ = None
 
     #
     # Javascript used to generate the above... with a little bit of editing for the results to fit into a dictionary (copied from JS Console)...
@@ -676,6 +619,32 @@ for (i=0;i<str.length;i++) {
 	let elem = document.getElementById("_test_" + str[i]);
 	let rect = elem.getBoundingClientRect();
 	console.log("\'" + str[i] + "\':" + rect.width)
+}
+"""
+
+    #
+    # 2023-06-28 // Updated javascript that includes the first 4K unicode characters as well...
+    # ... however, it doesn't fill in the space character... which is integer value 32
+    #
+    _font_metrics_unicode_js_ = """
+function toHexFour(i) {
+	my_s = i.toString(16)
+  while (my_s.length < 4) { my_s = "0" + my_s; }
+  return my_s
+}
+let sz = 16;
+let s  = '';
+for (i=32;i<4096;i++) {
+	if (i==32) c = '&nbsp;';
+  else       c = '&#x' + toHexFour(i) + ';';
+	s = s + '<text id="txt' + i + '" x="5" y="32" font-family="ariel" font-size="'+sz+'px">' + c + '</text>';
+}
+document.write('<?xml version="1.0" encoding="UTF-8" standalone="no"?>' +
+               '<svg width="64" height="64">' + s + '</svg>');
+for (i=32;i<4096;i++) {
+	let elem = document.getElementById("txt"+i);
+	let rect = elem.getBoundingClientRect();
+	console.log("" + i + "," + sz + "," + rect.width);
 }
 """
 
@@ -699,15 +668,40 @@ for (i=0;i<str.length;i++) {
         return txt[:i-1] + '...'
 
     #
-    # textLength() - calculate the expected text length
+    # textLength() - calcualte the expected text length
     #
     def textLength(self, txt, txt_h):
+        return len(txt)*txt_h/1.668
+
+    #
+    # textLength() - calculate the expected text length
+    # ... was eventuall modified for "Ariel"
+    # ... but the kerning made the calculation difficult... any lower case letters following an "f" were a problem...
+    #
+    def __ariel__textLength__(self, txt, txt_h):
+        ratio14 = 15.8
+        # Load the pre-calculated font-metrics
+        if self._font_metrics_ is None:
+            _filename = '../config/20230629_ariel_14.txt'
+            with open(_filename) as file:
+                lines = [line.rstrip() for line in file]
+            self._font_metrics_ = {}
+            for _line in lines:
+                _parts = _line.split(',')
+                _ord   = int(_parts[0])
+                _sz    = int(_parts[1])
+                _w     = float(_parts[2])
+                if _sz not in self._font_metrics_.keys():
+                    self._font_metrics_[_sz] = {}    
+                self._font_metrics_[_sz][_ord] = _w
+            self._font_metrics_[_sz][32] = 4.0
+        # Calculate the width of the specified string
         w = 0
         for c in txt:
-            if c in self._font_metrics_:
-                w += self._font_metrics_[c] * txt_h/19.5
+            if ord(c) in self._font_metrics_[14].keys():
+                w += self._font_metrics_[14][ord(c)] * txt_h/ratio14
             else:
-                w += 10 * txt_h/19.5
+                w += 10 * txt_h/ratio14
         return w
 
     #
