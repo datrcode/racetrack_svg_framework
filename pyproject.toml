@@ -1,0 +1,10 @@
+[build-system]
+requires = [
+  "networkx",
+  "numpy",
+  "pandas",
+  "panel ~= 0.14.2",
+  "shapely",
+  "squarify",
+  "svglib"
+]
