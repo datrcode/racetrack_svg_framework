@@ -108,6 +108,7 @@ class RTTextMixin(object):
         # Calculate geom_to_word
         geom_to_word = {}
         i,last_was_space = 0,True
+        _dn = 4 # downward shift...
         while i < len(txt):
             if self.__whitespace__(txt[i]) or self.__punctuation__(txt[i]):
                 last_was_space = True
@@ -123,7 +124,10 @@ class RTTextMixin(object):
                     x0,y0 =  orig_to_xy[i0]
                     x1,y1 =  orig_to_xy[i1-1]
                     x1    += self.textLength(txt[i-1],txt_h)
-                    _polygon = Polygon([[x0,y0+line_space_px], [x1,y1+line_space_px], [x1,y1-txt_h], [x0,y1-txt_h]])
+                    _polygon = Polygon([[x0,y0+line_space_px+_dn], 
+                                        [x1,y1+line_space_px+_dn], 
+                                        [x1,y1-txt_h+_dn], 
+                                        [x0,y1-txt_h+_dn]])
                     geom_to_word[_polygon] = txt[i0:i1]
                 last_was_space = False
                 i = i1
@@ -242,21 +246,22 @@ class RTTextBlock(object):
         else:
             xy1    = self.orig_to_xy[j]
 
+        _dn = 4 # downward shift...
         if     xy0[1]                                    == xy1[1]: # On same line...
-            return Polygon([[xy0[0],xy0[1]],
-                            [xy1[0],xy1[1]],
-                            [xy1[0],xy1[1]-self.txt_h],
-                            [xy0[0],xy0[1]-self.txt_h]
+            return Polygon([[xy0[0],xy0[1]+_dn],
+                            [xy1[0],xy1[1]+_dn],
+                            [xy1[0],xy1[1]-self.txt_h+_dn],
+                            [xy0[0],xy0[1]-self.txt_h+_dn]
                             ])
         else: # Multiple lines...
-            return Polygon([[xy0[0],              xy0[1]],
-                            [self.x_ins,          xy0[1]],
-                            [self.x_ins,          xy1[1]],
-                            [xy1[0],              xy1[1]],
-                            [xy1[0],              xy1[1]-self.txt_h],
-                            [self.w - self.x_ins, xy1[1]-self.txt_h],
-                            [self.w - self.x_ins, xy0[1]-self.txt_h],
-                            [xy0[0],              xy0[1]-self.txt_h]
+            return Polygon([[xy0[0],              xy0[1]+_dn],
+                            [self.x_ins,          xy0[1]+_dn],
+                            [self.x_ins,          xy1[1]+_dn],
+                            [xy1[0],              xy1[1]+_dn],
+                            [xy1[0],              xy1[1]-self.txt_h+_dn],
+                            [self.w - self.x_ins, xy1[1]-self.txt_h+_dn],
+                            [self.w - self.x_ins, xy0[1]-self.txt_h+_dn],
+                            [xy0[0],              xy0[1]-self.txt_h+_dn]
                             ])
 
     #
