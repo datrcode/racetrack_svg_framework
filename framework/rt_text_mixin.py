@@ -15,11 +15,12 @@
 
 import pandas as pd
 import numpy as np
+import spacy
 import re
 
 from rt_component import RTComponent
 
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, MultiPolygon
 
 __name__ = 'rt_text_mixin'
 
@@ -27,6 +28,12 @@ __name__ = 'rt_text_mixin'
 # Abstraction for Text
 #
 class RTTextMixin(object):
+    #
+    # Constructor
+    # 
+    def __text_mixin_init__(self):
+        self.spacy_loaded_flag = False
+
     #
     # textBlock() - render a textblock and track positional information of characters and words.
     #
@@ -193,6 +200,30 @@ class RTTextMixin(object):
             _len = self.textLength(_line, txt_h)
             _max = max(_len,_max)
         return _max + 6
+    
+    #
+    # extractEntities() - extract entities.
+    #
+    def extractEntities(self, 
+                        txt, 
+                        algo='spacy'):
+        if algo == 'spacy':
+            return self.__extractEntitiesSpacy__(txt)
+        else:
+            raise Exception(f'RACETrack.extractEntities() - unknown algorithm "{algo}"')
+
+    #
+    # __extractEntitiesSpacy__() - extract entities using SpaCy.
+    #
+    def __extractEntitiesSpacy__(self,txt):
+        if self.spacy_loaded_flag == False:
+            self.nlp_spacy = spacy.load('en_core_web_sm')
+            self.spacy_loaded_flag = True
+        doc = self.nlp_spacy(txt)
+        ret = []
+        for entity in doc.ents:
+            ret.append((entity.text, entity.label_))
+        return ret
 
 #
 # RTTextBlock - instance of rendered text block
@@ -253,6 +284,16 @@ class RTTextBlock(object):
                             [xy1[0],xy1[1]-self.txt_h+_dn],
                             [xy0[0],xy0[1]-self.txt_h+_dn]
                             ])
+        elif  (xy0[1] + self.txt_h + self.line_space_px) == xy1[1] and (xy1[0] < xy0[0]):
+            _poly0 = Polygon([[xy0[0],              xy0[1]+_dn],
+                              [self.w - self.x_ins, xy0[1]+_dn],
+                              [self.w - self.x_ins, xy0[1]-self.txt_h+_dn],
+                              [xy0[0],              xy0[1]-self.txt_h+_dn]])
+            _poly1 = Polygon([[xy1[0],              xy1[1]+_dn],
+                              [xy1[0],              xy1[1]-self.txt_h+_dn],
+                              [self.x_ins,          xy1[1]-self.txt_h+_dn],
+                              [self.x_ins,          xy1[1]+_dn]])
+            return MultiPolygon([_poly0,_poly1])
         else: # Multiple lines...
             return Polygon([[xy0[0],              xy0[1]+_dn],
                             [self.x_ins,          xy0[1]+_dn],
@@ -275,7 +316,8 @@ class RTTextBlock(object):
         svg_underlay = ''
         for k in lu:
             _co = lu[k]
-
+            if _co.startswith('#') == False or len(_co) != 7: # If it's not a hex hash color string... then look it up...
+                _co = self.rt_self.co_mgr.getColor(_co)
             if   type(k) == tuple:
                 _poly = self.spanGeometry(k[0],k[1])
                 svg_underlay += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly)}" fill="{_co}" fill-opacity="{opacity}" />'

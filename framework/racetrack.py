@@ -122,6 +122,7 @@ class RACETrack(RTAnnotationsMixin,
         self.__panel_mixin_init__()
         self.__periodic_barchart_mixin_init__()
         self.__temporal_barchart_mixin_init__()
+        self.__text_mixin_init__()
 
     #
     # Render the SVG as HTML and display it within a notebook

@@ -5,6 +5,10 @@ requires = [
   "pandas",
   "panel ~= 0.14.2",
   "shapely",
+  "spacy",
   "squarify",
   "svglib"
 ]
+
+# For SpaCy, still need to also download the configuration file:
+# python -m spacy download en_core_web_sm
