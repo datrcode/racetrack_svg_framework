@@ -15,6 +15,7 @@
 
 import pandas as pd
 import numpy as np
+import re
 
 from rt_component import RTComponent
 
@@ -138,8 +139,10 @@ class RTTextMixin(object):
     def __punctuation__(self, c):
         _str = '''!.?,[]{}:;`~%^&*()-_+='"<>/\\'''
         return c in _str
+    
     #
     # joinLines() - join lines together and remove extra spaces.
+    # - expect that this is a utility to call before textBlock()
     #
     def joinNewLines(self, txt):
         joined = ' '.join(txt.split('\n'))
@@ -153,6 +156,27 @@ class RTTextMixin(object):
             if len(word) > 0:
                 wout_blanks.append(word)
         return ' '.join(wout_blanks)
+    
+    #
+    # joinNewLinesBetter() - keep newlines (if single) intact...
+    # - more closely mirrors the (de facto) standard of using double line returns 
+    #   to separate paragraphs
+    # - expect that this is a utility to call before textBlock()
+    #
+    def joinNewLinesBetter(self, txt):
+        re_match = re.findall(r'([\n]{2,})',txt)
+        if re_match is None:
+            return self.joinNewLines(txt)
+        else:
+            i,_ret = 0,''
+            for _match in re_match:
+                j = txt.find(_match,i)
+                _ret += self.joinNewLines(txt[i:j])
+                for k in range(len(_match)-1):
+                    _ret += '\n'
+                i = j+len(_match)
+            _ret += self.joinNewLines(txt[i:])
+            return _ret
     
     #
     # maxLinePixels() - split a string by new line characters, then determine
@@ -239,97 +263,3 @@ class RTTextBlock(object):
                self.svg     + \
                '</svg>'
 
-
-
-#
-# Unused Code Block
-#
-__unused__ = """
-
-    #
-    # textBlock 
-    # - render into an svg text block with looks up for text locations
-    # - does not include the SVG wrapper
-    #
-    def XXX_textBlock(self, 
-                  txt, 
-                  txt_h=14,
-                  line_space_px=3,
-                  word_wrap=False,
-                  w=512,
-                  x_ins=5,
-                  y_ins=3):
-        # Break the text into lines
-        lines = txt.split('\n')
-        # Wrap the words if the option is set...
-        if word_wrap:
-            i = 0
-            while i < len(lines):
-                if self.textLength(lines[i], txt_h) > (w-2*x_ins):
-                    words,j = lines[i].split(' '),0
-                    first,finished = words[j],False
-                    j += 1
-                    while finished == False and \
-                          j < len(words)    and \
-                          self.textLength(first, txt_h) < (w-2*x_ins):
-                        if self.textLength(first + ' ' + words[j],txt_h) > (w-2*x_ins):
-                            finished = True
-                        else:
-                            first += ' ' + words[j]
-                            j += 1
-                    if j < len(words):
-                        second = words[j]
-                        j += 1
-                        while j < len(words):
-                            second += ' ' + words[j]
-                            j += 1
-                        lines.insert(i+1, second)
-                    lines.insert(i+1, first)
-                    if i == 0:
-                        lines = lines[1:]
-                    else:
-                        lines = lines[:i] + lines[i+1:]
-                i += 1
-
-        # Remove Trailing and Leading blank lines...
-        while len(lines) > 0 and lines[0] == '':
-            lines = lines[1:]
-        while len(lines) > 0 and lines[-1] == '':
-            lines = lines[:-1]
-        
-        svg,y,iword,ipoly,line_no,orig_to_xy,orig_i = '',txt_h+y_ins,{},{},0,{},-1
-        orig_to_xy[0] = (x_ins,y)
-        for _line in lines:
-            words,x,word_no = _line.split(' '),x_ins,0
-            for _word in words:
-                svg += self.svgText(_word, x, y, txt_h)
-                word_len_px = self.textLength(_word, txt_h)
-
-                orig_i = txt.index(_word, orig_i+1)
-                orig_to_xy[orig_i] = (x,y)
-                orig_to_xy[orig_i + len(_word)] = (x+word_len_px,y)
-
-                if len(_word) > 0: # Happens if multiple spaces occur together...
-                    so_far = self.textLength(_word[0], txt_h)
-                    for j in range(1,len(_word)):
-                        orig_to_xy[orig_i+j] = (x+so_far,y)
-                        so_far += self.textLength(_word[j], txt_h)
-
-                _pos  = (x, y, word_len_px, txt_h, orig_i, line_no, word_no)
-                iword[_pos] = _word
-
-                _poly = Polygon([[x,y],[x+word_len_px,y],[x+word_len_px,y-txt_h],[x,y-txt_h]])
-                ipoly[_pos] = _poly
-
-                x += word_len_px + self.textLength(' ', txt_h)
-                word_no += 1
-            y += txt_h + line_space_px
-            line_no += 1
-
-        # Fill in missing originals...
-
-        # Calculate the bounds
-        bounds = (0,0,w,y-txt_h+y_ins)
-        # return RTTextBlock(self, txt, lines, svg, bounds, iword, ipoly, orig_to_xy, txt_h, line_space_px)
-
-"""
