@@ -129,7 +129,7 @@ class RTTextMixin(object):
                 i = i1
 
         bounds = (0,0,w,y-txt_h+y_ins)
-        return RTTextBlock(self, txt, svg, bounds, geom_to_word, orig_to_xy, txt_h, line_space_px)
+        return RTTextBlock(self, txt, txt_h, line_space_px, word_wrap, w, x_ins, y_ins, svg, bounds, geom_to_word, orig_to_xy)
 
     # Is character whitespace?
     def __whitespace__ (self, c):
@@ -198,23 +198,111 @@ class RTTextBlock(object):
     # Constructor
     #
     def __init__(self,
-                 rt_self,
-                 txt,
-                 svg,
-                 bounds,
-                 geom_to_word,
-                 orig_to_xy,
-                 txt_h,
-                 line_space_px):
-        self.rt_self       = rt_self
-        self.txt           = txt
-        self.svg           = svg
-        self.bounds        = bounds
-        self.geom_to_word  = geom_to_word
-        self.orig_to_xy    = orig_to_xy
-        self.txt_h         = txt_h
-        self.line_space_px = line_space_px
-    
+                 rt_self,           # Reference to parent class instance
+                 txt,               # Original text string
+                 txt_h,             # Text height in pixels
+                 line_space_px,     # Pixel space between paragraphs
+                 word_wrap,         # Word wrap flag
+                 w,                 # Width of SVG results
+                 x_ins,             # x insert left & right
+                 y_ins,             # y insert top & bottom
+                 svg,               # rendered svg (w/out svg begin/end wrapper)
+                 bounds,            # Four tuple of x,y,w,h
+                 geom_to_word,      # Shapely polygon to word
+                 orig_to_xy):       # Original text index to xy-tuple
+        self.rt_self        = rt_self
+        self.txt            = txt
+        self.txt_h          = txt_h
+        self.line_space_px  = line_space_px
+        self.word_wrap      = word_wrap
+        self.w              = w
+        self.x_ins          = x_ins
+        self.y_ins          = y_ins
+        self.svg            = svg
+        self.bounds         = bounds
+        self.geom_to_word   = geom_to_word
+        self.orig_to_xy     = orig_to_xy
+        
+    #
+    # spanGeometry() - return a polygon that covers a specified text span.
+    #
+    def spanGeometry(self, i, j):
+        last_c = ' '
+        if len(self.txt) > 0:
+            last_c = self.txt[-1]
+
+        if i >= len(self.txt):
+            xy0    = self.orig_to_xy[len(self.txt)-1]
+            xy0    = (xy0[0] + self.rt_self.textLength(last_c,self.txt_h),xy0[1])
+        else:
+            xy0    = self.orig_to_xy[i]
+        if j >= len(self.txt):
+            xy1    = self.orig_to_xy[len(self.txt)-1]
+            xy1    = (xy1[0] + self.rt_self.textLength(last_c,self.txt_h),xy1[1])
+        else:
+            xy1    = self.orig_to_xy[j]
+
+        if     xy0[1]                                    == xy1[1]: # On same line...
+            return Polygon([[xy0[0],xy0[1]],
+                            [xy1[0],xy1[1]],
+                            [xy1[0],xy1[1]-self.txt_h],
+                            [xy0[0],xy0[1]-self.txt_h]
+                            ])
+        else: # Multiple lines...
+            return Polygon([[xy0[0],              xy0[1]],
+                            [self.x_ins,          xy0[1]],
+                            [self.x_ins,          xy1[1]],
+                            [xy1[0],              xy1[1]],
+                            [xy1[0],              xy1[1]-self.txt_h],
+                            [self.w - self.x_ins, xy1[1]-self.txt_h],
+                            [self.w - self.x_ins, xy0[1]-self.txt_h],
+                            [xy0[0],              xy0[1]-self.txt_h]
+                            ])
+
+    #
+    # highlights() - highlight user-specified text.
+    # - lu: either a [1] (i,j) tuple or [2] a regex string to either a [A] seven-character hex color string or a [B] string color
+    #   - lu[(0,10)]      = '#ff0000'
+    #   - lu['regex substring'] = '#000000'
+    #   - lu['many']      = 'whatever' # whatever will then be convered into a color based on the color manager
+    #
+    def highlights(self, lu, opacity=1.0):
+        svg_underlay = ''
+        for k in lu:
+            _co = lu[k]
+
+            if   type(k) == tuple:
+                _poly = self.spanGeometry(k[0],k[1])
+                svg_underlay += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly)}" fill="{_co}" fill-opacity="{opacity}" />'
+            elif type(k) == str:
+                i = 0
+                re_match = re.findall(k,self.txt)
+                if re_match is not None:
+                    i = 0
+                    for _match in re_match:
+                        i = self.txt.index(k,i)
+                        j = i + len(_match)
+                        _poly = self.spanGeometry(i,j)
+                        svg_underlay += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly)}" fill="{_co}" fill-opacity="{opacity}" />'
+                        i += len(_match)
+            else:
+                raise Exception(f'RTTextBlock.highlights() - do not understand key value type {type(k)}')
+
+        x,y,w,h = self.bounds
+        _co     = self.rt_self.co_mgr.getTVColor('background','default')
+        return f'<svg width="{w}" height="{h}">' + \
+               f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />' + \
+               svg_underlay + \
+               self.svg + \
+               '</svg>'
+
+
+    #
+    # unwrappedSVG() - return the unwrapped version of the SVG.
+    #
+    def unwrappedSVG(self):
+        return self.svg
+
     #
     # SVG Representation -- adds the svg begin/end markup...
     #
