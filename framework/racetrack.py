@@ -649,6 +649,56 @@ for (i=32;i<4096;i++) {
 """
 
     #
+    # This version checks 4096 unicode characters (as above)... and then 
+    # does all pairs from 32...128 // but it needs to be more... and even
+    # with these limits, takes forever... lots of memory.
+    #
+    _font_metrics_unicode_kern_js_ = """
+function toHexFour(i) {
+	my_s = i.toString(16)
+  while (my_s.length < 4) { my_s = "0" + my_s; }
+  return my_s
+}
+let sz = 16;
+let s  = '';
+for (i=32;i<4096;i++) {
+	if (i==32) c = '&nbsp;';
+  else       c = '&#x' + toHexFour(i) + ';';
+	s += '<text id="txt' + i + '" x="5" y="32" font-family="ariel" font-size="'+sz+'px">' + c + '</text>';
+}
+
+for (i=32;i<128;i++) {
+	if (i==32) c = '&nbsp;';
+  else       c = '&#x' + toHexFour(i) + ';';
+	for (j=32;j<128;j++) {
+		if (j==32) d = '&nbsp;';
+  	else       d = '&#x' + toHexFour(j) + ';';
+		s += '<text id="txt' + i + '_' + j + '" x="5" y="32" font-family="ariel" font-size="'+sz+'px">' + c + d + '</text>';
+  }
+}
+document.write('<?xml version="1.0" encoding="UTF-8" standalone="no"?>' +
+               '<svg width="64" height="64">' + s + '</svg>');
+
+const char_to_w = new Map();
+for (i=32;i<4096;i++) {
+	let elem = document.getElementById("txt"+i);
+	let rect = elem.getBoundingClientRect();
+  char_to_w[i] = rect.width;
+  console.log("" + i + "," + rect.width)
+}
+
+for (i=32;i<128;i++) {
+	for (j=32;j<128;j++) {
+  	let elem = document.getElementById("txt"+i+"_"+j);
+	  let rect = elem.getBoundingClientRect();
+    if (rect.width != (char_to_w[i] + char_to_w[j])) {
+    	console.log("" + i + "," + j + "," + rect.width)
+	  }	    
+  }
+}
+"""
+
+    #
     # cropText() - Based on the height of the font, shorten the string to fit into a specific width...
     # ... empirically derived values for letters / so unlikely to work exactly right if the font changes
     #
