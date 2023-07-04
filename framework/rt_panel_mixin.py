@@ -148,6 +148,12 @@ class RTReactiveHTML(ReactiveHTML):
         self.mod_inner = self.dfs_layout[0]._repr_svg_()
 
     #
+    # Return the visible dataframe.
+    #
+    def visibleDataFrame(self):
+        return self.dfs[-1]
+
+    #
     # Drag operation state & method
     #
     drag_op_finished = param.Boolean(default=False)
