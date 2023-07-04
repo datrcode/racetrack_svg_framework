@@ -15,7 +15,10 @@
 
 import pandas as pd
 import numpy as np
+
 import spacy
+import nltk
+
 import re
 
 from rt_component import RTComponent
@@ -202,6 +205,20 @@ class RTTextMixin(object):
         return _max + 6
     
     #
+    # textExtractSentences() - extract sentences
+    #
+    def textExtractSentences(self,
+                             txt):
+        tokens,sentences = nltk.sent_tokenize(txt),[]
+        if len(tokens) > 0:
+            i = txt.index(tokens[0])-1
+        for _token in tokens:
+            i = txt.index(_token,i+1)
+            sentences.append((_token, i, i + len(_token)))
+            i += len(_token)
+        return sentences
+
+    #
     # textExtractEntities() - extract entities.
     #
     def textExtractEntities(self, 
@@ -222,7 +239,7 @@ class RTTextMixin(object):
         doc = self.nlp_spacy(txt)
         ret = []
         for entity in doc.ents:
-            ret.append((entity.text, entity.label_))
+            ret.append((entity.text, entity.label_, entity.end_char - len(entity.text), entity.end_char))
         return ret
 
 #
@@ -308,9 +325,9 @@ class RTTextBlock(object):
     #
     # highlights() - highlight user-specified text.
     # - lu: either a [1] (i,j) tuple or [2] a regex string to either a [A] seven-character hex color string or a [B] string color
-    #   - lu[(0,10)]      = '#ff0000'
+    #   - lu[(0,10)]            = '#ff0000'
     #   - lu['regex substring'] = '#000000'
-    #   - lu['many']      = 'whatever' # whatever will then be convered into a color based on the color manager
+    #   - lu['many']            = 'whatever' # any 'many' substrings will get colored with 'whatever' color lookup
     #
     def highlights(self, lu, opacity=1.0):
         svg_underlay = ''

@@ -1,6 +1,7 @@
 [build-system]
 requires = [
   "networkx",
+  "nltk",
   "numpy",
   "pandas",
   "panel ~= 0.14.2",
