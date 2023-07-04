@@ -152,10 +152,10 @@ class RTTextMixin(object):
         return c in _str
     
     #
-    # joinLines() - join lines together and remove extra spaces.
+    # textJoinLines() - join lines together and remove extra spaces.
     # - expect that this is a utility to call before textBlock()
     #
-    def joinNewLines(self, txt):
+    def textJoinNewLines(self, txt):
         joined = ' '.join(txt.split('\n'))
         while len(joined) > 0 and joined[0] == ' ':
             joined = joined[1:]
@@ -169,12 +169,12 @@ class RTTextMixin(object):
         return ' '.join(wout_blanks)
     
     #
-    # joinNewLinesBetter() - keep newlines (if single) intact...
+    # textJoinNewLinesBetter() - keep newlines (if single) intact...
     # - more closely mirrors the (de facto) standard of using double line returns 
     #   to separate paragraphs
     # - expect that this is a utility to call before textBlock()
     #
-    def joinNewLinesBetter(self, txt):
+    def textJoinNewLinesBetter(self, txt):
         re_match = re.findall(r'([\n]{2,})',txt)
         if re_match is None:
             return self.joinNewLines(txt)
@@ -182,18 +182,18 @@ class RTTextMixin(object):
             i,_ret = 0,''
             for _match in re_match:
                 j = txt.find(_match,i)
-                _ret += self.joinNewLines(txt[i:j])
+                _ret += self.textJoinNewLines(txt[i:j])
                 for k in range(len(_match)-1):
                     _ret += '\n'
                 i = j+len(_match)
-            _ret += self.joinNewLines(txt[i:])
+            _ret += self.textJoinNewLines(txt[i:])
             return _ret
     
     #
     # maxLinePixels() - split a string by new line characters, then determine
     # the maximum line length (in pixels).
     #
-    def maxLinePixels(self, txt, txt_h=14):
+    def textMaxLinePixels(self, txt, txt_h=14):
         _max = 0
         lines = txt.split('\n')
         for _line in lines:
@@ -202,20 +202,20 @@ class RTTextMixin(object):
         return _max + 6
     
     #
-    # extractEntities() - extract entities.
+    # textExtractEntities() - extract entities.
     #
-    def extractEntities(self, 
-                        txt, 
-                        algo='spacy'):
+    def textExtractEntities(self, 
+                            txt, 
+                            algo='spacy'):
         if algo == 'spacy':
-            return self.__extractEntitiesSpacy__(txt)
+            return self.__textExtractEntitiesSpacy__(txt)
         else:
-            raise Exception(f'RACETrack.extractEntities() - unknown algorithm "{algo}"')
+            raise Exception(f'RACETrack.textExtractEntities() - unknown algorithm "{algo}"')
 
     #
     # __extractEntitiesSpacy__() - extract entities using SpaCy.
     #
-    def __extractEntitiesSpacy__(self,txt):
+    def __textExtractEntitiesSpacy__(self,txt):
         if self.spacy_loaded_flag == False:
             self.nlp_spacy = spacy.load('en_core_web_sm')
             self.spacy_loaded_flag = True
