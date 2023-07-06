@@ -31,10 +31,68 @@ __name__ = 'rt_panel_mixin'
 class RTPanelMixin(object):
     #
     # Constructor
+    # - may need to modify inline=True...
     #
     def __panel_mixin_init__(self):
         pn.extension(inline=False)
 
+    # ------------------------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------------------
+
+    #
+    # RTFontMetricsPanel - determine the font metrics for a specific
+    # browser / jupyter configuration
+    #
+    class RTFontMetricsPanel(ReactiveHTML):
+        txt12_w      = param.Number(default=7)
+        txt12short_w = param.Number(default=7)
+        txt14_w      = param.Number(default=7)
+        txt16_w      = param.Number(default=7)
+        txt24_w      = param.Number(default=7)
+        txt36_w      = param.Number(default=7)
+        txt36short_w = param.Number(default=7)
+        txt48_w      = param.Number(default=7)
+     
+        _template = """
+            <svg width="1024" height="256">
+                <text id="click" x="5" y="32"  font-family="Times"     font-size="28px" fill="#ff0000">Click Me</text>
+                <text id="txt12" x="5" y="62"  font-family="Monospace" font-size="12px">abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ</text>
+                <text id="txt12short" x="5" y="238"  font-family="Monospace" font-size="12px">abcdefghijklmnopqrstuvwxyz</text>
+
+                <text id="txt14" x="5" y="76"  font-family="Monospace" font-size="14px">abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ</text>
+                <text id="txt16" x="5" y="92"  font-family="Monospace" font-size="16px">abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ</text>
+                <text id="txt24" x="5" y="120" font-family="Monospace" font-size="24px">abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ</text>
+                <text id="txt36" x="5" y="148" font-family="Monospace" font-size="36px">abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ</text>
+                <text id="txt36short" x="5" y="226"  font-family="Monospace" font-size="36px">abcdefghijklmnopqrstuvwxyz</text>
+                <text id="txt48" x="5" y="186" font-family="monospace" font-size="48px">abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ</text>
+                <rect id="screen" x="0" y="0" width="1024" height="256" fill-opacity="0.1"
+                  onmousedown="${script('_onmousedown_')}"
+                />
+            </svg>
+        """
+
+        _scripts = {
+                '_onmousedown_':"""
+                    click.setAttribute("fill","#0000ff");
+                    let my_num_chars       = 26*4 + 3;
+                    let my_num_chars_short = 26
+                    data.txt12_w      = txt12.getBoundingClientRect().width/my_num_chars;
+                    data.txt12short_w = txt12short.getBoundingClientRect().width/my_num_chars_short;
+                    data.txt14_w      = txt14.getBoundingClientRect().width/my_num_chars;
+                    data.txt16_w      = txt16.getBoundingClientRect().width/my_num_chars;
+                    data.txt24_w      = txt24.getBoundingClientRect().width/my_num_chars;
+                    data.txt36_w      = txt36.getBoundingClientRect().width/my_num_chars;
+                    data.txt36short_w = txt36short.getBoundingClientRect().width/my_num_chars_short;
+                    data.txt48_w      = txt48.getBoundingClientRect().width/my_num_chars;
+                    click.setAttribute("fill","#000000");
+                """
+        }
+
+    # ------------------------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------------------
+    
     #
     # Create an interactive panel
     #

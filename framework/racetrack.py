@@ -719,10 +719,18 @@ for (i=32;i<128;i++) {
         return txt[:i-1] + '...'
 
     #
+    # To adjust, see the "rt_test_fontmetrics_2.ipynb" file
+    # ... not really correct either... apparently monospace isn't monospaced (or at least not in firefox)
+    #
+    font_w_slope     = 0.54961443           # 0.5496575 
+    font_w_intercept = 0.027930354650640865 # 0.1928203837408624
+    
+    #
     # textLength() - calcualte the expected text length
     #
     def textLength(self, txt, txt_h):
-        return len(txt)*txt_h/1.668
+        char_w = self.font_w_slope * txt_h + self.font_w_intercept
+        return len(txt)*char_w
 
     #
     # textLength() - calculate the expected text length
