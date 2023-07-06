@@ -37,10 +37,140 @@ class RTTextMixin(object):
     def __text_mixin_init__(self):
         self.spacy_loaded_flag = False
 
+
+
+
     #
     # textBlock() - render a textblock and track positional information of characters and words.
     #
     def textBlock(self,
+                  txt,
+                  txt_h=14,
+                  line_space_px=3,
+                  word_wrap=False,
+                  w=512,
+                  x_ins=5,
+                  y_ins=3):
+        
+        svg,x,y,line = '',x_ins,y_ins+txt_h,''
+        last_was_space = True
+        line_lu = {}
+
+        for i in range(0,len(txt)):
+            c = txt[i]
+            if c == '\n':
+                # CODE BLOCK B
+                line_lu[y]     = line + '\n'
+                x              = x_ins
+                y             += txt_h + line_space_px
+                line           = ''
+                last_was_space = True
+            elif word_wrap == False:
+                # CODE BLOCK A
+                line          += c
+                x             += self.textLength(c,txt_h)
+            else:
+                if last_was_space and self.__whitespace__(c) == False:
+                    j,x_j = i+1,x+self.textLength(c,txt_h)
+                    while j < len(txt) and self.__whitespace__(txt[j]) == False:
+                        x_j += self.textLength(txt[j],txt_h)
+                        j   += 1
+                    if   x_j > (w-x_ins) and x != x_ins: # new word exceeds the maximum width / start new line
+                        # CODE BLOCK B
+                        line_lu[y]     = line
+                        x              = x_ins
+                        y             += txt_h + line_space_px
+                        line           = ''
+                        last_was_space = True
+                        # CODE BLOCK A
+                        line          += c
+                        x             += self.textLength(c,txt_h)
+                    elif (x_j > (w-x_ins) and x == x_ins) or ((x_j - x) >= (w-x_ins)): # a chunk of text is too long to fit on a line
+                        # CODE BLOCK B-mod
+                        line_lu[y]     = line
+                        x              = x_ins
+                        line           = ''
+                        last_was_space = False # MOD HERE
+                        # CODE BLOCK A
+                        line          += c
+                        x             += self.textLength(c,txt_h)                        
+                    else:                        # fine to add the word
+                        # CODE BLOCK A
+                        line          += c
+                        x             += self.textLength(c,txt_h)
+                else:
+                        # CODE BLOCK A
+                        line          += c
+                        x             += self.textLength(c,txt_h)
+                if self.__whitespace__(c):
+                    last_was_space = True
+
+        # If there's a left over line, add it here...
+        if len(line) > 0:
+            line_lu[y]   = line
+            y           += txt_h + line_space_px
+
+        # Just render as is...
+        _ignore_ = """
+        orig_to_xy,i = {},0
+        for k in line_lu:
+            line = line_lu[k]
+            svg += self.svgText(line_lu[k], x_ins, k, txt_h, color='#b0b0b0')
+            x = x_ins
+            for c in line:
+                orig_to_xy[i] = (x,k)
+                x += self.textLength(c, txt_h)
+                i += 1
+        """
+
+        # Render each word individually -- w/ absolute coordinates
+        orig_to_xy,i = {},0
+        for y in line_lu:
+            line = line_lu[y]
+            x,j  = x_ins,0
+            while j < len(line):
+                c = line[j]
+                svg += self.svgText(c, x, y, txt_h)
+                orig_to_xy[i] = (x,y)
+                j += 1
+                i += 1
+                x += self.textLength(c, txt_h)
+        y += txt_h + line_space_px
+
+        # Calculate geom_to_word
+        geom_to_word = {}
+        i,last_was_space = 0,True
+        _dn = 4 # downward shift...
+        while i < len(txt):
+            if self.__whitespace__(txt[i]) or self.__punctuation__(txt[i]):
+                last_was_space = True
+                i += 1
+            else:
+                if last_was_space and self.__whitespace__(txt[i]) == False and self.__punctuation__(txt[i]) == False:
+                    i0 = i
+                    while i < len(txt)                           and \
+                          self.__whitespace__ (txt[i])  == False and \
+                          self.__punctuation__(txt[i])  == False:
+                        i += 1
+                        i1 = i
+                    x0,y0 =  orig_to_xy[i0]
+                    x1,y1 =  orig_to_xy[i1-1]
+                    x1    += self.textLength(txt[i-1],txt_h)
+                    _polygon = Polygon([[x0,y0+line_space_px+_dn], 
+                                        [x1,y1+line_space_px+_dn], 
+                                        [x1,y1-txt_h+_dn], 
+                                        [x0,y1-txt_h+_dn]])
+                    geom_to_word[_polygon] = txt[i0:i1]
+                last_was_space = False
+                i = i1
+
+        bounds = (0,0,w,y-txt_h+y_ins)
+        return RTTextBlock(self, txt, txt_h, line_space_px, word_wrap, w, x_ins, y_ins, svg, bounds, geom_to_word, orig_to_xy)
+
+    #
+    # OLD__textBlock() - render a textblock and track positional information of characters and words.
+    #
+    def OLD__textBlock(self,
                   txt,
                   txt_h=14,
                   line_space_px=3,

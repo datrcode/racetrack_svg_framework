@@ -77,7 +77,7 @@ class RACETrack(RTAnnotationsMixin,
     def __init__(self):
         # Visualization globals
         self.co_mgr            = RTColorManager(self)
-        self.default_font      = "Monospace"
+        self.default_font      = "Ariel"
         self.fformat           = '0.2f'
         
         # Field transformations
@@ -726,9 +726,9 @@ for (i=32;i<128;i++) {
     font_w_intercept = 0.027930354650640865 # 0.1928203837408624
     
     #
-    # textLength() - calcualte the expected text length
+    # textLength() - calculate the expected text length
     #
-    def textLength(self, txt, txt_h):
+    def __Monospace__textLength__(self, txt, txt_h):
         char_w = self.font_w_slope * txt_h + self.font_w_intercept
         return len(txt)*char_w
 
@@ -737,7 +737,7 @@ for (i=32;i<128;i++) {
     # ... was eventuall modified for "Ariel"
     # ... but the kerning made the calculation difficult... any lower case letters following an "f" were a problem...
     #
-    def __ariel__textLength__(self, txt, txt_h):
+    def textLength(self, txt, txt_h):
         ratio14 = 15.8
         # Load the pre-calculated font-metrics
         if self._font_metrics_ is None:
