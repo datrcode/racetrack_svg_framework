@@ -65,6 +65,8 @@ class RTTextMixin(object):
                 y             += txt_h + line_space_px
                 line           = ''
                 last_was_space = True
+                if word_wrap:
+                    y += 3*line_space_px
             elif word_wrap == False:
                 # CODE BLOCK A
                 line          += c
@@ -484,7 +486,7 @@ class RTTextBlock(object):
 
         x,y,w,h = self.bounds
         _co     = self.rt_self.co_mgr.getTVColor('background','default')
-        return f'<svg width="{w}" height="{h}">' + \
+        return f'<svg x="0" y="0" width="{w}" height="{h}">' + \
                f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />' + \
                svg_underlay + \
                self.svg + \
@@ -503,7 +505,7 @@ class RTTextBlock(object):
     def _repr_svg_(self):
         x,y,w,h = self.bounds
         _co     = self.rt_self.co_mgr.getTVColor('background','default')
-        return f'<svg width="{w}" height="{h}">' + \
+        return f'<svg x="0" y="0" width="{w}" height="{h}">' + \
                f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />' + \
                self.svg + \
                '</svg>'
