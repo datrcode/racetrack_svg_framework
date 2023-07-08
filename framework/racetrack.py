@@ -19,6 +19,7 @@ import hashlib
 import random
 import urllib
 import html
+import os
 
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPM
@@ -741,7 +742,8 @@ for (i=32;i<128;i++) {
         ratio14 = 15.8
         # Load the pre-calculated font-metrics
         if self._font_metrics_ is None:
-            _filename = '../config/20230629_ariel_14.txt'
+            _rt_dir   = os.path.dirname(os.path.abspath(__file__))
+            _filename = os.path.join(_rt_dir, "../config", "20230629_ariel_14.txt")
             with open(_filename) as file:
                 lines = [line.rstrip() for line in file]
             self._font_metrics_ = {}
