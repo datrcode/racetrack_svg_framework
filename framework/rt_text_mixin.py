@@ -228,13 +228,16 @@ class RTTextMixin(object):
     #
     # textExtractSentences() - extract sentences
     #
+    # _tups = textExtractSentences(_str_)
+    # _just_the_sentences_as_array = list(list(zip(*_tups))[0])
+    #
     def textExtractSentences(self,
                              txt):
         tokens,sentences = nltk.sent_tokenize(txt),[]
         if len(tokens) > 0:
-            i = txt.index(tokens[0])-1
+            i = txt.index(tokens[0])
         for _token in tokens:
-            i = txt.index(_token,i+1)
+            i = txt.index(_token,i)
             sentences.append((_token, i, i + len(_token)))
             i += len(_token)
         return sentences
@@ -262,6 +265,156 @@ class RTTextMixin(object):
         for entity in doc.ents:
             ret.append((entity.text, entity.label_, entity.end_char - len(entity.text), entity.end_char))
         return ret
+    
+    #
+    # textCompareSummaries()
+    #
+    def textCompareSummaries(self, 
+                             text_main,
+                             text_summaries,
+                             methodology      = "sentence_embeddings",
+                             embed_fn         = None,
+                             main_txt_h       = 14,
+                             summary_txt_h    = 16,
+                             spacing          = 16,
+                             opacity          = 0.8,
+                             w                = 1280):
+        if type(text_summaries) == str:
+            text_summaries = [text_summaries]
+        if methodology == "sentence_embeddings":
+            return self.__textCompareSummaries__sentence_embeddings__(text_main, text_summaries, embed_fn, main_txt_h, summary_txt_h, spacing, opacity, w)
+        else:
+            raise Exception(f'RACETrack.textCompareSummaries() - unknown methodology "{methodology}"')
+
+    #
+    # __textCompareSummaries__sentence_embeddings__()
+    #
+    def __textCompareSummaries__sentence_embeddings__(self,
+                                                      text_main,
+                                                      text_summaries,
+                                                      embed_fn,
+                                                      main_txt_h,
+                                                      summary_txt_h,
+                                                      spacing,
+                                                      opacity,
+                                                      w):
+        # Geometry
+        main_w        = summary_w = (w - spacing)/2
+
+        # Colors
+        _colors   = self.co_mgr.brewerColors('qualitative', 12) # max available qualitative colors
+        _colors_i = 0
+
+        # Text Blocks
+        main_rttb     = self.textBlock(text_main, txt_h=main_txt_h, w=main_w, word_wrap=True)
+        summary_rttbs = []
+
+        for _summary in text_summaries:
+            summary_rttbs.append(self.textBlock(_summary, txt_h=summary_txt_h, w=summary_w, word_wrap=True))
+        
+        # Embeddings
+        main_sentences            = self.textExtractSentences(text_main)
+        main_sentences_only       = list(list(zip(*main_sentences))[0])
+        main_sentences_embeddings = embed_fn(main_sentences_only)
+
+        main_sentence_colors = {} # [sentence_index] = hex-color-string
+
+        # For every summary supplied...
+        summary_dots_lu,summary_highlights,min_dot,max_dot = {},{},None,None
+        summary_highlights_lu = {} # [summary][summary_sentence_index] = best_found_main_sentence_index
+        for _summary in text_summaries:
+            _summary_sentences            = self.textExtractSentences(_summary)
+            _summary_sentences_only       = list(list(zip(*_summary_sentences))[0])
+            _summary_sentences_embeddings = embed_fn(_summary_sentences_only)
+            summary_dots = []
+            summary_highlights[_summary]    = {}
+            summary_highlights_lu[_summary] = {}
+            # For every sentence in this summary...
+            for i in range(0,len(_summary_sentences)):
+                _embedding = _summary_sentences_embeddings[i]
+                dots = []
+                best_dot,best_dot_main_sentence_index = None,None
+
+                # Loop over the main sentence embeddings -- record both all the dot products as well as the best main sentence match
+                for j in range(0,len(main_sentences)):
+                    # Get the main sentence embedding
+                    _main_embedding = main_sentences_embeddings[j]
+                    # Compute the dot product between the main sentence and this specific summaries sentence
+                    _dot = float(np.tensordot(_embedding, _main_embedding, axes=1)) # Works with Google's Universal Sentence Embedder...
+                    if min_dot is None or min_dot > _dot:
+                        min_dot = _dot
+                    if max_dot is None or max_dot < _dot:
+                        max_dot = _dot                        
+                    dots.append(_dot)
+
+                    # Record the best dot found so far (vs the main sentences)
+                    if best_dot is None or best_dot < _dot: # Looking for the largest based on some testing...
+                        best_dot                     = _dot
+                        best_dot_main_sentence_index = j
+
+                summary_dots.append(dots)
+
+                # Try to highlight (if we found something -- how could we not? ... and if we have any colors left)
+                if best_dot_main_sentence_index is not None:
+                    summary_highlights_lu[_summary][i] = best_dot_main_sentence_index
+                    if   best_dot_main_sentence_index in main_sentence_colors.keys(): # Already found!
+                        beg_end = (_summary_sentences[i][-2], _summary_sentences[i][-1])
+                        summary_highlights[_summary][beg_end] = main_sentence_colors[best_dot_main_sentence_index]
+                    elif _colors_i < len(_colors):                                    # Still Have Colors Left!
+                        main_sentence_colors[best_dot_main_sentence_index] = _colors[_colors_i]
+                        _colors_i += 1
+                        beg_end = (_summary_sentences[i][-2], _summary_sentences[i][-1])
+                        summary_highlights[_summary][beg_end] = main_sentence_colors[best_dot_main_sentence_index]
+                    else:                                                             # No Colors Left :(
+                        pass
+
+            summary_dots_lu[_summary] = summary_dots
+    
+        # Create the main highlights
+        main_highlights = {}
+        for i in main_sentence_colors:
+            _tup = main_sentences[i]
+            main_highlights[(_tup[-2],_tup[-1])] = main_sentence_colors[i]
+
+        # Renderings & Compositions
+        summary_tiles = []
+        for _rttb in summary_rttbs:
+            summary_tiles.append(_rttb.highlights(summary_highlights[_rttb.txt], opacity=opacity))
+            summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
+            summary_tiles.append(self.__textDotProductHeatMap__(summary_dots_lu[_rttb.txt], min_dot, max_dot, 
+                                                                summary_highlights_lu[_rttb.txt], main_sentence_colors))
+            summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
+        tile_composition = self.tile(summary_tiles, horz=False)
+
+        composition = [tile_composition,
+                       f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
+                       main_rttb.highlights(main_highlights, opacity=opacity)]
+        
+        return self.tile(composition)
+
+    #
+    # _textDotProductHeatMap__():  Make a simplified heatmap
+    #
+    def __textDotProductHeatMap__(self, arr, _min, _max, _sentence_index_to_main_index, _main_index_colors):
+        if _min == _max:
+            _max = _min + 1
+        x_tiles,y_tiles = len(arr[0]),len(arr)
+        tile_w, tile_h  = 12,12
+        svg = f'<svg x="0" y="0" width="{x_tiles*tile_w + 3*tile_w}" height="{y_tiles*tile_h}">'
+        for y in range(0,len(arr)):
+            for x in range(0,len(arr[y])):
+                _value = arr[y][x]
+                # _color = self.co_mgr.spectrumAbridged(_value, _min, _max)
+                _gray    = min(255, int(255 * (_value - _min)/(_max - _min)))
+                _color   = f'#{_gray:02x}{_gray:02x}{_gray:02x}'
+                svg += f'<rect x="{x*tile_w}" y="{y*tile_h}" width = "{tile_w}" height="{tile_h}" fill="{_color}" />'
+            if y in _sentence_index_to_main_index.keys():
+                main_index = _sentence_index_to_main_index[y]
+                if main_index in _main_index_colors.keys():
+                    _color = _main_index_colors[main_index]
+                    svg += f'<rect x="{x_tiles*tile_w + tile_w}" y="{y*tile_h}" width = "{2*tile_w}" height="{tile_h}" fill="{_color}" />'
+        svg += '</svg>'
+        return svg
 
 #
 # RTTextBlock - instance of rendered text block
