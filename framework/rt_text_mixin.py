@@ -37,9 +37,6 @@ class RTTextMixin(object):
     def __text_mixin_init__(self):
         self.spacy_loaded_flag = False
 
-
-
-
     #
     # textBlock() - render a textblock and track positional information of characters and words.
     #
@@ -439,3 +436,142 @@ class RTTextBlock(object):
                self.svg     + \
                '</svg>'
 
+    #
+    # Create a positional dataframe of words / sentences / paragraphs.
+    #
+    def positionalDataFrame(self):
+        _txt = []
+        _typ = []
+        _num = [] # number within that type
+        _beg = []
+        _end = []
+        # Paragraphs
+        _parts = self.txt.split('\n')
+        i,para_num = 0,0
+        for _part in _parts:
+            if len(_part) > 0:
+                _txt.append(_part)
+                _typ.append('para')
+                _num.append(para_num)
+                _beg.append(i)
+                _end.append(i+len(_part))
+                para_num += 1
+                i += len(_part)
+            i += 1 # for the '\n'
+
+        # Sentences
+        _sents = self.rt_self.textExtractSentences(self.txt)
+        i,sent_num = 0,0
+        for _sent in _sents:
+            _txt.append(_sent[0])
+            _typ.append('sent')
+            _num.append(sent_num)
+            _beg.append(_sent[-2])
+            _end.append(_sent[-1])
+            sent_num += 1
+            i += len(_sent)
+
+        # Words
+        _word = ''
+        i,i0,word_num = 0,-1,0
+        while i < len(self.txt):
+            c = self.txt[i]
+            if self.rt_self.__whitespace__(c) or self.rt_self.__punctuation__(c):
+                if len(_word) > 0:
+                    _txt.append(_word)
+                    _typ.append('word')
+                    _num.append(word_num)
+                    _beg.append(i0)
+                    _end.append(i)
+                    word_num += 1
+                    _word = ''
+                    i0 = -1
+            elif i0 != -1:
+                _word += c
+            else:
+                i0    = i
+                _word = str(c)
+            i += 1
+        if len(_word) > 0:
+            _txt.append(_word)
+            _typ.append('word')
+            _num.append(word_num)
+            _beg.append(i0)
+            _end.append(i)
+            word_num += 1
+        
+        return pd.DataFrame({
+            'text': _txt,
+            'type':_typ,
+            'num':_num,
+            'beg':_beg,
+            'end':_end
+        })
+    
+    #
+    # renderDataFrame() - render a position dataframe (assumes some level of filtering)
+    #
+    def renderDataFrame(self, 
+                        df,                               # Positional Dataframe from positionalDataFrame() method...
+                        color_by          = None,         # Field in the dataframe
+                        color_by_style    = 'highlight',  # 'highlight' (like a highlighter), 'underline', or 'text'
+                        highlight_opacity = 0.6,          # Opacity of highlight
+                        context_opacity   = 0.7,          # Context opacity
+                        render_context    = True):        # Render all of the text as a background
+        x,y,w,h = self.bounds
+        _co     = self.rt_self.co_mgr.getTVColor('background','default')
+        my_svg  = f'<svg x="0" y="0" width="{w}" height="{h}">' + \
+                  f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />'
+        
+        # Render the context for the highlights
+        if render_context:
+            my_svg += self.svg
+            my_svg += f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" fill-opacity="{context_opacity}" />'
+        
+        # First pass... really only for highlights or for underlines
+        _co = '#404040'
+        if   color_by_style == 'highlight':
+            for row_i,row in df.iterrows():
+                if color_by is not None:
+                    _co = self.rt_self.co_mgr.getColor(row[color_by])
+                _poly = self.spanGeometry(row['beg'],row['end'])
+                my_svg += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly)}" fill="{_co}" fill-opacity="{highlight_opacity}" />'
+                pass
+        elif color_by_style == 'underline':
+            _stroke_w = min(0.5 + self.txt_h/14, 2.5)
+            for row_i,row in df.iterrows():
+                if color_by is not None:
+                    _co = self.rt_self.co_mgr.getColor(row[color_by])
+                x0, x1, y = None,None,None
+                for i in range(row['beg'],row['end']):
+                    c, xy = self.txt[i], self.orig_to_xy[i]
+                    if self.rt_self.__whitespace__(c) or self.rt_self.__punctuation__(c):
+                        if x0 is not None:
+                            my_svg += f'<line x1="{x0}" y1="{y + 1 + _stroke_w}" x2="{x1}" y2="{y + 1 + _stroke_w}" stroke="{_co}" stroke-width="{_stroke_w}" />'
+                            x0, x1, y = None,None,None
+                    elif x0 is not None and y != xy[1]:
+                        my_svg += f'<line x1="{x0}" y1="{y + 1 + _stroke_w}" x2="{x1}" y2="{y + 1 + _stroke_w}" stroke="{_co}"  stroke-width="{_stroke_w}" />'
+                        x0, x1, y = None,None,None
+                    elif x0 is None:
+                        x0, x1, y = xy[0], xy[0] + self.rt_self.textLength(c, self.txt_h), xy[1]
+                    else:
+                        x1 = xy[0] + self.rt_self.textLength(c, self.txt_h)
+                if x0 is not None:
+                    my_svg += f'<line x1="{x0}" y1="{y + 1 + _stroke_w}" x2="{x1}" y2="{y + 1 + _stroke_w}" stroke="{_co}"  stroke-width="{_stroke_w}" />'
+        elif color_by_style == 'text':
+            pass
+        else:
+            raise Exception('RTTextBlock.renderDataFrame() - color_by_style "{highlight_style}" unknown')
+
+        # Second pass...
+        for row_i, row in df.iterrows():
+            for i in range(row['beg'],row['end']):
+                xy = self.orig_to_xy[i]
+                if color_by is None or color_by_style != 'text':
+                    my_svg += self.rt_self.svgText(self.txt[i], xy[0], xy[1], self.txt_h)
+                else:
+                    _co = self.rt_self.co_mgr.getColor(row[color_by])
+                    my_svg += self.rt_self.svgText(self.txt[i], xy[0], xy[1], self.txt_h, color=_co)
+
+        my_svg += '</svg>'
+        return my_svg
