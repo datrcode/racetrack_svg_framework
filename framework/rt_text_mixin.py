@@ -19,6 +19,9 @@ import numpy as np
 import spacy
 import nltk
 
+import umap
+from sklearn.preprocessing import StandardScaler
+
 import re
 
 from rt_component import RTComponent
@@ -320,17 +323,39 @@ class RTTextMixin(object):
         main_sentences            = self.textExtractSentences(text_main)
         main_sentences_only       = list(list(zip(*main_sentences))[0])
         main_sentences_embeddings = embed_fn(main_sentences_only)
+        main_sentence_colors      = {} # [sentence_index] = hex-color-string
 
-        main_sentence_colors = {} # [sentence_index] = hex-color-string
+        for_umap_source           = []
+        for_umap_num              = []
+        for_umap_sentence_num     = []
+        for_umap_sentence         = []
+
+        for_umap_embeddings       = []
+        for_umap_embeddings.extend(main_sentences_embeddings)
+
+        for i in range(0,len(main_sentences_only)):
+            for_umap_source.      append('main')
+            for_umap_num.         append(0)
+            for_umap_sentence_num.append(i)
+            for_umap_sentence.    append(main_sentences_only[i])
 
         # For every summary supplied...
-        summary_dots_lu,summary_highlights,min_dot,max_dot = {},{},None,None
+        summary_dots_lu,summary_highlights,min_dot,max_dot,summary_num = {},{},None,None,0
         summary_highlights_lu = {} # [summary][summary_sentence_index] = best_found_main_sentence_index
+        summary_num_to_desc   = {}
         for _summary_desc in text_summaries:
-            _summary = text_summaries[_summary_desc]
+            _summary                      = text_summaries[_summary_desc]
             _summary_sentences            = self.textExtractSentences(_summary)
             _summary_sentences_only       = list(list(zip(*_summary_sentences))[0])
             _summary_sentences_embeddings = embed_fn(_summary_sentences_only)
+
+            for_umap_embeddings.extend(_summary_sentences_embeddings)
+            for i in range(0,len(_summary_sentences_only)):
+                for_umap_source.       append('summary')
+                for_umap_num.          append(summary_num)
+                for_umap_sentence_num. append(i)
+                for_umap_sentence.     append(_summary_sentences_only[i])
+
             summary_dots = []
             summary_highlights[_summary]    = {}
             summary_highlights_lu[_summary] = {}
@@ -373,7 +398,10 @@ class RTTextMixin(object):
                     else:                                                             # No Colors Left :(
                         pass
 
-            summary_dots_lu[_summary] = summary_dots
+            summary_dots_lu     [_summary]      =  summary_dots
+            summary_num_to_desc [summary_num]   =  _summary_desc
+            summary_num                        +=  1
+
     
         # Create the main highlights
         main_highlights = {}
@@ -395,14 +423,81 @@ class RTTextMixin(object):
             summary_tiles.append(self.__textDotProductHistogram__(summary_dots_lu[_rttb.txt],
                                                                 summary_highlights_lu[_rttb.txt], main_sentence_colors))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
+
+        # Create the UMAP
+        umap_reducer               = umap.UMAP()
+        scaled_for_umap_embeddings = StandardScaler().fit_transform(for_umap_embeddings) 
+        umap_embedding             = umap_reducer.fit_transform(scaled_for_umap_embeddings)
+        umap_xs,umap_ys            = [],[]
+        for i in range(0,len(umap_embedding)):
+            umap_xs.append(umap_embedding[i][0])
+            umap_ys.append(umap_embedding[i][1])
+        umap_color,umap_size = [],[]
+        for i in range(0,len(umap_embedding)):
+            sentence_num = for_umap_sentence_num[i]
+            # Dot Color...
+            if for_umap_source[i] == 'main':
+                if sentence_num in main_sentence_colors.keys():
+                    umap_color.append(main_sentence_colors[sentence_num])
+                else:
+                    umap_color.append('#808080')
+            else:
+                _summary_desc = summary_num_to_desc[for_umap_num[i]]
+                _summary      = text_summaries[_summary_desc]
+                if for_umap_sentence_num[i] in summary_highlights_lu[_summary].keys():
+                    closest_main_i = summary_highlights_lu[_summary][for_umap_sentence_num[i]]
+                    if closest_main_i in main_sentence_colors.keys():
+                        umap_color.append(main_sentence_colors[closest_main_i])
+                    else:
+                        umap_color.append('#808080')    
+                else:
+                    umap_color.append('#808080')
+            # Dot Size...
+            if   sentence_num == 0:
+                umap_size.append(2.0)
+            elif sentence_num == 1:
+                umap_size.append(1.8)
+            elif sentence_num == 2:
+                umap_size.append(1.5)
+            elif sentence_num == 3:
+                umap_size.append(1.3)
+            else:
+                umap_size.append(1.0)
+
+        df_umap = pd.DataFrame({'sentence':    for_umap_sentence,
+                                'setence_num': for_umap_sentence_num,
+                                'source_type': for_umap_source,
+                                'source_num':  for_umap_num,
+                                'color':       umap_color,
+                                'size':        umap_size,
+                                'x_umap':      umap_xs,
+                                'y_umap':      umap_ys})
+        
+        def _mydotshape_(_df, _k, _x, _y, _local_dot_w, _color, _opacity):
+            source_type = _df['source_type'].iloc[0]
+            source_num  = _df['source_num'] .iloc[0]
+            if source_type == 'main':
+                return 'x'
+            else:
+                if   source_num == 0:
+                    return 'square'
+                elif source_num == 1:
+                    return 'ellipse'
+                else:
+                    return 'triangle'
+
+        summary_tiles.append(self.xy(df_umap, x_field='x_umap', y_field='y_umap', color_by='color', count_by='size', dot_size='vary', dot_shape=_mydotshape_, draw_labels=False))
+
+        # Compose the summary side
         tile_composition = self.tile(summary_tiles, horz=False)
 
+        # Compose the total
         composition = [tile_composition,
                        f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
                        main_rttb.highlights(main_highlights, opacity=opacity)]
         
         return self.tile(composition)
-
+    
     #
     # __textDotProductXYDataFrame__
     #

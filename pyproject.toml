@@ -8,7 +8,8 @@ requires = [
   "shapely",
   "spacy",
   "squarify",
-  "svglib"
+  "svglib",
+  "umap-learn"
 ]
 
 # For SpaCy, still need to also download the configuration file:
