@@ -384,6 +384,9 @@ class RTTextMixin(object):
             summary_tiles.append(self.__textDotProductHeatMap__(summary_dots_lu[_rttb.txt], min_dot, max_dot, 
                                                                 summary_highlights_lu[_rttb.txt], main_sentence_colors))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
+            summary_tiles.append(self.__textDotProductHistogram__(summary_dots_lu[_rttb.txt],
+                                                                summary_highlights_lu[_rttb.txt], main_sentence_colors))
+            summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
         tile_composition = self.tile(summary_tiles, horz=False)
 
         composition = [tile_composition,
@@ -391,6 +394,27 @@ class RTTextMixin(object):
                        main_rttb.highlights(main_highlights, opacity=opacity)]
         
         return self.tile(composition)
+
+    #
+    # __textDotProductXYDataFrame__
+    #
+    def __textDotProductHistogram__(self, arr, _sentence_index_to_main_index, _main_index_colors):
+        _xs,_ys,_colors,_groups = [],[],[],[]
+        for _group in range(0,len(arr)):
+            _copy = sorted(np.array(arr[_group]),reverse=True)
+            for x in range(0,len(_copy)):
+                y = _copy[x]
+                _xs.     append(x)
+                _ys.     append(y)
+                _groups. append(_group)
+                _color = '#000000'
+                if _group in _sentence_index_to_main_index.keys():
+                    main_index = _sentence_index_to_main_index[_group]
+                    if main_index in _main_index_colors.keys():
+                        _color = _main_index_colors[main_index]
+                _colors.append(_color)
+        _df = pd.DataFrame({'x':_xs,'y':_ys,'color':_colors,'group':_groups})
+        return self.xy(_df, x_field='x', y_field='y', color_by='color', line_groupby_field='group', line_groupby_w=2.0, dot_size=None, w=256, h=128)
 
     #
     # _textDotProductHeatMap__():  Make a simplified heatmap

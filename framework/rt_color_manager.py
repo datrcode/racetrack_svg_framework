@@ -119,6 +119,19 @@ class RTColorManager:
         self.str_to_color_lu[True]  = '#0000ff'
 
     #
+    # __allhex__() - are all the character hex characters?
+    #
+    def __allhex__(self,s):
+        for c in s:
+            if (c >= 'a' and c <= 'f') or \
+               (c >= 'A' and c <= 'F') or \
+               (c >= '0' and c <= '9'):
+                pass
+            else:
+                return False
+        return True
+
+    #
     # Return a color for a string in "#ff00ff" format // default for SVG
     #
     def getColor(self,s):
@@ -132,17 +145,20 @@ class RTColorManager:
         # Default method
         else:
             if s not in self.str_to_color_lu.keys():
-                hc = self.racetrack.hashcode(s)
+                if len(s) == 7 and s[0] == '#' and self.__allhex__(s[1:]):
+                    self.str_to_color_lu[s] = s
+                else:    
+                    hc = self.racetrack.hashcode(s)
 
-                # Updated Mixtures // 2022-11-27
-                h  =             ((hc>>16)&0x00ffff)/65535.0
-                s  = 0.2 + 0.8 * ((hc>> 8)&0x0000ff)/255.0
-                v  = 0.6 + 0.4 * ((hc>> 0)&0x0000ff)/255.0
-                            
-                (r,g,b) = colorsys.hsv_to_rgb(h,s,v)
-                rgb = ((int(r*255)&0x00ff)<<16) | ((int(g*255)&0x00ff)<<8) | ((int(b*255)&0x00ff)<<0)
-                as_hex = format(rgb,'x')
-                self.str_to_color_lu[s] = '#' + ('0' * (6 - len(as_hex)) + as_hex)
+                    # Updated Mixtures // 2022-11-27
+                    h  =             ((hc>>16)&0x00ffff)/65535.0
+                    s  = 0.2 + 0.8 * ((hc>> 8)&0x0000ff)/255.0
+                    v  = 0.6 + 0.4 * ((hc>> 0)&0x0000ff)/255.0
+                                
+                    (r,g,b) = colorsys.hsv_to_rgb(h,s,v)
+                    rgb = ((int(r*255)&0x00ff)<<16) | ((int(g*255)&0x00ff)<<8) | ((int(b*255)&0x00ff)<<0)
+                    as_hex = format(rgb,'x')
+                    self.str_to_color_lu[s] = '#' + ('0' * (6 - len(as_hex)) + as_hex)
             return self.str_to_color_lu[s]
     
     #
