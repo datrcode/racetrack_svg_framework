@@ -308,9 +308,13 @@ class RTTextMixin(object):
         # Text Blocks
         main_rttb     = self.textBlock(text_main, txt_h=main_txt_h, w=main_w, word_wrap=True)
         summary_rttbs = []
+        summary_rttb_to_desc = {}
 
-        for _summary in text_summaries:
-            summary_rttbs.append(self.textBlock(_summary, txt_h=summary_txt_h, w=summary_w, word_wrap=True))
+        for _summary_desc in text_summaries:
+            _summary = text_summaries[_summary_desc]
+            _rttb    = self.textBlock(_summary, txt_h=summary_txt_h, w=summary_w, word_wrap=True)
+            summary_rttbs.append(_rttb)
+            summary_rttb_to_desc[_rttb] = _summary_desc
         
         # Embeddings
         main_sentences            = self.textExtractSentences(text_main)
@@ -322,7 +326,8 @@ class RTTextMixin(object):
         # For every summary supplied...
         summary_dots_lu,summary_highlights,min_dot,max_dot = {},{},None,None
         summary_highlights_lu = {} # [summary][summary_sentence_index] = best_found_main_sentence_index
-        for _summary in text_summaries:
+        for _summary_desc in text_summaries:
+            _summary = text_summaries[_summary_desc]
             _summary_sentences            = self.textExtractSentences(_summary)
             _summary_sentences_only       = list(list(zip(*_summary_sentences))[0])
             _summary_sentences_embeddings = embed_fn(_summary_sentences_only)
@@ -379,6 +384,9 @@ class RTTextMixin(object):
         # Renderings & Compositions
         summary_tiles = []
         for _rttb in summary_rttbs:
+            _desc = summary_rttb_to_desc[_rttb]
+            summary_tiles.append(f'<svg x="0" y="0" width="{summary_w}" height="{24}">' + \
+                                 self.svgText(_desc, 3, 20, txt_h=19, color='#ffffff') + '</svg>')
             summary_tiles.append(_rttb.highlights(summary_highlights[_rttb.txt], opacity=opacity))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
             summary_tiles.append(self.__textDotProductHeatMap__(summary_dots_lu[_rttb.txt], min_dot, max_dot, 
