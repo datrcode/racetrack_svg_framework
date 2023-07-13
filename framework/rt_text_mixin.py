@@ -421,7 +421,8 @@ class RTTextMixin(object):
                                                                 summary_highlights_lu[_rttb.txt], main_sentence_colors))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
             summary_tiles.append(self.__textDotProductHistogram__(summary_dots_lu[_rttb.txt],
-                                                                summary_highlights_lu[_rttb.txt], main_sentence_colors))
+                                                                  summary_highlights_lu[_rttb.txt], main_sentence_colors, 
+                                                                  summary_w))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
 
         # Create the UMAP
@@ -486,7 +487,8 @@ class RTTextMixin(object):
                 else:
                     return 'triangle'
 
-        summary_tiles.append(self.xy(df_umap, x_field='x_umap', y_field='y_umap', color_by='color', count_by='size', dot_size='vary', dot_shape=_mydotshape_, draw_labels=False))
+        # Skip the umap for now... doesn't add anything...
+        # summary_tiles.append(self.xy(df_umap, x_field='x_umap', y_field='y_umap', color_by='color', count_by='size', dot_size='vary', dot_shape=_mydotshape_, draw_labels=False))
 
         # Compose the summary side
         tile_composition = self.tile(summary_tiles, horz=False)
@@ -501,7 +503,7 @@ class RTTextMixin(object):
     #
     # __textDotProductXYDataFrame__
     #
-    def __textDotProductHistogram__(self, arr, _sentence_index_to_main_index, _main_index_colors):
+    def __textDotProductHistogram__(self, arr, _sentence_index_to_main_index, _main_index_colors, _w):
         _xs,_ys,_colors,_groups = [],[],[],[]
         for _group in range(0,len(arr)):
             _copy = sorted(np.array(arr[_group]),reverse=True)
@@ -517,7 +519,7 @@ class RTTextMixin(object):
                         _color = _main_index_colors[main_index]
                 _colors.append(_color)
         _df = pd.DataFrame({'x':_xs,'y':_ys,'color':_colors,'group':_groups})
-        return self.xy(_df, x_field='x', y_field='y', color_by='color', line_groupby_field='group', line_groupby_w=2.0, dot_size=None, w=256, h=128)
+        return self.xy(_df, x_field='x', y_field='y', color_by='color', line_groupby_field='group', line_groupby_w=2.0, dot_size=None, w=_w, h=128)
 
     #
     # _textDotProductHeatMap__():  Make a simplified heatmap
