@@ -15,13 +15,6 @@
 
 import pandas as pd
 import numpy as np
-
-import spacy
-import nltk
-
-import umap
-from sklearn.preprocessing import StandardScaler
-
 import re
 
 from rt_component import RTComponent
@@ -236,6 +229,7 @@ class RTTextMixin(object):
     #
     def textExtractSentences(self,
                              txt):
+        import nltk
         tokens,sentences = nltk.sent_tokenize(txt),[]
         if len(tokens) > 0:
             i = txt.index(tokens[0])
@@ -261,6 +255,7 @@ class RTTextMixin(object):
     #
     def __textExtractEntitiesSpacy__(self,txt):
         if self.spacy_loaded_flag == False:
+            import spacy
             self.nlp_spacy = spacy.load('en_core_web_sm')
             self.spacy_loaded_flag = True
         doc = self.nlp_spacy(txt)
@@ -276,16 +271,18 @@ class RTTextMixin(object):
                              text_main,
                              text_summaries,
                              methodology      = "sentence_embeddings",
-                             embed_fn         = None,
+                             embed_fn         = None,                    # For "sentence_embeddings" methodology
                              main_txt_h       = 14,
                              summary_txt_h    = 16,
                              spacing          = 16,
                              opacity          = 0.8,
                              w                = 1280):
         if type(text_summaries) == str:
-            text_summaries = [text_summaries]
-        if methodology == "sentence_embeddings":
+            text_summaries = {'Default':text_summaries}
+        if   methodology == "sentence_embeddings":
             return self.__textCompareSummaries__sentence_embeddings__(text_main, text_summaries, embed_fn, main_txt_h, summary_txt_h, spacing, opacity, w)
+        elif methodology == "bert_top_n":
+            return self.__textCompareSummaries__bert_top_n__(text_main, text_summaries, main_txt_h, summary_txt_h, spacing, opacity, w)
         else:
             raise Exception(f'RACETrack.textCompareSummaries() - unknown methodology "{methodology}"')
 
@@ -301,6 +298,9 @@ class RTTextMixin(object):
                                                       spacing,
                                                       opacity,
                                                       w):
+        import umap
+        from sklearn.preprocessing import StandardScaler
+
         # Geometry
         main_w        = summary_w = (w - spacing)/2
 
@@ -544,6 +544,134 @@ class RTTextMixin(object):
                     svg += f'<rect x="{x_tiles*tile_w + tile_w}" y="{y*tile_h}" width = "{2*tile_w}" height="{tile_h}" fill="{_color}" />'
         svg += '</svg>'
         return svg
+    
+    #
+    # __textCompareSummaries__bert_top_n__():  Compare via top-n bert placements
+    #
+    def __textCompareSummaries__bert_top_n__(self,
+                                             text_main, 
+                                             text_summaries, 
+                                             main_txt_h, 
+                                             summary_txt_h, 
+                                             spacing, 
+                                             opacity, 
+                                             w):
+        # Geometry & Parameter Evaluation
+        main_w = summary_w = (w - spacing)/2
+        if type(text_summaries) == str:
+            text_summaries = {'Default':text_summaries}
+
+        # From the throwaway file "bert_mlm_example.ipynb"
+        #
+        # Modified From https://towardsdatascience.com/masked-language-modelling-with-bert-7d49793e5d2c
+        #
+        from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW
+        import tensorflow as tf
+        import torch
+
+        mask_perc            = 0.75 # tutorial was 0.15
+        epochs               = 100  # tutorial was less...
+        tokenizer            = BertTokenizer.  from_pretrained('bert-base-cased')
+        model                = BertForMaskedLM.from_pretrained('bert-base-cased')
+        text_main_as_tokens  = tokenizer.tokenize(text_main, return_tensors='pt') # Newer version is just tokenizer(text) ... and returns the inputs structure below
+        as_encoded           = tokenizer.encode(text_main)
+        inputs = {'input_ids':     torch.Tensor([as_encoded]).long(),
+                  'token_type_ids':torch.Tensor([np.zeros(len(as_encoded))]).long(),
+                  'attention_mask':torch.Tensor([np.ones (len(as_encoded))]).long()}
+        inputs['lm_labels'] = inputs['input_ids'].detach().clone()                                  # labels are just the original text...
+        rand = torch.rand(inputs['input_ids'].shape)                                                # create random array of floats in equal dimension to input_ids
+        mask_arr = (rand < mask_perc) * (inputs['input_ids'] != 101) * (inputs['input_ids'] != 102) # As an example of how to separate out those two token types
+        selection = torch.flatten((mask_arr[0]).nonzero()).tolist()                                 # create selection from mask_arr
+        inputs['input_ids'][0, selection] = 103                                                     # apply selection index to inputs.input_ids, adding MASK tokens
+        outputs = model(**inputs)                                                                   # pass inputs as kwarg to model
+        device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        model.to(device)                                                                            # and move our model over to the selected device
+        model.train()                                                                               # activate training mode
+        optim = AdamW(model.parameters(), lr=5e-5)                                                  # initialize optimizer
+        # In the example, the input is broken into multiple versions -- based on each paragraph... not doing that here... but maybe we should
+        for epoch in range(epochs):
+            optim.zero_grad()                                                                       # initialize calculated gradients (from prev step)
+            input_ids      = inputs['input_ids'].     to(device)                                    # move to gpu
+            attention_mask = inputs['attention_mask'].to(device)
+            lm_labels      = inputs['lm_labels'].     to(device)    
+            outputs = model(input_ids, attention_mask=attention_mask, lm_labels=lm_labels)          # process
+            loss = outputs[0]                                                                       # extract loss
+            loss.backward()                                                                         # calculate loss for every parameter that needs grad update    
+            optim.step()                                                                            # update parameters    
+            if (epoch%10) == 0:                                                                     # print updated information
+                print(f'Epoch {epoch:3}\t{loss.item()}')
+        model.eval()                                                                                # Deactivate training mode
+
+        # From https://mattmckenna.io/bert-off-the-shelf/#:~:text=BERT%20works%20by%20masking%20certain,ate%20the%20%5BMASK%5D%E2%80%9D.
+        # - with a lot of modifications ... (e.g., for the GPU version...)
+        def estimateKthPrediction(tokenized_inputs,
+                                  k_max=20):
+            # For every token, replace it with the mask... and then determine what kth it would have been... 
+            _return        = []
+            _mask_token    = tokenizer.encode(tokenizer.mask_token)[1]
+            for i in range(len(tokenized_inputs)):
+                tokenized_inputs_ith   = tokenized_inputs[:i] + [_mask_token] + tokenized_inputs[i+1:]
+                outputs                = model(torch.Tensor([tokenized_inputs_ith]).long().to(device))
+                top_k_indices          = tf.math.top_k(outputs[0].cpu().detach().numpy(), k_max).indices[0].numpy()
+                jth_found              = None
+                for j in range(len(top_k_indices[i])):
+                    if top_k_indices[i][j] == tokenized_inputs[i]:
+                        if jth_found is None:
+                            jth_found = j
+                if jth_found is None:
+                    _return.append(k_max)
+                else:
+                    _return.append(jth_found)
+            return _return
+
+        # Align the tokenized version with original text -- list of tuples [(index, length), ...]
+        def alignTokensWithTextAsTuples(_txt, _tokens):
+            _return = []
+            txt_i,token_i = 0,0
+            while token_i < len(_tokens):
+                _token = _tokens[token_i]
+                if _token.startswith('##'):
+                    _token = _token[2:]
+                txt_i = _txt.index(_token,txt_i)
+                _return.append((txt_i,len(_token)))
+                token_i += 1
+            return _return
+
+        # Put the two last functions together for input highlights text input...
+        def highlightsForText(_txt):
+            _tokens      = tokenizer.tokenize(_txt, return_tensors='pt')
+            _alignment   = alignTokensWithTextAsTuples(_txt, _tokens)
+            _kth_predict = estimateKthPrediction(tokenizer.encode(_txt))[1:-1] # Crop out the begin/end tokens
+            _highlights  = {}
+            for i in range(len(_kth_predict)):
+                if   _kth_predict[i] <= 1:
+                    _co = None
+                elif _kth_predict[i] <= 5:
+                    _co = 'blue'
+                elif _kth_predict[i] <= 10:
+                    _co = 'yellow'
+                elif _kth_predict[i] <  20:
+                    _co = 'orange'
+                else:
+                    _co = 'red'
+                if _co is not None:
+                    i0_to_i1 = (_alignment[i][0], _alignment[i][0] + _alignment[i][1])
+                    _highlights[i0_to_i1] = _co
+            return _highlights
+
+        rttb_main = self.textBlock(text_main, txt_h=main_txt_h, word_wrap=True, w=main_w)
+        summary_tiles = []
+        for summary_desc in text_summaries:
+            _summary = text_summaries[summary_desc]
+            rttb_summary = self.textBlock(_summary, txt_h=summary_txt_h, word_wrap=True, w=summary_w)
+            summary_tiles.append(f'<svg x="0" y="0" width="{summary_w}" height="{24}">' + \
+                                 self.svgText(summary_desc, 3, 20, txt_h=19, color='#ffffff') + '</svg>')
+            summary_tiles.append(rttb_summary.highlights(highlightsForText(_summary), opacity=opacity))
+            summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
+
+        return self.tile([self.tile(summary_tiles, horz=False),
+                          f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
+                          rttb_main.highlights(highlightsForText(text_main), opacity=opacity)])
 
 #
 # RTTextBlock - instance of rendered text block
@@ -792,6 +920,7 @@ class RTTextBlock(object):
     
     #
     # renderDataFrame() - render a position dataframe (assumes some level of filtering)
+    # ... i.e., one can filter the pandas dataframe and then re-render to highlight text/etc.
     #
     def renderDataFrame(self, 
                         df,                               # Positional Dataframe from positionalDataFrame() method...
