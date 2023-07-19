@@ -13,6 +13,10 @@
 # limitations under the License.
 #
 
+# tokenizers             0.5.2
+# torch                  2.0.1+cu118
+# Transformers           2.8.0
+
 import pandas as pd
 import numpy as np
 import re
@@ -569,95 +573,99 @@ class RTTextMixin(object):
         import tensorflow as tf
         import torch
 
-        mask_perc            = 0.75 # tutorial was 0.15
-        epochs               = 100  # tutorial was less...
-        tokenizer            = BertTokenizer.  from_pretrained('bert-base-cased')
-        model                = BertForMaskedLM.from_pretrained('bert-base-cased')
-        text_main_as_tokens  = tokenizer.tokenize(text_main, return_tensors='pt') # Newer version is just tokenizer(text) ... and returns the inputs structure below
-        as_encoded           = tokenizer.encode(text_main)
-        inputs = {'input_ids':     torch.Tensor([as_encoded]).long(),
-                  'token_type_ids':torch.Tensor([np.zeros(len(as_encoded))]).long(),
-                  'attention_mask':torch.Tensor([np.ones (len(as_encoded))]).long()}
-        inputs['lm_labels'] = inputs['input_ids'].detach().clone()                                  # labels are just the original text...
-        rand = torch.rand(inputs['input_ids'].shape)                                                # create random array of floats in equal dimension to input_ids
-        mask_arr = (rand < mask_perc) * (inputs['input_ids'] != 101) * (inputs['input_ids'] != 102) # As an example of how to separate out those two token types
-        selection = torch.flatten((mask_arr[0]).nonzero()).tolist()                                 # create selection from mask_arr
-        inputs['input_ids'][0, selection] = 103                                                     # apply selection index to inputs.input_ids, adding MASK tokens
-        outputs = model(**inputs)                                                                   # pass inputs as kwarg to model
-        device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-        model.to(device)                                                                            # and move our model over to the selected device
-        model.train()                                                                               # activate training mode
-        optim = AdamW(model.parameters(), lr=5e-5)                                                  # initialize optimizer
-        # In the example, the input is broken into multiple versions -- based on each paragraph... not doing that here... but maybe we should
+        mask_perc = 0.75 # tutorial was 0.15
+        epochs    = 100
+        device    = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        tokenizer = BertTokenizer.  from_pretrained('bert-base-cased')
+        model     = BertForMaskedLM.from_pretrained('bert-base-cased')
+        model.train()                                                                                        # activate training mode
+        model.to(device)                                                                                     # and move our model over to the selected device
+        optim = None
+        _parts = text_main.split('\n')
         for epoch in range(epochs):
-            optim.zero_grad()                                                                       # initialize calculated gradients (from prev step)
-            input_ids      = inputs['input_ids'].     to(device)                                    # move to gpu
-            attention_mask = inputs['attention_mask'].to(device)
-            lm_labels      = inputs['lm_labels'].     to(device)    
-            outputs = model(input_ids, attention_mask=attention_mask, lm_labels=lm_labels)          # process
-            loss = outputs[0]                                                                       # extract loss
-            loss.backward()                                                                         # calculate loss for every parameter that needs grad update    
-            optim.step()                                                                            # update parameters    
-            if (epoch%10) == 0:                                                                     # print updated information
+            for _part in _parts:
+                text = (_part)
+                as_encoded = tokenizer.encode(text)
+                inputs = {'input_ids':     torch.Tensor([as_encoded]).long(),
+                        'token_type_ids':torch.Tensor([np.zeros(len(as_encoded))]).long(),
+                        'attention_mask':torch.Tensor([np.ones (len(as_encoded))]).long()}
+                inputs['lm_labels'] = inputs['input_ids'].detach().clone()                                   # labels are just the original text...
+                rand      = torch.rand(inputs['input_ids'].shape)                                            # create random array of floats in equal dimension to input_ids
+                mask_arr  = (rand < mask_perc) * (inputs['input_ids'] != 101) * (inputs['input_ids'] != 102) # As an example of how to separate out those two token types
+                selection = torch.flatten((mask_arr[0]).nonzero()).tolist()                                  # create selection from mask_arr
+                inputs['input_ids'][0, selection] = 103                                                      # apply selection index to inputs.input_ids, adding MASK tokens
+                input_ids      = inputs['input_ids'].     to(device)                                         # move to gpu
+                attention_mask = inputs['attention_mask'].to(device)
+                lm_labels      = inputs['lm_labels'].     to(device)    
+                outputs = model(input_ids, attention_mask=attention_mask, lm_labels=lm_labels)               # process
+                if optim is None:
+                    optim = AdamW(model.parameters(), lr=5e-5)                                               # initialize optimizer
+                optim.zero_grad()                                                                            # initialize calculated gradients (from prev step)
+                input_ids      = inputs['input_ids'].     to(device)                                         # move to gpu
+                attention_mask = inputs['attention_mask'].to(device)
+                lm_labels      = inputs['lm_labels'].     to(device)    
+                outputs        = model(input_ids, attention_mask=attention_mask, lm_labels=lm_labels)        # process
+                loss           = outputs[0]                                                                  # extract loss
+                loss.backward()                                                                              # calculate loss for every parameter that needs grad update    
+                optim.step()                                                                                 # update parameters    
+            if (epoch%10) == 0:                                                                              # print updated information
                 print(f'Epoch {epoch:3}\t{loss.item()}')
-        model.eval()                                                                                # Deactivate training mode
+        model.eval()                                                                                         # Take it out of training mode
 
+        #
         # From https://mattmckenna.io/bert-off-the-shelf/#:~:text=BERT%20works%20by%20masking%20certain,ate%20the%20%5BMASK%5D%E2%80%9D.
-        # - with a lot of modifications ... (e.g., for the GPU version...)
-        def estimateKthPrediction(tokenized_inputs,
-                                  k_max=20):
-            # For every token, replace it with the mask... and then determine what kth it would have been... 
-            _return        = []
-            _mask_token    = tokenizer.encode(tokenizer.mask_token)[1]
+        # - with a lot of modifications ...  for the GPU version...
+        #
+        def topKPredictions(input_string, k=5, tokenizer=tokenizer, model=model) -> str:
+            tokenized_inputs = tokenizer.encode(input_string)
+            outputs = model(torch.Tensor([tokenized_inputs]).long().to(device))
+            top_k_indices = tf.math.top_k(outputs[0].cpu().detach().numpy(), k).indices[0].numpy()
             for i in range(len(tokenized_inputs)):
-                tokenized_inputs_ith   = tokenized_inputs[:i] + [_mask_token] + tokenized_inputs[i+1:]
-                outputs                = model(torch.Tensor([tokenized_inputs_ith]).long().to(device))
-                top_k_indices          = tf.math.top_k(outputs[0].cpu().detach().numpy(), k_max).indices[0].numpy()
-                jth_found              = None
-                for j in range(len(top_k_indices[i])):
-                    if top_k_indices[i][j] == tokenized_inputs[i]:
-                        if jth_found is None:
-                            jth_found = j
-                if jth_found is None:
-                    _return.append(k_max)
-                else:
-                    _return.append(jth_found)
-            return _return
-
-        # Align the tokenized version with original text -- list of tuples [(index, length), ...]
-        def alignTokensWithTextAsTuples(_txt, _tokens):
-            _return = []
-            txt_i,token_i = 0,0
-            while token_i < len(_tokens):
-                _token = _tokens[token_i]
-                if _token.startswith('##'):
-                    _token = _token[2:]
-                txt_i = _txt.index(_token,txt_i)
-                _return.append((txt_i,len(_token)))
-                token_i += 1
-            return _return
+                if tokenized_inputs[i] == tokenizer.encode(tokenizer.mask_token)[1]:
+                    mask_i = i
+            return tokenizer.decode(top_k_indices[mask_i])
 
         # Put the two last functions together for input highlights text input...
         def highlightsForText(_txt):
-            _tokens      = tokenizer.tokenize(_txt, return_tensors='pt')
-            _alignment   = alignTokensWithTextAsTuples(_txt, _tokens)
-            _kth_predict = estimateKthPrediction(tokenizer.encode(_txt))[1:-1] # Crop out the begin/end tokens
-            _highlights  = {}
-            for i in range(len(_kth_predict)):
-                if   _kth_predict[i] <= 1:
-                    _co = None
-                elif _kth_predict[i] <= 5:
-                    _co = 'blue'
-                elif _kth_predict[i] <= 10:
-                    _co = 'yellow'
-                elif _kth_predict[i] <  20:
-                    _co = 'orange'
-                else:
-                    _co = 'red'
-                if _co is not None:
-                    i0_to_i1 = (_alignment[i][0], _alignment[i][0] + _alignment[i][1])
-                    _highlights[i0_to_i1] = _co
-            return _highlights
+            highlights = {}
+            _parts   = _txt.split('\n')
+            accum_i = 0
+            for _part in _parts:
+                parts_i, global_i = 0, accum_i
+                while parts_i < len(_part):
+                    while parts_i < len(_part) and (self.__whitespace__(_part[parts_i]) or self.__punctuation__(_part[parts_i])):
+                        parts_i  += 1
+                        global_i += 1
+                    if parts_i < len(_part):
+                        parts_i0,global_i0 = parts_i,global_i
+                        while parts_i < len(_part) and self.__whitespace__(_part[parts_i]) == False and self.__punctuation__(_part[parts_i]) == False:
+                            parts_i  += 1
+                            global_i += 1
+                        actual        = _part[parts_i0:parts_i]
+                        masked        = _part[:parts_i0] + '[MASK]' + _part[parts_i:]
+                        guesses       = topKPredictions(masked, k=20)
+                        guesses_split = guesses.split(' ')
+                        guesses_i     = 0
+                        while guesses_i < len(guesses_split) and guesses_split[guesses_i] != actual:
+                            guesses_i += 1
+                        if guesses_i <= 1:
+                            _co = None
+
+                        if   guesses_i <= 1:
+                            _co = None
+                        elif guesses_i <= 5:
+                            _co = 'blue'
+                        elif guesses_i <= 10:
+                            _co = 'yellow'
+                        elif guesses_i <  20:
+                            _co = 'orange'
+                        else:
+                            _co = 'red'
+                        if _co is not None:
+                            i0_to_i1 = (global_i0, global_i)
+                            highlights[i0_to_i1] = _co
+                accum_i += len(_part)+1
+            return highlights
 
         rttb_main = self.textBlock(text_main, txt_h=main_txt_h, word_wrap=True, w=main_w)
         summary_tiles = []
