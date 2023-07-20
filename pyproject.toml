@@ -9,6 +9,9 @@ requires = [
   "spacy",
   "squarify",
   "svglib",
+  "tensorflow",
+  "torch",
+  "transformers",
   "umap-learn"
 ]
 

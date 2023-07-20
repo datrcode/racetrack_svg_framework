@@ -418,6 +418,7 @@ class RTTextMixin(object):
         for _rttb in summary_rttbs:
             _desc = summary_rttb_to_desc[_rttb]
             summary_tiles.append(f'<svg x="0" y="0" width="{summary_w}" height="{24}">' + \
+                                 f'<rect x="0" y="0" width="{summary_w}" height="{24}" fill="#000000" />' + \
                                  self.svgText(_desc, 3, 20, txt_h=19, color='#ffffff') + '</svg>')
             summary_tiles.append(_rttb.highlights(summary_highlights[_rttb.txt], opacity=opacity))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
@@ -574,7 +575,7 @@ class RTTextMixin(object):
         import torch
 
         mask_perc = 0.75 # tutorial was 0.15
-        epochs    = 100
+        epochs    = 10
         device    = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         tokenizer = BertTokenizer.  from_pretrained('bert-base-cased')
         model     = BertForMaskedLM.from_pretrained('bert-base-cased')
@@ -654,7 +655,7 @@ class RTTextMixin(object):
                         if   guesses_i <= 1:
                             _co = None
                         elif guesses_i <= 5:
-                            _co = 'blue'
+                            _co = '#909090'
                         elif guesses_i <= 10:
                             _co = 'yellow'
                         elif guesses_i <  20:
@@ -673,6 +674,7 @@ class RTTextMixin(object):
             _summary = text_summaries[summary_desc]
             rttb_summary = self.textBlock(_summary, txt_h=summary_txt_h, word_wrap=True, w=summary_w)
             summary_tiles.append(f'<svg x="0" y="0" width="{summary_w}" height="{24}">' + \
+                                 f'<rect x="0" y="0" width="{summary_w}" height="{24}" fill="#000000" />' + \
                                  self.svgText(summary_desc, 3, 20, txt_h=19, color='#ffffff') + '</svg>')
             summary_tiles.append(rttb_summary.highlights(highlightsForText(_summary), opacity=opacity))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
@@ -768,7 +770,7 @@ class RTTextBlock(object):
     #   - lu['regex substring'] = '#000000'
     #   - lu['many']            = 'whatever' # any 'many' substrings will get colored with 'whatever' color lookup
     #
-    def highlights(self, lu, opacity=1.0):
+    def highlightsOverlay(self, lu, opacity=1.0):
         svg_underlay = ''
         for k in lu:
             _co = lu[k]
@@ -792,19 +794,94 @@ class RTTextBlock(object):
                 raise Exception(f'RTTextBlock.highlights() - do not understand key value type {type(k)}')
 
         x,y,w,h = self.bounds
-        _co     = self.rt_self.co_mgr.getTVColor('background','default')
-        return f'<svg x="0" y="0" width="{w}" height="{h}">' + \
-               f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />' + \
-               svg_underlay + \
-               self.svg + \
-               '</svg>'
+        return f'<svg x="0" y="0" width="{w}" height="{h}">' + svg_underlay + '</svg>'
 
+    def highlights(self,lu,opacity=1.0):
+        return self.wrap(self.background() + self.unwrappedText() + self.highlightsOverlay(lu, opacity))
+
+    #
+    # __underlineSpan__() - internal primitive for underlining.
+    #
+    def __underlineSpan__(self, i0, i1, _co=None, _stroke_w=None, strikethrough=False):
+        y_adj = 0
+        if strikethrough:
+            y_adj = -self.txt_h/2
+        if _co is None:
+            _co = self.rt_self.co_mgr.getTVColor('data','default')
+        if _stroke_w is None:
+            _stroke_w = min(0.5 + self.txt_h/14, 2.5)
+        my_svg = ''
+        x0, x1, y = None,None,None
+        for i in range(i0,i1):
+            c, xy = self.txt[i], self.orig_to_xy[i]
+            if self.rt_self.__whitespace__(c) or self.rt_self.__punctuation__(c):
+                if x0 is not None:
+                    my_svg += f'<line x1="{x0}" y1="{y + 1 + _stroke_w + y_adj}" x2="{x1}" y2="{y + 1 + _stroke_w  + y_adj}" stroke="{_co}" stroke-width="{_stroke_w}" />'
+                    x0, x1, y = None,None,None
+            elif x0 is not None and y != xy[1]:
+                my_svg += f'<line x1="{x0}" y1="{y + 1 + _stroke_w  + y_adj}" x2="{x1}" y2="{y + 1 + _stroke_w  + y_adj}" stroke="{_co}"  stroke-width="{_stroke_w}" />'
+                x0, x1, y = None,None,None
+            elif x0 is None:
+                x0, x1, y = xy[0], xy[0] + self.rt_self.textLength(c, self.txt_h), xy[1]
+            else:
+                x1 = xy[0] + self.rt_self.textLength(c, self.txt_h)
+        if x0 is not None:
+            my_svg += f'<line x1="{x0}" y1="{y + 1 + _stroke_w + y_adj}" x2="{x1}" y2="{y + 1 + _stroke_w + y_adj}" stroke="{_co}"  stroke-width="{_stroke_w}" />'
+        return my_svg
+
+    #
+    # underlines() - same format as above...
+    #
+    def underlinesOverlay(self, lu, strikethrough=False):
+        svg_underlay = ''
+        for k in lu:
+            _co = lu[k]
+            if _co is None:
+                _co = self.rt_self.co_mgr.getTVColor('data','default')
+            if _co.startswith('#') == False or len(_co) != 7: # If it's not a hex hash color string... then look it up...
+                _co = self.rt_self.co_mgr.getColor(_co)
+            if   type(k) == tuple:
+                svg_underlay += self.__underlineSpan__(k[0], k[1], _co=_co, strikethrough=strikethrough)
+            elif type(k) == str:
+                i = 0
+                re_match = re.findall(k,self.txt)
+                if re_match is not None:
+                    i = 0
+                    for _match in re_match:
+                        i = self.txt.index(k,i)
+                        j = i + len(_match)
+                        svg_underlay += self.__underlineSpan__(i, j, _co=_co, strikethrough=strikethrough)
+                        i += len(_match)
+            else:
+                raise Exception(f'RTTextBlock.highlights() - do not understand key value type {type(k)}')
+        x,y,w,h = self.bounds
+        return f'<svg x="0" y="0" width="{w}" height="{h}">' + svg_underlay + '</svg>'
+
+    def underlines(self, lu, strikethrough=False):
+        return self.wrap(self.background() + self.unwrappedText() + self.underlinesOverlay(lu, strikethrough))
 
     #
     # unwrappedSVG() - return the unwrapped version of the SVG.
     #
-    def unwrappedSVG(self):
+    def unwrappedText(self):
         return self.svg
+
+    #
+    # wrap() - wrap into an SVG frame of the proper size
+    #
+    def wrap(self, to_wrap):
+        x,y,w,h = self.bounds        
+        return f'<svg x="0" y="0" width="{w}" height="{h}">' + to_wrap + '</svg>'
+
+    #
+    # background(self): return the background
+    #
+    def background(self):
+        x,y,w,h = self.bounds
+        _co     = self.rt_self.co_mgr.getTVColor('background','default')
+        return f'<svg x="0" y="0" width="{w}" height="{h}">' + \
+               f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />' + \
+                '</svg>'
 
     #
     # SVG Representation -- adds the svg begin/end markup...
@@ -927,7 +1004,7 @@ class RTTextBlock(object):
         })
     
     #
-    # renderDataFrame() - render a position dataframe (assumes some level of filtering)
+    # renderDataFrame() - render a positional dataframe (assumes some level of filtering)
     # ... i.e., one can filter the pandas dataframe and then re-render to highlight text/etc.
     #
     def renderDataFrame(self, 
