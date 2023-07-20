@@ -287,8 +287,87 @@ class RTTextMixin(object):
             return self.__textCompareSummaries__sentence_embeddings__(text_main, text_summaries, embed_fn, main_txt_h, summary_txt_h, spacing, opacity, w)
         elif methodology == "bert_top_n":
             return self.__textCompareSummaries__bert_top_n__(text_main, text_summaries, main_txt_h, summary_txt_h, spacing, opacity, w)
+        elif methodology == "missing_words":
+            return self.__textCompareSummaries__missing_words__(text_main, text_summaries, main_txt_h, summary_txt_h, spacing, opacity, w)
         else:
             raise Exception(f'RACETrack.textCompareSummaries() - unknown methodology "{methodology}"')
+
+
+    #
+    # __textCompareSummaries__missing_words__()
+    #
+    def __textCompareSummaries__missing_words__(self,
+                                                text_main,
+                                                text_summaries,
+                                                main_txt_h,
+                                                summary_txt_h,
+                                                spacing,
+                                                opacity,
+                                                w):
+        # Geometry
+        main_w = summary_w = (w - spacing)/2
+
+        # Extract words from a text
+        def words(_txt):
+            i,i0,_set = 0,None,set()
+            while i < len(_txt):
+                if self.__whitespace__(_txt[i]) or self.__punctuation__(_txt[i]):
+                    if i0 is not None:
+                        _set.add(_txt[i0:i].lower())
+                        i0 = None
+                else:
+                    if i0 is None:
+                        i0 = i
+                i += 1
+            if i0 is not None:
+                _set.add(_txt[i0:i].lower())
+            return _set
+
+        # Create sets of the words found in each
+        main_words    = words(text_main)
+        summary_words = set()
+        for summary_desc in text_summaries:
+            summary_words |= words(text_summaries[summary_desc])
+
+        # Highlight words not found in the _set
+        def highlightsForText(_txt, _set, _co):
+            highlights = {}
+            i,i0 = 0,None
+            while i < len(_txt):
+                if self.__whitespace__(_txt[i]) or self.__punctuation__(_txt[i]):
+                    if i0 is not None:
+                        _word = _txt[i0:i].lower()
+                        if _word not in _set:
+                            highlights[(i0,i)] = _co    
+                        i0 = None
+                else:
+                    if i0 is None:
+                        i0 = i
+                i += 1
+            if i0 is not None:
+                _word = _txt[i0:i].lower()
+                if _word not in _set:
+                    highlights[(i0,i)] = _co
+            return highlights
+
+        # Composition
+        rttb_main = self.textBlock(text_main, txt_h=main_txt_h, word_wrap=True, w=main_w)
+        summary_tiles = []
+        for summary_desc in text_summaries:
+            _summary = text_summaries[summary_desc]
+            rttb_summary = self.textBlock(_summary, txt_h=summary_txt_h, word_wrap=True, w=summary_w)
+            summary_tiles.append(f'<svg x="0" y="0" width="{summary_w}" height="{24}">' + \
+                                 f'<rect x="0" y="0" width="{summary_w}" height="{24}" fill="#000000" />' + \
+                                 self.svgText(summary_desc, 3, 20, txt_h=19, color='#ffffff') + '</svg>')
+            summary_tiles.append(rttb_summary.highlights(highlightsForText(_summary, main_words, 'orange'), opacity=opacity))
+            summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
+
+        return self.tile([self.tile(summary_tiles, horz=False),
+                          f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
+                          rttb_main.highlights(highlightsForText(text_main, summary_words, 'yellow'), opacity=opacity)])
+
+
+
 
     #
     # __textCompareSummaries__sentence_embeddings__()
