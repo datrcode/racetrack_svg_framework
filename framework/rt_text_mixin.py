@@ -285,8 +285,8 @@ class RTTextMixin(object):
             text_summaries = {'Default':text_summaries}
         if   methodology == "sentence_embeddings":
             return self.__textCompareSummaries__sentence_embeddings__(text_main, text_summaries, embed_fn, main_txt_h, summary_txt_h, spacing, opacity, w)
-        elif methodology == "bert_top_n":
-            return self.__textCompareSummaries__bert_top_n__(text_main, text_summaries, main_txt_h, summary_txt_h, spacing, opacity, w)
+        elif methodology == "bert_top_n" or methodology == "bert_top_n_prob":
+            return self.__textCompareSummaries__bert_top_n__(text_main, text_summaries, methodology, main_txt_h, summary_txt_h, spacing, opacity, w)
         elif methodology == "missing_words":
             return self.__textCompareSummaries__missing_words__(text_main, text_summaries, main_txt_h, summary_txt_h, spacing, opacity, w)
         else:
@@ -634,7 +634,8 @@ class RTTextMixin(object):
     #
     def __textCompareSummaries__bert_top_n__(self,
                                              text_main, 
-                                             text_summaries, 
+                                             text_summaries,
+                                             methodology,
                                              main_txt_h, 
                                              summary_txt_h, 
                                              spacing, 
@@ -692,10 +693,8 @@ class RTTextMixin(object):
                 print(f'Epoch {epoch:3}\t{loss.item()}')
         model.eval()                                                                                         # Take it out of training mode
 
-        #
         # From https://mattmckenna.io/bert-off-the-shelf/#:~:text=BERT%20works%20by%20masking%20certain,ate%20the%20%5BMASK%5D%E2%80%9D.
         # - with a lot of modifications ...  for the GPU version...
-        #
         def topKPredictions(input_string, k=5, tokenizer=tokenizer, model=model) -> str:
             tokenized_inputs = tokenizer.encode(input_string)
             outputs = model(torch.Tensor([tokenized_inputs]).long().to(device))
@@ -747,6 +746,67 @@ class RTTextMixin(object):
                 accum_i += len(_part)+1
             return highlights
 
+        if methodology == 'bert_top_n':
+            rttb_main = self.textBlock(text_main, txt_h=main_txt_h, word_wrap=True, w=main_w)
+            summary_tiles = []
+            for summary_desc in text_summaries:
+                _summary = text_summaries[summary_desc]
+                rttb_summary = self.textBlock(_summary, txt_h=summary_txt_h, word_wrap=True, w=summary_w)
+                summary_tiles.append(f'<svg x="0" y="0" width="{summary_w}" height="{24}">' + \
+                                    f'<rect x="0" y="0" width="{summary_w}" height="{24}" fill="#000000" />' + \
+                                    self.svgText(summary_desc, 3, 20, txt_h=19, color='#ffffff') + '</svg>')
+                summary_tiles.append(rttb_summary.highlights(highlightsForText(_summary), opacity=opacity))
+                summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
+
+            return self.tile([self.tile(summary_tiles, horz=False),
+                            f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
+                            rttb_main.highlights(highlightsForText(text_main), opacity=opacity)])
+
+        # From https://mattmckenna.io/bert-off-the-shelf/#:~:text=BERT%20works%20by%20masking%20certain,ate%20the%20%5BMASK%5D%E2%80%9D.
+        def getWordProbabilities(input_string, tokenizer=tokenizer, model=model):
+            tokenized_inputs = tokenizer.encode(input_string)
+            outputs = model(torch.Tensor([tokenized_inputs]).long().to(device))
+            predictions = outputs[0]
+            predicted_indices = torch.argmax(predictions[0,:],dim=-1)
+            predicted_tokens  = tokenizer.convert_ids_to_tokens(predicted_indices.tolist())
+            probs = torch.nn.functional.softmax(predictions, dim=-1)
+            predicted_token_probs = probs[0,torch.arange(predictions.shape[1]),predicted_indices].cpu()
+            return predicted_tokens[1:-1], predicted_token_probs[1:-1], tokenizer.tokenize(input_string)
+
+        def tokenSpans(orig, as_tokens):
+            spans = []
+            i,token_i = 0,0
+            while token_i < len(as_tokens):
+                token = as_tokens[token_i]
+                if token.startswith('##'):
+                    token = token[2:]
+                i = orig.index(token,i)
+                spans.append((i,i+len(token)))
+                i += len(token)
+                token_i += 1
+            return spans
+
+        def probabilityHighlights(orig):
+            highlights = {}
+            _parts,_parts_i = orig.split('\n'),0
+            for _part in _parts:
+                pred_tokens, pred_probs, as_tokens = getWordProbabilities(_part)
+                spans = tokenSpans(_part, as_tokens)
+                for i in range(len(pred_probs)):
+                    _span = (spans[i][0]+_parts_i,spans[i][1]+_parts_i)
+                    if   pred_probs[i] > 0.95:
+                        pass
+                    elif pred_probs[i] > 0.8:
+                        highlights[_span] = '#909090'
+                    elif pred_probs[i] > 0.6:
+                        highlights[_span] = 'yellow'
+                    elif pred_probs[i] > 0.4:
+                        highlights[_span] = 'orange'
+                    else:
+                        highlights[_span] = 'red'
+                _parts_i += len(_part) + 1
+            return highlights
+
         rttb_main = self.textBlock(text_main, txt_h=main_txt_h, word_wrap=True, w=main_w)
         summary_tiles = []
         for summary_desc in text_summaries:
@@ -755,12 +815,12 @@ class RTTextMixin(object):
             summary_tiles.append(f'<svg x="0" y="0" width="{summary_w}" height="{24}">' + \
                                  f'<rect x="0" y="0" width="{summary_w}" height="{24}" fill="#000000" />' + \
                                  self.svgText(summary_desc, 3, 20, txt_h=19, color='#ffffff') + '</svg>')
-            summary_tiles.append(rttb_summary.highlights(highlightsForText(_summary), opacity=opacity))
+            summary_tiles.append(rttb_summary.highlights(probabilityHighlights(_summary), opacity=opacity))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
 
         return self.tile([self.tile(summary_tiles, horz=False),
                           f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
-                          rttb_main.highlights(highlightsForText(text_main), opacity=opacity)])
+                          rttb_main.highlights(probabilityHighlights(text_main), opacity=opacity)])
 
 #
 # RTTextBlock - instance of rendered text block
