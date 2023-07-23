@@ -164,7 +164,7 @@ class RTColorManager:
         # Default method
         else:
             if s not in self.str_to_color_lu.keys():
-                if len(s) == 7 and s[0] == '#' and self.__allhex__(s[1:]):
+                if type(s) == str and len(s) == 7 and s[0] == '#' and self.__allhex__(s[1:]):
                     self.str_to_color_lu[s] = s
                 else:    
                     hc = self.racetrack.hashcode(s)
