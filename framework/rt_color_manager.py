@@ -13,6 +13,25 @@
 # limitations under the License.
 #
 
+##############################################################################################################
+#
+# NCL / NCAR Command Language Color Schema From:
+#
+# https://www.ncl.ucar.edu/Document/Graphics/ColorTables/cividis.shtml
+#
+# From this page, placed the dividis.rgb file in the config directory
+#
+
+##############################################################################################################
+#
+# Niccoli & Lynch Color Scale From:
+# "A More Perceptual Color Palette for Structure Maps" (2014), Niccoli and Lynch
+#
+# https://www.searchanddiscovery.com/pdfz/documents/2014/41297niccoli/ndx_niccoli.pdf.html
+#
+# Need to find a Python implementation of this schema...
+#
+
 import colorsys
 
 from math import log10

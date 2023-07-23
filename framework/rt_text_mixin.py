@@ -24,6 +24,7 @@ import re
 from rt_component import RTComponent
 
 from shapely.geometry import Polygon, MultiPolygon
+import shapely.affinity as affinity
 
 __name__ = 'rt_text_mixin'
 
@@ -655,7 +656,7 @@ class RTTextMixin(object):
         import torch
 
         mask_perc = 0.75 # tutorial was 0.15
-        epochs    = 10
+        epochs    = 100
         device    = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         tokenizer = BertTokenizer.  from_pretrained('bert-base-cased')
         model     = BertForMaskedLM.from_pretrained('bert-base-cased')
@@ -903,13 +904,46 @@ class RTTextBlock(object):
                             ])
 
     #
+    # pixelRepr() - return a pixel level representation of the document
+    #
+    def pixelRepr(self, lu, w=64):
+        bounds_x,bounds_y,bounds_w,bounds_h = self.bounds
+        scale = w / bounds_w
+        h = w * bounds_h / bounds_w
+        _co  = self.rt_self.co_mgr.getTVColor('background','default')
+        svg  = f'<svg x="0" y="0" width="{w}" height="{h}">'
+        svg += f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />'
+        for k in lu.keys():
+            if   type(k) == tuple:
+                _poly        = self.spanGeometry(k[0],k[1])
+                _poly_scaled = affinity.scale(_poly,xfact=scale,yfact=scale,origin=(0,0,0))
+                _co          = self.rt_self.co_mgr.getColor(lu[k])
+                svg += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill="{_co}" />'
+            elif type(k) == str:
+                re_match = re.findall(k,self.txt)
+                if re_match is not None:
+                    i = 0
+                    for _match in re_match:
+                        i = self.txt.index(k,i)
+                        j = i + len(_match)
+                        _poly        = self.spanGeometry(i,j)
+                        _poly_scaled = affinity.scale(_poly,xfact=scale,yfact=scale,origin=(0,0,0))
+                        _co          = self.rt_self.co_mgr.getColor(lu[k])
+                        svg += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill="{_co}" />'
+                        i += len(_match)
+            else:
+                raise Exception(f'RTTextBlock.pixelRepr() -- unknown key in lookups {k}')
+        svg +=  '</svg>'
+        return svg
+
+    #
     # highlights() - highlight user-specified text.
     # - lu: either a [1] (i,j) tuple or [2] a regex string to either a [A] seven-character hex color string or a [B] string color
     #   - lu[(0,10)]            = '#ff0000'
     #   - lu['regex substring'] = '#000000'
     #   - lu['many']            = 'whatever' # any 'many' substrings will get colored with 'whatever' color lookup
     #
-    def highlightsOverlay(self, lu, opacity=1.0):
+    def highlightsOverlay(self, lu, opacity=0.4):
         svg_underlay = ''
         for k in lu:
             _co = lu[k]
@@ -935,7 +969,7 @@ class RTTextBlock(object):
         x,y,w,h = self.bounds
         return f'<svg x="0" y="0" width="{w}" height="{h}">' + svg_underlay + '</svg>'
 
-    def highlights(self,lu,opacity=1.0):
+    def highlights(self,lu,opacity=0.4):
         return self.wrap(self.background() + self.unwrappedText() + self.highlightsOverlay(lu, opacity))
 
     #
