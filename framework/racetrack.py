@@ -78,7 +78,7 @@ class RACETrack(RTAnnotationsMixin,
     def __init__(self):
         # Visualization globals
         self.co_mgr            = RTColorManager(self)
-        self.default_font      = "Ariel"
+        self.default_font      = "Times"
         self.fformat           = '0.2f'
         
         # Field transformations
@@ -735,7 +735,7 @@ for (i=32;i<128;i++) {
 
     #
     # textLength() - calculate the expected text length
-    # ... was eventuall modified for "Ariel"
+    # ... was eventuall modified for "Ariel" ... and then back to Times Serif since Ariel wasn't working with SVGLib
     # ... but the kerning made the calculation difficult... any lower case letters following an "f" were a problem...
     #
     def textLength(self, txt, txt_h):
@@ -743,7 +743,8 @@ for (i=32;i<128;i++) {
         # Load the pre-calculated font-metrics
         if self._font_metrics_ is None:
             _rt_dir   = os.path.dirname(os.path.abspath(__file__))
-            _filename = os.path.join(_rt_dir, "../config", "20230629_ariel_14.txt")
+            # _filename = os.path.join(_rt_dir, "../config", "20230629_ariel_14.txt")
+            _filename = os.path.join(_rt_dir, "../config", "20230628_times_serif_14.txt")
             with open(_filename) as file:
                 lines = [line.rstrip() for line in file]
             self._font_metrics_ = {}
