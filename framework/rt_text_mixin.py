@@ -225,15 +225,42 @@ class RTTextMixin(object):
             _len = self.textLength(_line, txt_h)
             _max = max(_len,_max)
         return _max + 6
-    
+
     #
-    # textExtractSentences() - extract sentences
+    # __loadSpacy__():  Load spacy (only if necessary)
+    #
+    def __loadSpacy__(self):
+        if self.spacy_loaded_flag == False:
+            import spacy
+            self.nlp_spacy = spacy.load('en_core_web_sm')
+            self.spacy_loaded_flag = True
+
+    #
+    # textExtractSentences() - extract sentences using spacy
     #
     # _tups = textExtractSentences(_str_)
     # _just_the_sentences_as_array = list(list(zip(*_tups))[0])
     #
     def textExtractSentences(self,
                              txt):
+        self.__loadSpacy__()
+        sentences,i = [],0
+        for _span in self.nlp_spacy(txt).sents:
+            as_str = str(_span).strip()
+            i      = txt.index(as_str,i)
+            sentences.append((as_str, i, i + len(as_str)))
+            i += len(as_str)            
+        return sentences
+
+    #
+    # textExtractSentences() - extract sentences
+    # - original version in NLTK... but rewrote in spacy...
+    #
+    # _tups = textExtractSentences(_str_)
+    # _just_the_sentences_as_array = list(list(zip(*_tups))[0])
+    #
+    def __textExtractSentences_NLTK_version__(self,
+                                          txt):
         import nltk
         tokens,sentences = nltk.sent_tokenize(txt),[]
         if len(tokens) > 0:
@@ -259,10 +286,7 @@ class RTTextMixin(object):
     # __extractEntitiesSpacy__() - extract entities using SpaCy.
     #
     def __textExtractEntitiesSpacy__(self,txt):
-        if self.spacy_loaded_flag == False:
-            import spacy
-            self.nlp_spacy = spacy.load('en_core_web_sm')
-            self.spacy_loaded_flag = True
+        self.__loadSpacy__()        
         doc = self.nlp_spacy(txt)
         ret = []
         for entity in doc.ents:
@@ -905,6 +929,7 @@ class RTTextBlock(object):
 
     #
     # pixelRepr() - return a pixel level representation of the document
+    # - see the highlights() function below for regex formatting
     #
     def pixelRepr(self, lu, w=64):
         bounds_x,bounds_y,bounds_w,bounds_h = self.bounds
@@ -921,10 +946,12 @@ class RTTextBlock(object):
                 svg += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill="{_co}" />'
             elif type(k) == str:
                 re_match = re.findall(k,self.txt)
-                if re_match is not None:
+                if re_match is not None and len(re_match) > 0:
                     i = 0
                     for _match in re_match:
-                        i = self.txt.index(k,i)
+                        if type(_match) == tuple:
+                            _match = _match[0]
+                        i = self.txt.index(_match,i)
                         j = i + len(_match)
                         _poly        = self.spanGeometry(i,j)
                         _poly_scaled = affinity.scale(_poly,xfact=scale,yfact=scale,origin=(0,0,0))
@@ -940,7 +967,7 @@ class RTTextBlock(object):
     # highlights() - highlight user-specified text.
     # - lu: either a [1] (i,j) tuple or [2] a regex string to either a [A] seven-character hex color string or a [B] string color
     #   - lu[(0,10)]            = '#ff0000'
-    #   - lu['regex substring'] = '#000000'
+    #   - lu['regex substring'] = '#000000' -- this needs to be grouped properly -- for example r'(([Mm]atch)(es){0,1})
     #   - lu['many']            = 'whatever' # any 'many' substrings will get colored with 'whatever' color lookup
     #
     def highlightsOverlay(self, lu, opacity=0.4):
@@ -953,12 +980,13 @@ class RTTextBlock(object):
                 _poly = self.spanGeometry(k[0],k[1])
                 svg_underlay += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly)}" fill="{_co}" fill-opacity="{opacity}" />'
             elif type(k) == str:
-                i = 0
                 re_match = re.findall(k,self.txt)
-                if re_match is not None:
+                if re_match is not None and len(re_match) > 0:
                     i = 0
                     for _match in re_match:
-                        i = self.txt.index(k,i)
+                        if type(_match) == tuple:
+                            _match = _match[0]
+                        i = self.txt.index(_match,i)
                         j = i + len(_match)
                         _poly = self.spanGeometry(i,j)
                         svg_underlay += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly)}" fill="{_co}" fill-opacity="{opacity}" />'
