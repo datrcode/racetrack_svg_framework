@@ -21,7 +21,9 @@ import pandas as pd
 import numpy as np
 import re
 
-from rt_component import RTComponent
+import networkx as nx # for TextRank
+
+from rt_component import RTComponent # Unused?
 
 from shapely.geometry import Polygon, MultiPolygon
 import shapely.affinity as affinity
@@ -292,7 +294,33 @@ class RTTextMixin(object):
         for entity in doc.ents:
             ret.append((entity.text, entity.label_, entity.end_char - len(entity.text), entity.end_char))
         return ret
-    
+
+
+    #
+    # textRank()
+    # - modeled after https://github.com/davidadamojr/TextRank
+    # -- which appears modeled after https://web.eecs.umich.edu/~mihalcea/papers/mihalcea.emnlp04.pdf
+    #
+    def textRank(self, txt):
+        self.__loadSpacy__()
+        sentence_tuples = self.textExtractSentences(txt)
+        sentences,begs,ends,non_stops = [],[],[],[]
+        for _tuple in sentence_tuples:
+            sentence = _tuple[0]
+            sentence_nlp = self.nlp_spacy(sentence)
+            for token in sentence_nlp:
+                if token.is_stop == False and self.__punctuation__(str(token)) == False:
+                    sentences.append(sentence)
+                    begs.     append(_tuple[1])
+                    ends.     append(_tuple[2])
+                    non_stops.append(str(token))
+        df             = pd.DataFrame({'sentence':sentences, 'i0':begs, 'i1':ends, 'non_stops':non_stops})
+        relationships  = [("sentence","non_stops")]
+        g_nx           = self.createNetworkXGraph(df, relationships)
+        pagerank       = nx.pagerank(g_nx)
+        df['pr_score'] = df['sentence'].apply(lambda x: pagerank[x])
+        return df
+
     #
     # textCompareSummaries()
     #
