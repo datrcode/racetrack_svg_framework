@@ -21,6 +21,10 @@ import pandas as pd
 import numpy as np
 import re
 
+from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW
+import tensorflow as tf
+import torch
+
 import networkx as nx # for TextRank
 
 from rt_component import RTComponent # Unused?
@@ -333,6 +337,9 @@ class RTTextMixin(object):
                              text_summaries,
                              methodology      = "sentence_embeddings",
                              embed_fn         = None,                    # For "sentence_embeddings" methodology
+                             model            = None,                    # For the two "bert_top_n" methods
+                             tokenizer        = None,                    # For the two "bert_top_n" methods
+                             device           = None,                    # For the two "bert_top_n" methods
                              main_txt_h       = 14,
                              summary_txt_h    = 16,
                              spacing          = 16,
@@ -343,7 +350,7 @@ class RTTextMixin(object):
         if   methodology == "sentence_embeddings":
             return self.__textCompareSummaries__sentence_embeddings__(text_main, text_summaries, embed_fn, main_txt_h, summary_txt_h, spacing, opacity, w)
         elif methodology == "bert_top_n" or methodology == "bert_top_n_prob":
-            return self.__textCompareSummaries__bert_top_n__(text_main, text_summaries, methodology, main_txt_h, summary_txt_h, spacing, opacity, w)
+            return self.__textCompareSummaries__bert_top_n__(text_main, text_summaries, methodology, model, tokenizer, device, main_txt_h, summary_txt_h, spacing, opacity, w)
         elif methodology == "missing_words":
             return self.__textCompareSummaries__missing_words__(text_main, text_summaries, main_txt_h, summary_txt_h, spacing, opacity, w)
         else:
@@ -685,34 +692,15 @@ class RTTextMixin(object):
                     svg += f'<rect x="{x_tiles*tile_w + tile_w}" y="{y*tile_h}" width = "{2*tile_w}" height="{tile_h}" fill="{_color}" />'
         svg += '</svg>'
         return svg
-    
-    #
-    # __textCompareSummaries__bert_top_n__():  Compare via top-n bert placements
-    #
-    def __textCompareSummaries__bert_top_n__(self,
-                                             text_main, 
-                                             text_summaries,
-                                             methodology,
-                                             main_txt_h, 
-                                             summary_txt_h, 
-                                             spacing, 
-                                             opacity, 
-                                             w):
-        # Geometry & Parameter Evaluation
-        main_w = summary_w = (w - spacing)/2
-        if type(text_summaries) == str:
-            text_summaries = {'Default':text_summaries}
 
+    #
+    # __textTrainBertModel__()
+    #
+    def __textTrainBertModel__(self, text_main, mask_perc=0.75, epochs=100):
         # From the throwaway file "bert_mlm_example.ipynb"
         #
         # Modified From https://towardsdatascience.com/masked-language-modelling-with-bert-7d49793e5d2c
         #
-        from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW
-        import tensorflow as tf
-        import torch
-
-        mask_perc = 0.75 # tutorial was 0.15
-        epochs    = 100
         device    = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         tokenizer = BertTokenizer.  from_pretrained('bert-base-cased')
         model     = BertForMaskedLM.from_pretrained('bert-base-cased')
@@ -749,17 +737,60 @@ class RTTextMixin(object):
             if (epoch%10) == 0:                                                                              # print updated information
                 print(f'Epoch {epoch:3}\t{loss.item()}')
         model.eval()                                                                                         # Take it out of training mode
+        return model,tokenizer,device
 
-        # From https://mattmckenna.io/bert-off-the-shelf/#:~:text=BERT%20works%20by%20masking%20certain,ate%20the%20%5BMASK%5D%E2%80%9D.
-        # - with a lot of modifications ...  for the GPU version...
-        def topKPredictions(input_string, k=5, tokenizer=tokenizer, model=model) -> str:
-            tokenized_inputs = tokenizer.encode(input_string)
-            outputs = model(torch.Tensor([tokenized_inputs]).long().to(device))
-            top_k_indices = tf.math.top_k(outputs[0].cpu().detach().numpy(), k).indices[0].numpy()
-            for i in range(len(tokenized_inputs)):
-                if tokenized_inputs[i] == tokenizer.encode(tokenizer.mask_token)[1]:
-                    mask_i = i
-            return tokenizer.decode(top_k_indices[mask_i])
+    #
+    # __textBertTopKPredictions__():  Return the top k predictions for the [MASK] word.
+    #
+    # From https://mattmckenna.io/bert-off-the-shelf/#:~:text=BERT%20works%20by%20masking%20certain,ate%20the%20%5BMASK%5D%E2%80%9D.
+    # - with a lot of modifications ...  for the GPU version...
+    def __textBertTopKPredictions__(self, input_string, k, model, tokenizer, device):
+        tokenized_inputs = tokenizer.encode(input_string)
+        outputs = model(torch.Tensor([tokenized_inputs]).long().to(device))
+        top_k_indices = tf.math.top_k(outputs[0].cpu().detach().numpy(), k).indices[0].numpy()
+        for i in range(len(tokenized_inputs)):
+            if tokenized_inputs[i] == tokenizer.encode(tokenizer.mask_token)[1]:
+                mask_i = i
+        return tokenizer.decode(top_k_indices[mask_i])
+
+    #
+    # __textBertWordProbabilities__():  Return the associated probabilities for the words.
+    #
+    # From https://mattmckenna.io/bert-off-the-shelf/#:~:text=BERT%20works%20by%20masking%20certain,ate%20the%20%5BMASK%5D%E2%80%9D.
+    #
+    def __textBertWordProbabilities__(self, input_string, model, tokenizer, device):
+        tokenized_inputs = tokenizer.encode(input_string)
+        outputs = model(torch.Tensor([tokenized_inputs]).long().to(device))
+        predictions = outputs[0]
+        predicted_indices = torch.argmax(predictions[0,:],dim=-1)
+        predicted_tokens  = tokenizer.convert_ids_to_tokens(predicted_indices.tolist())
+        probs = torch.nn.functional.softmax(predictions, dim=-1)
+        predicted_token_probs = probs[0,torch.arange(predictions.shape[1]),predicted_indices].cpu()
+        return predicted_tokens[1:-1], predicted_token_probs[1:-1], tokenizer.tokenize(input_string)
+
+    #
+    # __textCompareSummaries__bert_top_n__():  Compare via top-n bert placements
+    #
+    def __textCompareSummaries__bert_top_n__(self,
+                                             text_main, 
+                                             text_summaries,
+                                             methodology,
+                                             model,
+                                             tokenizer,
+                                             device,
+                                             main_txt_h, 
+                                             summary_txt_h, 
+                                             spacing, 
+                                             opacity, 
+                                             w):
+        # Geometry & Parameter Evaluation
+        main_w = summary_w = (w - spacing)/2
+        if type(text_summaries) == str:
+            text_summaries = {'Default':text_summaries}
+
+        # Create the model if necessary
+        if model is None:
+            model,tokenizer,device = self.__textTrainBertModel__(text_main)
 
         # Put the two last functions together for input highlights text input...
         def highlightsForText(_txt):
@@ -779,7 +810,7 @@ class RTTextMixin(object):
                             global_i += 1
                         actual        = _part[parts_i0:parts_i]
                         masked        = _part[:parts_i0] + '[MASK]' + _part[parts_i:]
-                        guesses       = topKPredictions(masked, k=20)
+                        guesses       = self.__textBertTopKPredictions__(masked, 20, model, tokenizer, device)
                         guesses_split = guesses.split(' ')
                         guesses_i     = 0
                         while guesses_i < len(guesses_split) and guesses_split[guesses_i] != actual:
@@ -819,17 +850,6 @@ class RTTextMixin(object):
                             f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
                             rttb_main.highlights(highlightsForText(text_main), opacity=opacity)])
 
-        # From https://mattmckenna.io/bert-off-the-shelf/#:~:text=BERT%20works%20by%20masking%20certain,ate%20the%20%5BMASK%5D%E2%80%9D.
-        def getWordProbabilities(input_string, tokenizer=tokenizer, model=model):
-            tokenized_inputs = tokenizer.encode(input_string)
-            outputs = model(torch.Tensor([tokenized_inputs]).long().to(device))
-            predictions = outputs[0]
-            predicted_indices = torch.argmax(predictions[0,:],dim=-1)
-            predicted_tokens  = tokenizer.convert_ids_to_tokens(predicted_indices.tolist())
-            probs = torch.nn.functional.softmax(predictions, dim=-1)
-            predicted_token_probs = probs[0,torch.arange(predictions.shape[1]),predicted_indices].cpu()
-            return predicted_tokens[1:-1], predicted_token_probs[1:-1], tokenizer.tokenize(input_string)
-
         def tokenSpans(orig, as_tokens):
             spans = []
             i,token_i = 0,0
@@ -847,7 +867,7 @@ class RTTextMixin(object):
             highlights = {}
             _parts,_parts_i = orig.split('\n'),0
             for _part in _parts:
-                pred_tokens, pred_probs, as_tokens = getWordProbabilities(_part)
+                pred_tokens, pred_probs, as_tokens = self.__textBertWordProbabilities__(_part, model, tokenizer, device)
                 spans = tokenSpans(_part, as_tokens)
                 for i in range(len(pred_probs)):
                     _span = (spans[i][0]+_parts_i,spans[i][1]+_parts_i)
