@@ -253,13 +253,16 @@ class RTTextMixin(object):
         sentences,i = [],0
         for _span in self.nlp_spacy(txt).sents:
             as_str = str(_span)
-            i      = txt.index(as_str,i)
-            j      = i + len(as_str)
-            while j < len(txt) and txt[j] == ' ':
-                as_str += ' '
-                j      += 1
-            sentences.append((as_str, i, j))
-            i += len(as_str)            
+            while len(as_str) >0 and self.__whitespace__(as_str[0]):
+                as_str = as_str[1:]
+            if len(as_str) > 0:
+                i      = txt.index(as_str,i)
+                j      = i + len(as_str)
+                while j < len(txt) and txt[j] == ' ':
+                    as_str += ' '
+                    j      += 1
+                sentences.append((as_str, i, j))
+                i += len(as_str)            
         return sentences
 
     #
