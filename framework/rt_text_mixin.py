@@ -707,6 +707,8 @@ class RTTextMixin(object):
         device    = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         tokenizer = BertTokenizer.  from_pretrained('bert-base-cased')
         model     = BertForMaskedLM.from_pretrained('bert-base-cased')
+        #tokenizer = BertTokenizer.  from_pretrained('bert-large-cased')
+        #model     = BertForMaskedLM.from_pretrained('bert-large-cased')        
         model.train()                                                                                        # activate training mode
         model.to(device)                                                                                     # and move our model over to the selected device
         optim = None
