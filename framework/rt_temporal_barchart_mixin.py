@@ -1298,7 +1298,7 @@ class RTTemporalBarChartMixin(object):
             return fv_norm
 
         #
-        # Determine which dataframe geometries overlap with a specific
+        # overlappingDataFrames() - Determine which dataframe geometris overlap with a specific one
         #
         def overlappingDataFrames(self, to_intersect):
             _dfs = []
