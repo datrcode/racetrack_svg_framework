@@ -339,10 +339,16 @@ class RTTextMixin(object):
                              text_main,
                              text_summaries,
                              methodology      = "sentence_embeddings",
-                             embed_fn         = None,                    # For "sentence_embeddings" methodology
+
+                             # SENTENCE EMBEDDINGS
+                             embed_fn         = None,                    # For the two "sentence_embeddings" methods
+
+                             # BERT_TOP_N
                              model            = None,                    # For the two "bert_top_n" methods
                              tokenizer        = None,                    # For the two "bert_top_n" methods
                              device           = None,                    # For the two "bert_top_n" methods
+
+                             # Standard Rendering Params
                              main_txt_h       = 14,
                              summary_txt_h    = 16,
                              spacing          = 16,
@@ -352,6 +358,8 @@ class RTTextMixin(object):
             text_summaries = {'Default':text_summaries}
         if   methodology == "sentence_embeddings":
             return self.__textCompareSummaries__sentence_embeddings__(text_main, text_summaries, embed_fn, main_txt_h, summary_txt_h, spacing, opacity, w)
+        elif methodology == "sentence_embeddings_pixels":
+            return self.__textCompareSummaries__sentence_embeddings_pixels__(text_main, text_summaries, embed_fn, summary_txt_h, spacing, w)
         elif methodology == "bert_top_n" or methodology == "bert_top_n_prob":
             return self.__textCompareSummaries__bert_top_n__(text_main, text_summaries, methodology, model, tokenizer, device, main_txt_h, summary_txt_h, spacing, opacity, w)
         elif methodology == "missing_words":
@@ -359,6 +367,62 @@ class RTTextMixin(object):
         else:
             raise Exception(f'RACETrack.textCompareSummaries() - unknown methodology "{methodology}"')
 
+    #
+    # __textCompareSummaries__sentence_embeddings_pixels__()
+    #
+    def __textCompareSummaries__sentence_embeddings_pixels__(self,
+                                                             text_main, 
+                                                             text_summaries, 
+                                                             embed_fn, 
+                                                             summary_txt_h, 
+                                                             spacing,
+                                                             w):
+        _svgs                      = []
+        _main_sentences            = self.textExtractSentences(text_main)
+        _main_sentences_embeddings = embed_fn(list(zip(*_main_sentences))[0])
+        _main_rttb                 = self.textBlock(text_main,txt_h=summary_txt_h,w=w,word_wrap=True)
+
+        _svgs.append(f'<svg x="0" y="0" width="{w}" height="{24}">' + \
+                     f'<rect x="0" y="0" width="{w}" height="{24}" fill="#000000" />' + \
+                     self.svgText('Main', 3, 20, txt_h=19, color='#ffffff') + '</svg>')
+
+        _svgs.append(_main_rttb._repr_svg_())
+        _svgs.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>')
+        for _desc in text_summaries.keys():
+            _summary                      = text_summaries[_desc]
+            _summary_sentences            = self.textExtractSentences(_summary)
+            _summary_sentences_embeddings = embed_fn(list(zip(*_summary_sentences))[0])
+            # Calculate all comparisons... 
+            _dot_min,_dot_max,_dots       = None,None,{}
+            for i in range(len(_main_sentences)):            
+                _dots[i] = {}
+                for j in range(len(_summary_sentences)):
+                    _dot = float(np.tensordot(_summary_sentences_embeddings[j], _main_sentences_embeddings[i], axes=1)) # Works with Google's Universal Sentence Embedder...
+                    if _dot_min is None:
+                        _dot_min = _dot
+                    _dot_min = min(_dot, _dot_min)
+                    if _dot_max is None:
+                        _dot_max = _dot
+                    _dot_max = max(_dot, _dot_max)
+                    _dots[i][j] = _dot
+            # Rendering ... per summary sentences
+            _summary_svgs = []
+            _summary_svgs.append(self.textBlock(text_summaries[_desc], txt_h=summary_txt_h, word_wrap=True, w=w)._repr_svg_())
+            _summary_svgs.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>')
+            _summary_svgs.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>')
+            for j in range(len(_summary_sentences)):
+                _highlights = {}
+                for i in range(len(_main_sentences)):
+                    _hex = 255 - int(min(255,int(255.0*(_dots[i][j] - _dot_min)/(_dot_max - _dot_min))))
+                    _highlights[(_main_sentences[i][1],_main_sentences[i][2])] = f'#{_hex:02x}{_hex:02x}{_hex:02x}'
+                _summary_svgs.append(_main_rttb.pixelRepr(_highlights, w/3))
+                _summary_svgs.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>')
+            _svgs.append(f'<svg x="0" y="0" width="{w}" height="{24}">' + \
+                         f'<rect x="0" y="0" width="{w}" height="{24}" fill="#000000" />' + \
+                         self.svgText(_desc, 3, 20, txt_h=19, color='#ffffff') + '</svg>')
+            _svgs.append(self.tile(_summary_svgs, horz=True))
+            _svgs.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>')
+        return self.tile(_svgs, horz=False)
 
     #
     # __textCompareSummaries__missing_words__()
