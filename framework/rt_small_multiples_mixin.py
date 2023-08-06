@@ -1,4 +1,4 @@
-# Copyright 2022 David Trimm
+# Copyright 2023 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -979,9 +979,9 @@ class RTSmallMultiplesMixin(object):
             if len(_dfs) > 0:
                 _dfs_together = pd.concat(_dfs)
                 _dfs_together = _dfs_together.drop_duplicates()
+                return _dfs_together
             else:
                 return None
-
 
     #
     # __alignDataFrames__()
