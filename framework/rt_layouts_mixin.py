@@ -692,6 +692,8 @@ class RTLayoutsMixin(object):
             else:
                 ts_field = kwargs['ts_field']
             temporal_granularity = self.temporalGranularity(df, ts_field)
+        else:
+            temporal_granularity = None
 
         # Start the SVG
         svg,_instance_lu =  f'<svg id="{widget_id}" width="{w+1}" height="{h+1}" xmlns="http://www.w3.org/2000/svg">',{}

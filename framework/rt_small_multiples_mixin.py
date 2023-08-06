@@ -961,7 +961,8 @@ class RTSmallMultiplesMixin(object):
                                                            y_inter               = self.y_inter,
                                                            background_override   = self.background_override,
                                                            draw_labels           = self.draw_labels,
-                                                           draw_border           = self.draw_border)            
+                                                           draw_border           = self.draw_border)
+            return self.last_render
 
         #
         # overlappingDataFrames() - Determine which dataframe geometris overlap with a specific one
