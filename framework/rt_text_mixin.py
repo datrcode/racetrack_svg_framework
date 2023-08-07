@@ -333,6 +333,61 @@ class RTTextMixin(object):
         return df
 
     #
+    # textSummaryHeatmap()
+    #
+    def textSummaryHeatmap(self,
+                           text_main,
+                           text_summary,
+                           embed_fn,
+                           cell_w=None,   # cell width <== use to override the w of the overall SVG markup
+                           cell_h=None,   # cell height <== use to overrid the h of the overall SVG markup
+                           x_gap = 1,
+                           y_gap = 1,
+                           x_ins = 3,
+                           y_ins = 3,
+                           w=128,
+                           h=32):
+        _main_sentences               = self.textExtractSentences(text_main)
+        _main_sentences_embeddings    = embed_fn(list(zip(*_main_sentences))[0])
+        _summary_sentences            = self.textExtractSentences(text_summary)
+        _summary_sentences_embeddings = embed_fn(list(zip(*_summary_sentences))[0])
+        if cell_w is None:
+            cell_w = (w-2*x_ins) / len(_main_sentences)
+            x_gap  = 0
+        else:
+            w = 2*x_ins + cell_w * len(_main_sentences) + x_gap * (len(_main_sentences) - 1)
+
+        if cell_h is None:
+            cell_h = (h-2*y_ins) / len(_summary_sentences)
+            y_gap  = 0
+        else:
+            h = 2*y_ins + cell_h * len(_summary_sentences) + y_gap * (len(_summary_sentences) - 1)
+
+        rows,_dot_min,_dot_max = [],None,None
+        for i in range(len(_summary_sentences)):
+            row = []
+            for j in range(len(_main_sentences)):
+                _dot = float(np.tensordot(_summary_sentences_embeddings[i], _main_sentences_embeddings[j], axes=1)) # Works with Google's Universal Sentence Embedder...
+                if _dot_min is None:
+                    _dot_min,_dot_max = _dot,_dot
+                _dot_min = min(_dot, _dot_min)
+                _dot_max = max(_dot, _dot_max)
+                row.append(_dot)
+            rows.append(row)
+        svg = f'<svg x="0" y="0" width="{w}" height="{h}">'
+        _co = '#000000' # self.co_mgr.getTVColor("background","default")
+        svg += f'<rect x="{0}" y="{0}" width="{w}" height="{h}" fill="{_co}" />'
+        for yi in range(len(_summary_sentences)):
+            y = y_ins + yi * (cell_h + y_gap)
+            for xi in range(len(_main_sentences)):
+                x = x_ins + xi * (cell_w + x_gap)
+                _hex =  255 - int(min(255,int(255.0*(rows[yi][xi] - _dot_min)/(_dot_max - _dot_min))))
+                _co  =  f'#{_hex:02x}{_hex:02x}{_hex:02x}'
+                svg  += f'<rect x="{x}" y="{y}" width="{cell_w}" height="{cell_h}" fill="{_co}" />'
+        svg += '</svg>'
+        return svg
+
+    #
     # textCompareSummaries()
     #
     def textCompareSummaries(self, 
