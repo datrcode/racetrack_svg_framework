@@ -97,6 +97,7 @@ class RTPanelMixin(object):
     # Create an interactive panel
     #
     def interactivePanel(self,
+                         df,
                          spec,                  # Layout specification
                          w,                     # Width of the panel
                          h,                     # Heght of the panel
@@ -107,7 +108,7 @@ class RTPanelMixin(object):
                          widget_h_gap   = 1,    # Horizontal gap between widgets
                          widget_v_gap   = 1,    # Vertical gap between widgets
                          **kwargs):             # Other arguments to pass to the layout instance
-        return RTReactiveHTML(self, spec, w, h, rt_params, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
+        return RTReactiveHTML(df, self, spec, w, h, rt_params, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
 
 #
 # ReactiveHTML Class for Panel Implementation
@@ -120,14 +121,15 @@ class RTReactiveHTML(ReactiveHTML):
     mod_inner = param.String(default="""
         <rect x="0" y="0" width="100" height="100" fill="#808080" />
         <circle cx="50" cy="50" r="40" fill="#000000" />
-    """)    
+    """)
+
     #
     # Panel Template
     # - The following is re-written in the constructor
     #
     _template = """
-        <svg id="parent" width="100" height="100">
-            <svg id="mod" width="100" height="100">
+        <svg id="parent" width="1280" height="256">
+            <svg id="mod" width="1280" height="256">
                 ${mod_inner}
             </svg>
             <rect id="drag" x="-10" y="-10" width="5" height="5" fill="#ffffff" opacity="0.6" />
@@ -143,11 +145,12 @@ class RTReactiveHTML(ReactiveHTML):
     # Constructor
     #
     def __init__(self,
+                 df,
                  rt_self,
                  spec,                # Layout specification
                  w,                   # Width of the panel
                  h,                   # Heght of the panel
-                 rt_params,           # Racetrack params -- dictionary of param=value
+                 rt_params      = {}, # Racetrack params -- dictionary of param=value
                  # ------------------ #
                  h_gap          = 0,  # Horizontal left/right gap
                  v_gap          = 0,  # Verticate top/bottom gap
@@ -179,24 +182,6 @@ class RTReactiveHTML(ReactiveHTML):
                             """ onmouseup="${script('_onmouseup_')}"       """                       + \
                             '/>'                                                                     + \
                          '</svg>' 
-        # - Assign place holders
-        self.dfs        = [pd.DataFrame()]
-        self.dfs_layout = [RTLayout(rt_self,{},str(self.mod_inner))]
-        self.mod_inner  = self.dfs_layout[0]._repr_svg_()
-
-        # - Create a lock for threading
-        self.lock = threading.Lock()
-        
-        # Execute the super initialization
-        super().__init__(**kwargs)
-        # Watch for callbacks
-        self.param.watch(self.applyDragOp,'drag_op_finished')
-        self.param.trigger('drag_op_finished')
-    
-    #
-    # Set the root dataframe... because I can't figure out how to do this in the constructor
-    #
-    def setRoot(self, df):
         self.dfs        = [df.copy()]
         self.dfs_layout = [self.rt_self.layout(self.spec, df, w=self.w, h=self.h,
                                             h_gap=self.h_gap,v_gap=self.v_gap,
@@ -205,11 +190,30 @@ class RTReactiveHTML(ReactiveHTML):
                                             **self.rt_params)]
         self.mod_inner = self.dfs_layout[0]._repr_svg_()
 
+        # - Create a lock for threading
+        self.lock = threading.Lock()
+
+        # Execute the super initialization
+        super().__init__(**kwargs)
+
+        # Watch for callbacks
+        self.param.watch(self.applyDragOp, 'drag_op_finished')
+
+        # Viz companions for sync
+        self.companions = []
+    
     #
     # Return the visible dataframe.
     #
     def visibleDataFrame(self):
         return self.dfs[-1]
+    
+    def register_companion_viz(self, viz):
+        self.companions.append(viz)
+    
+    def unregister_companion_viz(self, viz):
+        if viz in self.companions:
+            self.companions.remove(viz)
 
     #
     # Drag operation state & method
@@ -236,6 +240,15 @@ class RTReactiveHTML(ReactiveHTML):
                         self.dfs        = self.dfs    [:-1]
                         self.dfs_layout = self.dfs_layout[:-1]
                         self.mod_inner  = self.dfs_layout[-1]._repr_svg_()
+
+                        # ascend stack for all registered companion vizs
+                        for c in self.companions:
+                            if isinstance(c, RTReactiveHTML):
+                                if len(c.dfs) > 1:
+                                    c.dfs = c.dfs[:-1]
+                                    c.dfs_layout = c.dfs_layout[:-1]
+                                    c.mod_inner  = c.dfs_layout[-1]._repr_svg_()
+
                 # Filter and go down the stack
                 else:
                     # Remove data option...
@@ -255,6 +268,23 @@ class RTReactiveHTML(ReactiveHTML):
                         self.dfs.       append(_df)
                         self.dfs_layout.append(_layout)
                         self.mod_inner = _layout._repr_svg_()
+
+                        # adjust layout for all registered companion vizs
+                        for c in self.companions:
+                            if isinstance(c, RTReactiveHTML):
+                                _clayout = c.rt_self.layout(c.spec,
+                                                            _df,
+                                                            w=c.w,
+                                                            h=c.h,
+                                                            h_gap=c.h_gap,
+                                                            v_gap=c.v_gap,
+                                                            widget_h_gap=c.widget_h_gap,
+                                                            widget_v_gap=c.widget_v_gap,
+                                                            track_state=True,
+                                                            **c.rt_params)
+                                c.dfs.append(_df)
+                                c.dfs_layout.append(_clayout)
+                                c.mod_inner = _clayout._repr_svg_()
 
                 # Mark operation as finished
                 self.drag_op_finished = False
