@@ -1362,9 +1362,10 @@ class RTTextBlock(object):
         return self.wrap(self.background() + self.unwrappedText() + self.highlightsOverlay(lu, opacity))
 
     #
-    # __underlineSpan__() - internal primitive for underlining.
+    # __OLD_underlineSpan__() - internal primitive for underlining.
+    # ... this one performed it on a per word basis with gaps where there were spaces... and didn't look right...
     #
-    def __underlineSpan__(self, i0, i1, _co=None, _stroke_w=None, y_offset=0, strikethrough=False):
+    def __OLD_underlineSpan__(self, i0, i1, _co=None, _stroke_w=None, y_offset=0, strikethrough=False):
         y_adj = y_offset
         if strikethrough:
             y_adj = -self.txt_h/2
@@ -1389,6 +1390,34 @@ class RTTextBlock(object):
                 x1 = xy[0] + self.rt_self.textLength(c, self.txt_h)
         if x0 is not None:
             my_svg += f'<line x1="{x0}" y1="{y + 1 + _stroke_w + y_adj}" x2="{x1}" y2="{y + 1 + _stroke_w + y_adj}" stroke="{_co}"  stroke-width="{_stroke_w}" />'
+        return my_svg
+
+    #
+    # __underlineSpan__() - internal primitive for underlining.
+    #
+    def __underlineSpan__(self, i0, i1, _co=None, _stroke_w=None, y_offset=0, strikethrough=False):
+        y_adj = y_offset
+        if strikethrough:
+            y_adj = -self.txt_h/2
+        if _co is None:
+            _co = self.rt_self.co_mgr.getTVColor('data','default')
+        if _stroke_w is None:
+            _stroke_w = min(0.5 + self.txt_h/14, 2.5)
+        my_svg = ''
+        i,x0,x1,last_y = i0,None,None,None
+        while i < i1:
+            c,xy = self.txt[i],self.orig_to_xy[i]
+            if   last_y is None:
+                x0,x1,last_y = xy[0],xy[0]+self.rt_self.textLength(c, self.txt_h),xy[1]
+            elif last_y == xy[1]:
+                x1 = xy[0]+self.rt_self.textLength(c, self.txt_h)
+            else:
+                my_svg += f'<line x1="{x0}" y1="{last_y + 1 + _stroke_w  + y_adj}" x2="{x1}" y2="{last_y + 1 + _stroke_w  + y_adj}" stroke="{_co}"  stroke-width="{_stroke_w}" />'
+                x0,x1,last_y = xy[0],xy[0]+self.rt_self.textLength(c, self.txt_h),xy[1]
+            i += 1
+        if x0 is not None:
+            my_svg += f'<line x1="{x0}" y1="{last_y + 1 + _stroke_w  + y_adj}" x2="{x1}" y2="{last_y + 1 + _stroke_w  + y_adj}" stroke="{_co}"  stroke-width="{_stroke_w}" />'
+            x0,x1,last_y = None,None,None
         return my_svg
 
     #
