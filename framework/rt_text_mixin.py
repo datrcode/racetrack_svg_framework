@@ -21,8 +21,7 @@ import pandas as pd
 import numpy as np
 import re
 
-from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW
-import tensorflow as tf
+import tensorflow as tf            
 import torch
 
 import networkx as nx # for TextRank
@@ -860,6 +859,8 @@ class RTTextMixin(object):
     # __textTrainBertModel__()
     #
     def __textTrainBertModel__(self, text_main, mask_perc=0.75, epochs=100):
+        from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW        
+
         # From the throwaway file "bert_mlm_example.ipynb"
         #
         # Modified From https://towardsdatascience.com/masked-language-modelling-with-bert-7d49793e5d2c
