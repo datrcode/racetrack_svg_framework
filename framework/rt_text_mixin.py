@@ -241,6 +241,91 @@ class RTTextMixin(object):
             self.spacy_loaded_flag = True
 
     #
+    # textSubsequenceLookup() - find all subsequences with length at least min_length.
+    # ... sequences are delimited by spaces and punctuations
+    # ... punctuations are included in the sequence... spaces are not
+    # ... based off of dynamic programming pseudocode in the following:
+    # ... ... https://en.wikipedia.org/wiki/Longest_common_substring
+    #
+    def textSubsequenceLookup(self,
+                              s,
+                              t,
+                              min_length=4):       
+        s_toks, t_toks = self.__textSubsequenceLookup_as_tokens__(s), self.__textSubsequenceLookup_as_tokens__(t)
+        # s_toks_str,t_toks_str = list(zip(*s_toks))[0],list(zip(*t_toks))[0]
+        r,n = len(s_toks),len(t_toks)
+        z   = 0
+        ret = ''
+        L   = {}
+        for i in range(r):
+            L[i] = {}
+        for i in range(r):
+            for j in range(n):
+                if s_toks[i][0] == t_toks[j][0]:
+                    if i == 0 or j == 0:
+                        L[i][j] = 0
+                    else:
+                        L[i][j] = L[i-1][j-1] + 1
+                    if L[i][j] > z:
+                        z   = L[i][j]
+                else:
+                    L[i][j] = 0
+        results = {}
+        for i in L.keys():
+            for j in L[i].keys():
+                if L[i][j] >= min_length:
+                    no_longer_builds = True
+                    if i < (r-1) and j < (n-1) and L[i+1][j+1] == L[i][j]+1:
+                        no_longer_builds = False
+                    if no_longer_builds:
+                        l = L[i][j]
+                        i0 = i - l + 1
+                        j0 = j - l + 1
+                        if l not in results.keys():
+                            results[l] = []
+                        results[l].append(((s_toks[i0][1], s_toks[i0+l-1][2]),(t_toks[j0][1], t_toks[j0+l-1][2])))
+        return results
+
+    #
+    # Supporting method for the subsequence lookup...
+    #
+    def __textSubsequenceLookup_as_tokens__(self, s):
+        i,i0,results = 0,None,[]
+        while i < len(s):
+            if   self.__whitespace__(s[i]):
+                if i0 is not None:
+                    results.append((s[i0:i],i0,i))
+                    i0 = None
+            elif self.__punctuation__(s[i]):
+                if i0 is not None:
+                    results.append((s[i0:i],i0,i))
+                    i0 = None
+                results.append((s[i:i+1],i,i+1))
+            else:
+                if i0 is None:
+                    i0 = i
+            i += 1
+        if i0 is not None:
+            results.append((s[i0:i],i0,i))
+            i0 = None
+        return results
+
+    #
+    # textCreateHighlightsLookupBasedOnSubsequenceResults() - create a higlights dictionary for the results
+    #
+    def textCreateHighlightsLookupBasedOnSubsequenceResults(self,
+                                                            _text,     # text passed into the textSequenceLookup() call
+                                                            _results,  # return of the textSequenceLookup() call
+                                                            _index):   # should either by 0 or 1
+        _lu = {}
+        for k in _results.keys():
+            _list = _results[k]
+            for _tuple in _list:
+                i0,i1 = _tuple[_index][0],_tuple[_index][1]
+                _lu[_tuple[_index]] = self.co_mgr.getColor(_text[i0:i1])
+        return _lu
+
+    #
     # textExtractSentences() - extract sentences using spacy
     #
     # _tups = textExtractSentences(_str_)
@@ -1221,8 +1306,8 @@ class RTTextBlock(object):
     #
     # __underlineSpan__() - internal primitive for underlining.
     #
-    def __underlineSpan__(self, i0, i1, _co=None, _stroke_w=None, strikethrough=False):
-        y_adj = 0
+    def __underlineSpan__(self, i0, i1, _co=None, _stroke_w=None, y_offset=0, strikethrough=False):
+        y_adj = y_offset
         if strikethrough:
             y_adj = -self.txt_h/2
         if _co is None:
@@ -1251,7 +1336,7 @@ class RTTextBlock(object):
     #
     # underlines() - same format as above...
     #
-    def underlinesOverlay(self, lu, strikethrough=False):
+    def underlinesOverlay(self, lu, strikethrough=False, y_offset=0, underline_stroke_w=None):
         svg_underlay = ''
         for k in lu:
             _co = lu[k]
@@ -1260,7 +1345,7 @@ class RTTextBlock(object):
             if _co.startswith('#') == False or len(_co) != 7: # If it's not a hex hash color string... then look it up...
                 _co = self.rt_self.co_mgr.getColor(_co)
             if   type(k) == tuple:
-                svg_underlay += self.__underlineSpan__(k[0], k[1], _co=_co, strikethrough=strikethrough)
+                svg_underlay += self.__underlineSpan__(k[0], k[1], _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
             elif type(k) == str:
                 i = 0
                 re_match = re.findall(k,self.txt)
@@ -1269,15 +1354,15 @@ class RTTextBlock(object):
                     for _match in re_match:
                         i = self.txt.index(k,i)
                         j = i + len(_match)
-                        svg_underlay += self.__underlineSpan__(i, j, _co=_co, strikethrough=strikethrough)
+                        svg_underlay += self.__underlineSpan__(i, j, _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
                         i += len(_match)
             else:
                 raise Exception(f'RTTextBlock.highlights() - do not understand key value type {type(k)}')
         x,y,w,h = self.bounds
         return f'<svg x="0" y="0" width="{w}" height="{h}">' + svg_underlay + '</svg>'
 
-    def underlines(self, lu, strikethrough=False):
-        return self.wrap(self.background() + self.unwrappedText() + self.underlinesOverlay(lu, strikethrough))
+    def underlines(self, lu, strikethrough=False, y_offset=0, underline_stroke_w=2):
+        return self.wrap(self.background() + self.unwrappedText() + self.underlinesOverlay(lu, strikethrough, y_offset=y_offset, underline_stroke_w=underline_stroke_w))
 
     #
     # unwrappedSVG() - return the unwrapped version of the SVG.
