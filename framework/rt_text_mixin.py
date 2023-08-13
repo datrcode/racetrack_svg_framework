@@ -246,6 +246,7 @@ class RTTextMixin(object):
     # ... punctuations are included in the sequence... spaces are not
     # ... based off of dynamic programming pseudocode in the following:
     # ... ... https://en.wikipedia.org/wiki/Longest_common_substring
+    # ... this appears to miss the same occurence of the sequence if it occurs in different places...
     #
     def textSubsequenceLookup(self,
                               s,
@@ -289,7 +290,7 @@ class RTTextMixin(object):
     #
     # Supporting method for the subsequence lookup...
     #
-    def __textSubsequenceLookup_as_tokens__(self, s):
+    def __textSubsequenceLookup_as_tokens__(self, s, keep_punctuation=False):
         i,i0,results = 0,None,[]
         while i < len(s):
             if   self.__whitespace__(s[i]):
@@ -297,10 +298,11 @@ class RTTextMixin(object):
                     results.append((s[i0:i],i0,i))
                     i0 = None
             elif self.__punctuation__(s[i]):
-                if i0 is not None:
+                if i0 is not None:                    
                     results.append((s[i0:i],i0,i))
                     i0 = None
-                results.append((s[i:i+1],i,i+1))
+                if keep_punctuation:
+                    results.append((s[i:i+1],i,i+1))
             else:
                 if i0 is None:
                     i0 = i
@@ -317,12 +319,20 @@ class RTTextMixin(object):
                                                             _text,     # text passed into the textSequenceLookup() call
                                                             _results,  # return of the textSequenceLookup() call
                                                             _index):   # should either by 0 or 1
+        # Because the subsequence calc doesn't use punctuation... the actual string needs to be minimized to remove spacing and punctuations
+        def noSpacesOrPunctuations(s):
+            r = ''
+            for i in range(len(s)):
+                if self.__whitespace__(s[i]) == False and self.__punctuation__(s[i]) == False:
+                    r += s[i]
+            return r
+
         _lu = {}
         for k in _results.keys():
             _list = _results[k]
             for _tuple in _list:
                 i0,i1 = _tuple[_index][0],_tuple[_index][1]
-                _lu[_tuple[_index]] = self.co_mgr.getColor(_text[i0:i1])
+                _lu[_tuple[_index]] = self.co_mgr.getColor(noSpacesOrPunctuations(_text[i0:i1]))
         return _lu
 
     #
@@ -515,10 +525,17 @@ class RTTextMixin(object):
     #
     # textCompareSummaries()
     #
+    # Methodologies include
+    #   "sentence_embeddings"
+    #   "sentence_embeddings_pixels"
+    #   "bert_top_n_prob"
+    #   "missing_words"
+    #   "longest_common_subsequence"
+    #
     def textCompareSummaries(self, 
                              text_main,
                              text_summaries,
-                             methodology      = "sentence_embeddings",
+                             methodology      = "sentence_embeddings", 
 
                              # SENTENCE EMBEDDINGS
                              embed_fn         = None,                    # For the two "sentence_embeddings" methods
@@ -527,6 +544,9 @@ class RTTextMixin(object):
                              model            = None,                    # For the two "bert_top_n" methods
                              tokenizer        = None,                    # For the two "bert_top_n" methods
                              device           = None,                    # For the two "bert_top_n" methods
+
+                             # LONGEST_COMMON_SUBSEQUENCE
+                             min_length       = 4,                       # For the "longest_common_subsequence" method
 
                              # Standard Rendering Params
                              main_txt_h       = 14,
@@ -544,9 +564,47 @@ class RTTextMixin(object):
             return self.__textCompareSummaries__bert_top_n__(text_main, text_summaries, methodology, model, tokenizer, device, main_txt_h, summary_txt_h, spacing, opacity, w)
         elif methodology == "missing_words":
             return self.__textCompareSummaries__missing_words__(text_main, text_summaries, main_txt_h, summary_txt_h, spacing, opacity, w)
+        elif methodology == "longest_common_subsequence":
+            return self.__textCompareSummaries__longest_common_subsequence__(text_main, text_summaries, min_length, main_txt_h, summary_txt_h, spacing, opacity, w)
         else:
             raise Exception(f'RACETrack.textCompareSummaries() - unknown methodology "{methodology}"')
 
+    #
+    # __textCompareSummaries__longest_common_subsequence__()
+    #
+    def __textCompareSummaries__longest_common_subsequence__(self,
+                                                             text_main, 
+                                                             text_summaries, 
+                                                             min_length,
+                                                             main_txt_h,
+                                                             summary_txt_h, 
+                                                             spacing,
+                                                             opacity,
+                                                             w):
+        summary_w = main_w = (w - spacing)/2
+        _svgs         = []
+        _summary_svgs = []
+        main_rttb = self.textBlock(text_main, txt_h=main_txt_h, line_space_px=3+3*len(text_summaries.keys()), word_wrap=True, w=main_w)
+        main_underlines_svg = ''
+        summary_i = 0
+        for _summary_desc in text_summaries:
+            _summary             = text_summaries[_summary_desc]
+            _rttb                = self.textBlock(_summary, txt_h=summary_txt_h, word_wrap=True, w=summary_w)
+            _results             = self.textSubsequenceLookup(text_main, _summary, min_length=min_length)
+            _summary_lu          = self.textCreateHighlightsLookupBasedOnSubsequenceResults(_summary,  _results, 1)
+            _main_lu             = self.textCreateHighlightsLookupBasedOnSubsequenceResults(text_main, _results, 0)
+            main_underlines_svg += main_rttb.underlinesOverlay(_main_lu, y_offset=3*summary_i, underline_stroke_w=4)
+            _summary_svgs.append(f'<svg x="0" y="0" width="{summary_w}" height="{24}">' + \
+                                 f'<rect x="0" y="0" width="{summary_w}" height="{24}" fill="#000000" />' + \
+                                 self.svgText(_summary_desc, 3, 20, txt_h=19, color='#ffffff') + '</svg>')
+            _summary_svgs.append(_rttb.underlines(_summary_lu, underline_stroke_w=4))
+            _summary_svgs.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>')
+            summary_i += 1
+
+        return self.tile([self.tile(_summary_svgs, horz=False),
+                          f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>',
+                          main_rttb.wrap(main_rttb.background() + main_rttb.unwrappedText() + main_underlines_svg)])
+                              
     #
     # __textCompareSummaries__sentence_embeddings_pixels__()
     #
