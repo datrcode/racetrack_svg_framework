@@ -604,7 +604,7 @@ class RTTextMixin(object):
         return self.tile([self.tile(_summary_svgs, horz=False),
                           f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>',
                           main_rttb.wrap(main_rttb.background() + main_rttb.unwrappedText() + main_underlines_svg)])
-                              
+
     #
     # __textCompareSummaries__sentence_embeddings_pixels__()
     #
@@ -734,9 +734,6 @@ class RTTextMixin(object):
         return self.tile([self.tile(summary_tiles, horz=False),
                           f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
                           rttb_main.highlights(highlightsForText(text_main, summary_words, 'yellow'), opacity=opacity)])
-
-
-
 
     #
     # __textCompareSummaries__sentence_embeddings__()
@@ -997,6 +994,32 @@ class RTTextMixin(object):
                     svg += f'<rect x="{x_tiles*tile_w + tile_w}" y="{y*tile_h}" width = "{2*tile_w}" height="{tile_h}" fill="{_color}" />'
         svg += '</svg>'
         return svg
+
+    #
+    # textCreateEmbedder() - Create an embedder
+    #
+    def textCreateEmbedder(self, desc='google_universal_sentence_embedder'):
+        import tensorflow as tf
+        import tensorflow_hub as hub
+        module_url = "https://tfhub.dev/google/universal-sentence-encoder/4"
+        model = hub.load(module_url)
+        return model
+
+    #
+    # textCreateBertModel() - Create a Bert model
+    #
+    # model_name
+    # - 'bert-base-cased'   <== Default
+    # - 'bert-large-cased'
+    #
+    def textCreateBertModel(self, 
+                            model_name='bert-base-cased'):
+        from transformers import BertTokenizer, BertForMaskedLM
+        device    = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        tokenizer = BertTokenizer.  from_pretrained(model_name)
+        model     = BertForMaskedLM.from_pretrained(model_name)
+        model.to(device)                                                                                     # and move our model over to the selected device
+        return model,tokenizer,device
 
     #
     # __textTrainBertModel__()
