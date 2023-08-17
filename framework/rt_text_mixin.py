@@ -746,7 +746,8 @@ class RTTextMixin(object):
                                                       summary_txt_h,
                                                       spacing,
                                                       opacity,
-                                                      w):
+                                                      w,
+                                                      render_histogram=False):
         import umap
         from sklearn.preprocessing import StandardScaler
 
@@ -870,10 +871,11 @@ class RTTextMixin(object):
             summary_tiles.append(self.__textDotProductHeatMap__(summary_dots_lu[_rttb.txt], min_dot, max_dot, 
                                                                 summary_highlights_lu[_rttb.txt], main_sentence_colors))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
-            summary_tiles.append(self.__textDotProductHistogram__(summary_dots_lu[_rttb.txt],
-                                                                  summary_highlights_lu[_rttb.txt], main_sentence_colors, 
-                                                                  summary_w))
-            summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
+            if render_histogram:
+                summary_tiles.append(self.__textDotProductHistogram__(summary_dots_lu[_rttb.txt],
+                                                                    summary_highlights_lu[_rttb.txt], main_sentence_colors, 
+                                                                    summary_w))
+                summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
 
         # Create the UMAP
         umap_reducer               = umap.UMAP()
