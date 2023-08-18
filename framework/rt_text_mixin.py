@@ -19,6 +19,7 @@
 
 import pandas as pd
 import numpy as np
+from numpy.linalg import norm
 import re
 
 import tensorflow as tf            
@@ -400,6 +401,30 @@ class RTTextMixin(object):
             ret.append((entity.text, entity.label_, entity.end_char - len(entity.text), entity.end_char))
         return ret
 
+    #
+    # textLexRank()
+    # - implemented poorly :(
+    #
+    def textLexRank(self, txt, embed_fn):
+        self.__loadSpacy__()
+        sentence_tuples = self.textExtractSentences(txt)
+        _zipped         = list(zip(*sentence_tuples))
+        sentences       = _zipped[0]
+        i0s             = _zipped[1]
+        i1s             = _zipped[2]
+        sentence_vecs   = embed_fn(sentences)
+        g_nx            = nx.Graph()
+        for i in range(len(sentence_vecs)):
+            for j in range(len(sentence_vecs)):
+                if i != j:
+                    _sim = np.dot(sentence_vecs[i], sentence_vecs[j])/(norm(sentence_vecs[i])*norm(sentence_vecs[j]))
+                    g_nx.add_edge(i,j,weight=_sim)
+        pagerank = nx.pagerank(g_nx)
+        scores    = []
+        for i in range(len(sentence_vecs)):
+            scores.append(pagerank[i])
+        df = pd.DataFrame({'sentence':sentences,'i0':i0s,'i1':i1s,'lr_score':scores})
+        return df
 
     #
     # textRank()
