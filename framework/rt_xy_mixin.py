@@ -1555,35 +1555,31 @@ class RTXYMixin(object):
 
                         # Regular Version
                         else:                    
-                            # Determine coloring options
-                            if _local_color_by is None:
-                                if self.color_magnitude is None:
-                                    color = self.rt_self.co_mgr.getTVColor('data','default')
-                                else:
-                                    # count by rows
-                                    if   self.count_by is None:
-                                        my_count = len(k_df)
-                                    # count by set
-                                    elif self.count_by_set:
-                                        my_count = len(set(k_df[self.count_by]))
-                                    # count by summation
+                            # Determine coloring options                            
+                            if   _local_color_by is None:
+                                color = self.rt_self.co_mgr.getTVColor('data','default')
+                            elif _local_color_by in k_df.columns:
+                                if   pd.core.dtypes.common.is_datetime_or_timedelta_dtype(k_df[_local_color_by]):
+                                    _scaled_time = (k_df[_local_color_by].min() - self.df[_local_color_by].min())/(self.df[_local_color_by].max() - self.df[_local_color_by].min())
+                                    color        = self.rt_self.co_mgr.spectrum(_scaled_time, 0.0, 1.0)
+                                elif self.color_magnitude is None:
+                                    color_set = set(k_df[_local_color_by])
+                                    if len(color_set) == 1:
+                                        color = self.rt_self.co_mgr.getColor(color_set.pop())
                                     else:
+                                        color = self.rt_self.co_mgr.getTVColor('data','default')
+                                else:                                    
+                                    if self.count_by_set:                              # count by set
+                                        my_count = len(set(k_df[self.count_by]))                                    
+                                    elif self.count_by is not None:                    # count by summation
                                         my_count = k_df[self.count_by].sum()
-
+                                    else:                                              # count by rows
+                                        my_count = len(k_df)
                                     if self.color_magnitude == 'stretch':
                                         color = self.rt_self.co_mgr.spectrum(self.contrast_stretch[my_count], 0, 1.0,    True)
                                     else:
                                         color = self.rt_self.co_mgr.spectrum(my_count, 0, max_xy, self.color_magnitude)
-                            elif _local_color_by in k_df.columns and pd.core.dtypes.common.is_datetime_or_timedelta_dtype(k_df[_local_color_by]):
-                                _scaled_time = (k_df[_local_color_by].min() - self.df[_local_color_by].min())/(self.df[_local_color_by].max() - self.df[_local_color_by].min())
-                                color        = self.rt_self.co_mgr.spectrum(_scaled_time, 0.0, 1.0)
-                            elif _local_color_by in k_df.columns:
-                                color_set = set(k_df[_local_color_by])
-                                if len(color_set) == 1:
-                                    color = self.rt_self.co_mgr.getColor(color_set.pop())
-                                else:
-                                    color = self.rt_self.co_mgr.getTVColor('data','default')
-                            elif _local_color_by.startswith('#'):
+                            elif _local_color_by.startswith('#') and len(_local_color_by) == 7:
                                 color = _local_color_by
                             else:
                                 color = self.rt_self.co_mgr.getTVColor('data','default')
@@ -1719,7 +1715,7 @@ class RTXYMixin(object):
             # Draw the border
             if self.draw_border:
                 border_color = self.rt_self.co_mgr.getTVColor('border','default')
-                svg += f'<rect width="{self.w-1}" height="{self.h}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />'
+                svg += f'<rect width="{self.w-1}" height="{self.h}" x="0" y="0" fill-opacity="0.0" fill="none" stroke="{border_color}" />'
             
             svg += '</svg>'
             self.last_render = svg

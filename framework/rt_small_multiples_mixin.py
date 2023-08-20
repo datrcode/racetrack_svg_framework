@@ -711,7 +711,7 @@ class RTSmallMultiplesMixin(object):
         # Draw the border
         if draw_border:
             border_color = self.co_mgr.getTVColor('border','default')
-            svg += f'<rect width="{w-1}" height="{h-1}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />'
+            svg += f'<rect width="{w-1}" height="{h-1}" x="0" y="0" fill="none" fill-opacity="0.0" stroke="{border_color}" />'
             
         svg += '</svg>'
         return svg
