@@ -1125,7 +1125,7 @@ class RTTextMixin(object):
         predicted_tokens  = tokenizer.convert_ids_to_tokens(predicted_indices.tolist())
         probs = torch.nn.functional.softmax(predictions, dim=-1)
         predicted_token_probs = probs[0,torch.arange(predictions.shape[1]),predicted_indices].cpu()
-        return predicted_tokens[1:-1], predicted_token_probs[1:-1], tokenizer.tokenize(input_string)
+        return predicted_tokens[1:-1], predicted_token_probs[1:-1], tokenizer.tokenize(input_string), predictions.cpu()[0,1:-1], tokenized_inputs[1:-1]
 
     #
     # __textCompareSummaries__bert_top_n__():  Compare via top-n bert placements
@@ -1226,7 +1226,7 @@ class RTTextMixin(object):
             highlights = {}
             _parts,_parts_i = orig.split('\n'),0
             for _part in _parts:
-                pred_tokens, pred_probs, as_tokens = self.__textBertWordProbabilities__(_part, model, tokenizer, device)
+                pred_tokens, pred_probs, as_tokens, preds, token_inputs = self.__textBertWordProbabilities__(_part, model, tokenizer, device)
                 spans = tokenSpans(_part, as_tokens)
                 for i in range(len(pred_probs)):
                     _span = (spans[i][0]+_parts_i,spans[i][1]+_parts_i)
