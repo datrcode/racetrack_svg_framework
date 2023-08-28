@@ -1032,6 +1032,51 @@ class RTTextMixin(object):
         model = hub.load(module_url)
         return model
 
+
+    #
+    # textCreateRoBertModel() - Create a Bert model
+    #
+    def textCreateRoBERTaModel(self, 
+                               model_name='roberta-base'):
+        from transformers import AutoTokenizer, RobertaForMaskedLM
+        device    = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        tokenizer = AutoTokenizer.     from_pretrained(model_name)
+        model     = RobertaForMaskedLM.from_pretrained(model_name)
+        model.to(device)                                                                                     # and move our model over to the selected device
+        return model,tokenizer,device
+
+    #
+    # __textTrainRoBERTatModel__()
+    # ... doesn't work yet...
+    # ... https://huggingface.co/learn/nlp-course/chapter7/3?fw=tf
+    #
+    def __textTrainRoBERTaModel__(self, text_main, epochs=100):
+        from transformers import AdamW
+        model, tokenizer, device = self.textCreateRoBERTaModel()
+        model.train()                                                                                        # activate training mode
+        optim = None
+        _parts = text_main.split('\n')
+        for epoch in range(epochs):
+            for _part in _parts:
+                inputs  = tokenizer.encode(_part, return_tensors='pt').to(device)
+                outputs = model(inputs)
+                loss    = outputs.loss
+                if optim is None:
+                    optim = AdamW(model.parameters(), lr=5e-5)                                               # initialize optimizer
+                optim.zero_grad()                                                                            # initialize calculated gradients (from prev step)
+                loss.backward()                                                                              # calculate loss for every parameter that needs grad update    
+                optim.step()                                                                                 # update parameters    
+            if (epoch%10) == 0:                                                                              # print updated information
+                print(f'Epoch {epoch:3}\t{loss.item()}')
+        model.eval()                                                                                         # Take it out of training mode
+        return model,tokenizer,device
+
+    #
+    # __textRoBERTsStats__()
+    #
+    def __textRoBERTaStats__(self, input_string, model, tokenizer, device):
+        pass
+
     #
     # textCreateBertModel() - Create a Bert model
     #
@@ -1072,8 +1117,8 @@ class RTTextMixin(object):
                 text = (_part)
                 as_encoded = tokenizer.encode(text)
                 inputs = {'input_ids':     torch.Tensor([as_encoded]).long(),
-                        'token_type_ids':torch.Tensor([np.zeros(len(as_encoded))]).long(),
-                        'attention_mask':torch.Tensor([np.ones (len(as_encoded))]).long()}
+                          'token_type_ids':torch.Tensor([np.zeros(len(as_encoded))]).long(),
+                          'attention_mask':torch.Tensor([np.ones (len(as_encoded))]).long()}
                 inputs['lm_labels'] = inputs['input_ids'].detach().clone()                                   # labels are just the original text...
                 rand      = torch.rand(inputs['input_ids'].shape)                                            # create random array of floats in equal dimension to input_ids
                 mask_arr  = (rand < mask_perc) * (inputs['input_ids'] != 101) * (inputs['input_ids'] != 102) # As an example of how to separate out those two token types
