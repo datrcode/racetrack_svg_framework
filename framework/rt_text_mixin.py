@@ -1032,7 +1032,6 @@ class RTTextMixin(object):
         model = hub.load(module_url)
         return model
 
-
     #
     # textCreateRoBertModel() - Create a Bert model
     #
@@ -1047,29 +1046,59 @@ class RTTextMixin(object):
 
     #
     # __textTrainRoBERTatModel__()
-    # ... doesn't work yet...
-    # ... https://huggingface.co/learn/nlp-course/chapter7/3?fw=tf
+    # - Modified from:
+    #   https://towardsdatascience.com/transformers-retraining-roberta-base-using-the-roberta-mlm-procedure-7422160d5764
     #
     def __textTrainRoBERTaModel__(self, text_main, epochs=100):
-        from transformers import AdamW
-        model, tokenizer, device = self.textCreateRoBERTaModel()
-        model.train()                                                                                        # activate training mode
-        optim = None
-        _parts = text_main.split('\n')
-        for epoch in range(epochs):
-            for _part in _parts:
-                inputs  = tokenizer.encode(_part, return_tensors='pt').to(device)
-                outputs = model(inputs)
-                loss    = outputs.loss
-                if optim is None:
-                    optim = AdamW(model.parameters(), lr=5e-5)                                               # initialize optimizer
-                optim.zero_grad()                                                                            # initialize calculated gradients (from prev step)
-                loss.backward()                                                                              # calculate loss for every parameter that needs grad update    
-                optim.step()                                                                                 # update parameters    
-            if (epoch%10) == 0:                                                                              # print updated information
-                print(f'Epoch {epoch:3}\t{loss.item()}')
-        model.eval()                                                                                         # Take it out of training mode
-        return model,tokenizer,device
+        from transformers import RobertaTokenizer, RobertaForMaskedLM
+        tokenizer = RobertaTokenizer.   from_pretrained('roberta-base')
+        model     = RobertaForMaskedLM. from_pretrained('roberta-base')
+        class GeneratorFromListOfStrings(object):
+            def __init__(self,txts,tokenizer):
+                self.txts      = txts
+                self.tokenizer = tokenizer
+                self.i    = 0
+            def __getitem__(self, index):
+                return {'input_ids': self.tokenizer.encode(self.txts[index], return_tensors='pt')[0]}
+            def __len__(self):
+                return len(self.txts)
+            def __iter__(self):
+                return self
+            def __next__(self):        
+                if self.i < len(self.txts):            
+                    _result_ = {'input_ids': self.tokenizer.encode(self.txts[self.i], return_tensors='pt')[0]}
+                    self.i += 1
+                    return _result_
+                else:
+                    raise StopIteration()
+            def __call__(self):
+                self.i = 0
+                return self
+        gflos = GeneratorFromListOfStrings(text_main.split('\n'), tokenizer)
+        from datasets import Dataset
+        ds_from_gflos = Dataset.from_generator(gflos)
+        from transformers import DataCollatorForLanguageModeling
+        data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=True, mlm_probability=0.15)
+        from transformers import Trainer, TrainingArguments
+        training_args = TrainingArguments(
+            output_dir="./roberta-retrained",
+            overwrite_output_dir=True,
+            num_train_epochs=epochs,
+            per_device_train_batch_size=48,
+            save_steps=500,
+            save_total_limit=2,
+            seed=1
+        )
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            data_collator=data_collator,
+            train_dataset=ds_from_gflos
+        )
+        trainer.train()
+        model.eval()
+        device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        return model, tokenizer, device
 
     #
     # __textRoBERTsStats__()
