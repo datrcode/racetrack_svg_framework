@@ -343,21 +343,27 @@ class RTTextMixin(object):
     # _just_the_sentences_as_array = list(list(zip(*_tups))[0])
     #
     def textExtractSentences(self,
-                             txt):
+                             txt,
+                             split_by_newlines=True):
+        parts = txt.split('\n') if split_by_newlines else [txt]
         self.__loadSpacy__()
-        sentences,i = [],0
-        for _span in self.nlp_spacy(txt).sents:
-            as_str = str(_span)
-            while len(as_str) >0 and self.__whitespace__(as_str[0]):
-                as_str = as_str[1:]
-            if len(as_str) > 0:
-                i      = txt.index(as_str,i)
-                j      = i + len(as_str)
-                while j < len(txt) and txt[j] == ' ':
-                    as_str += ' '
-                    j      += 1
-                sentences.append((as_str, i, j))
-                i += len(as_str)            
+        sentences = []
+        k = 0
+        for part in parts:
+            i = 0
+            for _span in self.nlp_spacy(part).sents:
+                as_str = str(_span)
+                while len(as_str) >0 and self.__whitespace__(as_str[0]):
+                    as_str = as_str[1:]
+                if len(as_str) > 0:
+                    i      = part.index(as_str,i)
+                    j      = i + len(as_str)
+                    while j < len(part) and part[j] == ' ':
+                        as_str += ' '
+                        j      += 1
+                    sentences.append((as_str, i+k, j+k))
+                    i += len(as_str)
+            k += len(part) + 1            
         return sentences
 
     #
