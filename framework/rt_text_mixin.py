@@ -1118,10 +1118,6 @@ class RTTextMixin(object):
             _token                  = tokenizer.decode(_inputs['input_ids'][0][token_i])
             i0 = sentence.index(_token, i0)
             _token_stripped_lowered = _token.strip().lower()
-            #_before = ' ' if _token[0]  == ' ' else ''
-            #_after  = ' ' if _token[-1] == ' ' else ''
-            #_sentence_w_mask = tokenizer.decode(_inputs['input_ids'][0][1:token_i]) + _before + '<mask>' + _after + tokenizer.decode(_inputs['input_ids'][0][token_i+1:-1])
-            #_inputs_w_mask   = tokenize(_sentence_w_mask).to(device)
             _inputs_w_mask                          = tokenizer(sentence, return_tensors="pt")
             _inputs_w_mask['input_ids'][0][token_i] = tokenizer.encode('<mask>')[1]
             _inputs_w_mask.to(device)
@@ -1138,9 +1134,7 @@ class RTTextMixin(object):
                         ith = i
                 i += 1
             labels = tokenizer(sentence, return_tensors="pt")["input_ids"]
-            with torch.no_grad():
-                _output_w_fill = model(**_inputs_w_mask, labels=labels)
-            word_score = float(_output_w_fill[1][0][token_i][labels[0][token_i]])
+            word_score = float(_output[0][0][token_i][labels[0][token_i]])
             # From https://github.com/pytorch/pytorch/issues/69519
             def histogram(xs, bins):
                 # Like torch.histogram, but works with cuda
@@ -1148,7 +1142,7 @@ class RTTextMixin(object):
                 counts     = torch.histc(xs, bins, min=min, max=max)
                 boundaries = torch.linspace(min, max, bins + 1)
                 return counts, boundaries
-            _counts,_boundaries = histogram(_output_w_fill[1][0][token_i], bins=bins)
+            _counts,_boundaries = histogram(_output[0][0][token_i], bins=bins)
             results.append({'token':_token, 'i0':i0, 'i1':i0+len(_token), 'predicted':_predicted, 'score':word_score, 
                             'ith':ith, 'counts':_counts.cpu(), 'boundaries':_boundaries.cpu()})
         return results
