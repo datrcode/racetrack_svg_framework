@@ -1,0 +1,13 @@
+networkx
+nltk
+numpy
+pandas
+panel==0.14.2
+shapely
+spacy
+squarify
+svglib
+tensorflow
+torch
+transformers
+umap-learn
