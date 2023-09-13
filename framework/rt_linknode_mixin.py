@@ -304,21 +304,9 @@ class RTLinkNodeMixin(object):
 
                         k_fm   = k[:len(fm_flds)]
                         k_to   = k[len(fm_flds):]
-                        fm_str = '|'.join(k_fm)
-                        to_str = '|'.join(k_to)
-                        nx_g.add_edge(fm_str,to_str,weight=gb[i])
-
-                    # OLD VERSION
-                    #
-                    # create the edge table
-                    #gb = _df.groupby(flat)
-                    # iterate over the edges
-                    #for k,k_df in gb:
-                    #    k_fm   = k[:len(fm_flds)]
-                    #    k_to   = k[len(fm_flds):]
-                    #    fm_str = '|'.join(k_fm)
-                    #    to_str = '|'.join(k_to)
-                    #    nx_g.add_edge(fm_str,to_str,weight=len(k_df))
+                        _fm_ = '|'.join(k_fm) if len(k_fm) > 1 else str(k_fm[0])
+                        _to_ = '|'.join(k_to) if len(k_to) > 1 else str(k_to[0])
+                        nx_g.add_edge(_fm_,_to_,weight=gb.iloc[i])
 
         return nx_g
 
@@ -847,8 +835,11 @@ class RTLinkNodeMixin(object):
                             for k,k_df in gb:
                                 k_fm   = k[:len(fm_flds)]
                                 k_to   = k[len(fm_flds):]
-                                fm_str = '|'.join(k_fm)
-                                to_str = '|'.join(k_to)
+
+                                fm_str = '|'.join(k_fm) if len(k_fm) > 1 else str(k_fm[0])
+                                to_str = '|'.join(k_to) if len(k_to) > 1 else str(k_to[0])
+                                #fm_str = '|'.join(k_fm) # doesn't consider ints
+                                #to_str = '|'.join(k_to) # doesn't consider ints
                                 
                                 # Determine the coordinates (or make them)
                                 if fm_str not in self.pos.keys():
@@ -996,7 +987,7 @@ class RTLinkNodeMixin(object):
                                     if type(k) == tuple or type(k) == list:
                                         node_str = '|'.join(k)
                                     else:
-                                        node_str = k
+                                        node_str = str(k)
                                     
                                     # Get or make the node's position
                                     if node_str not in self.pos.keys():
