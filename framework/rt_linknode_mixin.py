@@ -203,6 +203,9 @@ class RTLinkNodeMixin(object):
                  link_shape        = 'line',   # 'curve','line'
                  link_arrow        = True,     # draw an arrow at the end of the curve...
 
+                 max_link_size     = 4,        # for link vary...
+                 min_link_size     = 0.25,     # for link vary...
+
                  label_only        = set(),    # label only set
 
                  # -----------------------     # convex hull annotations
@@ -237,13 +240,62 @@ class RTLinkNodeMixin(object):
                                       count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
                                       node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,max_node_size=max_node_size,min_node_size=min_node_size,
                                       link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow,
+                                      max_link_size=max_link_size,min_link_size=min_link_size,
                                       label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                       convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
                                       sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,sm_x_axis_independent=sm_x_axis_independent,
                                       sm_y_axis_independent=sm_y_axis_independent,x_view=x_view,y_view=y_view,w=w,h=h,x_ins=x_ins,y_ins=y_ins,
                                       txt_h=txt_h,draw_labels=draw_labels,draw_border=draw_border)
         return rt_linknode.renderSVG()
-        
+
+    #
+    # __minAndMaxLinkSize__()
+    # ... copy of the next method but only determines the min and max link size
+    #
+    def __minAndMaxLinkSize__(self, df, relationships, count_by=None):
+        _min_,_max_ = None,None
+        # Make the df into a list
+        if type(df) != list:
+            df = [df]
+        # Check the count_by column across all the df's...  if any of them
+        # don't work.. then it's count_by_set
+        count_by_set = False
+        if count_by is not None:
+            for _df in df:
+                if  _df[count_by].dtypes != np.int64    and \
+                    _df[count_by].dtypes != np.int32    and \
+                    _df[count_by].dtypes != np.float64  and \
+                    _df[count_by].dtypes != np.float32:
+                        count_by_set = True
+        # Iterate over the relationships
+        for rel_tuple in relationships:
+            # Flatten out into the groupby array, the fm_flds array, and the to_flds array            
+            flat    = flattenTuple(rel_tuple)
+            fm_flds = flattenTuple(rel_tuple[0])
+            if type(fm_flds) != list:
+                fm_flds = [fm_flds]
+            to_flds = flattenTuple(rel_tuple[1])                
+            if type(to_flds) != list:
+                to_flds = [to_flds]
+            # Iterate over the dfs
+            for _df in df:
+                # if the _df has all of the columns
+                if len(set(_df.columns) & set(flat)) == len(set(flat)):
+                    gb = _df.groupby(flat)
+                    if count_by is None: 
+                        gb_sz = gb.size()
+                    elif count_by_set:
+                        gb_sz = gb[count_by].nunique()
+                    else:
+                        gb_sz = gb[count_by].sum()
+                    for i in range(0,len(gb)):
+                        _weight_ = gb_sz.iloc[i]
+                        _min_ = _weight_ if _min_ is None else min(_min_, _weight_)
+                        _max_ = _weight_ if _max_ is None else max(_max_, _weight_)
+        if _min_ == _max_:
+            _max_ = _min_ + 1
+        return _min_,_max_
+
     #
     # createNetworkXGraph()
     #
@@ -346,6 +398,8 @@ class RTLinkNodeMixin(object):
                          link_opacity             = '1.0',    # link opacity
                          link_shape               = 'line',   # 'curve','line'
                          link_arrow               = True,     # draw an arrow at the end of the curve...
+                         max_link_size            = 4,        # for link vary...
+                         min_link_size            = 0.25,     # for link vary...
                          label_only               = set(),    # label only set
                          # ---------------------------------- # convex hull annotations
                          convex_hull_lu           = None,     # dictionary... regex for node name to convex hull name
@@ -374,6 +428,7 @@ class RTLinkNodeMixin(object):
                                count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
                                node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,max_node_size=max_node_size,min_node_size=min_node_size,
                                link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow,
+                               max_link_size=max_link_size,min_link_size=min_link_size,
                                label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
                                sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,sm_x_axis_independent=sm_x_axis_independent,
@@ -421,6 +476,8 @@ class RTLinkNodeMixin(object):
                      link_opacity             = '1.0',    # link opacity
                      link_shape               = 'line',   # 'curve','line'
                      link_arrow               = True,     # draw an arrow at the end of the curve...
+                     max_link_size            = 4,        # for link vary...
+                     min_link_size            = 0.25,     # for link vary...
                      label_only               = set(),    # label only set
                      # ---------------------------------- # convex hull annotations
                      convex_hull_lu           = None,     # dictionary... regex for node name to convex hull name
@@ -475,6 +532,8 @@ class RTLinkNodeMixin(object):
             self.link_opacity               = link_opacity
             self.link_shape                 = link_shape
             self.link_arrow                 = link_arrow
+            self.max_link_size              = max_link_size
+            self.min_link_size              = min_link_size
             self.label_only                 = label_only
             self.convex_hull_lu             = convex_hull_lu
             self.convex_hull_opacity        = convex_hull_opacity
@@ -791,7 +850,8 @@ class RTLinkNodeMixin(object):
         #
         def __renderLinks__(self,track_state=False):
             # Render links
-            svg = ''
+            svg          = ''
+            count_by_set = True
             if self.link_size is not None and self.link_size != 'hidden':
                 # Set the link size
                 if   self.link_size == 'small':
@@ -802,8 +862,19 @@ class RTLinkNodeMixin(object):
                     _sz = 5
                 elif self.link_size == 'nil':
                     _sz = 0.2
-                else: # Vary // not implemented yet
-                    _sz = 0.5
+                else: # Vary
+                    # Check the count_by column across all the df's...  if any of them
+                    # don't work.. then it's count_by_set
+                    count_by_set = False
+                    if self.count_by is not None:
+                        for _df in self.df:
+                            if  _df[self.count_by].dtypes != np.int64    and \
+                                _df[self.count_by].dtypes != np.int32    and \
+                                _df[self.count_by].dtypes != np.float64  and \
+                                _df[self.count_by].dtypes != np.float32:
+                                    count_by_set = True
+                    _sz_min, _sz_max = self.rt_self.__minAndMaxLinkSize__(self.df, self.relationships, self.count_by)
+                    _sz = None
 
                 # Iterate over the relationships
                 for rel_tuple in self.relationships:
@@ -827,19 +898,24 @@ class RTLinkNodeMixin(object):
 
                         # if the _df has all of the columns
                         if len(set(_df.columns) & set(flat)) == len(set(flat)):
-
-                            # create the edge table
                             gb = _df.groupby(flat)
+                            if self.count_by is None: 
+                                gb_sz = gb.size()
+                            elif count_by_set:
+                                gb_sz = gb[self.count_by].nunique()
+                            else:
+                                gb_sz = gb[self.count_by].sum()
 
-                            # iterate over the edges
+                            gb_sz_i = 0
                             for k,k_df in gb:
+                                _weight_ =  gb_sz.iloc[gb_sz_i]
+                                gb_sz_i  += 1
+
                                 k_fm   = k[:len(fm_flds)]
                                 k_to   = k[len(fm_flds):]
 
                                 fm_str = '|'.join(k_fm) if len(k_fm) > 1 else str(k_fm[0])
                                 to_str = '|'.join(k_to) if len(k_to) > 1 else str(k_to[0])
-                                #fm_str = '|'.join(k_fm) # doesn't consider ints
-                                #to_str = '|'.join(k_to) # doesn't consider ints
                                 
                                 # Determine the coordinates (or make them)
                                 if fm_str not in self.pos.keys():
@@ -872,11 +948,17 @@ class RTLinkNodeMixin(object):
                                     if _line not in self.geom_to_df.keys():
                                         self.geom_to_df[_line] = []
                                     self.geom_to_df[_line].append(k_df)
-                                    
+                                
+                                # Determine the size
+                                if _sz is None:
+                                    _this_sz = self.min_link_size + self.max_link_size * (_weight_ - _sz_min) / (_sz_max - _sz_min)
+                                else:
+                                    _this_sz = _sz
+
                                 # Determine the link style
                                 if    self.link_shape == 'line':
                                     svg += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
-                                    svg += f'stroke-width="{_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
+                                    svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
                                 elif self.link_shape == 'curve':
                                     dx = x2 - x1
                                     dy = y2 - y1
@@ -905,10 +987,10 @@ class RTLinkNodeMixin(object):
 
                                     if self.link_arrow:
                                         svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} L {x3} {y3}" '
-                                        svg += f'fill-opacity="0.0" stroke-width="{_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
+                                        svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
                                     else:
                                         svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2}" '
-                                        svg += f'fill-opacity="0.0" stroke-width="{_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
+                                        svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
                                 else:
                                     raise Exception(f'Unknown link_shape "{self.link_shape}"')
 
