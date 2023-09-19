@@ -91,7 +91,10 @@ class RTLinkNodeMixin(object):
 
                             # Get or make the node's position
                             if node_str not in pos.keys():
-                                pos[node_str] = [random.random(),random.random()]
+                                if str(node_str) not in pos.keys():
+                                    pos[node_str] = [random.random(),random.random()]
+                                else:
+                                    node_str = str(node_str)
 
                             # Perform the comparison for the bounds
                             v = pos[node_str]
