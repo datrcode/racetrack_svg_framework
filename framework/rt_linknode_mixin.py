@@ -33,6 +33,35 @@ __name__ = 'rt_linknode_mixin'
 #
 class RTLinkNodeMixin(object):
     #
+    # nodeStringAndFillPos()
+    # - create a node string... complicated due to possible occurence of ints...
+    #
+    def nodeStringAndFillPos(self, k, pos):
+        # Figure out the actual string (or integer)
+        if type(k) == tuple or type(k) == list:
+            if len(k) == 1:
+                node_str = k[0]
+            else:
+                node_str = str(k[0])
+                for i in range(1,len(k)):
+                    node_str = node_str + '|' + str(k[i])
+        else:
+            node_str = k
+        # Get or make the node's position
+        if type(node_str) == str:
+            if node_str not in pos.keys():
+                pos[node_str] = [random.random(),random.random()]
+        else:
+            if node_str in pos.keys():
+                pos[str(node_str)] = pos[node_str]
+                node_str = str(node_str)
+            else:
+                node_str = str(node_str)
+                if node_str not in pos.keys():
+                    pos[node_str] = [random.random(),random.random()]
+        return node_str
+
+    #
     # Calculate Information About the Nodes
     # ... mostly a copy of the node render loop... should probably be refactored
     #
@@ -84,17 +113,7 @@ class RTLinkNodeMixin(object):
 
                         # iterate over the edges
                         for k,k_df in gb:
-                            if type(k) == tuple or type(k) == list:
-                                node_str = '|'.join(k)
-                            else:
-                                node_str = k
-
-                            # Get or make the node's position
-                            if node_str not in pos.keys():
-                                if str(node_str) not in pos.keys():
-                                    pos[node_str] = [random.random(),random.random()]
-                                else:
-                                    node_str = str(node_str)
+                            node_str = self.nodeStringAndFillPos(k, pos)
 
                             # Perform the comparison for the bounds
                             v = pos[node_str]
@@ -696,13 +715,8 @@ class RTLinkNodeMixin(object):
                                 k_fm   = k[:len(fm_flds)]
                                 k_to   = k[len(fm_flds):]
 
-                                fm_str = '|'.join(k_fm)
-                                to_str = '|'.join(k_to)
-
-                                if fm_str not in self.pos.keys():
-                                    self.pos[fm_str] = [random.random(),random.random()]
-                                if to_str not in self.pos.keys():
-                                    self.pos[to_str] = [random.random(),random.random()]
+                                fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
+                                to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
 
                                 x1 = self.xT(self.pos[fm_str][0])
                                 x2 = self.xT(self.pos[to_str][0])
@@ -917,15 +931,8 @@ class RTLinkNodeMixin(object):
                                 k_fm   = k[:len(fm_flds)]
                                 k_to   = k[len(fm_flds):]
 
-                                fm_str = '|'.join(k_fm) if len(k_fm) > 1 else str(k_fm[0])
-                                to_str = '|'.join(k_to) if len(k_to) > 1 else str(k_to[0])
-                                
-                                # Determine the coordinates (or make them)
-                                if fm_str not in self.pos.keys():
-                                    self.pos[fm_str] = [random.random(),random.random()]
-
-                                if to_str not in self.pos.keys():
-                                    self.pos[to_str] = [random.random(),random.random()]
+                                fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
+                                to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
                                 
                                 # Transform the coordinates
                                 x1 = self.xT(self.pos[fm_str][0])
@@ -1069,14 +1076,7 @@ class RTLinkNodeMixin(object):
 
                                 # iterate over the nodes
                                 for k,k_df in gb:
-                                    if type(k) == tuple or type(k) == list:
-                                        node_str = '|'.join(k)
-                                    else:
-                                        node_str = str(k)
-                                    
-                                    # Get or make the node's position
-                                    if node_str not in self.pos.keys():
-                                        self.pos[node_str] = [random.random(),random.random()]
+                                    node_str = self.rt_self.nodeStringAndFillPos(k, self.pos)
                                     
                                     # Transform the coordinates
                                     x = self.xT(self.pos[node_str][0])
