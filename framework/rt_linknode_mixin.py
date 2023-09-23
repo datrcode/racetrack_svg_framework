@@ -224,6 +224,7 @@ class RTLinkNodeMixin(object):
                  link_opacity      = '1.0',    # link opacity
                  link_shape        = 'line',   # 'curve','line'
                  link_arrow        = True,     # draw an arrow at the end of the curve...
+                 link_dash         = None,     # svg stroke-dash string, or dictionary of relationship tuple to dash string array 
 
                  max_link_size     = 4,        # for link vary...
                  min_link_size     = 0.25,     # for link vary...
@@ -261,7 +262,7 @@ class RTLinkNodeMixin(object):
                                       pos_context_opacity=pos_context_opacity,bounds_percent=bounds_percent,color_by=color_by,count_by=count_by,
                                       count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
                                       node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,max_node_size=max_node_size,min_node_size=min_node_size,
-                                      link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow,
+                                      link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, link_dash=link_dash,
                                       max_link_size=max_link_size,min_link_size=min_link_size,
                                       label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                       convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
@@ -420,6 +421,7 @@ class RTLinkNodeMixin(object):
                          link_opacity             = '1.0',    # link opacity
                          link_shape               = 'line',   # 'curve','line'
                          link_arrow               = True,     # draw an arrow at the end of the curve...
+                         link_dash                = None,     # string for svg stroke-dash or dictionary of the relationship tuple to stroke dash string
                          max_link_size            = 4,        # for link vary...
                          min_link_size            = 0.25,     # for link vary...
                          label_only               = set(),    # label only set
@@ -449,7 +451,7 @@ class RTLinkNodeMixin(object):
                                pos_context_opacity=pos_context_opacity,bounds_percent=bounds_percent,color_by=color_by,count_by=count_by,
                                count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
                                node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,max_node_size=max_node_size,min_node_size=min_node_size,
-                               link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow,
+                               link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, link_dash=link_dash,
                                max_link_size=max_link_size,min_link_size=min_link_size,
                                label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
@@ -498,6 +500,7 @@ class RTLinkNodeMixin(object):
                      link_opacity             = '1.0',    # link opacity
                      link_shape               = 'line',   # 'curve','line'
                      link_arrow               = True,     # draw an arrow at the end of the curve...
+                     link_dash                = None,     # String for the stroke-dash or dictionary of relationship tuple to the stroke-dash string
                      max_link_size            = 4,        # for link vary...
                      min_link_size            = 0.25,     # for link vary...
                      label_only               = set(),    # label only set
@@ -554,6 +557,7 @@ class RTLinkNodeMixin(object):
             self.link_opacity               = link_opacity
             self.link_shape                 = link_shape
             self.link_arrow                 = link_arrow
+            self.link_dash                  = link_dash
             self.max_link_size              = max_link_size
             self.min_link_size              = min_link_size
             self.label_only                 = label_only
@@ -871,7 +875,9 @@ class RTLinkNodeMixin(object):
             count_by_set = True
             if self.link_size is not None and self.link_size != 'hidden':
                 # Set the link size
-                if   self.link_size == 'small':
+                if   type(self.link_size) == dict:
+                    _sz = 1
+                elif self.link_size == 'small':
                     _sz = 1
                 elif self.link_size == 'medium':
                     _sz = 3
@@ -963,12 +969,36 @@ class RTLinkNodeMixin(object):
                                 if _sz is None:
                                     _this_sz = self.min_link_size + self.max_link_size * (_weight_ - _sz_min) / (_sz_max - _sz_min)
                                 else:
-                                    _this_sz = _sz
+                                    if type(self.link_size) == dict:
+                                        if rel_tuple in self.link_size.keys():
+                                            _str_ = self.link_size[rel_tuple]
+                                            if   _str_ == 'small':
+                                                _this_sz = 1
+                                            elif _str_ == 'medium':
+                                                _this_sz = 3
+                                            elif _str_ == 'large':
+                                                _this_sz = 5
+                                            elif _str_ == 'nil':
+                                                _this_sz = 0.2
+                                            else:
+                                                _this_sz = 0.0
+                                        else:
+                                            _this_sz = 0.0
+                                    else:
+                                        _this_sz = _sz
+                                
+                                # Determine stroke dash
+                                stroke_dash = ''
+                                if self.link_dash is not None:
+                                    if   type(self.link_dash) == str:
+                                        stroke_dash = f'stroke-dasharray="{self.link_dash}"'
+                                    elif type(self.link_dash) == dict and rel_tuple in self.link_dash:
+                                        stroke_dash = f'stroke-dasharray="{self.link_dash[rel_tuple]}"'
 
                                 # Determine the link style
                                 if    self.link_shape == 'line':
                                     svg += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
-                                    svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
+                                    svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
                                 elif self.link_shape == 'curve':
                                     dx = x2 - x1
                                     dy = y2 - y1
@@ -997,10 +1027,10 @@ class RTLinkNodeMixin(object):
 
                                     if self.link_arrow:
                                         svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} L {x3} {y3}" '
-                                        svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
+                                        svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
                                     else:
                                         svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2}" '
-                                        svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
+                                        svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
                                 else:
                                     raise Exception(f'Unknown link_shape "{self.link_shape}"')
 
