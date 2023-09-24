@@ -1165,8 +1165,9 @@ class RTTextMixin(object):
 
     #
     # __textTrainBertModel__()
+    # ... used the"lm_labels" variable ... seems to be deprecated
     #
-    def __textTrainBertModel__(self, text_main, mask_perc=0.75, epochs=100):
+    def __OLD_textTrainBertModel__(self, text_main, mask_perc=0.75, epochs=100):
         from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW        
 
         # From the throwaway file "bert_mlm_example.ipynb"
@@ -1205,6 +1206,56 @@ class RTTextMixin(object):
                 attention_mask = inputs['attention_mask'].to(device)
                 lm_labels      = inputs['lm_labels'].     to(device)    
                 outputs        = model(input_ids, attention_mask=attention_mask, lm_labels=lm_labels)        # process
+                loss           = outputs[0]                                                                  # extract loss
+                loss.backward()                                                                              # calculate loss for every parameter that needs grad update    
+                optim.step()                                                                                 # update parameters    
+            if (epoch%10) == 0:                                                                              # print updated information
+                print(f'Epoch {epoch:3}\t{loss.item()}')
+        model.eval()                                                                                         # Take it out of training mode
+        return model,tokenizer,device
+
+    #
+    # __textTrainBertModel__()
+    #
+    def __textTrainBertModel__(self, text_main, mask_perc=0.75, epochs=100):
+        from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW        
+
+        # From the throwaway file "bert_mlm_example.ipynb"
+        #
+        # Modified From https://towardsdatascience.com/masked-language-modelling-with-bert-7d49793e5d2c
+        #
+        device    = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        tokenizer = BertTokenizer.  from_pretrained('bert-base-cased')
+        model     = BertForMaskedLM.from_pretrained('bert-base-cased')
+        #tokenizer = BertTokenizer.  from_pretrained('bert-large-cased')
+        #model     = BertForMaskedLM.from_pretrained('bert-large-cased')        
+        model.train()                                                                                        # activate training mode
+        model.to(device)                                                                                     # and move our model over to the selected device
+        optim = None
+        _parts = text_main.split('\n')
+        for epoch in range(epochs):
+            for _part in _parts:
+                text = (_part)
+                as_encoded = tokenizer.encode(text)
+                inputs = {'input_ids':     torch.Tensor([as_encoded]).long(),
+                          'token_type_ids':torch.Tensor([np.zeros(len(as_encoded))]).long(),
+                          'attention_mask':torch.Tensor([np.ones (len(as_encoded))]).long()}
+                inputs['labels'] = inputs['input_ids'].detach().clone()                                      # labels are just the original text...
+                rand      = torch.rand(inputs['input_ids'].shape)                                            # create random array of floats in equal dimension to input_ids
+                mask_arr  = (rand < mask_perc) * (inputs['input_ids'] != 101) * (inputs['input_ids'] != 102) # As an example of how to separate out those two token types
+                selection = torch.flatten((mask_arr[0]).nonzero()).tolist()                                  # create selection from mask_arr
+                inputs['input_ids'][0, selection] = 103                                                      # apply selection index to inputs.input_ids, adding MASK tokens
+                input_ids      = inputs['input_ids'].     to(device)                                         # move to gpu
+                attention_mask = inputs['attention_mask'].to(device)
+                labels         = inputs['labels'].        to(device)    
+                outputs = model(input_ids, attention_mask=attention_mask, labels=labels)                     # process
+                if optim is None:
+                    optim = AdamW(model.parameters(), lr=5e-5)                                               # initialize optimizer
+                optim.zero_grad()                                                                            # initialize calculated gradients (from prev step)
+                input_ids      = inputs['input_ids'].     to(device)                                         # move to gpu
+                attention_mask = inputs['attention_mask'].to(device)
+                labels         = inputs['labels'].        to(device)    
+                outputs        = model(input_ids, attention_mask=attention_mask, labels=labels)              # process
                 loss           = outputs[0]                                                                  # extract loss
                 loss.backward()                                                                              # calculate loss for every parameter that needs grad update    
                 optim.step()                                                                                 # update parameters    
