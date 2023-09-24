@@ -1,4 +1,4 @@
-# Copyright 2022 David Trimm
+# Copyright 2023 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -718,8 +718,9 @@ class RTLinkNodeMixin(object):
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
             
             # Tracking state
-            self.geom_to_df = {}
+            self.geom_to_df  = {}
             self.last_render = None
+            self.node_coords = {}
 
         #
         # __calculateGeometry__() - determine the geometry for the view
@@ -1214,6 +1215,7 @@ class RTLinkNodeMixin(object):
                                     # Transform the coordinates
                                     x = self.xT(self.pos[node_str][0])
                                     y = self.yT(self.pos[node_str][1])
+                                    self.node_coords[node_str] = (x,y)
 
                                     if self.node_shape == 'small_multiple':
                                         if node_str not in node_to_dfs.keys():
