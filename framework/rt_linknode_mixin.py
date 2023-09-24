@@ -33,6 +33,82 @@ __name__ = 'rt_linknode_mixin'
 #
 class RTLinkNodeMixin(object):
     #
+    # nodeLabeler()
+    # - Create the dictionary for the node_labels parameter
+    # - if node_labels is passed, will be added to / not replaced
+    #
+    def nodeLabeler(self, df, node_field, label_field, node_labels=None, word_wrap=True, max_line_len=32, max_lines=4):
+        if node_labels is None:
+            node_labels = {}
+        gb = df.groupby(node_field)
+        for k,k_df in gb:
+            node_str = self.nodeString(k)
+            label_array = node_labels[node_str] if node_str in node_labels.keys() else [] # maybe just adding to?
+            field_set   = set(k_df[label_field])
+            _str_       = ''
+            if len(field_set) == 1:
+                _str_ = str(list(field_set)[0])
+            else:
+                _as_list_ = list(field_set)
+                _str_     = str(_as_list_[0])
+                for i in range(1,len(_as_list_)):
+                    _str_ += ' ' + str(_as_list_[i])
+            
+            # Split the string into lines if it's greater than max_line_len and word_wrap is True
+            if len(_str_) >= max_line_len and word_wrap == True:
+                _lines_           = _str_.split('\n')
+                dot_dot_dot_added = False
+                _line_no_         = 0
+                for _line_ in _lines_:
+                    _parts_ = _line_.split() # splits by whitespace w/out any params...
+                    if len(_parts_) > 0:
+                        _line_ = _parts_[0]
+                        for i in range(1,len(_parts_)):
+                            if len(_line_ + ' ' + _parts_[i]) < max_line_len:
+                                _line_ += ' ' + _parts_[i]
+                            else:
+                                if _line_no_ < max_lines:
+                                    label_array.append(_line_)
+                                    _line_no_ += 1
+                                elif dot_dot_dot_added == False:
+                                    label_array.append('...')
+                                    dot_dot_dot_added = True                                
+                                _line_ = _parts_[i]
+                        if len(_line_) > 0 and _line_no_ < max_lines:
+                            label_array.append(_line_)
+                            _line_no_ += 1
+                        elif dot_dot_dot_added == False:
+                            label_array.append('...')
+                            dot_dot_dot_added = True
+            elif len(_str_) >= max_line_len:
+                label_array.append(_str_[:max_line_len] + '...')
+            else:
+                label_array.append(_str_)
+
+            node_labels[node_str] = label_array
+        return node_labels
+
+    #
+    # nodeString()
+    # - like nodeStringAndFill() but without the pos parameter
+    #
+    def nodeString(self, k):        
+        # Figure out the actual string (or integer)
+        if type(k) == tuple or type(k) == list:
+            if len(k) == 1:
+                node_str = k[0]
+            else:
+                node_str = str(k[0])
+                for i in range(1,len(k)):
+                    node_str = node_str + '|' + str(k[i])
+        else:
+            node_str = k
+        # Make sure it's a string
+        if type(node_str) != str:
+            node_str = str(node_str)
+        return node_str
+
+    #
     # nodeStringAndFillPos()
     # - create a node string... complicated due to possible occurence of ints...
     #
@@ -214,7 +290,9 @@ class RTLinkNodeMixin(object):
                                                # ... or a dictionary of the field tuples node to a shape name
                                                # ... or a dictionary of the field tuples node to an SVG small multiple
                                                # ... or a function pointer to a shape function
-                 node_opacity      = 1.0,      # fixed node opacity
+                 node_opacity      = 1.0,      # fixed node opacity                 
+                 node_labels       = None,     # Dictionary of node string to array of strings for additional labeling options
+                 node_labels_only  = False,    # Only label based on the node_labels dictionary
 
                  max_node_size     = 4,        # for node vary...
                  min_node_size     = 0.3,      # for node vary...
@@ -261,7 +339,8 @@ class RTLinkNodeMixin(object):
         rt_linknode = self.RTLinkNode(self,df,relationships,pos=pos,use_pos_for_bounds=use_pos_for_bounds,render_pos_context=render_pos_context,
                                       pos_context_opacity=pos_context_opacity,bounds_percent=bounds_percent,color_by=color_by,count_by=count_by,
                                       count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
-                                      node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,max_node_size=max_node_size,min_node_size=min_node_size,
+                                      node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,node_labels=node_labels,node_labels_only=node_labels_only,
+                                      max_node_size=max_node_size,min_node_size=min_node_size,
                                       link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, link_dash=link_dash,
                                       max_link_size=max_link_size,min_link_size=min_link_size,
                                       label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
@@ -414,6 +493,8 @@ class RTLinkNodeMixin(object):
                                                               # ... or a dictionary of the field tuples node to an SVG small multiple
                                                               # ... or a function pointer to a shape function
                          node_opacity             = 1.0,      # fixed node opacity
+                         node_labels              = None,     # Dictionary of node string to array of strings for additional labeling options
+                         node_labels_only         = False,    # Only label based on the node_labels dictionary                         
                          max_node_size            = 4,        # for node vary...
                          min_node_size            = 0.3,      # for node vary...
                          link_color               = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
@@ -450,7 +531,8 @@ class RTLinkNodeMixin(object):
         return self.RTLinkNode(self,df,relationships,pos=pos,use_pos_for_bounds=use_pos_for_bounds,render_pos_context=render_pos_context,
                                pos_context_opacity=pos_context_opacity,bounds_percent=bounds_percent,color_by=color_by,count_by=count_by,
                                count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
-                               node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,max_node_size=max_node_size,min_node_size=min_node_size,
+                               node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,node_labels=node_labels,node_labels_only=node_labels_only,
+                               max_node_size=max_node_size,min_node_size=min_node_size,
                                link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, link_dash=link_dash,
                                max_link_size=max_link_size,min_link_size=min_link_size,
                                label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
@@ -493,6 +575,8 @@ class RTLinkNodeMixin(object):
                                                           # ... or a dictionary of the field tuples node to an SVG small multiple
                                                           # ... or a function pointer to a shape function
                      node_opacity             = 1.0,      # fixed node opacity
+                     node_labels              = None,     # Dictionary of node string to array of strings for additional labeling options
+                     node_labels_only         = False,    # Only label based on the node_labels dictionary                     
                      max_node_size            = 4,        # for node vary...
                      min_node_size            = 0.3,      # for node vary...
                      link_color               = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
@@ -550,6 +634,8 @@ class RTLinkNodeMixin(object):
             self.node_size                  = node_size
             self.node_shape                 = node_shape
             self.node_opacity               = node_opacity
+            self.node_labels                = node_labels
+            self.node_labels_only           = node_labels_only
             self.max_node_size              = max_node_size
             self.min_node_size              = min_node_size
             self.link_color                 = link_color
@@ -1045,6 +1131,7 @@ class RTLinkNodeMixin(object):
         #
         def __renderNodes__(self, track_state=False):
             svg = ''
+            node_already_rendered = set()
 
             # Small multiple structures
             node_to_dfs = {}
@@ -1113,6 +1200,12 @@ class RTLinkNodeMixin(object):
                                 # iterate over the nodes
                                 for k,k_df in gb:
                                     node_str = self.rt_self.nodeStringAndFillPos(k, self.pos)
+
+                                    # Prevents duplicate renderings
+                                    if node_str in node_already_rendered:
+                                        continue
+                                    else:
+                                        node_already_rendered.add(node_str)
                                     
                                     # Transform the coordinates
                                     x = self.xT(self.pos[node_str][0])
@@ -1240,10 +1333,25 @@ class RTLinkNodeMixin(object):
                                             if len(k_str) > 16:
                                                 k_str = k_str[:16] + '...'
 
-                                            svg_text = self.rt_self.svgText(str(k_str), x, y+_sz+self.txt_h, self.txt_h, anchor='middle')
+                                            if self.node_labels_only == False:
+                                                svg_text = self.rt_self.svgText(str(k_str), x, y+_sz+self.txt_h, self.txt_h, anchor='middle')                                            
+                                                self.defer_render.append(svg_text) # Defer render
 
-                                            # Defer render
-                                            self.defer_render.append(svg_text)
+                                            if self.node_labels is not None and k_str in self.node_labels.keys():
+                                                if self.node_labels_only:
+                                                    y_label = y + _sz + 1*self.txt_h
+                                                else:
+                                                    y_label = y + _sz + 2*self.txt_h
+                                                _strs_  = self.node_labels[k_str]
+                                                if type(_strs_) == str:
+                                                    svg_text = self.rt_self.svgText(_strs_, x, y_label, self.txt_h, anchor='middle')
+                                                    self.defer_render.append(svg_text) # Defer render
+                                                else:
+                                                    for _str_ in _strs_:
+                                                        svg_text = self.rt_self.svgText(_str_, x, y_label, self.txt_h, anchor='middle')
+                                                        self.defer_render.append(svg_text) # Defer render
+                                                        y_label += self.txt_h
+                                                
 
             # Handle the small multiples
             if self.node_shape == 'small_multiple':
