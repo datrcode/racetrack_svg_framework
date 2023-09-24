@@ -877,6 +877,8 @@ class RTLinkNodeMixin(object):
                 # Set the link size
                 if   type(self.link_size) == dict:
                     _sz = 1
+                elif type(self.link_size) == int or type(self.link_size) == float:
+                    _sz = self.link_size
                 elif self.link_size == 'small':
                     _sz = 1
                 elif self.link_size == 'medium':
@@ -972,7 +974,9 @@ class RTLinkNodeMixin(object):
                                     if type(self.link_size) == dict:
                                         if rel_tuple in self.link_size.keys():
                                             _str_ = self.link_size[rel_tuple]
-                                            if   _str_ == 'small':
+                                            if   type(_str_) == int or type(_str_) == float:
+                                                _this_sz = _str_
+                                            elif _str_ == 'small':
                                                 _this_sz = 1
                                             elif _str_ == 'medium':
                                                 _this_sz = 3
@@ -1049,7 +1053,9 @@ class RTLinkNodeMixin(object):
             # Render nodes
             if self.node_size is not None and self.node_size != 'hidden':
                 # Set the node size
-                if   self.node_size == 'small':
+                if   type(self.node_size) == int or type(self.node_size) == float:
+                    _sz = self.node_size
+                elif self.node_size == 'small':
                     _sz = 2
                 elif self.node_size == 'medium':
                     _sz = 5
