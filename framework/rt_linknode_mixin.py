@@ -302,7 +302,7 @@ class RTLinkNodeMixin(object):
                  link_opacity      = '1.0',    # link opacity
                  link_shape        = 'line',   # 'curve','line'
                  link_arrow        = True,     # draw an arrow at the end of the curve...
-                 link_dash         = None,     # svg stroke-dash string, or dictionary of relationship tuple to dash string array 
+                 link_dash         = None,     # svg stroke-dash string, callable, or dictionary of relationship tuple to dash string array 
 
                  max_link_size     = 4,        # for link vary...
                  min_link_size     = 0.25,     # for link vary...
@@ -502,7 +502,7 @@ class RTLinkNodeMixin(object):
                          link_opacity             = '1.0',    # link opacity
                          link_shape               = 'line',   # 'curve','line'
                          link_arrow               = True,     # draw an arrow at the end of the curve...
-                         link_dash                = None,     # string for svg stroke-dash or dictionary of the relationship tuple to stroke dash string
+                         link_dash                = None,     # string for svg stroke-dash, callable, or dictionary of the relationship tuple to stroke dash string
                          max_link_size            = 4,        # for link vary...
                          min_link_size            = 0.25,     # for link vary...
                          label_only               = set(),    # label only set
@@ -584,7 +584,7 @@ class RTLinkNodeMixin(object):
                      link_opacity             = '1.0',    # link opacity
                      link_shape               = 'line',   # 'curve','line'
                      link_arrow               = True,     # draw an arrow at the end of the curve...
-                     link_dash                = None,     # String for the stroke-dash or dictionary of relationship tuple to the stroke-dash string
+                     link_dash                = None,     # String for the stroke-dash, callable, or dictionary of relationship tuple to the stroke-dash string
                      max_link_size            = 4,        # for link vary...
                      min_link_size            = 0.25,     # for link vary...
                      label_only               = set(),    # label only set
@@ -1084,6 +1084,10 @@ class RTLinkNodeMixin(object):
                                         stroke_dash = f'stroke-dasharray="{self.link_dash}"'
                                     elif type(self.link_dash) == dict and rel_tuple in self.link_dash:
                                         stroke_dash = f'stroke-dasharray="{self.link_dash[rel_tuple]}"'
+                                    elif callable(self.link_dash):
+                                        _return_value_ = self.link_dash(fm_str, to_str, (x1,y1), (x2,y2))
+                                        if _return_value_ is not None:
+                                            stroke_dash = f'stroke-dasharray="{_return_value_}"'
 
                                 # Determine the link style
                                 if    self.link_shape == 'line':
