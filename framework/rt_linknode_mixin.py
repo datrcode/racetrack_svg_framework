@@ -318,12 +318,13 @@ class RTLinkNodeMixin(object):
 
                  # -----------------------     # small multiple options
 
-                 sm_type               = None, # should be the method name // similar to the smallMultiples method
-                 sm_w                  = None, # override the width of the small multiple
-                 sm_h                  = None, # override the height of the small multiple
-                 sm_params             = {},   # dictionary of parameters for the small multiples
-                 sm_x_axis_independent = True, # Use independent axis for x (xy, temporal, and linkNode)
-                 sm_y_axis_independent = True, # Use independent axis for y (xy, temporal, periodic, pie)
+                 sm_type               = None,   # should be the method name // similar to the smallMultiples method
+                 sm_w                  = None,   # override the width of the small multiple
+                 sm_h                  = None,   # override the height of the small multiple
+                 sm_params             = {},     # dictionary of parameters for the small multiples
+                 sm_x_axis_independent = True,   # Use independent axis for x (xy, temporal, and linkNode)
+                 sm_y_axis_independent = True,   # Use independent axis for y (xy, temporal, periodic, pie)
+                 sm_mode               = 'node', # 'node' or 'link'
 
                  # -----------------------     # visualization geometry / etc.
 
@@ -345,8 +346,9 @@ class RTLinkNodeMixin(object):
                                       max_link_size=max_link_size,min_link_size=min_link_size,
                                       label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                       convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
-                                      sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,sm_x_axis_independent=sm_x_axis_independent,
-                                      sm_y_axis_independent=sm_y_axis_independent,x_view=x_view,y_view=y_view,w=w,h=h,x_ins=x_ins,y_ins=y_ins,
+                                      sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
+                                      sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,sm_mode=sm_mode,
+                                      x_view=x_view,y_view=y_view,w=w,h=h,x_ins=x_ins,y_ins=y_ins,
                                       txt_h=txt_h,draw_labels=draw_labels,draw_border=draw_border)
         return rt_linknode.renderSVG()
 
@@ -518,6 +520,7 @@ class RTLinkNodeMixin(object):
                          sm_params                = {},       # dictionary of parameters for the small multiples
                          sm_x_axis_independent    = True,     # Use independent axis for x (xy, temporal, and linkNode)
                          sm_y_axis_independent    = True,     # Use independent axis for y (xy, temporal, periodic, pie)
+                         sm_mode                  = 'node',   # 'node' or 'link'
                          # ---------------------------------- # visualization geometry / etc.
                          x_view                   = 0,        # x offset for the view
                          y_view                   = 0,        # y offset for the view
@@ -537,8 +540,9 @@ class RTLinkNodeMixin(object):
                                max_link_size=max_link_size,min_link_size=min_link_size,
                                label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
-                               sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,sm_x_axis_independent=sm_x_axis_independent,
-                               sm_y_axis_independent=sm_y_axis_independent,x_view=x_view,y_view=y_view,w=w,h=h,x_ins=x_ins,y_ins=y_ins,
+                               sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
+                               sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,sm_mode=sm_mode,
+                               x_view=x_view,y_view=y_view,w=w,h=h,x_ins=x_ins,y_ins=y_ins,
                                txt_h=txt_h,draw_labels=draw_labels,draw_border=draw_border)
 
     #
@@ -600,6 +604,7 @@ class RTLinkNodeMixin(object):
                      sm_params                = {},       # dictionary of parameters for the small multiples
                      sm_x_axis_independent    = True,     # Use independent axis for x (xy, temporal, and linkNode)
                      sm_y_axis_independent    = True,     # Use independent axis for y (xy, temporal, periodic, pie)
+                     sm_mode                  = 'node',   # 'node' or 'link'
                      # ---------------------------------- # visualization geometry / etc.
                      x_view                   = 0,        # x offset for the view
                      y_view                   = 0,        # y offset for the view
@@ -657,6 +662,7 @@ class RTLinkNodeMixin(object):
             self.sm_params                  = sm_params
             self.sm_x_axis_independent      = sm_x_axis_independent
             self.sm_y_axis_independent      = sm_y_axis_independent
+            self.sm_mode                    = sm_mode
             self.x_view                     = x_view
             self.y_view                     = y_view
             self.w                          = w
@@ -701,7 +707,7 @@ class RTLinkNodeMixin(object):
                                     _df,_throwaway = rt_self.applyTransform(_df, _tup_part)
 
             # Check the node information... make sure the parameters are set
-            if self.sm_type is not None:
+            if self.sm_type is not None and self.sm_mode == 'node':
                 self.node_shape = 'small_multiple'             
             if self.node_shape == 'small_multiple':
                 if self.sm_type is None:        # sm_type must be set to the widget type... else default back to small node size
@@ -709,6 +715,9 @@ class RTLinkNodeMixin(object):
                     self.node_size  = 'small'
                 elif self.sm_w is None or self.sm_h is None:
                     self.sm_w,self.sm_h = getattr(rt_self, f'{self.sm_type}SmallMultipleDimensions')(**self.sm_params)
+                    self.sm_mode = 'node'
+                else:
+                    self.sm_mode = 'node'
             elif callable(self.node_shape) and self.node_size is None:
                 self.node_size = 'medium'
 
@@ -961,6 +970,7 @@ class RTLinkNodeMixin(object):
             svg          = ''
             count_by_set = True
             if self.link_size is not None and self.link_size != 'hidden':
+                link_to_dfs, link_to_xy = {}, {} # For small multiples (if enabled)
                 # Set the link size
                 if   type(self.link_size) == dict:
                     _sz = 1
@@ -1094,6 +1104,15 @@ class RTLinkNodeMixin(object):
                                 if    self.link_shape == 'line':
                                     svg += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
                                     svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
+
+                                    # Small multiples
+                                    if self.sm_mode == 'link' and self.sm_type is not None:
+                                        link_to_dfs[fm_str + '->' + to_str] = k_df
+                                        if fm_str < to_str:
+                                            _x_off_ = _y_off_ =  4
+                                        else:
+                                            _x_off_ = _y_off_ = -4
+                                        link_to_xy[fm_str + '->' + to_str]  = (_x_off_ + (x1+x2)/2, _y_off_ + (y1+y2)/2)
                                 elif self.link_shape == 'curve':
                                     dx = x2 - x1
                                     dy = y2 - y1
@@ -1120,6 +1139,15 @@ class RTLinkNodeMixin(object):
                                     x3  = x2 - 0.1*l*dx
                                     y3  = y2 - 0.1*l*dy
 
+                                    # Small multiples
+                                    if self.sm_mode == 'link' and self.sm_type is not None:
+                                        link_to_dfs[fm_str + '->' + to_str] = k_df
+                                        t   = 0.5
+                                        _x_ = (1-t)**3 * x1 + 3*(1-t)**2 * t * x1p + 3 * (1-t) * t**2 * x2p + t**3 * x2 # Bezier Curve Formula from Wikipedia
+                                        _y_ = (1-t)**3 * y1 + 3*(1-t)**2 * t * y1p + 3 * (1-t) * t**2 * y2p + t**3 * y2
+                                        link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
+                                        # link_to_xy[fm_str + '->' + to_str]  = ((x1p+x2p)/2, (y1p+y2p)/2)
+
                                     if self.link_arrow:
                                         svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} L {x3} {y3}" '
                                         svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
@@ -1128,6 +1156,15 @@ class RTLinkNodeMixin(object):
                                         svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
                                 else:
                                     raise Exception(f'Unknown link_shape "{self.link_shape}"')
+
+                # Handle the small multiples
+                if self.sm_mode == 'link' and self.sm_type is not None:
+                    sm_lu = self.rt_self.createSmallMultiples(self.df, link_to_dfs, link_to_xy,
+                                                              self.count_by, self.count_by_set, self.color_by, None, self.widget_id,
+                                                              self.sm_type, self.sm_params, self.sm_x_axis_independent, self.sm_y_axis_independent,
+                                                              self.sm_w, self.sm_h)
+                    for node_str in sm_lu.keys():
+                        svg += sm_lu[node_str]
 
             return svg
 
