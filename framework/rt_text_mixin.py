@@ -22,9 +22,6 @@ import numpy as np
 from numpy.linalg import norm
 import re
 
-import tensorflow as tf            
-import torch
-
 import networkx as nx # for TextRank
 
 from rt_component import RTComponent # Unused?
@@ -1032,7 +1029,6 @@ class RTTextMixin(object):
     # textCreateEmbedder() - Create an embedder
     #
     def textCreateEmbedder(self, desc='google_universal_sentence_embedder'):
-        import tensorflow as tf
         import tensorflow_hub as hub
         module_url = "https://tfhub.dev/google/universal-sentence-encoder/4"
         model = hub.load(module_url)
@@ -1044,6 +1040,7 @@ class RTTextMixin(object):
     def textCreateRoBERTaModel(self, 
                                model_name='roberta-base'):
         from transformers import AutoTokenizer, RobertaForMaskedLM
+        import torch
         device    = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         tokenizer = AutoTokenizer.     from_pretrained(model_name)
         model     = RobertaForMaskedLM.from_pretrained(model_name)
@@ -1057,6 +1054,7 @@ class RTTextMixin(object):
     #
     def __textTrainRoBERTaModel__(self, text_main, epochs=100):
         from transformers import RobertaTokenizer, RobertaForMaskedLM
+        import torch
         tokenizer = RobertaTokenizer.   from_pretrained('roberta-base')
         model     = RobertaForMaskedLM. from_pretrained('roberta-base')
         class GeneratorFromListOfStrings(object):
@@ -1111,6 +1109,9 @@ class RTTextMixin(object):
     # ... evolving method to determine probabilities/rankings for a specific word in a document.
     #
     def __textRoBERTaStats__(self, sentence, model, tokenizer, device, k=40, bins=20):
+        import torch
+        import tensorflow as tf
+
         results   = []
         _inputs   = tokenizer(sentence, return_tensors="pt")
         i0        = 0
@@ -1157,6 +1158,7 @@ class RTTextMixin(object):
     def textCreateBertModel(self, 
                             model_name='bert-base-cased'):
         from transformers import BertTokenizer, BertForMaskedLM
+        import torch
         device    = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         tokenizer = BertTokenizer.  from_pretrained(model_name)
         model     = BertForMaskedLM.from_pretrained(model_name)
@@ -1168,7 +1170,8 @@ class RTTextMixin(object):
     # ... used the"lm_labels" variable ... seems to be deprecated
     #
     def __OLD_textTrainBertModel__(self, text_main, mask_perc=0.75, epochs=100):
-        from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW        
+        from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW       
+        import torch 
 
         # From the throwaway file "bert_mlm_example.ipynb"
         #
@@ -1218,7 +1221,8 @@ class RTTextMixin(object):
     # __textTrainBertModel__()
     #
     def __textTrainBertModel__(self, text_main, mask_perc=0.75, epochs=100):
-        from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW        
+        from transformers import BertTokenizer, BertForMaskedLM, TFBertForMaskedLM, AdamW
+        import torch
 
         # From the throwaway file "bert_mlm_example.ipynb"
         #
@@ -1270,6 +1274,8 @@ class RTTextMixin(object):
     # From https://mattmckenna.io/bert-off-the-shelf/#:~:text=BERT%20works%20by%20masking%20certain,ate%20the%20%5BMASK%5D%E2%80%9D.
     # - with a lot of modifications ...  for the GPU version...
     def __textBertTopKPredictions__(self, input_string, k, model, tokenizer, device):
+        import torch
+        import tensorflow as tf
         tokenized_inputs = tokenizer.encode(input_string)
         outputs = model(torch.Tensor([tokenized_inputs]).long().to(device))
         top_k_indices = tf.math.top_k(outputs[0].cpu().detach().numpy(), k).indices[0].numpy()
@@ -1284,6 +1290,7 @@ class RTTextMixin(object):
     # From https://mattmckenna.io/bert-off-the-shelf/#:~:text=BERT%20works%20by%20masking%20certain,ate%20the%20%5BMASK%5D%E2%80%9D.
     #
     def __textBertWordProbabilities__(self, input_string, model, tokenizer, device):
+        import torch
         tokenized_inputs = tokenizer.encode(input_string)
         outputs = model(torch.Tensor([tokenized_inputs]).long().to(device))
         predictions = outputs[0]
