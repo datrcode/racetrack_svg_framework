@@ -325,6 +325,7 @@ class RTLinkNodeMixin(object):
                  sm_x_axis_independent = True,   # Use independent axis for x (xy, temporal, and linkNode)
                  sm_y_axis_independent = True,   # Use independent axis for y (xy, temporal, periodic, pie)
                  sm_mode               = 'node', # 'node' or 'link'
+                 sm_t                  = 0.5,    # location of the small multiple on the link // only applies to sm_mode == 'link'
 
                  # -----------------------     # visualization geometry / etc.
 
@@ -347,7 +348,7 @@ class RTLinkNodeMixin(object):
                                       label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                       convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
                                       sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
-                                      sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,sm_mode=sm_mode,
+                                      sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,sm_mode=sm_mode,sm_t=sm_t,
                                       x_view=x_view,y_view=y_view,w=w,h=h,x_ins=x_ins,y_ins=y_ins,
                                       txt_h=txt_h,draw_labels=draw_labels,draw_border=draw_border)
         return rt_linknode.renderSVG()
@@ -521,6 +522,7 @@ class RTLinkNodeMixin(object):
                          sm_x_axis_independent    = True,     # Use independent axis for x (xy, temporal, and linkNode)
                          sm_y_axis_independent    = True,     # Use independent axis for y (xy, temporal, periodic, pie)
                          sm_mode                  = 'node',   # 'node' or 'link'
+                         sm_t                     = 0.5,      # location of the small multiple on the link // only applies to sm_mode == 'link'
                          # ---------------------------------- # visualization geometry / etc.
                          x_view                   = 0,        # x offset for the view
                          y_view                   = 0,        # y offset for the view
@@ -541,7 +543,7 @@ class RTLinkNodeMixin(object):
                                label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
                                sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
-                               sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,sm_mode=sm_mode,
+                               sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,sm_mode=sm_mode,sm_t=sm_t,
                                x_view=x_view,y_view=y_view,w=w,h=h,x_ins=x_ins,y_ins=y_ins,
                                txt_h=txt_h,draw_labels=draw_labels,draw_border=draw_border)
 
@@ -605,6 +607,7 @@ class RTLinkNodeMixin(object):
                      sm_x_axis_independent    = True,     # Use independent axis for x (xy, temporal, and linkNode)
                      sm_y_axis_independent    = True,     # Use independent axis for y (xy, temporal, periodic, pie)
                      sm_mode                  = 'node',   # 'node' or 'link'
+                     sm_t                     = 0.5,      # location of the small multiple on the link // only applies to sm_mode == 'link'
                      # ---------------------------------- # visualization geometry / etc.
                      x_view                   = 0,        # x offset for the view
                      y_view                   = 0,        # y offset for the view
@@ -663,6 +666,7 @@ class RTLinkNodeMixin(object):
             self.sm_x_axis_independent      = sm_x_axis_independent
             self.sm_y_axis_independent      = sm_y_axis_independent
             self.sm_mode                    = sm_mode
+            self.sm_t                       = sm_t
             self.x_view                     = x_view
             self.y_view                     = y_view
             self.w                          = w
@@ -1108,11 +1112,15 @@ class RTLinkNodeMixin(object):
                                     # Small multiples
                                     if self.sm_mode == 'link' and self.sm_type is not None:
                                         link_to_dfs[fm_str + '->' + to_str] = k_df
+                                        _x_off_ = x1 + (x2 - x1) * self.sm_t
+                                        _y_off_ = y1 + (y2 - y1) * self.sm_t
                                         if fm_str < to_str:
-                                            _x_off_ = _y_off_ =  4
+                                            _x_off_ += 4
+                                            _y_off_ += 4
                                         else:
-                                            _x_off_ = _y_off_ = -4
-                                        link_to_xy[fm_str + '->' + to_str]  = (_x_off_ + (x1+x2)/2, _y_off_ + (y1+y2)/2)
+                                            _x_off_ -= 4
+                                            _y_off_ -= 4
+                                        link_to_xy[fm_str + '->' + to_str]  = (_x_off_, _y_off_)
                                 elif self.link_shape == 'curve':
                                     dx = x2 - x1
                                     dy = y2 - y1
@@ -1142,7 +1150,7 @@ class RTLinkNodeMixin(object):
                                     # Small multiples
                                     if self.sm_mode == 'link' and self.sm_type is not None:
                                         link_to_dfs[fm_str + '->' + to_str] = k_df
-                                        t   = 0.5
+                                        t   = self.sm_t
                                         _x_ = (1-t)**3 * x1 + 3*(1-t)**2 * t * x1p + 3 * (1-t) * t**2 * x2p + t**3 * x2 # Bezier Curve Formula from Wikipedia
                                         _y_ = (1-t)**3 * y1 + 3*(1-t)**2 * t * y1p + 3 * (1-t) * t**2 * y2p + t**3 * y2
                                         link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
