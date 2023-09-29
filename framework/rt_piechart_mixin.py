@@ -341,7 +341,7 @@ class RTPieChartMixin(object):
                     tracking_gb = self.df.groupby(self.color_by)
                     
                 # Common render code
-                deg = 0
+                deg, not_rendered = 0, []
                 my_intersection = self.rt_self.__myIntersection__(self.global_color_order.index,tmp_df.index)
                 for cb_bin in my_intersection:
                     my_color = cb_bin
@@ -362,8 +362,18 @@ class RTPieChartMixin(object):
                                     _poly_angle = pi * (_poly_degree-90) / 180.0 
                                     _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
                                 self.geom_to_df[Polygon(_poly_points)] = tracking_gb.get_group(cb_bin)
-
                         deg = deg_end
+                    elif track_state:
+                        not_rendered.append(tracking_gb.get_group(cb_bin))
+                
+                # For any arcs that weren't long enough allocate them to the end
+                if len(not_rendered) > 0 and track_state:
+                    deg_end = 359
+                    _poly_points = [[cx,cy]]
+                    for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
+                        _poly_angle = pi * (_poly_degree-90) / 180.0 
+                        _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
+                    self.geom_to_df[Polygon(_poly_points)] = pd.concat(not_rendered)
 
             return svg
         
