@@ -373,7 +373,7 @@ class RTPieChartMixin(object):
                     for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
                         _poly_angle = pi * (_poly_degree-90) / 180.0 
                         _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
-                    self.geom_to_df[Polygon(_poly_points)] = pd.concat(not_rendered)
+                    self.geom_to_df[Polygon(_poly_points)] = not_rendered
 
             return svg
         
@@ -427,7 +427,10 @@ class RTPieChartMixin(object):
             _dfs = []
             for _poly in self.geom_to_df.keys():
                 if _poly.intersects(to_intersect):
-                    _dfs.append(self.geom_to_df[_poly])
+                    if type(self.geom_to_df[_poly]) == list:
+                        _dfs.extend(self.geom_to_df[_poly])
+                    else:
+                        _dfs.append(self.geom_to_df[_poly])
             if len(_dfs) > 0:
                 return pd.concat(_dfs)
             else:
