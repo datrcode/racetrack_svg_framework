@@ -210,6 +210,7 @@ class RTHistogramMixin(object):
                   count_by_set       = False,  # count by using a set operation                  
                   widget_id          = None,   # naming the svg elements
                   # -------------------------- # global rendering params
+                  first_line_i       = 0,      # first line index to render
                   global_max         = None,   # maximum to use for the bar length calculation
                   just_calc_max      = False,  # forces return of the maximum for this render config...
                                                # ... which will then be used for the global max across bar charts...                        
@@ -224,7 +225,7 @@ class RTHistogramMixin(object):
                   draw_border=True            # draw a border around the histogram
                  ):
         rt_histogram = self.RTHistogram(self, df, bin_by, color_by=color_by, global_color_order=global_color_order,
-                                        count_by=count_by,count_by_set=count_by_set,widget_id=widget_id,
+                                        count_by=count_by,count_by_set=count_by_set,widget_id=widget_id, first_line_i=first_line_i,
                                         global_max=global_max,x_view=x_view,y_view=y_view,w=w,h=h,bar_h=bar_h,v_gap=v_gap,
                                         draw_labels=draw_labels,draw_border=draw_border)
         # Calculate max
@@ -240,27 +241,28 @@ class RTHistogramMixin(object):
     # - create a RTHistogram object
     #    
     def histogramInstance(self,
-                          df,                        # dataframe to render
-                          bin_by,                    # string or an array of strings
-                          # ------------------------ # everything else is a default...
-                          color_by           = None,  # just the default color or a string for a field
-                          global_color_order = None,  # color by ordering... if none (default), will be created and filled in...
-                          count_by          = None,  # none means just count rows, otherwise, use a field to sum by
-                          count_by_set      = False, # count by using a set operation
-                          widget_id         = None,  # naming the svg elements
-                          # ------------------------- # global rendering params
-                          global_max        = None,   # maximum to use for the bar length calculation
-                          # ------------------------- # rendering specific params
-                          x_view            = 0,      # x offset for the view
-                          y_view            = 0,      # y offset for the view
-                          w                 = 128,    # width of the view
-                          h                 = 256,    # height of the view
-                          bar_h             = 14,     # bar height
-                          v_gap             = 0,      # gap between bars
-                          draw_labels       = True,   # draw labels flag
-                          draw_border       = True):  # draw a border around the histogram
+                          df,                          # dataframe to render
+                          bin_by,                      # string or an array of strings
+                          # -------------------------  #  everything else is a default...
+                          color_by           = None,   # just the default color or a string for a field
+                          global_color_order = None,   # color by ordering... if none (default), will be created and filled in...
+                          count_by           = None,   # none means just count rows, otherwise, use a field to sum by
+                          count_by_set       = False,  # count by using a set operation
+                          widget_id          = None,   # naming the svg elements
+                          # -------------------------  # global rendering params
+                          first_line_i       = 0,      # first line index to render
+                          global_max         = None,   # maximum to use for the bar length calculation
+                          # -------------------------  # rendering specific params
+                          x_view             = 0,      # x offset for the view
+                          y_view             = 0,      # y offset for the view
+                          w                  = 128,    # width of the view
+                          h                  = 256,    # height of the view
+                          bar_h              = 14,     # bar height
+                          v_gap              = 0,      # gap between bars
+                          draw_labels        = True,   # draw labels flag
+                          draw_border        = True):  # draw a border around the histogram
         return self.RTHistogram(self, df, bin_by, color_by=color_by, global_color_order=global_color_order,
-                                 count_by=count_by,count_by_set=count_by_set,widget_id=widget_id,
+                                 count_by=count_by,count_by_set=count_by_set,widget_id=widget_id, first_line_i=first_line_i,
                                  global_max=global_max,x_view=x_view,y_view=y_view,w=w,h=h,bar_h=bar_h,v_gap=v_gap,
                                  draw_labels=draw_labels,draw_border=draw_border)
 
@@ -282,6 +284,7 @@ class RTHistogramMixin(object):
                      count_by_set       = False, # count by using a set operation
                      widget_id          = None,  # naming the svg elements
                      # ------------------------- # global rendering params
+                     first_line_i       = 0,     # first line index to render
                      global_max         = None,  # maximum to use for the bar length calculation
                      # ------------------------- # rendering specific params
                      x_view             = 0,     # x offset for the view
@@ -313,6 +316,7 @@ class RTHistogramMixin(object):
             else:
                 self.widget_id          = widget_id
 
+            self.first_line_i       = first_line_i
             self.global_max         = global_max
             self.x_view             = x_view
             self.y_view             = y_view
@@ -416,7 +420,7 @@ class RTHistogramMixin(object):
             #
             # Render each bin ... only do the visible ones...
             #
-            i = 0
+            i = self.first_line_i
             y = 0
             while y < (self.h - 1.9*self.bar_h) and i < len(order):
                 # Width of the bar in pixels
