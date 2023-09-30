@@ -268,6 +268,12 @@ class RTLinkNodeMixin(object):
                  # -----------------------     # everything else is a default...
 
                  pos                 = {},     # networkx style position dictionary pos['node_name'] = 2d array of positions e.g., [[0...1],[0...1]]
+
+                 wx0                 = None,   # world x0 coordinate (for the view)
+                 wy0                 = None,   # world y0 coordinate (for the view)
+                 wx1                 = None,   # world x1 coordinate (for the view)
+                 wy1                 = None,   # world y1 coordinate (for the view)
+
                  use_pos_for_bounds  = True,   # use the pos values for the boundary of the view
                  render_pos_context  = False,  # Render all the pos keys by default...  to provide context for the other nodes
                  pos_context_opacity = 0.8,    # opacity of the pos context nodes
@@ -339,6 +345,7 @@ class RTLinkNodeMixin(object):
                  draw_labels=True,             # draw labels flag # not implemented yet
                  draw_border=True):            # draw a border around the graph
         rt_linknode = self.RTLinkNode(self,df,relationships,pos=pos,use_pos_for_bounds=use_pos_for_bounds,render_pos_context=render_pos_context,
+                                      wx0=wx0,wy0=wy0,wx1=wx1,wy1=wy1,
                                       pos_context_opacity=pos_context_opacity,bounds_percent=bounds_percent,color_by=color_by,count_by=count_by,
                                       count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
                                       node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,node_labels=node_labels,node_labels_only=node_labels_only,
@@ -478,6 +485,12 @@ class RTLinkNodeMixin(object):
                                                               # [(('f0','f1'),('f2','f3'))] // 1 relationship: 'f0'|'f1' to 'f2'|'f3'
                          # ---------------------------------- # everything else is a default...
                          pos                      = {},       # networkx style position dictionary pos['node_name'] = 2d array of positions e.g., [[0...1],[0...1]]
+
+                         wx0                      = None,     # world x0 coordinate (for the view)
+                         wy0                      = None,     # world y0 coordinate (for the view)
+                         wx1                      = None,      # world x1 coordinate (for the view)
+                         wy1                      = None,      # world y1 coordinate (for the view)
+
                          use_pos_for_bounds       = True,     # use the pos values for the boundary of the view
                          render_pos_context       = False,    # Render all the pos keys by default...  to provide context for the other nodes
                          pos_context_opacity      = 0.8,      # opacity of the pos context nodes
@@ -534,6 +547,7 @@ class RTLinkNodeMixin(object):
                          draw_labels              = True,     # draw labels flag # not implemented yet
                          draw_border              = True):    # draw a border around the graph
         return self.RTLinkNode(self,df,relationships,pos=pos,use_pos_for_bounds=use_pos_for_bounds,render_pos_context=render_pos_context,
+                               wx0=wx0,wy0=wy0,wx1=wx1,wy1=wy1,
                                pos_context_opacity=pos_context_opacity,bounds_percent=bounds_percent,color_by=color_by,count_by=count_by,
                                count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
                                node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,node_labels=node_labels,node_labels_only=node_labels_only,
@@ -563,6 +577,12 @@ class RTLinkNodeMixin(object):
                                                           # [(('f0','f1'),('f2','f3'))] // 1 relationship: 'f0'|'f1' to 'f2'|'f3'
                      # ---------------------------------- # everything else is a default...
                      pos                      = {},       # networkx style position dictionary pos['node_name'] = 2d array of positions e.g., [[0...1],[0...1]]
+
+                     wx0                      = None,     # world x0 coordinate (for the view)
+                     wy0                      = None,     # world y0 coordinate (for the view)
+                     wx1                      = None,     # world x1 coordinate (for the view)
+                     wy1                      = None,     # world y1 coordinate (for the view)
+
                      use_pos_for_bounds       = True,     # use the pos values for the boundary of the view
                      render_pos_context       = False,    # Render all the pos keys by default...  to provide context for the other nodes
                      pos_context_opacity      = 0.8,      # opacity of the pos context nodes
@@ -624,6 +644,10 @@ class RTLinkNodeMixin(object):
             self.rt_self                    = rt_self
             self.relationships              = relationships
             self.pos                        = pos
+            self.wx0                        = wx0
+            self.wy0                        = wy0
+            self.wx1                        = wx1
+            self.wy1                        = wy1
             self.use_pos_for_bounds         = use_pos_for_bounds
             self.render_pos_context         = render_pos_context
             self.pos_context_opacity        = pos_context_opacity
@@ -740,8 +764,8 @@ class RTLinkNodeMixin(object):
         #
         def __calculateGeometry__(self):
             # Calculate world coordinates
-            self.wx0 = math.inf
-            self.wy0 = math.inf
+            self.wx0 =  math.inf
+            self.wy0 =  math.inf
             self.wx1 = -math.inf
             self.wy1 = -math.inf
 
@@ -787,10 +811,6 @@ class RTLinkNodeMixin(object):
                 in_y = (self.wy1-self.wy0)*self.bounds_percent
                 self.wy0 -= in_y
                 self.wy1 += in_y
-
-            # Coordinate transform lambdas
-            self.xT = lambda __x__: self.x_ins + (self.w - 2*self.x_ins) * (__x__ - self.wx0)/(self.wx1-self.wx0)
-            self.yT = lambda __y__: self.y_ins + (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0)
 
         #
         # __renderConvexHull__() - render the convex hull
@@ -1448,7 +1468,12 @@ class RTLinkNodeMixin(object):
         #
         def renderSVG(self, just_calc_max=False, track_state=False):
             # Determine geometry
-            self.__calculateGeometry__()
+            if self.wx0 is None or self.wy0 is None or self.wx1 is None or self.wy1 is None:
+                self.__calculateGeometry__()
+                
+            # Coordinate transform lambdas
+            self.xT = lambda __x__: self.x_ins + (self.w - 2*self.x_ins) * (__x__ - self.wx0)/(self.wx1-self.wx0)
+            self.yT = lambda __y__: self.y_ins + (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0)
 
             # Start the SVG Frame
             svg = f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
