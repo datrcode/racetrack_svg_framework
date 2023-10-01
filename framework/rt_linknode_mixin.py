@@ -1519,6 +1519,13 @@ class RTLinkNodeMixin(object):
             if self.last_render is None:
                 self.renderSVG()
             return self.last_render
+        
+        #
+        # scrollView()
+        # - zoom in or out based on the specified coordinate.
+        #
+        def scrollView(self, scroll_amount, coordinate=None):
+            self.setViewWindow(self.rt_self.viewWindowZoom(self.view_window, scroll_amount, coordinate))
 
         #
         # Set the view window
