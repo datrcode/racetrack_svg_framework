@@ -33,6 +33,80 @@ __name__ = 'rt_linknode_mixin'
 #
 class RTLinkNodeMixin(object):
     #
+    # viewWindowCenter()
+    # - return the center coordinate of a view window
+    #
+    def viewWindowCenter(self, view_window):
+        _dx_ = view_window[2] - view_window[0]
+        _dy_ = view_window[3] - view_window[1]
+        return view_window[0] + _dx_/2, view_window[1] + _dy_/2
+    
+    #
+    # viewWindowDimensions()
+    # - return width, height of the view window
+    #
+    def viewWindowDimensions(self, view_window):
+        return view_window[2] - view_window[0], view_window[3] - view_window[1]
+    
+    #
+    # viewWindowZoom()
+    # - zoom a view window by the specified amount
+    # -- zoom > 0 == zoom_in
+    # -- zoom < 0 == zoom_out
+    # -- ideally, zoom in by 2.0 and zoom out by -2.0 should result in the original transform
+    #
+    def viewWindowZoom(self, view_window, 
+                             zoom_amount=2.0,   # > 1.0 == zoom_in , < 0.0 == zoom_out...
+                             zoom_center=None): # None means that the current view center will be used
+        if zoom_center is None:
+            zoom_center = self.viewWindowCenter(view_window)
+        w,h = self.viewWindowDimensions(view_window)
+        if zoom_amount > 0.0:
+            exp = 1.5**zoom_amount
+            w_n, h_n = w/exp, h/exp
+        else:
+            exp = 1.5**(-zoom_amount)
+            w_n, h_n = w*exp, h*exp
+        x_perc = (zoom_center[0] - view_window[0]) / w
+        y_perc = (zoom_center[1] - view_window[1]) / h
+        wx0_n  = zoom_center[0] - x_perc * w_n
+        wy0_n  = zoom_center[1] - y_perc * h_n
+        return wx0_n, wy0_n, wx0_n + w_n, wy0_n + h_n
+
+    #
+    # viewWIndowNodeFocus()
+    # - construct a view window that retains all specified nodes.
+    #
+    def viewWindowNodeFocus(self, pos, nodes, x_perc=0.1, y_perc=0.1):
+        x0,y0,x1,y1 = None,None,None,None
+        for _node_ in nodes:
+            if _node_ in pos.keys():
+                x,y = pos[_node_][0], pos[_node_][1]
+                if x0 is None:
+                    x0 = x1 = x
+                    y0 = y1 = y
+                else:
+                    x0,x1 = min(x0, x), max(x1, x)
+                    y0,y1 = min(y0, y), max(y1, y)
+        if x0 is None:
+            raise Exception('viewWindowNodeFocus() - no nodes with coordinates')
+        if x0 == x1: # make sure it's not the same value
+            x = x0
+            x0,x1 = x - 0.5, x + 0.5
+        if y0 == y1: # make sure it's not the same value
+            y = y0
+            y0,y1 = y - 0.5, y + 0.5
+        if x_perc > 0.0: # add percentage of view back in
+            d = x1 - x0
+            x0 -= d * x_perc
+            x1 += d * x_perc
+        if y_perc > 0.0: # add percentage of view back in
+            d = y1 - y0
+            y0 -= d * y_perc
+            y1 += d * y_perc
+        return x0, y0, x1, y1
+
+    #
     # nodeLabeler()
     # - Create the dictionary for the node_labels parameter
     # - if node_labels is passed, will be added to / not replaced
@@ -268,11 +342,7 @@ class RTLinkNodeMixin(object):
                  # -----------------------     # everything else is a default...
 
                  pos                 = {},     # networkx style position dictionary pos['node_name'] = 2d array of positions e.g., [[0...1],[0...1]]
-
-                 wx0                 = None,   # world x0 coordinate (for the view)
-                 wy0                 = None,   # world y0 coordinate (for the view)
-                 wx1                 = None,   # world x1 coordinate (for the view)
-                 wy1                 = None,   # world y1 coordinate (for the view)
+                 view_window         = None,   # (wx0, wy0, wx1, wy1) // if none, will be derived from pos parameter
 
                  use_pos_for_bounds  = True,   # use the pos values for the boundary of the view
                  render_pos_context  = False,  # Render all the pos keys by default...  to provide context for the other nodes
@@ -344,8 +414,7 @@ class RTLinkNodeMixin(object):
                  txt_h=12,                     # text height for labeling
                  draw_labels=True,             # draw labels flag # not implemented yet
                  draw_border=True):            # draw a border around the graph
-        rt_linknode = self.RTLinkNode(self,df,relationships,pos=pos,use_pos_for_bounds=use_pos_for_bounds,render_pos_context=render_pos_context,
-                                      wx0=wx0,wy0=wy0,wx1=wx1,wy1=wy1,
+        rt_linknode = self.RTLinkNode(self,df,relationships,pos=pos,use_pos_for_bounds=use_pos_for_bounds,render_pos_context=render_pos_context, view_window=view_window,
                                       pos_context_opacity=pos_context_opacity,bounds_percent=bounds_percent,color_by=color_by,count_by=count_by,
                                       count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
                                       node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,node_labels=node_labels,node_labels_only=node_labels_only,
@@ -485,11 +554,7 @@ class RTLinkNodeMixin(object):
                                                               # [(('f0','f1'),('f2','f3'))] // 1 relationship: 'f0'|'f1' to 'f2'|'f3'
                          # ---------------------------------- # everything else is a default...
                          pos                      = {},       # networkx style position dictionary pos['node_name'] = 2d array of positions e.g., [[0...1],[0...1]]
-
-                         wx0                      = None,     # world x0 coordinate (for the view)
-                         wy0                      = None,     # world y0 coordinate (for the view)
-                         wx1                      = None,      # world x1 coordinate (for the view)
-                         wy1                      = None,      # world y1 coordinate (for the view)
+                         view_window              = None,     # (wx0, wy0, wx1, wy1) // if none, will be derived from pos parameter
 
                          use_pos_for_bounds       = True,     # use the pos values for the boundary of the view
                          render_pos_context       = False,    # Render all the pos keys by default...  to provide context for the other nodes
@@ -546,8 +611,7 @@ class RTLinkNodeMixin(object):
                          txt_h                    = 12,       # text height for labeling
                          draw_labels              = True,     # draw labels flag # not implemented yet
                          draw_border              = True):    # draw a border around the graph
-        return self.RTLinkNode(self,df,relationships,pos=pos,use_pos_for_bounds=use_pos_for_bounds,render_pos_context=render_pos_context,
-                               wx0=wx0,wy0=wy0,wx1=wx1,wy1=wy1,
+        return self.RTLinkNode(self,df,relationships,pos=pos,use_pos_for_bounds=use_pos_for_bounds,render_pos_context=render_pos_context, view_window=view_window,
                                pos_context_opacity=pos_context_opacity,bounds_percent=bounds_percent,color_by=color_by,count_by=count_by,
                                count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
                                node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,node_labels=node_labels,node_labels_only=node_labels_only,
@@ -577,11 +641,7 @@ class RTLinkNodeMixin(object):
                                                           # [(('f0','f1'),('f2','f3'))] // 1 relationship: 'f0'|'f1' to 'f2'|'f3'
                      # ---------------------------------- # everything else is a default...
                      pos                      = {},       # networkx style position dictionary pos['node_name'] = 2d array of positions e.g., [[0...1],[0...1]]
-
-                     wx0                      = None,     # world x0 coordinate (for the view)
-                     wy0                      = None,     # world y0 coordinate (for the view)
-                     wx1                      = None,     # world x1 coordinate (for the view)
-                     wy1                      = None,     # world y1 coordinate (for the view)
+                     view_window              = None,     # (wx0, wy0, wx1, wy1) // if none, will be derived from pos parameter
 
                      use_pos_for_bounds       = True,     # use the pos values for the boundary of the view
                      render_pos_context       = False,    # Render all the pos keys by default...  to provide context for the other nodes
@@ -644,10 +704,7 @@ class RTLinkNodeMixin(object):
             self.rt_self                    = rt_self
             self.relationships              = relationships
             self.pos                        = pos
-            self.wx0                        = wx0
-            self.wy0                        = wy0
-            self.wx1                        = wx1
-            self.wy1                        = wy1
+            self.view_window                = view_window
             self.use_pos_for_bounds         = use_pos_for_bounds
             self.render_pos_context         = render_pos_context
             self.pos_context_opacity        = pos_context_opacity
@@ -1464,12 +1521,23 @@ class RTLinkNodeMixin(object):
             return self.last_render
 
         #
+        # Set the view window
+        # - will force a re-render on next call to _repr_svg_()
+        #         
+        def setViewWindow(self, view_window):
+            self.view_window = view_window
+            self.last_render = None
+
+        #
         # renderSVG() - render as SVG
         #
         def renderSVG(self, just_calc_max=False, track_state=False):
             # Determine geometry
-            if self.wx0 is None or self.wy0 is None or self.wx1 is None or self.wy1 is None:
+            if self.view_window is None:
                 self.__calculateGeometry__()
+                self.view_window = (self.wx0, self.wy0, self.wx1, self.wy1)
+            else:
+                self.wx0, self.wy0, self.wx1, self.wy1 = self.view_window
                 
             # Coordinate transform lambdas
             self.xT = lambda __x__: self.x_ins + (self.w - 2*self.x_ins) * (__x__ - self.wx0)/(self.wx1-self.wx0)
