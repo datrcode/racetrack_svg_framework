@@ -355,6 +355,19 @@ class RTHistogramMixin(object):
             return self.last_render
 
         #
+        # scrollView()
+        # - scroll the list by the specified amount
+        # - coordinate included to make it similar to other view functionality
+        # ... looks like we don't know the list length... so we can't bound the calc by that...
+        #
+        def scrollView(self, scroll_amount, coordinate=None):
+            if (self.first_line_i+scroll_amount) >= 0:
+                self.first_line_i += scroll_amount
+            else:
+                self.first_line_i =  0
+            self.last_render = None
+
+        #
         # renderSVG() - create the SVG
         #
         def renderSVG(self, just_calc_max=False, track_state=False):
@@ -419,8 +432,13 @@ class RTHistogramMixin(object):
             
             #
             # Render each bin ... only do the visible ones...
+            # ... make sure the first line isn't more than the number of lines...
             #
             i = self.first_line_i
+            if i >= len(order):
+                self.first_line_i = i = len(order) - 1
+            if i <  0:
+                self.first_line_i = i = 0
             y = 0
             while y < (self.h - 1.9*self.bar_h) and i < len(order):
                 # Width of the bar in pixels
