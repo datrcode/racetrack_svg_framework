@@ -1192,6 +1192,9 @@ class RTLinkNodeMixin(object):
                                     svg += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
                                     svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
 
+                                    def _xyLink_(t):
+                                        return x1+(x2-x1)*t, y1+(y2-y1)*t
+
                                     if self.link_arrow:
                                         dx, dy = x2 - x1, y2 - y1
                                         l = sqrt((dx*dx)+(dy*dy))
@@ -1208,15 +1211,14 @@ class RTLinkNodeMixin(object):
                                     # Small multiples
                                     if self.sm_mode == 'link' and self.sm_type is not None:
                                         link_to_dfs[fm_str + '->' + to_str] = k_df
-                                        _x_off_ = x1 + (x2 - x1) * self.sm_t
-                                        _y_off_ = y1 + (y2 - y1) * self.sm_t
+                                        _x_, _y_ = _xyLink_(self.sm_t)
                                         if fm_str < to_str:
-                                            _x_off_ += 4
-                                            _y_off_ += 4
+                                            _x_ += 4
+                                            _y_ += 4
                                         else:
-                                            _x_off_ -= 4
-                                            _y_off_ -= 4
-                                        link_to_xy[fm_str + '->' + to_str]  = (_x_off_, _y_off_)
+                                            _x_ -= 4
+                                            _y_ -= 4
+                                        link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
                                 elif self.link_shape == 'curve':
                                     dx = x2 - x1
                                     dy = y2 - y1
@@ -1240,17 +1242,17 @@ class RTLinkNodeMixin(object):
                                     x2p = x2 - 0.2*l*dx + 0.2*l*pdx
                                     y2p = y2 - 0.2*l*dy + 0.2*l*pdy
 
+                                    def _xyLink_(t): # Bezier Curve Formula from Wikipedia
+                                        return (1-t)**3*x1+3*(1-t)**2*t*x1p + 3*(1-t)*t**2*x2p+t**3*x2,(1-t)**3*y1+3*(1-t)**2*t*y1p+3*(1-t)*t**2*y2p+t**3*y2
+
                                     x3  = x2 - self.link_arrow_length*dx - (self.link_arrow_length-5) * (-dy)
                                     y3  = y2 - self.link_arrow_length*dy - (self.link_arrow_length-5) * ( dx)
 
                                     # Small multiples
                                     if self.sm_mode == 'link' and self.sm_type is not None:
                                         link_to_dfs[fm_str + '->' + to_str] = k_df
-                                        t   = self.sm_t
-                                        _x_ = (1-t)**3 * x1 + 3*(1-t)**2 * t * x1p + 3 * (1-t) * t**2 * x2p + t**3 * x2 # Bezier Curve Formula from Wikipedia
-                                        _y_ = (1-t)**3 * y1 + 3*(1-t)**2 * t * y1p + 3 * (1-t) * t**2 * y2p + t**3 * y2
+                                        _x_, _y_ = _xyLink_(self.sm_t)
                                         link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
-                                        # link_to_xy[fm_str + '->' + to_str]  = ((x1p+x2p)/2, (y1p+y2p)/2)
 
                                     if self.link_arrow:
                                         svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} L {x3} {y3}" '
