@@ -388,8 +388,9 @@ class RTLinkNodeMixin(object):
 
                  # -----------------------     # timing information
 
-                 timing_marks      = False,    # flag to enable timing marks on links
-                 ts_field          = None,     # timestamp field
+                 timing_marks       = False,   # flag to enable timing marks on links
+                 ts_field           = None,    # timestamp field
+                 timing_mark_length = 5,       # corresponds to the length of the timing mark
 
                  # -----------------------     # convex hull annotations
 
@@ -428,7 +429,7 @@ class RTLinkNodeMixin(object):
                                       link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, 
                                       link_arrow_length=link_arrow_length,link_dash=link_dash,
                                       max_link_size=max_link_size,min_link_size=min_link_size,
-                                      label_only=label_only, timing_marks=timing_marks, ts_field=ts_field,
+                                      label_only=label_only, timing_marks=timing_marks, ts_field=ts_field, timing_mark_length=timing_mark_length,
                                       convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                       convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
                                       sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
@@ -599,6 +600,7 @@ class RTLinkNodeMixin(object):
                          # ---------------------------------- # timing marks
                          timing_marks             = False,    # flag to enable timing marks on links
                          ts_field                 = None,     # timestamp field
+                         timing_mark_length       = 5,        # corresponds to the length of the timing mark
                          # ---------------------------------- # convex hull annotations
                          convex_hull_lu           = None,     # dictionary... regex for node name to convex hull name
                          convex_hull_opacity      = 0.3,      # opacity of the convex hulls
@@ -631,7 +633,7 @@ class RTLinkNodeMixin(object):
                                link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, 
                                link_arrow_length=link_arrow_length,link_dash=link_dash,
                                max_link_size=max_link_size,min_link_size=min_link_size,
-                               label_only=label_only,timing_marks=timing_marks,ts_field=ts_field,
+                               label_only=label_only,timing_marks=timing_marks,ts_field=ts_field,timing_mark_length=timing_mark_length,
                                convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
                                sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
@@ -692,6 +694,7 @@ class RTLinkNodeMixin(object):
                      # ---------------------------------- # timing marks
                      timing_marks             = False,    # flag to enable timing marks on links
                      ts_field                 = None,     # timestamp field
+                     timing_mark_length       = 5,        # corresponds to the length of the timing mark
                      # ---------------------------------- # convex hull annotations
                      convex_hull_lu           = None,     # dictionary... regex for node name to convex hull name
                      convex_hull_opacity      = 0.3,      # opacity of the convex hulls
@@ -757,6 +760,7 @@ class RTLinkNodeMixin(object):
             self.label_only                 = label_only
             self.timing_marks               = timing_marks
             self.ts_field                   = ts_field
+            self.timing_mark_length         = timing_mark_length
             self.convex_hull_lu             = convex_hull_lu
             self.convex_hull_opacity        = convex_hull_opacity
             self.convex_hull_labels         = convex_hull_labels
@@ -1209,6 +1213,11 @@ class RTLinkNodeMixin(object):
 
                                     def _xyLink_(t):
                                         return x1+(x2-x1)*t, y1+(y2-y1)*t
+                                    if fm_str < to_str:
+                                        _xyLinkDir_ = _xyLink_
+                                    else:
+                                        def _xyLinkDir_(t):
+                                            return x2+(x1-x2)*t, y2+(y1-y2)*t
 
                                     if self.link_arrow:
                                         dx, dy = x2 - x1, y2 - y1
@@ -1239,15 +1248,23 @@ class RTLinkNodeMixin(object):
                                     pdx =  dy
                                     pdy = -dx
 
-                                    # calculate the control points
-                                    x1p = x1 + 0.2*l*dx + 0.2*l*pdx
-                                    y1p = y1 + 0.2*l*dy + 0.2*l*pdy
+                                    # bound the link curvature
+                                    _link_curve_ = 80 if l > 80 else l
 
-                                    x2p = x2 - 0.2*l*dx + 0.2*l*pdx
-                                    y2p = y2 - 0.2*l*dy + 0.2*l*pdy
+                                    # calculate the control points
+                                    x1p = x1 + 0.2*_link_curve_*dx + 0.2*_link_curve_*pdx
+                                    y1p = y1 + 0.2*_link_curve_*dy + 0.2*_link_curve_*pdy
+
+                                    x2p = x2 - 0.2*_link_curve_*dx + 0.2*_link_curve_*pdx
+                                    y2p = y2 - 0.2*_link_curve_*dy + 0.2*_link_curve_*pdy
 
                                     def _xyLink_(t): # Bezier Curve Formula from Wikipedia
-                                        return (1-t)**3*x1+3*(1-t)**2*t*x1p + 3*(1-t)*t**2*x2p+t**3*x2,(1-t)**3*y1+3*(1-t)**2*t*y1p+3*(1-t)*t**2*y2p+t**3*y2
+                                        return (1-t)**3*x1+3*(1-t)**2*t*x1p+3*(1-t)*t**2*x2p+t**3*x2,(1-t)**3*y1+3*(1-t)**2*t*y1p+3*(1-t)*t**2*y2p+t**3*y2
+                                    if fm_str < to_str:
+                                        _xyLinkDir_ = _xyLink_
+                                    else:
+                                        def _xyLinkDir_(t):
+                                            return (1-t)**3*x2+3*(1-t)**2*t*x2p+3*(1-t)*t**2*x1p+t**3*x1,(1-t)**3*y2+3*(1-t)**2*t*y2p+3*(1-t)*t**2*y1p+t**3*y1
 
                                     x3  = x2 - self.link_arrow_length*dx - (self.link_arrow_length-5) * (-dy)
                                     y3  = y2 - self.link_arrow_length*dy - (self.link_arrow_length-5) * ( dx)
@@ -1276,19 +1293,19 @@ class RTLinkNodeMixin(object):
                                 
                                 # Timing marks
                                 if self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns:
-                                    _tfield_ = '_linknode_tms_'
+                                    _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
+                                    _side_ = 1.0 if fm_str < to_str else -1.0
                                     k_df[_tfield_] = (k_df[self.ts_field] - _df[self.ts_field].min()) / (_df[self.ts_field].max() - _df[self.ts_field].min())
                                     for row_i, row in k_df.iterrows():
                                         _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_], 0.0, 1.0)
-                                        _x_,_y_ = _xyLink_(row[_tfield_])
-                                        if self.link_shape == 'line': # For linear version, offset one side a little to make it visible
-                                            if fm_str < to_str:
-                                                _x_ += 2
-                                                _y_ += 2
-                                            else:
-                                                _x_ -= 2
-                                                _y_ -= 2
-                                        svg += f'<circle cx="{_x_}" cy="{_y_}" r="2" fill="{_color_}" />'
+                                        _x_  , _y_  = _xyLinkDir_(row[_tfield_])
+                                        _xp_ , _yp_ = _xyLinkDir_(row[_tfield_]+0.01)
+                                        _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_
+                                        _l_         = sqrt(_dx_*_dx_ + _dy_*_dy_)
+                                        _l_         = 1.0 if _l_ < 0.001 else _l_
+                                        _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_
+                                        _xe_ , _ye_ = _x_ - _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
+                                        svg += f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" />'
 
                 # Handle the small multiples
                 if self.sm_mode == 'link' and self.sm_type is not None:
