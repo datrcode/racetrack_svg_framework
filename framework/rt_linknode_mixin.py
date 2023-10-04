@@ -1226,10 +1226,10 @@ class RTLinkNodeMixin(object):
                                             l = 1
                                         dx /= l
                                         dy /= l
-                                        svg += f'<line x1="{x2}" y1="{y2}" x2="{x2 - dx*self.link_arrow_length - dy*5}" y2="{y2 - dy*self.link_arrow_length + dx*5}" '
+                                        svg += f'<line x1="{x2}" y1="{y2}" x2="{x2 - dx*self.link_arrow_length - dy*3*self.link_arrow_length/4}" y2="{y2 - dy*self.link_arrow_length + dx*3*self.link_arrow_length/4}" '
                                         svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
 
-                                        svg += f'<line x1="{x2}" y1="{y2}" x2="{x2 - dx*self.link_arrow_length + dy*5}" y2="{y2 - dy*self.link_arrow_length - dx*5}" '
+                                        svg += f'<line x1="{x2}" y1="{y2}" x2="{x2 - dx*self.link_arrow_length + dy*3*self.link_arrow_length/4}" y2="{y2 - dy*self.link_arrow_length - dx*3*self.link_arrow_length/4}" '
                                         svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
 
                                 elif self.link_shape == 'curve':
@@ -1266,11 +1266,20 @@ class RTLinkNodeMixin(object):
                                         def _xyLinkDir_(t):
                                             return (1-t)**3*x2+3*(1-t)**2*t*x2p+3*(1-t)*t**2*x1p+t**3*x1,(1-t)**3*y2+3*(1-t)**2*t*y2p+3*(1-t)*t**2*y1p+t**3*y1
 
-                                    x3  = x2 - self.link_arrow_length*dx - (self.link_arrow_length-5) * (-dy)
-                                    y3  = y2 - self.link_arrow_length*dy - (self.link_arrow_length-5) * ( dx)
+                                    edx, edy = _xyLink_(1.0 - 0.1) # Calculate the endpoint derivative
+                                    edx, edy = x2 - edx, y2 - edy
+                                    l = sqrt((edx*edx)+(edy*edy))
+                                    l = 1.0 if l < 0.01 else l
+                                    edx, edy = edx/l, edy/l        # As a unit vector
+
+                                    x3  = x2 - self.link_arrow_length*edx - (self.link_arrow_length/2) * (-edy)
+                                    y3  = y2 - self.link_arrow_length*edy - (self.link_arrow_length/2) * ( edx)
+
+                                    x4  = x2 - self.link_arrow_length*edx + (self.link_arrow_length/2) * (-edy)
+                                    y4  = y2 - self.link_arrow_length*edy + (self.link_arrow_length/2) * ( edx)
 
                                     if self.link_arrow:
-                                        svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} L {x3} {y3}" '
+                                        svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} L {x3} {y3} M {x2} {y2} L {x4} {y4}" '
                                         svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
                                     else:
                                         svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2}" '
