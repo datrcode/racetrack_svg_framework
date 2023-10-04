@@ -1298,14 +1298,15 @@ class RTLinkNodeMixin(object):
                                     k_df[_tfield_] = (k_df[self.ts_field] - _df[self.ts_field].min()) / (_df[self.ts_field].max() - _df[self.ts_field].min())
                                     for row_i, row in k_df.iterrows():
                                         _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_], 0.0, 1.0)
-                                        _x_  , _y_  = _xyLinkDir_(row[_tfield_])
-                                        _xp_ , _yp_ = _xyLinkDir_(row[_tfield_]+0.01)
-                                        _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_
+                                        _t_box_     = 0.1 + 0.8 * row[_tfield_]
+                                        _x_  , _y_  = _xyLinkDir_(_t_box_)
+                                        _xp_ , _yp_ = _xyLinkDir_(_t_box_+0.01)  # slight offset point
+                                        _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_          # slope at this location
                                         _l_         = sqrt(_dx_*_dx_ + _dy_*_dy_)
                                         _l_         = 1.0 if _l_ < 0.001 else _l_
-                                        _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_
-                                        _xe_ , _ye_ = _x_ - _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
-                                        svg += f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" />'
+                                        _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
+                                        _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
+                                        svg += f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />'
 
                 # Handle the small multiples
                 if self.sm_mode == 'link' and self.sm_type is not None:
