@@ -386,6 +386,11 @@ class RTLinkNodeMixin(object):
 
                  label_only        = set(),    # label only set
 
+                 # -----------------------     # timing information
+
+                 timing_marks      = False,    # flag to enable timing marks on links
+                 ts_field          = None,     # timestamp field
+
                  # -----------------------     # convex hull annotations
 
                  convex_hull_lu           = None,  # dictionary... regex for node name to convex hull name
@@ -423,7 +428,8 @@ class RTLinkNodeMixin(object):
                                       link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, 
                                       link_arrow_length=link_arrow_length,link_dash=link_dash,
                                       max_link_size=max_link_size,min_link_size=min_link_size,
-                                      label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
+                                      label_only=label_only, timing_marks=timing_marks, ts_field=ts_field,
+                                      convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                       convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
                                       sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
                                       sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,sm_mode=sm_mode,sm_t=sm_t,
@@ -590,6 +596,9 @@ class RTLinkNodeMixin(object):
                          max_link_size            = 4,        # for link vary...
                          min_link_size            = 0.25,     # for link vary...
                          label_only               = set(),    # label only set
+                         # ---------------------------------- # timing marks
+                         timing_marks             = False,    # flag to enable timing marks on links
+                         ts_field                 = None,     # timestamp field
                          # ---------------------------------- # convex hull annotations
                          convex_hull_lu           = None,     # dictionary... regex for node name to convex hull name
                          convex_hull_opacity      = 0.3,      # opacity of the convex hulls
@@ -622,7 +631,8 @@ class RTLinkNodeMixin(object):
                                link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, 
                                link_arrow_length=link_arrow_length,link_dash=link_dash,
                                max_link_size=max_link_size,min_link_size=min_link_size,
-                               label_only=label_only,convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
+                               label_only=label_only,timing_marks=timing_marks,ts_field=ts_field,
+                               convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
                                convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
                                sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
                                sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,sm_mode=sm_mode,sm_t=sm_t,
@@ -679,6 +689,9 @@ class RTLinkNodeMixin(object):
                      max_link_size            = 4,        # for link vary...
                      min_link_size            = 0.25,     # for link vary...
                      label_only               = set(),    # label only set
+                     # ---------------------------------- # timing marks
+                     timing_marks             = False,    # flag to enable timing marks on links
+                     ts_field                 = None,     # timestamp field
                      # ---------------------------------- # convex hull annotations
                      convex_hull_lu           = None,     # dictionary... regex for node name to convex hull name
                      convex_hull_opacity      = 0.3,      # opacity of the convex hulls
@@ -742,6 +755,8 @@ class RTLinkNodeMixin(object):
             self.max_link_size              = max_link_size
             self.min_link_size              = min_link_size
             self.label_only                 = label_only
+            self.timing_marks               = timing_marks
+            self.ts_field                   = ts_field
             self.convex_hull_lu             = convex_hull_lu
             self.convex_hull_opacity        = convex_hull_opacity
             self.convex_hull_labels         = convex_hull_labels
@@ -1208,17 +1223,6 @@ class RTLinkNodeMixin(object):
                                         svg += f'<line x1="{x2}" y1="{y2}" x2="{x2 - dx*self.link_arrow_length + dy*5}" y2="{y2 - dy*self.link_arrow_length - dx*5}" '
                                         svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
 
-                                    # Small multiples
-                                    if self.sm_mode == 'link' and self.sm_type is not None:
-                                        link_to_dfs[fm_str + '->' + to_str] = k_df
-                                        _x_, _y_ = _xyLink_(self.sm_t)
-                                        if fm_str < to_str:
-                                            _x_ += 4
-                                            _y_ += 4
-                                        else:
-                                            _x_ -= 4
-                                            _y_ -= 4
-                                        link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
                                 elif self.link_shape == 'curve':
                                     dx = x2 - x1
                                     dy = y2 - y1
@@ -1248,12 +1252,6 @@ class RTLinkNodeMixin(object):
                                     x3  = x2 - self.link_arrow_length*dx - (self.link_arrow_length-5) * (-dy)
                                     y3  = y2 - self.link_arrow_length*dy - (self.link_arrow_length-5) * ( dx)
 
-                                    # Small multiples
-                                    if self.sm_mode == 'link' and self.sm_type is not None:
-                                        link_to_dfs[fm_str + '->' + to_str] = k_df
-                                        _x_, _y_ = _xyLink_(self.sm_t)
-                                        link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
-
                                     if self.link_arrow:
                                         svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} L {x3} {y3}" '
                                         svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
@@ -1262,6 +1260,35 @@ class RTLinkNodeMixin(object):
                                         svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
                                 else:
                                     raise Exception(f'Unknown link_shape "{self.link_shape}"')
+                                
+                                # Small multiples
+                                if self.sm_mode == 'link' and self.sm_type is not None:
+                                    link_to_dfs[fm_str + '->' + to_str] = k_df
+                                    _x_, _y_ = _xyLink_(self.sm_t)
+                                    if self.link_shape == 'line': # For linear version, offset one side a little to make it visible
+                                        if fm_str < to_str:
+                                            _x_ += 2
+                                            _y_ += 2
+                                        else:
+                                            _x_ -= 2
+                                            _y_ -= 2
+                                    link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
+                                
+                                # Timing marks
+                                if self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns:
+                                    _tfield_ = '_linknode_tms_'
+                                    k_df[_tfield_] = (k_df[self.ts_field] - _df[self.ts_field].min()) / (_df[self.ts_field].max() - _df[self.ts_field].min())
+                                    for row_i, row in k_df.iterrows():
+                                        _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_], 0.0, 1.0)
+                                        _x_,_y_ = _xyLink_(row[_tfield_])
+                                        if self.link_shape == 'line': # For linear version, offset one side a little to make it visible
+                                            if fm_str < to_str:
+                                                _x_ += 2
+                                                _y_ += 2
+                                            else:
+                                                _x_ -= 2
+                                                _y_ -= 2
+                                        svg += f'<circle cx="{_x_}" cy="{_y_}" r="2" fill="{_color_}" />'
 
                 # Handle the small multiples
                 if self.sm_mode == 'link' and self.sm_type is not None:
