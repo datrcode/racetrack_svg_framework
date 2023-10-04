@@ -283,8 +283,47 @@ class RTColorManager:
             self.str_to_color_lu[cat_ordered[i]] = cs[i]
 
     #
+    # Colorgorical Colors
+    #
+    # Citation:
+    #
+    # @article{gramazio-2017-ccd,
+    #          author={Gramazio, Connor C. and Laidlaw, David H. and Schloss, Karen B.},
+    #          journal={IEEE Transactions on Visualization and Computer Graphics},
+    #          title={Colorgorical: creating discriminable and preferable color palettes for information visualization},
+    #          year={2017}
+    #         }
+    #
+    def colorgoricalColors(self,
+                           scale_type='qualitative',
+                           n=20,
+                           alt=0):
+        if scale_type == 'qualitative' and n <= 20:
+            categories = {}
+            categories[20] = ["#a0e85b", "#288753", "#7cd3eb", "#0362a0", "#f6adff", "#c02a85", "#9e73b8", "#513886", "#c1c2f5", "#8033cb", 
+                              "#36edd3", "#506356", "#cddb9b", "#783019", "#ed4b04", "#f7b8a2", "#c36d3f", "#eac328", "#2ee52d", "#fe74fe"]
+            categories[15] = ["#399283", "#62ecb6", "#2c4e2f", "#aad0aa", "#30972e", "#abd533", "#683d0d", "#fba55c", "#900e08", "#ee77a0", 
+                              "#fb2076", "#fac7d5", "#ed4b04", "#4bd6fd", "#10558a"]
+            categories[10] = ["#4f8c9d", "#8bd0eb", "#2c457d", "#b5a3cf", "#a477fb", "#7f2d93", "#f90da0", "#d6709b", "#8c2efc", "#52dcbc"]
+            categories[5]  = ["#3c2d80", "#197959", "#e74c53", "#183537", "#b67262"]
+
+            if   n <= 5:
+                return categories[ 5][:n]
+            elif n <= 10:
+                return categories[10][:n]
+            elif n <= 15:
+                return categories[15][:n]
+            else:
+                return categories[20][:n]
+        else:
+            raise Exception('RTColorManager:  Colorgorical only has qualitative colors ... and 20 or less...')
+
+    #
     # brewerColors
     # - https://colorbrewer2.org/#
+    #
+    # Citation:
+    #
     # - © Cynthia Brewer, Mark Harrower and The Pennsylvania State University
     #
     def brewerColors(self,
@@ -338,6 +377,8 @@ class RTColorManager:
 
 #
 # Dark Theme Color Manager
+#
+# ... needs to be filled in / comparable to the default theme
 #
 class RTColorManagerDarkTheme(RTColorManager):
     #
