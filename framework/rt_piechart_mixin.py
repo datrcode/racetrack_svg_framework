@@ -172,6 +172,10 @@ class RTPieChartMixin(object):
             self.draw_border          = draw_border
             self.draw_background      = draw_background
 
+            # Color by must not be none
+            if self.color_by is None:
+                raise Exception('RTPieChart.__init__() - color_by cannot be None')
+
             # Apply count-by transforms
             if self.count_by is not None and rt_self.isTField(self.count_by):
                 self.df,self.count_by = rt_self.applyTransform(self.df, self.count_by)

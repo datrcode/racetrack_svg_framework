@@ -113,6 +113,12 @@ class RTSmallMultiplesMixin(object):
         ### PARAMETERS
         ### ***************************************************************************************************************************
 
+        if sm_params is not None and 'count_by' in sm_params:
+            count_by = sm_params['count_by']
+        
+        if sm_params is not None and 'color_by' in sm_params:
+            color_by = sm_params['color_by']
+
         # Make the categories into a list (if not already so)
         if type(category_by) != list:
             category_by = [category_by]
@@ -1050,7 +1056,7 @@ class RTSmallMultiplesMixin(object):
 
         # Find the timestamp field... or figure out what to use...
         accepted_args = set(inspect.getfullargspec(getattr(self, sm_type)).args)
-        if 'ts_field' in accepted_args:
+        if 'ts_field' in accepted_args and sm_type != 'linkNode':
             if 'ts_field' in sm_params.keys():     # precedence is sm_params ts_field
                 ts_field = sm_params['ts_field']
             elif ts_field is None:                 # best guess from the columns // copied from temporalBarChart method

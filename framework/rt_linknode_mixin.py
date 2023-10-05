@@ -381,6 +381,10 @@ class RTLinkNodeMixin(object):
                  link_arrow_length = 10,       # length in pixels of the link arrow
                  link_dash         = None,     # svg stroke-dash string, callable, or dictionary of relationship tuple to dash string array 
 
+                 link_max_curvature_px = 100,  # maximum link curvature outward
+                 link_parallel_perc    = 0.2,  # percent for control point parallel to the link
+                 link_ortho_perc       = 0.2,  # percent for control point orthogonal to the link
+
                  max_link_size     = 4,        # for link vary...
                  min_link_size     = 0.25,     # for link vary...
 
@@ -428,6 +432,7 @@ class RTLinkNodeMixin(object):
                                       max_node_size=max_node_size,min_node_size=min_node_size,
                                       link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, 
                                       link_arrow_length=link_arrow_length,link_dash=link_dash,
+                                      link_max_curvature_px=link_max_curvature_px,link_parallel_perc=link_parallel_perc,link_ortho_perc=link_ortho_perc,
                                       max_link_size=max_link_size,min_link_size=min_link_size,
                                       label_only=label_only, timing_marks=timing_marks, ts_field=ts_field, timing_mark_length=timing_mark_length,
                                       convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
@@ -594,6 +599,9 @@ class RTLinkNodeMixin(object):
                          link_arrow               = True,     # draw an arrow at the end of the curve...
                          link_arrow_length        = 10,       # length in pixels of the link arrow
                          link_dash                = None,     # string for svg stroke-dash, callable, or dictionary of the relationship tuple to stroke dash string
+                         link_max_curvature_px    = 100,      # maximum link curvature outward
+                         link_parallel_perc       = 0.2,      # percent for control point parallel to the link
+                         link_ortho_perc          = 0.2,      # percent for control point orthogonal to the link
                          max_link_size            = 4,        # for link vary...
                          min_link_size            = 0.25,     # for link vary...
                          label_only               = set(),    # label only set
@@ -632,6 +640,7 @@ class RTLinkNodeMixin(object):
                                max_node_size=max_node_size,min_node_size=min_node_size,
                                link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, 
                                link_arrow_length=link_arrow_length,link_dash=link_dash,
+                               link_max_curvature_px=link_max_curvature_px,link_parallel_perc=link_parallel_perc,link_ortho_perc=link_ortho_perc,
                                max_link_size=max_link_size,min_link_size=min_link_size,
                                label_only=label_only,timing_marks=timing_marks,ts_field=ts_field,timing_mark_length=timing_mark_length,
                                convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
@@ -688,6 +697,9 @@ class RTLinkNodeMixin(object):
                      link_arrow               = True,     # draw an arrow at the end of the curve...
                      link_arrow_length        = 10,       # length in pixels of the link arrow
                      link_dash                = None,     # String for the stroke-dash, callable, or dictionary of relationship tuple to the stroke-dash string
+                     link_max_curvature_px    = 100,      # maximum link curvature outward
+                     link_parallel_perc       = 0.2,      # percent for control point parallel to the link
+                     link_ortho_perc          = 0.2,      # percent for control point orthogonal to the link
                      max_link_size            = 4,        # for link vary...
                      min_link_size            = 0.25,     # for link vary...
                      label_only               = set(),    # label only set
@@ -755,6 +767,9 @@ class RTLinkNodeMixin(object):
             self.link_arrow                 = link_arrow
             self.link_arrow_length          = link_arrow_length
             self.link_dash                  = link_dash
+            self.link_max_curvature_px      = link_max_curvature_px
+            self.link_parallel_perc         = link_parallel_perc
+            self.link_ortho_perc            = link_ortho_perc
             self.max_link_size              = max_link_size
             self.min_link_size              = min_link_size
             self.label_only                 = label_only
@@ -818,17 +833,10 @@ class RTLinkNodeMixin(object):
 
             # Check the node information... make sure the parameters are set
             if self.sm_type is not None and self.sm_mode == 'node':
-                self.node_shape = 'small_multiple'             
-            if self.node_shape == 'small_multiple':
-                if self.sm_type is None:        # sm_type must be set to the widget type... else default back to small node size
-                    self.node_shape = 'ellipse'
-                    self.node_size  = 'small'
-                elif self.sm_w is None or self.sm_h is None:
+                self.node_shape = 'small_multiple'
+            if self.sm_type is not None and (self.sm_w is None or self.sm_h is None):
                     self.sm_w,self.sm_h = getattr(rt_self, f'{self.sm_type}SmallMultipleDimensions')(**self.sm_params)
-                    self.sm_mode = 'node'
-                else:
-                    self.sm_mode = 'node'
-            elif callable(self.node_shape) and self.node_size is None:
+            if callable(self.node_shape) and self.node_size is None:
                 self.node_size = 'medium'
 
             # Check the count_by column across all the df's...  if any of them
@@ -1249,14 +1257,14 @@ class RTLinkNodeMixin(object):
                                     pdy = -dx
 
                                     # bound the link curvature
-                                    _link_curve_ = 80 if l > 80 else l
+                                    _link_curve_ = self.link_max_curvature_px if l > self.link_max_curvature_px else l
 
                                     # calculate the control points
-                                    x1p = x1 + 0.2*_link_curve_*dx + 0.2*_link_curve_*pdx
-                                    y1p = y1 + 0.2*_link_curve_*dy + 0.2*_link_curve_*pdy
+                                    x1p = x1 + self.link_parallel_perc*_link_curve_*dx + self.link_ortho_perc*_link_curve_*pdx
+                                    y1p = y1 + self.link_parallel_perc*_link_curve_*dy + self.link_ortho_perc*_link_curve_*pdy
 
-                                    x2p = x2 - 0.2*_link_curve_*dx + 0.2*_link_curve_*pdx
-                                    y2p = y2 - 0.2*_link_curve_*dy + 0.2*_link_curve_*pdy
+                                    x2p = x2 - self.link_parallel_perc*_link_curve_*dx + self.link_ortho_perc*_link_curve_*pdx
+                                    y2p = y2 - self.link_parallel_perc*_link_curve_*dy + self.link_ortho_perc*_link_curve_*pdy
 
                                     def _xyLink_(t): # Bezier Curve Formula from Wikipedia
                                         return (1-t)**3*x1+3*(1-t)**2*t*x1p+3*(1-t)*t**2*x2p+t**3*x2,(1-t)**3*y1+3*(1-t)**2*t*y1p+3*(1-t)*t**2*y2p+t**3*y2
