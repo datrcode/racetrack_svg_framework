@@ -1056,7 +1056,7 @@ class RTSmallMultiplesMixin(object):
 
         # Find the timestamp field... or figure out what to use...
         accepted_args = set(inspect.getfullargspec(getattr(self, sm_type)).args)
-        if 'ts_field' in accepted_args and sm_type != 'linkNode':
+        if ('ts_field' in accepted_args and sm_type != 'linkNode') or (sm_type == 'linkNode' and 'timing_marks' in sm_params.keys() and sm_params['timing_marks'] == True):
             if 'ts_field' in sm_params.keys():     # precedence is sm_params ts_field
                 ts_field = sm_params['ts_field']
             elif ts_field is None:                 # best guess from the columns // copied from temporalBarChart method

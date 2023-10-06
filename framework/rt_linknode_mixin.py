@@ -322,8 +322,11 @@ class RTLinkNodeMixin(object):
     def linkNodeRequiredFields(self, **kwargs):
         columns_set = set()
         self.identifyColumnsFromParameters('relationships', kwargs, columns_set)
-        self.identifyColumnsFromParameters('color_by',kwargs,columns_set)
-        self.identifyColumnsFromParameters('count_by',kwargs,columns_set)
+        self.identifyColumnsFromParameters('color_by',      kwargs, columns_set)
+        self.identifyColumnsFromParameters('count_by',      kwargs, columns_set)
+        if 'timing_marks' in kwargs.keys() and kwargs['timing_marks'] == True:
+            self.identifyColumnsFromParameters('ts_field',  kwargs, columns_set)
+            
         # Ignoring the small multiples version // for now
         return columns_set
 
@@ -1274,7 +1277,7 @@ class RTLinkNodeMixin(object):
                                         def _xyLinkDir_(t):
                                             return (1-t)**3*x2+3*(1-t)**2*t*x2p+3*(1-t)*t**2*x1p+t**3*x1,(1-t)**3*y2+3*(1-t)**2*t*y2p+3*(1-t)*t**2*y1p+t**3*y1
 
-                                    edx, edy = _xyLink_(1.0 - 0.1) # Calculate the endpoint derivative
+                                    edx, edy = _xyLink_(1.0 - 0.05) # Calculate the endpoint derivative
                                     edx, edy = x2 - edx, y2 - edy
                                     l = sqrt((edx*edx)+(edy*edy))
                                     l = 1.0 if l < 0.01 else l
