@@ -94,6 +94,8 @@ class RTBoxplotMixin(object):
                 # ----------------------------- # rendering specific params                  
                 x_view             = 0,         # x offset for the view
                 y_view             = 0,         # y offset for the view
+                x_ins              = 3,         # x insert
+                y_ins              = 4,         # y_insert
                 w                  = 256,       # width of the view
                 h                  = 128,       # height of the view
                 max_bar_w          = 14,        # max bar width
@@ -103,172 +105,72 @@ class RTBoxplotMixin(object):
                 label_rotation     = 45,        # label rotation
                 extra_label_space  = 0,         # extra label space
                 draw_labels        = True,      # draw labels flag
-                draw_border        = True):     # draw a border around the histogram
-        rt_boxplot = self.RTBoxplot(self, df, bin_by, style=style, cap_swarm_at=cap_swarm_at, order_by=order_by, ascending=ascending,
-                                    color_by=color_by, global_color_order=global_color_order,
-                                    count_by=count_by, count_by_set=count_by_set, widget_id=widget_id,
-                                    global_max=global_max, global_min=global_min, sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params,
-                                    sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
-                                    x_view=x_view, y_view=y_view, w=w, h=h, max_bar_w=max_bar_w, min_bar_w=min_bar_w,
-                                    h_gap=h_gap, txt_h=txt_h, label_rotation=label_rotation, 
-                                    extra_label_space=extra_label_space, draw_labels=draw_labels, draw_border=draw_border)
-        # Calculate max
-        if just_calc_max:
-            return rt_boxplot.renderSVG(True)
-        
-        # Render SVG
-        else:
-            return rt_boxplot.renderSVG()
-
-    #
-    # histogramInstance()
-    # - create a RTHistogram object
-    #    
-    def boxplotInstance(self,
-                        df,                             # dataframe to render
-                        bin_by,                         # string or an array of strings
-                        # ----------------------------- # everything else is a default...
-                        style              = 'boxplot', # 'boxplot', 'boxplot_w_swarm', 'barchart'
-                        cap_swarm_at       = 200,       # cap the swarm plot at the specified number... if set to None, then no caps
-                        order_by           = 'sum',     # 'sum', 'max', 'median', 'average', 'min', or a list of index values
-                        ascending          = False,     # order by ascending
-                        # ----------------------------- #
-                        color_by           = None,      # just the default color or a string for a field
-                        global_color_order = None,      # color by ordering... if none (default), will be created and filled in...
-                        count_by           = None,      # none means just count rows, otherwise, use a field to sum by
-                        count_by_set       = False,     # count by using a set operation
-                        widget_id          = None,      # naming the svg elements
-                        # ----------------------------- # global rendering params
-                        global_max         = None,      # maximum to use for the bar length calculation
-                        global_min         = None,      # minimum value for boxplots
-                        # ----------------------------- # small multiple options
-                        sm_type               = None,   # should be the method name // similar to the smallMultiples method
-                        sm_w                  = None,   # override the width of the small multiple
-                        sm_h                  = None,   # override the height of the small multiple
-                        sm_params             = {},     # dictionary of parameters for the small multiples
-                        sm_x_axis_independent = True,   # Use independent axis for x (xy, temporal, and linkNode)
-                        sm_y_axis_independent = True,   # Use independent axis for y (xy, temporal, periodic, pie)
-                        # ----------------------------- # rendering specific params                        
-                        x_view             = 0,         # x offset for the view
-                        y_view             = 0,         # y offset for the view
-                        w                  = 256,       # width of the view
-                        h                  = 128,       # height of the view
-                        max_bar_w          = 14,        # max bar width
-                        min_bar_w          = 6,         # min bar width
-                        h_gap              = 0,         # gap between bars
-                        txt_h              = 14,        # text height
-                        label_rotation     = 45,        # label rotation                        
-                        extra_label_space  = 0,         # extra label space
-                        draw_labels        = True,      # draw labels flag
-                        draw_border        = True):     # draw a border around the histogram
-        return self.RTBoxplot(self, df, bin_by, style=style, cap_swarm_at=cap_swarm_at, order_by=order_by, ascending=ascending,
-                              color_by=color_by, global_color_order=global_color_order,
-                              count_by=count_by,count_by_set=count_by_set,widget_id=widget_id,
-                              global_max=global_max, global_min=global_min, sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params,
-                              sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
-                              x_view=x_view, y_view=y_view, w=w, h=h, max_bar_w=max_bar_w,
-                              min_bar_w=min_bar_w, h_gap=h_gap, txt_h=txt_h, label_rotation=label_rotation,
-                              extra_label_space=extra_label_space, draw_labels=draw_labels, draw_border=draw_border)
+                draw_border        = True):     # draw a border around the histogram        
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTBoxplot(self, **_params_)
 
     #
     # RTBoxplot Class
     #
     class RTBoxplot(RTComponent):
         #
-        # Member Variables
-        #
-        x_ins = 3 # x inserts on left and right
-        y_ins = 4 # y inserts on top and bottom
-
-        #
         # Constructor
         #
         def __init__(self,
                      rt_self,
-                     df,                             # dataframe to render
-                     bin_by,                         # string or an array of strings                  
-                     # ----------------------------- # everything else is a default...
-                     style              = 'boxplot', # 'boxplot', 'boxplot_w_swarm', 'barchart'
-                     cap_swarm_at       = 200,       # cap the swarm plot at the specified number... if set to None, then no caps
-                     order_by           = 'sum',     # 'sum', 'max', 'median', 'average', 'min', or a list of index values
-                     ascending          = False,     # order by ascending
-                     # ----------------------------- #
-                     color_by           = None,      # just the default color or a string for a field
-                     global_color_order = None,      # color by ordering... if none (default), will be created and filled in...
-                     count_by           = None,      # none means just count rows, otherwise, use a field to sum by
-                     count_by_set       = False,     # count by using a set operation
-                     widget_id          = None,      # naming the svg elements
-                     # ----------------------------- # global rendering params
-                     global_max         = None,      # maximum to use for the bar length calculation
-                     global_min         = None,      # minimum value for boxplots
-                     # ----------------------------- # small multiple options
-                     sm_type               = None,   # should be the method name // similar to the smallMultiples method
-                     sm_w                  = None,   # override the width of the small multiple
-                     sm_h                  = None,   # override the height of the small multiple
-                     sm_params             = {},     # dictionary of parameters for the small multiples
-                     sm_x_axis_independent = True,   # Use independent axis for x (xy, temporal, and linkNode)
-                     sm_y_axis_independent = True,   # Use independent axis for y (xy, temporal, periodic, pie)
-                     # ----------------------------- # rendering specific params
-                     x_view             = 0,         # x offset for the view
-                     y_view             = 0,         # y offset for the view
-                     w                  = 128,       # width of the view
-                     h                  = 256,       # height of the view
-                     max_bar_w          = 14,        # max bar width
-                     min_bar_w          = 6,         # min bar width
-                     h_gap              = 0,         # gap between bars
-                     txt_h              = 14,        # text height
-                     label_rotation     = 45,        # label rotation
-                     extra_label_space  = 0,         # extra label space
-                     draw_labels        = True,      # draw labels flag
-                     draw_border        = True):     # draw a border around the histogram
+                     **kwargs):
             self.parms              = locals().copy()
             self.rt_self            = rt_self
-            self.df                 = df.copy()
+            self.df                 = kwargs['df'].copy()
 
             # Make sure the bin_by is a list...
+            bin_by = kwargs['bin_by']
             if type(bin_by) != list: # Make it into a list for consistency
                 self.bin_by = [bin_by]
             else:
                 self.bin_by = bin_by
 
-            self.style              = style
-            self.cap_swarm_at       = cap_swarm_at
-            self.order_by           = order_by
-            self.ascending          = ascending
+            self.style              = kwargs['style']
+            self.cap_swarm_at       = kwargs['cap_swarm_at']
+            self.order_by           = kwargs['order_by']
+            self.ascending          = kwargs['ascending']
 
-            self.color_by           = color_by
-            self.global_color_order = global_color_order
-            self.count_by           = count_by
-            self.count_by_set       = count_by_set
+            self.color_by           = kwargs['color_by']
+            self.global_color_order = kwargs['global_color_order']
+            self.count_by           = kwargs['count_by']
+            self.count_by_set       = kwargs['count_by_set']
 
             # Make a histogram_id if it's not set already
-            if widget_id is None:
+            if kwargs['widget_id'] is None:
                 self.widget_id = "boxplot_" + str(random.randint(0,65535))
             else:
-                self.widget_id = widget_id
+                self.widget_id = kwargs['widget_id']
 
-            self.global_max              = global_max
-            self.global_min              = global_min
+            self.global_max              = kwargs['global_max']
+            self.global_min              = kwargs['global_min']
 
-            self.sm_type                 = sm_type
-            self.sm_w                    = sm_w
-            self.sm_h                    = sm_h
-            self.sm_params               = sm_params
-            self.sm_x_axis_independent   = sm_x_axis_independent
-            self.sm_y_axis_independent   = sm_y_axis_independent
+            self.sm_type                 = kwargs['sm_type']
+            self.sm_w                    = kwargs['sm_w']
+            self.sm_h                    = kwargs['sm_h']
+            self.sm_params               = kwargs['sm_params']
+            self.sm_x_axis_independent   = kwargs['sm_x_axis_independent']
+            self.sm_y_axis_independent   = kwargs['sm_y_axis_independent']
 
-            self.x_view                  = x_view
-            self.y_view                  = y_view
-            self.w                       = w
-            self.h                       = h
-            self.max_bar_w               = max_bar_w
-            self.min_bar_w               = min_bar_w
-            self.h_gap                   = h_gap
-            self.txt_h                   = txt_h
-            self.label_rotation          = label_rotation
-            self.extra_label_space       = extra_label_space
-            self.draw_labels             = draw_labels
-            self.draw_border             = draw_border
+            self.x_view                  = kwargs['x_view']
+            self.y_view                  = kwargs['y_view']
+            self.x_ins                   = kwargs['x_ins']
+            self.y_ins                   = kwargs['y_ins']
+            self.w                       = kwargs['w']
+            self.h                       = kwargs['h']
+            self.max_bar_w               = kwargs['max_bar_w']
+            self.min_bar_w               = kwargs['min_bar_w']
+            self.h_gap                   = kwargs['h_gap']
+            self.txt_h                   = kwargs['txt_h']
+            self.label_rotation          = kwargs['label_rotation']
+            self.extra_label_space       = kwargs['extra_label_space']
+            self.draw_labels             = kwargs['draw_labels']
+            self.draw_border             = kwargs['draw_border']
 
             # Apply bin-by transforms
             self.df, self.bin_by = rt_self.transformFieldListAndDataFrame(self.df, self.bin_by)

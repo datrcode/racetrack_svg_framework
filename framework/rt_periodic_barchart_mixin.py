@@ -163,58 +163,9 @@ class RTPeriodicBarChartMixin(object):
                          draw_labels      = True,               # draw labels flag
                          draw_border      = True,               # draw a border around the bar chart
                          draw_context     = True):              # draw background hints about the years, months, days, etc.
-        rt_periodic_barchart = self.RTPeriodicBarChart(self,df,time_period=time_period,ts_field=ts_field,color_by=color_by,global_color_order=global_color_order,
-                                                       count_by=count_by,count_by_set=count_by_set,widget_id=widget_id,global_max=global_max,global_min=global_min,
-                                                       style=style,cap_swarm_at=cap_swarm_at,sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,sm_x_axis_independent=sm_x_axis_independent,
-                                                       sm_y_axis_independent=sm_y_axis_independent,x_view=x_view,y_view=y_view,w=w,h=h,h_gap=h_gap,min_bar_w=min_bar_w,
-                                                       txt_h=txt_h,x_ins=x_ins,y_ins=y_ins,draw_labels=draw_labels,draw_border=draw_border,draw_context=draw_context)
-        return rt_periodic_barchart.renderSVG(just_calc_max)
-
-    #
-    # periodicBarChart
-    # 
-    def periodicBarChartInstance(self,
-                                 df,                                    # dataframe to render
-                                 # ------------------------------------ # everything else is a default...
-                                 time_period           = 'day_of_week', # periodicity to render
-                                 ts_field              = None,          # timestamp field // needs to be a np.datetime64 column...
-                                 color_by              = None,          # just the default color or a string for a field
-                                 global_color_order    = None,          # color by ordering... if none (default), will be created and filled in...
-                                 count_by              = None,          # none means just count rows, otherwise, use a field to sum by
-                                 count_by_set          = False,         # count by using a set operation
-                                 widget_id             = None,          # naming the svg elements
-                                 # ------------------------------------ #
-                                 global_max            = None,          # maximum to use for the bar heights
-                                 global_min            = None,          # minimum (only used for the boxplot style(s))                                 
-                                 # ------------------------------------ #
-                                style                  = 'barchart',    # 'barchart' or 'boxplot' or 'boxplot_w_swarm'
-                                cap_swarm_at           = 200,           # cap the swarm plot at the specified number... if set to None, then no caps
-                                 # ------------------------------------ # small multiple options
-                                 sm_type               = None,          # should be the method name // similar to the smallMultiples method
-                                 sm_w                  = None,          # override the width of the small multiple
-                                 sm_h                  = None,          # override the height of the small multiple
-                                 sm_params             = {},            # dictionary of parameters for the small multiples
-                                 sm_x_axis_independent = True,          # Use independent axis for x (xy, temporal, and linkNode)
-                                 sm_y_axis_independent = True,          # Use independent axis for y (xy, temporal, periodic, pie)
-                                 # ------------------------------------ #                         
-                                 x_view                = 0,             # x offset for the view
-                                 y_view                = 0,             # y offset for the view
-                                 w                     = 512,           # width of the view
-                                 h                     = 128,           # height of the view
-                                 h_gap                 = 0,             # gap between bars.. should be a zero or a one...
-                                 min_bar_w             = 2,             # minimum bar width
-                                 txt_h                 = 14,            # text height for the labels
-                                 x_ins                 = 3,             # x insert (on both sides of the drawing)
-                                 y_ins                 = 3,
-                                 draw_labels           = True,          # draw labels flag
-                                 draw_border           = True,          # draw a border around the bar chart
-                                 draw_context          = True):           # draw background hints about the years, months, days, etc.
-        return self.RTPeriodicBarChart(self,df,time_period=time_period,ts_field=ts_field,color_by=color_by,global_color_order=global_color_order,
-                                       count_by=count_by,count_by_set=count_by_set,widget_id=widget_id,global_max=global_max,global_min=global_min,
-                                       style=style,cap_swarm_at=cap_swarm_at,sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
-                                       sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,
-                                       x_view=x_view,y_view=y_view,w=w,h=h,h_gap=h_gap,min_bar_w=min_bar_w,txt_h=txt_h,x_ins=x_ins,y_ins=y_ins,
-                                       draw_labels=draw_labels,draw_border=draw_border,draw_context=draw_context)
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTPeriodicBarChart(self, **_params_)
 
     #
     # RTPeriodicBarChart()
@@ -225,78 +176,44 @@ class RTPeriodicBarChartMixin(object):
         #
         def __init__(self,
                      rt_self,
-                     df,                                    # dataframe to render
-                     # ------------------------------------ # everything else is a default...
-                     time_period           = 'day_of_week', # periodicity to render
-                     ts_field              = None,          # timestamp field // needs to be a np.datetime64 column...
-                     color_by              = None,          # just the default color or a string for a field
-                     global_color_order    = None,          # color by ordering... if none (default), will be created and filled in...
-                     count_by              = None,          # none means just count rows, otherwise, use a field to sum by
-                     count_by_set          = False,         # count by using a set operation
-                     widget_id             = None,          # naming the svg elements
-                     # ------------------------------------ #
-                     global_max            = None,          # maximum to use for the bar heights
-                     global_min            = None,          # minimum (only used for the boxplot style(s))
-                     # ------------------------------------ #                     
-                     style                 = 'barchart',    # 'barchart' or 'boxplot' or 'boxplot_w_swarm'
-                     cap_swarm_at          = 200,           # cap the swarm plot at the specified number... if set to None, then no caps
-                     # ------------------------------------ # small multiple options
-                     sm_type               = None,          # should be the method name // similar to the smallMultiples method
-                     sm_w                  = None,          # override the width of the small multiple
-                     sm_h                  = None,          # override the height of the small multiple
-                     sm_params             = {},            # dictionary of parameters for the small multiples
-                     sm_x_axis_independent = True,          # Use independent axis for x (xy, temporal, and linkNode)
-                     sm_y_axis_independent = True,          # Use independent axis for y (xy, temporal, periodic, pie)
-                     # ------------------------------------ #                         
-                     x_view                = 0,             # x offset for the view
-                     y_view                = 0,             # y offset for the view
-                     w                     = 512,           # width of the view
-                     h                     = 128,           # height of the view
-                     h_gap                 = 0,             # gap between bars.. should be a zero or a one...
-                     min_bar_w             = 2,             # minimum bar width
-                     txt_h                 = 14,            # text height for the labels
-                     x_ins                 = 3,             # x insert (on both sides of the drawing)
-                     y_ins                 = 3,
-                     draw_labels           = True,          # draw labels flag
-                     draw_border           = True,          # draw a border around the bar chart
-                     draw_context          = True):           # draw background hints about the years, months, days, etc.
+                     **kwargs):
             self.parms     = locals().copy()
             self.rt_self   = rt_self
-            self.df        = df.copy()
-            self.widget_id = widget_id
+            self.df        = kwargs['df'].copy()
+            self.widget_id = kwargs['widget_id']
             
             # Make a widget_id if it's not set already
             if self.widget_id is None:
                 self.widget_id = "periodicbarchart_" + str(random.randint(0,65535))
 
-            self.time_period           = time_period
-            self.ts_field              = ts_field
-            self.color_by              = color_by
-            self.global_color_order    = global_color_order
-            self.count_by              = count_by
-            self.count_by_set          = count_by_set
-            self.global_max            = global_max
-            self.global_min            = global_min
-            self.style                 = style
-            self.cap_swarm_at          = cap_swarm_at
-            self.sm_type               = sm_type
-            self.sm_w                  = sm_w
-            self.sm_h                  = sm_h
-            self.sm_params             = sm_params
-            self.sm_x_axis_independent = sm_x_axis_independent
-            self.sm_y_axis_independent = sm_y_axis_independent
-            self.x_view                = x_view
-            self.y_view                = y_view
-            self.w                     = w
-            self.h                     = h
-            self.h_gap                 = h_gap
-            self.min_bar_w             = min_bar_w
-            self.txt_h                 = txt_h
-            self.x_ins                 = x_ins
-            self.y_ins                 = y_ins
-            self.draw_labels           = draw_labels
-            self.draw_border           = draw_border
-            self.draw_context          = draw_context
+            self.time_period           = kwargs['time_period']
+            self.ts_field              = kwargs['ts_field']
+            self.color_by              = kwargs['color_by']
+            self.global_color_order    = kwargs['global_color_order']
+            self.count_by              = kwargs['count_by']
+            self.count_by_set          = kwargs['count_by_set']
+            self.global_max            = kwargs['global_max']
+            self.global_min            = kwargs['global_min']
+            self.style                 = kwargs['style']
+            self.cap_swarm_at          = kwargs['cap_swarm_at']
+            self.sm_type               = kwargs['sm_type']
+            self.sm_w                  = kwargs['sm_w']
+            self.sm_h                  = kwargs['sm_h']
+            self.sm_params             = kwargs['sm_params']
+            self.sm_x_axis_independent = kwargs['sm_x_axis_independent']
+            self.sm_y_axis_independent = kwargs['sm_y_axis_independent']
+            self.x_view                = kwargs['x_view']
+            self.y_view                = kwargs['y_view']
+            self.w                     = kwargs['w']
+            self.h                     = kwargs['h']
+            self.h_gap                 = kwargs['h_gap']
+            self.min_bar_w             = kwargs['min_bar_w']
+            self.txt_h                 = kwargs['txt_h']
+            self.x_ins                 = kwargs['x_ins']
+            self.y_ins                 = kwargs['y_ins']
+            self.draw_labels           = kwargs['draw_labels']
+            self.draw_border           = kwargs['draw_border']
+            self.draw_context          = kwargs['draw_context']
 
             # Determine the timestamp field
             if self.ts_field is None:
@@ -310,7 +227,8 @@ class RTPeriodicBarChartMixin(object):
                     raise Exception('no timestamp field supplied to RTPeriodicBarChart(), cannot automatically determine field')
             
             # Determine the periodicity index
-            self.period_i = rt_self.time_periods.index(time_period)
+            self.time_period = kwargs['time_period']
+            self.period_i = rt_self.time_periods.index(kwargs['time_period'])
 
             # Perform the transforms
             # Apply count-by transofmrs

@@ -613,7 +613,7 @@ class RTLayoutsMixin(object):
                     my_params['temporal_granularity'] = temporal_granularity
                     
                 # Resolve the method name and invoke it adding to the svg string
-                _func      = getattr(self, widget_method + 'Instance')
+                _func      = getattr(self, widget_method)
                 _instance  = _func(**my_params)
                 svg       += _instance.renderSVG(track_state=track_state)
 
@@ -733,7 +733,7 @@ class RTLayoutsMixin(object):
                 my_params['temporal_granularity'] = temporal_granularity
                 
             # Resolve the method name and invoke it adding to the svg string
-            _func      = getattr(self, widget_method + 'Instance')
+            _func      = getattr(self, widget_method)
             _instance  = _func(**my_params)
             svg       += _instance.renderSVG(track_state=track_state)
             

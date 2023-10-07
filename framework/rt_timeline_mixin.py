@@ -87,46 +87,9 @@ class RTTimelineMixin(object):
                  draw_labels           = True,  # draw labels flag
                  draw_border           = True,  # draw a border around the histogram
                  draw_context          = True): # draw temporal context information if (and only if) x_axis is time
-        rt_timeline = self.RTTimeline(self, df, ts_field=ts_field, timestamp=timestamp, timestamp_end=timestamp_end,
-                                      sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params,
-                                      sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
-                                      line_width=line_width, x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, txt_h=txt_h,
-                                      background_opacity=background_opacity, draw_labels=draw_labels, draw_border=draw_border)
-        return rt_timeline.renderSVG()
-
-    #
-    # timelineInstance()
-    #
-    def timelineInstance(self,
-                         df                    = None,  # dataframe to render // if none, pull from the timestamp, timestamp_end field
-                         ts_field              = None,  # timestamp field     // if df supplied, ts_field will be guessed
-                         timestamp             = None,  # start timestamp     // can supply just this and the end... 
-                         timestamp_end         = None,  # end timestamp
-                         # ---------------------------- # small multiple options
-                         sm_type               = None,  # should be the method name // similar to the smallMultiples method
-                         sm_w                  = None,  # override the width of the small multiple
-                         sm_h                  = None,  # override the height of the small multiple
-                         sm_params             = {},    # dictionary of parameters for the small multiples
-                         sm_x_axis_independent = True,  # Use independent axis for x (xy, temporal, and linkNode)
-                         sm_y_axis_independent = True,  # Use independent axis for y (xy, temporal, periodic, pie)
-                         # ---------------------------- # visualization geometry / etc.
-                         line_width            = 4,     # pixels for the timeline
-                         x_view                = 0,     # x offset for the view
-                         y_view                = 0,     # y offset for the view
-                         x_ins                 = 3,     # side inserts
-                         y_ins                 = 3,     # top & bottom inserts
-                         w                     = 512,   # width of the view
-                         h                     = 32,    # height of the view
-                         txt_h                 = 14,    # text height for labeling
-                         background_opacity    = 1.0,
-                         draw_labels           = True,  # draw labels flag
-                         draw_border           = True,  # draw a border around the histogram
-                         draw_context          = True): # draw temporal context information if (and only if) x_axis is time
-        return self.RTTimeline(self, df, ts_field=ts_field, timestamp=timestamp, timestamp_end=timestamp_end,
-                               sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params,
-                               sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
-                               line_width=line_width, x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, txt_h=txt_h,
-                               background_opacity=background_opacity, draw_labels=draw_labels, draw_border=draw_border)
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTTimeline(self, **_params_)
 
     #
     # RTTimeline
@@ -136,58 +99,35 @@ class RTTimelineMixin(object):
         # Constructor
         #
         def __init__(self,
-                     rt_self,                       # outer class
-                     df                    = None,  # dataframe to render // if none, pull from the timestamp, timestamp_end field
-                     ts_field              = None,  # timestamp field     // if df supplied, ts_field will be guessed
-                     timestamp             = None,  # start timestamp     // can supply just this and the end... 
-                     timestamp_end         = None,  # end timestamp
-                     # ---------------------------- # small multiple options
-                     sm_type               = None,  # should be the method name // similar to the smallMultiples method
-                     sm_w                  = None,  # override the width of the small multiple
-                     sm_h                  = None,  # override the height of the small multiple
-                     sm_params             = {},    # dictionary of parameters for the small multiples
-                     sm_x_axis_independent = True,  # Use independent axis for x (xy, temporal, and linkNode)
-                     sm_y_axis_independent = True,  # Use independent axis for y (xy, temporal, periodic, pie)
-                     # ---------------------------- # visualization geometry / etc.
-                     line_width            = 4,     # pixels for the timeline
-                     x_view                = 0,     # x offset for the view
-                     y_view                = 0,     # y offset for the view
-                     x_ins                 = 3,     # side inserts
-                     y_ins                 = 3,     # top & bottom inserts
-                     w                     = 512,   # width of the view
-                     h                     = 32,    # height of the view
-                     txt_h                 = 14,    # text height for labeling
-                     background_opacity    = 1.0,
-                     draw_labels           = True,  # draw labels flag
-                     draw_border           = True,  # draw a border around the histogram
-                     draw_context          = True): # draw temporal context information if (and only if) x_axis is time
+                     rt_self,
+                     **kwargs):
             self.parms                   = locals().copy()
             self.rt_self                 = rt_self
             self.df                      = None
-            self.ts_field                = ts_field
-            self.timestamp               = timestamp
-            self.timestamp_end           = timestamp_end
-            self.sm_type                 = sm_type
-            self.sm_w                    = sm_w
-            self.sm_h                    = sm_h
-            self.sm_params               = sm_params
-            self.sm_x_axis_independent   = sm_x_axis_independent
-            self.sm_y_axis_independent   = sm_y_axis_independent,
-            self.line_width              = line_width
-            self.x_view                  = x_view
-            self.y_view                  = y_view
-            self.x_ins                   = x_ins
-            self.y_ins                   = y_ins
-            self.w                       = w
-            self.h                       = h
-            self.txt_h                   = txt_h
-            self.background_opacity      = background_opacity
-            self.draw_labels             = draw_labels
-            self.draw_border             = draw_border
+            self.ts_field                = kwargs['ts_field']
+            self.timestamp               = kwargs['timestamp']
+            self.timestamp_end           = kwargs['timestamp_end']
+            self.sm_type                 = kwargs['sm_type']
+            self.sm_w                    = kwargs['sm_w']
+            self.sm_h                    = kwargs['sm_h']
+            self.sm_params               = kwargs['sm_params']
+            self.sm_x_axis_independent   = kwargs['sm_x_axis_independent']
+            self.sm_y_axis_independent   = kwargs['sm_y_axis_independent']
+            self.line_width              = kwargs['line_width']
+            self.x_view                  = kwargs['x_view']
+            self.y_view                  = kwargs['y_view']
+            self.x_ins                   = kwargs['x_ins']
+            self.y_ins                   = kwargs['y_ins']
+            self.w                       = kwargs['w']
+            self.h                       = kwargs['h']
+            self.txt_h                   = kwargs['txt_h']
+            self.background_opacity      = kwargs['background_opacity']
+            self.draw_labels             = kwargs['draw_labels']
+            self.draw_border             = kwargs['draw_border']
             self.widget_id               = 'rt_timeline_' + str(random.randint(1,65556))
 
-            if df is not None:
-                self.df                  = df.copy()
+            if kwargs['df'] is not None:
+                self.df                  = kwargs['df'].copy()
                 if self.ts_field is None:
                     choices = self.df.select_dtypes(np.datetime64).columns
                     if   len(choices) == 1:
@@ -199,12 +139,12 @@ class RTTimelineMixin(object):
                         raise Exception('no timestamp field supplied to RTTimeline(), cannot automatically determine field')
                 self.timestamp     = self.df[self.ts_field].min()
                 self.timestamp_end = self.df[self.ts_field].max()
-            elif df is None and self.timestamp is not None and self.timestamp_end is not None:
+            elif kwargs['df'] is None and self.timestamp is not None and self.timestamp_end is not None:
                 if type(self.timestamp)     == str:
                     self.timestamp     = pd.to_datetime(self.rt_self.minTimeForStringPrecision(self.timestamp))
                 if type(self.timestamp_end) == str:
                     self.timestamp_end = pd.to_datetime(self.rt_self.maxTimeForStringPrecision(self.timestamp_end))
-            elif df is None and self.timestamp is not None and type(self.timestamp) == str:
+            elif kwargs['df'] is None and self.timestamp is not None and type(self.timestamp) == str:
                 _str = self.timestamp
                 self.timestamp     = pd.to_datetime(self.rt_self.minTimeForStringPrecision(_str))
                 self.timestamp_end = pd.to_datetime(self.rt_self.maxTimeForStringPrecision(_str))

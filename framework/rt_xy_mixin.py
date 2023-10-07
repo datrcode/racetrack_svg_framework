@@ -373,28 +373,9 @@ class RTXYMixin(object):
            draw_labels               = True,          # draw labels flag
            draw_border               = True,          # draw a border around the histogram
            draw_context              = True):         # draw temporal context information if (and only if) x_axis is time
-        rt_xy = self.RTXy(self, df, x_field, y_field, x_field_is_scalar=x_field_is_scalar, y_field_is_scalar=y_field_is_scalar, 
-                          color_by=color_by, color_magnitude=color_magnitude,                         
-                          count_by=count_by, count_by_set=count_by_set, 
-                          dot_size=dot_size, dot_shape=dot_shape, max_dot_size=max_dot_size, opacity=opacity, vary_opacity=vary_opacity, 
-                          align_pixels=align_pixels,
-                          widget_id=widget_id, 
-                          x_axis_col=x_axis_col, x_is_time=x_is_time, x_label_min=x_label_min, x_label_max=x_label_max, x_trans_func=x_trans_func, 
-                          y_axis_col=y_axis_col, y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, 
-                          x_order=x_order,y_order=y_order, x_fill_transforms=x_fill_transforms, y_fill_transforms=y_fill_transforms,
-                          line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
-                          poly_fit_degree=poly_fit_degree,
-                          df2=df2, x2_field=x2_field, x2_field_is_scalar=x2_field_is_scalar, x2_axis_col=x2_axis_col, y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, 
-                          line2_groupby_field=line2_groupby_field, line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
-                          sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
-                          render_x_distribution=render_x_distribution,render_y_distribution=render_y_distribution,render_distribution_opacity=render_distribution_opacity,
-                          distribution_h_perc=distribution_h_perc, distribution_style=distribution_style,
-                          bg_shape_lu=bg_shape_lu, bg_shape_label_color=bg_shape_label_color, bg_shape_opacity=bg_shape_opacity, bg_shape_fill=bg_shape_fill,
-                          bg_shape_stroke_w=bg_shape_stroke_w, bg_shape_stroke=bg_shape_stroke, x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, txt_h=txt_h,
-                          background_opacity=background_opacity, background_override=background_override, plot_background_override=plot_background_override,
-                          draw_x_gridlines=draw_x_gridlines, draw_y_gridlines=draw_y_gridlines,
-                          draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
-        return rt_xy.renderSVG()
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTXy(self, **_params_)
 
     #
     # Create a column on the 0..1 scale for an axis
@@ -718,120 +699,6 @@ class RTXYMixin(object):
             return svg
         else:
             return ''
-    
-    #
-    # xyInstance() - create an RTXy Instance
-    #
-    def xyInstance(self,
-                   df,                                   # dataframe to render
-                   x_field,                              # string or an array of strings
-                   y_field,                              # string or an array of strings
-                   # ----------------------------------- # everything else is a default...
-                   x_field_is_scalar       = True,       # default... logic will check in the method to determine if this is true
-                   y_field_is_scalar       = True,       # default... logic will check in the method to determine if this is true
-                   color_by                = None,       # just the default color or a string for a field
-                   color_magnitude         = None,       # Only applies when color_by is None, options: None / 'linear' / 'log' / 'stretch'
-                   count_by                = None,       # none means just count rows, otherwise, use a field to sum by # Not Implemented
-                   count_by_set            = False,      # count by summation (by default)... column is checked
-                   dot_size                = 'medium',   # Dot size - ['small', 'medium', 'large', 'vary', 'hidden'/None]
-                   dot_shape               = 'ellipse',  # Dot shape - ['square', 'ellipse', 'triangle, 'utriangle', 'diamond', 'plus', 'x', 'small_multiple', function pointer]
-                   max_dot_size            = 5,          # Max dot size (used when the dot sz varies)
-                   opacity                 = 1.0,        # Opacity of the dots
-                   vary_opacity            = False,      # If true, vary opacity by the count_by # Not Implemented
-                   align_pixels            = True,       # Align pixels to integer values
-                   widget_id               = None,       # naming the svg elements
-                   # ----------------------------------- # used for globally making the same scale/etc
-                   x_axis_col              = None,       # x axis column name
-                   x_is_time               = False,      # x is time flag
-                   x_label_min             = None,       # min label on the x axis
-                   x_label_max             = None,       # max label on the x axis
-                   x_trans_func            = None,       # lambda transform function for x axis
-                   x_order                 = None,       # order of x axis for categorical values
-                   x_fill_transforms       = True,       # for t-fields, fill in all the values to properly space out data
-                   y_axis_col              = None,       # y axis column name
-                   y_is_time               = False,      # y is time flag
-                   y_label_min             = None,       # min label on the y axis
-                   y_label_max             = None,       # max label on the y axis
-                   y_trans_func            = None,       # lambeda transform function for y axis
-                   y_order                 = None,       # order of y axis for categorical values
-                   y_fill_transforms       = True,       # for t-fields, fill in all the values to properly space out data
-                   # ----------------------------------- # x = timestamp options // Only applies if x-axis is time
-                   line_groupby_field      = None,       # will use a field to perform a groupby for a line chart
-                                                         # calling app should make sure that all timeslots are filled in...
-                   line_groupby_w          = 1,          # width of the line for the line chart
-                   # ----------------------------------- # secondary axis override for polynomial best fit
-
-                   poly_fit_degree         = None,       # integer value for polynomial degree -- will overrride all of the other df2 settings if set...
-
-                   # ----------------------------------- # secondary axis settings # probably not small multiple safe...
-                   df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
-                   x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the x_field
-                   x2_field_is_scalar      = True,       # x2 field is scalar
-                   x2_axis_col             = None,       # x2 axis column name
-                   y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
-                   y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
-                   y2_axis_col             = None,       # y2 axis column name
-                   line2_groupby_field     = None,       # secondary line field ... will NOT be set
-                   line2_groupby_w         = 0.75,       # secondary line field width
-                   line2_groupby_color     = None,       # line2 color... if none, pulls from the color_by field
-                   line2_groupby_dasharray = "4 2",      # line2 dasharray
-                   dot2_size               = 'inherit',  # dot2 size... 'inherit' means to take from dot_size
-                   # ----------------------------------- # small multiple options
-                   sm_type                 = None,       # should be the method name // similar to the smallMultiples method
-                   sm_w                    = None,       # override the width of the small multiple
-                   sm_h                    = None,       # override the height of the small multiple
-                   sm_params               = {},         # dictionary of parameters for the small multiples
-                   sm_x_axis_independent   = True,       # Use independent axis for x (xy, temporal, and linkNode)
-                   sm_y_axis_independent   = True,       # Use independent axis for y (xy, temporal, periodic, pie)
-                   # ----------------------------------- # background information
-                   bg_shape_lu             = None,       # lookup for background shapes -- key will be used for varying colors
-                                                         # ['key'] = [(x0,y0),(x1,y1),...] OR
-                                                         # ['key'] = svg path description
-                   bg_shape_label_color  = None,         # None = no label, 'vary', lookup to hash color, or a hash color
-                   bg_shape_opacity      = 1.0,          # None (== 0.0), number, lookup to opacity
-                   bg_shape_fill         = None,         # None, 'vary', lookup to hash color, or a hash color
-                   bg_shape_stroke_w     = 1.0,          # None, number, lookup to width
-                   bg_shape_stroke       = 'default',    # None, 'default', lookup to hash color, or a hash color
-                   # ----------------------------------- # Distributions
-                   render_x_distribution       = None,       # number of x distribution buckets ... None == don't render
-                   render_y_distribution       = None,       # number of x distribution buckets ... None == don't render
-                   render_distribution_opacity = 0.5,        # Opacity of the distribution render
-                   distribution_h_perc         = 0.33,       # height of the distribution as a function of the overall h of xy chart     
-                   distribution_style          = 'outside',  # 'outside' - outside of xy... 'inside' - inside of xy
-                   # ------------------------------------ # visualization geometry / etc.
-                   x_view                   = 0,          # x offset for the view
-                   y_view                   = 0,          # y offset for the view
-                   x_ins                    = 3,          # side inserts
-                   y_ins                    = 3,          # top & bottom inserts
-                   w                        = 256,        # width of the view
-                   h                        = 256,        # height of the view
-                   txt_h                    = 12,         # text height for labeling
-                   background_opacity       = 1.0,        # background opacity
-                   background_override      = None,       # override the background color // hex value
-                   plot_background_override = None,       # plot background override // hex value
-                   draw_x_gridlines         = False,      # draw x gridlines for scalar values
-                   draw_y_gridlines         = False,      # draw y gridlines for scalar values
-                   draw_labels              = True,       # draw labels flag
-                   draw_border              = True,       # draw a border around the histogram
-                   draw_context             = True):      # draw temporal context information if (and only if) x_axis is time)
-        return self.RTXy(self, df, x_field, y_field, x_field_is_scalar=x_field_is_scalar, y_field_is_scalar=y_field_is_scalar, color_by=color_by, color_magnitude=color_magnitude,                         
-                         count_by=count_by, count_by_set=count_by_set, dot_size=dot_size, dot_shape=dot_shape, max_dot_size=max_dot_size, opacity=opacity, vary_opacity=vary_opacity, align_pixels=align_pixels,
-                         widget_id=widget_id, x_axis_col=x_axis_col, x_is_time=x_is_time, x_label_min=x_label_min, x_label_max=x_label_max, x_trans_func=x_trans_func, y_axis_col=y_axis_col,
-                         y_is_time=y_is_time, y_label_min=y_label_min, y_label_max=y_label_max, y_trans_func=y_trans_func, x_order=x_order, y_order=y_order, 
-                         x_fill_transforms=x_fill_transforms, y_fill_transforms=y_fill_transforms,
-                         line_groupby_field=line_groupby_field, line_groupby_w=line_groupby_w,
-                         poly_fit_degree=poly_fit_degree,
-                         df2=df2, x2_field=x2_field, x2_field_is_scalar=x2_field_is_scalar, x2_axis_col=x2_axis_col, 
-                         y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col, line2_groupby_field=line2_groupby_field,
-                         line2_groupby_w=line2_groupby_w, line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray, dot2_size=dot2_size,
-                         sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
-                         render_x_distribution=render_x_distribution, render_y_distribution=render_y_distribution, render_distribution_opacity=render_distribution_opacity,
-                         distribution_h_perc=distribution_h_perc, distribution_style=distribution_style,
-                         bg_shape_lu=bg_shape_lu, bg_shape_label_color=bg_shape_label_color, bg_shape_opacity=bg_shape_opacity, bg_shape_fill=bg_shape_fill,
-                         bg_shape_stroke_w=bg_shape_stroke_w, bg_shape_stroke=bg_shape_stroke, x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, txt_h=txt_h,
-                         background_opacity=background_opacity, background_override=background_override, plot_background_override=plot_background_override,
-                         draw_x_gridlines=draw_x_gridlines, draw_y_gridlines=draw_y_gridlines,
-                         draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
 
     #
     # RTXy
@@ -841,158 +708,70 @@ class RTXYMixin(object):
         # Constructor
         #
         def __init__(self,
-                     rt_self,                              # outer class
-                     df,                                   # dataframe to render
-                     x_field,                              # string or an array of strings
-                     y_field,                              # string or an array of strings
-                     # ----------------------------------- # everything else is a default...
-                     x_field_is_scalar       = True,       # default... logic will check in the method to determine if this is true
-                     y_field_is_scalar       = True,       # default... logic will check in the method to determine if this is true
-                     color_by                = None,       # just the default color or a string for a field
-                     color_magnitude         = None,       # Only applies when color_by is None, options: None / 'linear' / 'log' / 'stretch'
-                     count_by                = None,       # none means just count rows, otherwise, use a field to sum by # Not Implemented
-                     count_by_set            = False,      # count by summation (by default)... column is checked
-                     dot_size                = 'medium',   # Dot size - ['small', 'medium', 'large', 'vary', 'hidden'/None]
-                     dot_shape               = 'ellipse',  # Dot shape - ['square', 'ellipse', 'triangle, 'utriangle', 'diamond', 'plus', 'x', 'small_multiple', function pointer]
-                     max_dot_size            = 5,          # Max dot size (used when the dot sz varies)
-                     opacity                 = 1.0,        # Opacity of the dots
-                     vary_opacity            = False,      # If true, vary opacity by the count_by # Not Implemented
-                     align_pixels            = True,       # Align pixels to integer values
-                     widget_id               = None,       # naming the svg elements
-                     # ----------------------------------- # used for globally making the same scale/etc
-                     x_axis_col              = None,       # x axis column name
-                     x_is_time               = False,      # x is time flag
-                     x_label_min             = None,       # min label on the x axis
-                     x_label_max             = None,       # max label on the x axis
-                     x_trans_func            = None,       # lambda transform function for x axis
-                     x_order                 = None,       # order of categorical values on x axis
-                     x_fill_transforms       = True,       # for t-fields, fill in all the values to properly space out data
-                     y_axis_col              = None,       # y axis column name
-                     y_is_time               = False,      # y is time flag
-                     y_label_min             = None,       # min label on the y axis
-                     y_label_max             = None,       # max label on the y axis
-                     y_trans_func            = None,       # lambeda transform function for y axis
-                     y_order                 = None,       # order of categorical values on y axis
-                     y_fill_transforms       = True,       # for t-fields, fill in all the values to properly space out data
-                     # ----------------------------------- # x = timestamp options // Only applies if x-axis is time
-                     line_groupby_field      = None,       # will use a field to perform a groupby for a line chart
-                                                           # calling app should make sure that all timeslots are filled in...
-                     line_groupby_w          = 1,          # width of the line for the line chart
-                     # ----------------------------------- # secondary axis override for polynomial best fit
-                     poly_fit_degree         = None,       # integer value for polynomial degree -- will overrride all of the other df2 settings if set...
-                     # ----------------------------------- # secondary axis settings # probably not small multiple safe...
-                     df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
-                     x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the x_field
-                     x2_field_is_scalar      = True,       # x2 field is scalar
-                     x2_axis_col             = None,       # x2 axis column name
-                     y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
-                     y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
-                     y2_axis_col             = None,       # y2 axis column name
-                     line2_groupby_field     = None,       # secondary line field ... will NOT be set // wish i had given this "not be set" a description
-                     line2_groupby_w         = 0.75,       # width of the line2 groupby
-                     line2_groupby_color     = None,       # line2 color... if none, pulls from the color_by field
-                     line2_groupby_dasharray = "4 2",      # line2 dasharray
-                     dot2_size               = 'inherit',  # dot2 size -- 'inherit' means to take from the dot_size
-                     # ----------------------------------- # small multiple options
-                     sm_type                 = None,       # should be the method name // similar to the smallMultiples method
-                     sm_w                    = None,       # override the width of the small multiple
-                     sm_h                    = None,       # override the height of the small multiple
-                     sm_params               = {},         # dictionary of parameters for the small multiples
-                     sm_x_axis_independent   = True,       # Use independent axis for x (xy, temporal, and linkNode)
-                     sm_y_axis_independent   = True,       # Use independent axis for y (xy, temporal, periodic, pie)
-                     # ----------------------------------- # background information
-                     bg_shape_lu             = None,       # lookup for background shapes -- key will be used for varying colors
-                                                           # ['key'] = [(x0,y0),(x1,y1),...] OR
-                                                           # ['key'] = svg path description
-
-                     bg_shape_label_color  = None,         # None = no label, 'vary', lookup to hash color, or a hash color
-                     bg_shape_opacity      = 1.0,          # None (== 0.0), number, lookup to opacity
-                     bg_shape_fill         = None,         # None, 'vary', lookup to hash color, or a hash color
-                     bg_shape_stroke_w     = 1.0,          # None, number, lookup to width
-                     bg_shape_stroke       = 'default',    # None, 'default', lookup to hash color, or a hash color
-                     # ----------------------------------- # Distributions
-                     render_x_distribution       = None,      # number of x distribution buckets ... None == don't render
-                     render_y_distribution       = None,      # number of x distribution buckets ... None == don't render
-                     render_distribution_opacity = 0.5,       # Opacity of the distribution render
-                     distribution_h_perc         = 0.33,      # height of the distribution as a function of the overall h of xy chart     
-                     distribution_style          = 'outside', # 'outside' - outside of xy... 'inside' - inside of xy
-                     # ------------------------------------ # visualization geometry / etc.
-                     x_view                   = 0,          # x offset for the view
-                     y_view                   = 0,          # y offset for the view
-                     x_ins                    = 3,          # side inserts
-                     y_ins                    = 3,          # top & bottom inserts
-                     w                        = 256,        # width of the view
-                     h                        = 256,        # height of the view
-                     txt_h                    = 12,         # text height for labeling
-                     background_opacity       = 1.0,        # background opacity
-                     background_override      = None,       # override the background color // hex value
-                     plot_background_override = None,       # override the plot bckground // hex value
-                     draw_x_gridlines         = False,      # draw x gridlines for scalar values
-                     draw_y_gridlines         = False,      # draw y gridlines for scalar values
-                     draw_labels              = True,       # draw labels flag
-                     draw_border              = True,       # draw a border around the histogram
-                     draw_context             = True):      # draw temporal context information if (and only if) x_axis is time):
+                     rt_self,
+                     **kwargs):
             self.parms                   = locals().copy()
             self.rt_self                 = rt_self
-            self.df                      = df.copy()
-            self.x_field                 = x_field
-            self.y_field                 = y_field
-            self.x_field_is_scalar       = x_field_is_scalar 
-            self.y_field_is_scalar       = y_field_is_scalar 
-            self.color_by                = color_by 
-            self.color_magnitude         = color_magnitude                         
-            self.count_by                = count_by
-            self.count_by_set            = count_by_set
-            self.dot_size                = dot_size
-            self.dot_shape               = dot_shape
-            self.max_dot_size            = max_dot_size
-            self.opacity                 = opacity
-            self.vary_opacity            = vary_opacity
-            self.align_pixels            = align_pixels
-            self.widget_id               = widget_id
+            self.df                      = kwargs['df'].copy()
+            self.x_field                 = kwargs['x_field']
+            self.y_field                 = kwargs['y_field']
+            self.x_field_is_scalar       = kwargs['x_field_is_scalar'] 
+            self.y_field_is_scalar       = kwargs['y_field_is_scalar']
+            self.color_by                = kwargs['color_by']
+            self.color_magnitude         = kwargs['color_magnitude']                         
+            self.count_by                = kwargs['count_by']
+            self.count_by_set            = kwargs['count_by_set']
+            self.dot_size                = kwargs['dot_size']
+            self.dot_shape               = kwargs['dot_shape']
+            self.max_dot_size            = kwargs['max_dot_size']
+            self.opacity                 = kwargs['opacity']
+            self.vary_opacity            = kwargs['vary_opacity']
+            self.align_pixels            = kwargs['align_pixels']
+            self.widget_id               = kwargs['widget_id']
 
             # Make a widget_id if it's not set already
             if self.widget_id is None:
                 self.widget_id = "xy_" + str(random.randint(0,65535))
 
-            self.x_axis_col              = x_axis_col
-            self.x_is_time               = x_is_time
-            self.x_label_min             = x_label_min
-            self.x_label_max             = x_label_max
-            self.x_trans_func            = x_trans_func
-            self.x_order                 = x_order
-            self.x_fill_transforms       = x_fill_transforms
-            self.y_axis_col              = y_axis_col
-            self.y_is_time               = y_is_time
-            self.y_label_min             = y_label_min
-            self.y_label_max             = y_label_max
-            self.y_trans_func            = y_trans_func
-            self.y_order                 = y_order
-            self.y_fill_transforms       = y_fill_transforms
-            self.line_groupby_field      = line_groupby_field
-            self.line_groupby_w          = line_groupby_w
+            self.x_axis_col              = kwargs['x_axis_col']
+            self.x_is_time               = kwargs['x_is_time']
+            self.x_label_min             = kwargs['x_label_min']
+            self.x_label_max             = kwargs['x_label_max']
+            self.x_trans_func            = kwargs['x_trans_func']
+            self.x_order                 = kwargs['x_order']
+            self.x_fill_transforms       = kwargs['x_fill_transforms']
+            self.y_axis_col              = kwargs['y_axis_col']
+            self.y_is_time               = kwargs['y_is_time']
+            self.y_label_min             = kwargs['y_label_min']
+            self.y_label_max             = kwargs['y_label_max']
+            self.y_trans_func            = kwargs['y_trans_func']
+            self.y_order                 = kwargs['y_order']
+            self.y_fill_transforms       = kwargs['y_fill_transforms']
+            self.line_groupby_field      = kwargs['line_groupby_field']
+            self.line_groupby_w          = kwargs['line_groupby_w']
+            self.line2_groupby_field     = kwargs['line2_groupby_field']
 
             #
             # Are we fitting to something?  Or just diplaying what the user wants to show as a secondary?
             #
-            if poly_fit_degree is None:
-                self.x2_field                = x2_field
-                self.x2_field_is_scalar      = x2_field_is_scalar
-                self.x2_axis_col             = x2_axis_col
-                self.y2_field                = y2_field
-                self.y2_field_is_scalar      = y2_field_is_scalar
-                self.y2_axis_col             = y2_axis_col
+            if kwargs['poly_fit_degree'] is None:
+                self.x2_field                = kwargs['x2_field']
+                self.x2_field_is_scalar      = kwargs['x2_field_is_scalar']
+                self.x2_axis_col             = kwargs['x2_axis_col']
+                self.y2_field                = kwargs['y2_field']
+                self.y2_field_is_scalar      = kwargs['y2_field_is_scalar']
+                self.y2_axis_col             = kwargs['y2_axis_col']
 
                 # y2_field is really the only required param to make the df2 work...
-                if y2_field is not None:
-                    if df2 is not None:
-                        self.df2 = df2.copy()
+                if kwargs['y2_field'] is not None:
+                    if kwargs['df2'] is not None:
+                        self.df2 = kwargs['df2'].copy()
                         self.df2_is_df = False
                     else:
                         self.df2 = self.df
                         self.df2_is_df = True
 
-                    if x2_field is None:
+                    if kwargs['x2_field'] is None:
                         self.x2_field           = self.x_field
                         self.x2_field_is_scalar = self.x_field_is_scalar
                         self.x2_axis_col        = self.x_axis_col
@@ -1015,21 +794,21 @@ class RTXYMixin(object):
                 _min,_max = self.df[self.x_field].min(),self.df[self.x_field].max()
                 if _min == _max:
                     _max = _min + 1
-                _x,_x_inc,_x_values = _min, (_max - _min)/w, []
+                _x,_x_inc,_x_values = _min, (_max - _min)/kwargs['w'], []
                 while _x <= _max:
                     _x_values.append(_x)
                     _x += _x_inc
 
                 # Differentiate between groupby version and non-groupby version
-                if line_groupby_field is None:
-                    _fit      = np.polyfit(self.df[self.x_field], self.df[self.y_field], poly_fit_degree)
+                if kwargs['line_groupby_field'] is None:
+                    _fit      = np.polyfit(self.df[self.x_field], self.df[self.y_field], kwargs['poly_fit_degree'])
                     _y_values = np.polyval(_fit, _x_values)
                     self.df2            = pd.DataFrame({'x':_x_values,'y':_y_values})
                     self.df2['groupby'] = 'all'
                 else:
                     _dfs = []
-                    for k,k_df in self.df.groupby(line_groupby_field):
-                        _fit           = np.polyfit(k_df[self.x_field], k_df[self.y_field], poly_fit_degree)
+                    for k,k_df in self.df.groupby(kwargs['line_groupby_field']):
+                        _fit           = np.polyfit(k_df[self.x_field], k_df[self.y_field], kwargs['poly_fit_degree'])
                         _y_values      = np.polyval(_fit, _x_values)
                         _df            = pd.DataFrame({'x':_x_values,'y':_y_values})
                         _df['groupby'] = k
@@ -1037,54 +816,53 @@ class RTXYMixin(object):
                     self.df2 = pd.concat(_dfs)
 
                 # Common settings once the df2 is created
-                line2_groupby_field = 'groupby'
-                self.df2_is_df      = False
+                self.line2_groupby_field = 'groupby'
+                self.df2_is_df           = False
                 self.x2_field,self.y2_field,self.x2_field_is_scalar,self.y2_field_is_scalar = ['x'],['y'],True,True
                 self.x2_axis_col,self.y2_axis_col = None,None
 
-            self.line2_groupby_field     = line2_groupby_field
-            self.line2_groupby_w         = line2_groupby_w
-            self.line2_groupby_color     = line2_groupby_color
-            self.line2_groupby_dasharray = line2_groupby_dasharray
-            self.dot2_size               = dot2_size
-            if dot2_size == 'inherit':
-                self.dot2_size = dot_size
+            self.line2_groupby_w         = kwargs['line2_groupby_w']
+            self.line2_groupby_color     = kwargs['line2_groupby_color']
+            self.line2_groupby_dasharray = kwargs['line2_groupby_dasharray']
+            self.dot2_size               = kwargs['dot2_size']
+            if kwargs['dot2_size'] == 'inherit':
+                self.dot2_size = kwargs['dot_size']
 
-            self.sm_type                 = sm_type
-            self.sm_w                    = sm_w
-            self.sm_h                    = sm_h
-            self.sm_params               = sm_params
-            self.sm_x_axis_independent   = sm_x_axis_independent
-            self.sm_y_axis_independent   = sm_y_axis_independent
+            self.sm_type                 = kwargs['sm_type']
+            self.sm_w                    = kwargs['sm_w']
+            self.sm_h                    = kwargs['sm_h']
+            self.sm_params               = kwargs['sm_params']
+            self.sm_x_axis_independent   = kwargs['sm_x_axis_independent']
+            self.sm_y_axis_independent   = kwargs['sm_y_axis_independent']
 
-            self.bg_shape_lu             = bg_shape_lu
-            self.bg_shape_label_color    = bg_shape_label_color
-            self.bg_shape_opacity        = bg_shape_opacity
-            self.bg_shape_fill           = bg_shape_fill
-            self.bg_shape_stroke_w       = bg_shape_stroke_w
-            self.bg_shape_stroke         = bg_shape_stroke
+            self.bg_shape_lu             = kwargs['bg_shape_lu']
+            self.bg_shape_label_color    = kwargs['bg_shape_label_color']
+            self.bg_shape_opacity        = kwargs['bg_shape_opacity']
+            self.bg_shape_fill           = kwargs['bg_shape_fill']
+            self.bg_shape_stroke_w       = kwargs['bg_shape_stroke_w']
+            self.bg_shape_stroke         = kwargs['bg_shape_stroke']
 
-            self.render_x_distribution       = render_x_distribution
-            self.render_y_distribution       = render_y_distribution
-            self.render_distribution_opacity = render_distribution_opacity
-            self.distribution_h_perc         = distribution_h_perc
-            self.distribution_style          = distribution_style
+            self.render_x_distribution       = kwargs['render_x_distribution']
+            self.render_y_distribution       = kwargs['render_y_distribution']
+            self.render_distribution_opacity = kwargs['render_distribution_opacity']
+            self.distribution_h_perc         = kwargs['distribution_h_perc']
+            self.distribution_style          = kwargs['distribution_style']
 
-            self.x_view                   = x_view
-            self.y_view                   = y_view
-            self.x_ins                    = x_ins
-            self.y_ins                    = y_ins
-            self.w                        = w
-            self.h                        = h
-            self.txt_h                    = txt_h
-            self.background_opacity       = background_opacity
-            self.background_override      = background_override
-            self.plot_background_override = plot_background_override
-            self.draw_x_gridlines         = draw_x_gridlines
-            self.draw_y_gridlines         = draw_y_gridlines
-            self.draw_labels              = draw_labels
-            self.draw_border              = draw_border
-            self.draw_context             = draw_context
+            self.x_view                   = kwargs['x_view']
+            self.y_view                   = kwargs['y_view']
+            self.x_ins                    = kwargs['x_ins']
+            self.y_ins                    = kwargs['y_ins']
+            self.w                        = kwargs['w']
+            self.h                        = kwargs['h']
+            self.txt_h                    = kwargs['txt_h']
+            self.background_opacity       = kwargs['background_opacity']
+            self.background_override      = kwargs['background_override']
+            self.plot_background_override = kwargs['plot_background_override']
+            self.draw_x_gridlines         = kwargs['draw_x_gridlines']
+            self.draw_y_gridlines         = kwargs['draw_y_gridlines']
+            self.draw_labels              = kwargs['draw_labels']
+            self.draw_border              = kwargs['draw_border']
+            self.draw_context             = kwargs['draw_context']
 
             # Check the dot information
             if self.sm_type is not None:

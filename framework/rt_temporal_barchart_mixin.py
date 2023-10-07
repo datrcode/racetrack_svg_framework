@@ -291,20 +291,9 @@ class RTTemporalBarChartMixin(object):
                          draw_border          = True,  # draw a border around the bar chart
                          draw_context         = True,  # draw background hints about the years, months, days, etc.
                          draw_perf_stats      = False):# draw performance stats
-        rt_temporal_barchart = self.RTTemporalBarChart(self, df, ts_field=ts_field, ts_min=ts_min, ts_max=ts_max,
-                                                       temporal_granularity=temporal_granularity, color_by=color_by, global_color_order=global_color_order,
-                                                       count_by=count_by, count_by_set=count_by_set, widget_id=widget_id, ignore_unintuitive=ignore_unintuitive,
-                                                       global_max=global_max, global_min=global_min, style=style, cap_swarm_at=cap_swarm_at, 
-                                                       df2=df2, df2_fade=df2_fade, x2_field=x2_field, x2_field_is_scalar=x2_field_is_scalar, x2_axis_col=x2_axis_col, 
-                                                       y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col,
-                                                       line2_groupby_field=line2_groupby_field, line2_groupby_w=line2_groupby_w,
-                                                       line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray,
-                                                       dot2_size=dot2_size,
-                                                       sm_type=sm_type, sm_w=sm_w,
-                                                       sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
-                                                       x_view=x_view, y_view=y_view, w=w, h=h, h_gap=h_gap, min_bar_w=min_bar_w, txt_h=txt_h, x_ins=x_ins, y_ins=y_ins,
-                                                       background_opacity=background_opacity,draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
-        return rt_temporal_barchart.renderSVG(just_calc_max)
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTTemporalBarChart(self, **_params_)
 
     #
     # Proper Label Based On Time Resolution
@@ -312,80 +301,6 @@ class RTTemporalBarChartMixin(object):
     #
     def relevantTimeLabel(self, dt, time_rez_i):
         return dt.strftime(self.time_rezes_fmt[time_rez_i])
-
-    #
-    # temporalBarChartInstance() - return an instance of RTTemporalBarChart
-    #
-    def temporalBarChartInstance(self,
-                                 df,                           # dataframe to render
-                                 # --------------------------- # everything else is a default... 
-                                 ts_field             = None,  # timestamp field // needs to be a np.datetime64 column...
-                                 ts_min               = None,  # Render ranges... if they need to be overwritten
-                                 ts_max               = None,  # Render ranges... if they need to be overwritten
-                                 temporal_granularity = None,  # minimum temporal granularity to use -- based on strftime, use 'f' for most rez
-                                 color_by             = None,  # just the default color or a string for a field
-                                 global_color_order   = None,  # color by ordering... if none (default), will be created and filled in...
-                                 count_by             = None,  # none means just count rows, otherwise, use a field to sum by
-                                 count_by_set         = False, # count by using a set operation
-                                 widget_id            = None,  # naming the svg elements
-                                 ignore_unintuitive   = True,  # ignore timeframes that are unintuative
-                                                               # ... these unintuitive timeframes make the transition points smoother...
-                                 # --------------------------- # global rendering params
-                                 global_max           = None,  # maximum to use for bar heights   
-                                 global_min           = None,  # minimum for boxplot style(s)                                 
-                                 # --------------------------- # style
-                                 style                 = 'barchart', # 'barchart' or 'boxplot' or 'boxplot_w_swarm'
-                                 cap_swarm_at          = 200,        # cap the swarm plot at the specified number... if set to None, then no caps
-
-                                 # ----------------------------------- # secondary axis settings # probably not small multiple safe...
-                                 df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
-                                 df2_fade                = 0.1,        # amount to fade the background prior to the line renders / None == no fade
-                                 x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the ts_field
-                                 x2_field_is_scalar      = True,       # x2 field is scalar // doesn't make sense for this view... but leaving it in for consistency
-                                 x2_axis_col             = None,       # x2 axis column name
-                                 y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
-                                 y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
-                                 y2_axis_col             = None,       # y2 axis column name
-                                 line2_groupby_field     = None,       # secondary line field ... will NOT be set
-                                 line2_groupby_w         = 1.5,        # secondary line field width
-                                 line2_groupby_color     = None,       # line2 color... if none, pulls from the color_by field
-                                 line2_groupby_dasharray = "4 2",      # line2 dasharray
-                                 dot2_size               = 'medium',   # dot2 size ... 'small', 'medium', 'large', 'vary'
-
-                                 # -----------------------     # small multiple options
-                                 sm_type               = None, # should be the method name // similar to the smallMultiples method
-                                 sm_w                  = None, # override the width of the small multiple
-                                 sm_h                  = None, # override the height of the small multiple
-                                 sm_params             = {},   # dictionary of parameters for the small multiples
-                                 sm_x_axis_independent = True, # Use independent axis for x (xy, temporal, and linkNode)
-                                 sm_y_axis_independent = True, # Use independent axis for y (xy, temporal, periodic, pie)
-                                 # --------------------------- # rendering specific params
-                                 x_view               = 0,     # x offset for the view
-                                 y_view               = 0,     # y offset for the view
-                                 w                    = 512,   # width of the view
-                                 h                    = 128,   # height of the view
-                                 h_gap                = 0,     # gap between bars.. should be a zero or a one...
-                                 min_bar_w            = 3,     # minimum bar width
-                                 txt_h                = 14,    # text height for the labels
-                                 x_ins                = 3,     # x insert (on both sides of the drawing)
-                                 y_ins                = 3,
-                                 background_opacity   = 1.0,   # background opacity
-                                 draw_labels          = True,  # draw labels flag
-                                 draw_border          = True,  # draw a border around the bar chart
-                                 draw_context         = True): # draw background hints about the years, months, days, etc.
-        return self.RTTemporalBarChart(self, df, ts_field=ts_field, ts_min=ts_min, ts_max=ts_max,
-                                       temporal_granularity=temporal_granularity, color_by=color_by, global_color_order=global_color_order,
-                                       count_by=count_by, count_by_set=count_by_set, widget_id=widget_id, ignore_unintuitive=ignore_unintuitive,
-                                       global_max=global_max, global_min=global_min, style=style, cap_swarm_at=cap_swarm_at, 
-                                       df2=df2, df2_fade=df2_fade, x2_field=x2_field, x2_field_is_scalar=x2_field_is_scalar, x2_axis_col=x2_axis_col, 
-                                       y2_field=y2_field, y2_field_is_scalar=y2_field_is_scalar, y2_axis_col=y2_axis_col,
-                                       line2_groupby_field=line2_groupby_field, line2_groupby_w=line2_groupby_w,
-                                       line2_groupby_color=line2_groupby_color, line2_groupby_dasharray=line2_groupby_dasharray,
-                                       dot2_size=dot2_size,
-                                       sm_type=sm_type, sm_w=sm_w,
-                                       sm_h=sm_h, sm_params=sm_params, sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent,
-                                       x_view=x_view, y_view=y_view, w=w, h=h, h_gap=h_gap, min_bar_w=min_bar_w, txt_h=txt_h, x_ins=x_ins, y_ins=y_ins,
-                                       background_opacity=background_opacity, draw_labels=draw_labels, draw_border=draw_border, draw_context=draw_context)
 
     #
     # RTTemporalBarChart Class
@@ -396,118 +311,63 @@ class RTTemporalBarChartMixin(object):
         #
         def __init__(self,
                      rt_self,
-                     df,                           # dataframe to render
-                     # --------------------------- # everything else is a default... 
-                     ts_field             = None,  # timestamp field // needs to be a np.datetime64 column...
-                     ts_min               = None,  # Render ranges... if they need to be overwritten
-                     ts_max               = None,  # Render ranges... if they need to be overwritten
-                     temporal_granularity = None,  # minimum temporal granularity to use -- based on strftime, use 'f' for most rez
-                     color_by             = None,  # just the default color or a string for a field
-                     global_color_order   = None,  # color by ordering... if none (default), will be created and filled in...
-                     count_by             = None,  # none means just count rows, otherwise, use a field to sum by
-                     count_by_set         = False, # count by using a set operation
-                     widget_id            = None,  # naming the svg elements
-                     ignore_unintuitive   = True,  # ignore timeframes that are unintuative
-                                                   # ... these unintuitive timeframes make the transition points smoother...
-                     # --------------------------- # global rendering params
-                     global_max           = None,  # maximum to use for bar heights   
-                     global_min           = None,  # minimum for boxplot style(s)
-                     # --------------------------- # style
-                     style                 = 'barchart', # 'barchart' or 'boxplot' or 'boxplot_w_swarm'
-                     cap_swarm_at          = 200,        # cap the swarm plot at the specified number... if set to None, then no caps
-
-                     # ----------------------------------- # secondary axis settings # probably not small multiple safe...
-                     df2                     = None,       # secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
-                     df2_fade                = 0.1,        # amount to fade the background prior to the line renders / None == no fade
-                     x2_field                = None,       # x2 field ... if not set but the y2_field is, then this be set to the ts_field
-                     x2_field_is_scalar      = True,       # x2 field is scalar // doesn't make sense for this view... but leaving it in for consistency
-                     x2_axis_col             = None,       # x2 axis column name
-                     y2_field                = None,       # secondary axis field ... if this is set, then df2 will be set to df // only required field really...
-                     y2_field_is_scalar      = True,       # default... logic will check in the method to determine if this is true
-                     y2_axis_col             = None,       # y2 axis column name
-                     line2_groupby_field     = None,       # secondary line field ... will NOT be set
-                     line2_groupby_w         = 1.5,        # secondary line field width
-                     line2_groupby_color     = None,       # line2 color... if none, pulls from the color_by field
-                     line2_groupby_dasharray = "4 2",      # line2 dasharray
-                     dot2_size               = 'medium',   # dot2 size ... 'small', 'medium', 'large', 'vary'
-
-                     # -----------------------     # small multiple options
-                     sm_type               = None, # should be the method name // similar to the smallMultiples method
-                     sm_w                  = None, # override the width of the small multiple
-                     sm_h                  = None, # override the height of the small multiple
-                     sm_params             = {},   # dictionary of parameters for the small multiples
-                     sm_x_axis_independent = True, # Use independent axis for x (xy, temporal, and linkNode)
-                     sm_y_axis_independent = True, # Use independent axis for y (xy, temporal, periodic, pie)
-                     # --------------------------- # rendering specific params
-                     x_view               = 0,     # x offset for the view
-                     y_view               = 0,     # y offset for the view
-                     w                    = 512,   # width of the view
-                     h                    = 128,   # height of the view
-                     h_gap                = 0,     # gap between bars.. should be a zero or a one...
-                     min_bar_w            = 3,     # minimum bar width
-                     txt_h                = 14,    # text height for the labels
-                     x_ins                = 3,     # x insert (on both sides of the drawing)
-                     y_ins                = 3,
-                     background_opacity   = 1.0,   # background opacity
-                     draw_labels          = True,  # draw labels flag
-                     draw_border          = True,  # draw a border around the bar chart
-                     draw_context         = True): # draw background hints about the years, months, days, etc.
+                     **kwargs):
             self.parms     = locals().copy()
             self.rt_self   = rt_self
-            self.df        = df.copy()
-            self.widget_id = widget_id
+            self.df        = kwargs['df'].copy()
+            self.widget_id = kwargs['widget_id']
 
             # Make a widget_id if it's not set already
             if self.widget_id is None:
                 self.widget_id = "temporalbarchart_" + str(random.randint(0,65535))
 
-            self.ts_field              = ts_field
-            self.ts_min                = ts_min
-            self.ts_max                = ts_max
-            self.temporal_granularity  = temporal_granularity
-            self.color_by              = color_by
-            self.global_color_order    = global_color_order
-            self.count_by              = count_by
-            self.count_by_set          = count_by_set
-            self.ignore_unintuitive    = ignore_unintuitive
-            self.global_max            = global_max
-            self.global_min            = global_min
-            self.style                 = style
-            self.cap_swarm_at          = cap_swarm_at
+            self.ts_field              = kwargs['ts_field']
+            self.ts_min                = kwargs['ts_min']
+            self.ts_max                = kwargs['ts_max']
+            self.temporal_granularity  = kwargs['temporal_granularity']
+            self.color_by              = kwargs['color_by']
+            self.global_color_order    = kwargs['global_color_order']
+            self.count_by              = kwargs['count_by']
+            self.count_by_set          = kwargs['count_by_set']
+            self.ignore_unintuitive    = kwargs['ignore_unintuitive']
+            self.global_max            = kwargs['global_max']
+            self.global_min            = kwargs['global_min']
+            self.style                 = kwargs['style']
+            self.cap_swarm_at          = kwargs['cap_swarm_at']
 
-            self.df2                        = df2
-            self.df2_fade                   = df2_fade
-            self.x2_field                   = x2_field
-            self.x2_field_is_scalar         = x2_field_is_scalar
-            self.x2_axis_col                = x2_axis_col
-            self.y2_field                   = y2_field
-            self.y2_field_is_scalar         = y2_field_is_scalar
-            self.y2_axis_col                = y2_axis_col
-            self.line2_groupby_field        = line2_groupby_field
-            self.line2_groupby_w            = line2_groupby_w
-            self.line2_groupby_color        = line2_groupby_color
-            self.line2_groupby_dasharray    = line2_groupby_dasharray
-            self.dot2_size                  = dot2_size
+            self.df2                        = kwargs['df2']
+            self.df2_fade                   = kwargs['df2_fade']
+            self.x2_field                   = kwargs['x2_field']
+            self.x2_field_is_scalar         = kwargs['x2_field_is_scalar']
+            self.x2_axis_col                = kwargs['x2_axis_col']
+            self.y2_field                   = kwargs['y2_field']
+            self.y2_field_is_scalar         = kwargs['y2_field_is_scalar']
+            self.y2_axis_col                = kwargs['y2_axis_col']
+            self.line2_groupby_field        = kwargs['line2_groupby_field']
+            self.line2_groupby_w            = kwargs['line2_groupby_w']
+            self.line2_groupby_color        = kwargs['line2_groupby_color']
+            self.line2_groupby_dasharray    = kwargs['line2_groupby_dasharray']
+            self.dot2_size                  = kwargs['dot2_size']
 
-            self.sm_type               = sm_type
-            self.sm_w                  = sm_w
-            self.sm_h                  = sm_h
-            self.sm_params             = sm_params.copy()
-            self.sm_x_axis_independent = sm_x_axis_independent
-            self.sm_y_axis_independent = sm_y_axis_independent
-            self.x_view                = x_view
-            self.y_view                = y_view
-            self.w                     = w
-            self.h                     = h
-            self.h_gap                 = h_gap
-            self.min_bar_w             = min_bar_w
-            self.txt_h                 = txt_h
-            self.x_ins                 = x_ins
-            self.y_ins                 = y_ins
-            self.background_opacity    = background_opacity,
-            self.draw_labels           = draw_labels
-            self.draw_border           = draw_border
-            self.draw_context          = draw_context
+            self.sm_type               = kwargs['sm_type']
+            self.sm_w                  = kwargs['sm_w']
+            self.sm_h                  = kwargs['sm_h']
+            self.sm_params             = kwargs['sm_params'].copy()
+            self.sm_x_axis_independent = kwargs['sm_x_axis_independent']
+            self.sm_y_axis_independent = kwargs['sm_y_axis_independent']
+            self.x_view                = kwargs['x_view']
+            self.y_view                = kwargs['y_view']
+            self.w                     = kwargs['w']
+            self.h                     = kwargs['h']
+            self.h_gap                 = kwargs['h_gap']
+            self.min_bar_w             = kwargs['min_bar_w']
+            self.txt_h                 = kwargs['txt_h']
+            self.x_ins                 = kwargs['x_ins']
+            self.y_ins                 = kwargs['y_ins']
+            self.background_opacity    = kwargs['background_opacity']
+            self.draw_labels           = kwargs['draw_labels']
+            self.draw_border           = kwargs['draw_border']
+            self.draw_context          = kwargs['draw_context']
 
             # Class members thatt are filled in upon render
             self.ts_to_x               = {}    # For calculating timestamp positions

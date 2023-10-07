@@ -84,40 +84,9 @@ class RTPieChartMixin(object):
                 h                    = 256,       # height of the view
                 draw_border          = True,      # draw a border around the histogram
                 draw_background      = False):    # useful to turn off in small multiples settings
-        rt_piechart = self.RTPieChart(self, df, color_by=color_by, global_color_order=global_color_order, count_by=count_by, 
-                                      count_by_set=count_by_set, widget_id=widget_id, style=style, min_render_angle_deg=min_render_angle_deg, 
-                                      x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, draw_border=draw_border, draw_background=draw_background)
-        return rt_piechart.renderSVG()
-
-    #
-    # pieChart
-    #
-    # Make the SVG for a piechart
-    #    
-    def pieChartInstance(self,
-                         df,                               # dataframe to render
-                         # ------------------------------- # everything else is a default...
-                         color_by             = None,      # just the default color or a string for a field
-                         global_color_order   = None,      # color by ordering... if none (default), will be created and filled in...
-                         count_by             = None,      # none means just count rows, otherwise, use a field to sum by # Not Implemented
-                         count_by_set         = False,     # count by summation (by default)... column is checked
-                         widget_id            = None,      # naming the svg elements
-                         # ------------------------------- # custom render for this component
-                         style                = 'pie',     # 'pie' or 'waffle'
-                         min_render_angle_deg = 5,         # minimum render angle
-                         # ------------------------------- # visualization geometry / etc.
-                         x_view               = 0,         # x offset for the view
-                         y_view               = 0,         # y offset for the view
-                         x_ins                = 3,         # side inserts
-                         y_ins                = 3,         # top & bottom inserts
-                         w                    = 256,       # width of the view
-                         h                    = 256,       # height of the view
-                         draw_border          = True,      # draw a border around the histogram
-                         draw_background      = False):     # useful to turn off in small multiples settings
-        return self.RTPieChart(self, df, color_by=color_by, global_color_order=global_color_order, count_by=count_by, 
-                               count_by_set=count_by_set, widget_id=widget_id, style=style, min_render_angle_deg=min_render_angle_deg, 
-                               x_view=x_view, y_view=y_view, x_ins=x_ins, y_ins=y_ins, w=w, h=h, draw_border=draw_border, 
-                               draw_background=draw_background)
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTPieChart(self, **_params_)
 
     #
     # RTPieChart
@@ -128,49 +97,30 @@ class RTPieChartMixin(object):
         #
         def __init__(self,
                      rt_self,
-                     df,                               # dataframe to render
-                     # ------------------------------- # everything else is a default...
-                     color_by             = None,      # just the default color or a string for a field
-                     global_color_order   = None,      # color by ordering... if none (default), will be created and filled in...
-                     count_by             = None,      # none means just count rows, otherwise, use a field to sum by # Not Implemented
-                     count_by_set         = False,     # count by summation (by default)... column is checked
-                     widget_id            = None,      # naming the svg elements
-                     # ------------------------------- # custom render for this component
-                     style                = 'pie',     # 'pie' or 'waffle'
-                     min_render_angle_deg = 5,         # minimum render angle
-                     # ------------------------------- # visualization geometry / etc.
-                     x_view               = 0,         # x offset for the view
-                     y_view               = 0,         # y offset for the view
-                     x_ins                = 3,         # side inserts
-                     y_ins                = 3,         # top & bottom inserts
-                     w                    = 256,       # width of the view
-                     h                    = 256,       # height of the view
-                     draw_border          = True,      # draw a border around the histogram
-                     draw_background      = False):    # useful to turn off in small multiples settings
-
+                     **kwargs):
             self.parms     = locals().copy()
             self.rt_self   = rt_self
-            self.df        = df.copy()
-            self.widget_id = widget_id
+            self.df        = kwargs['df'].copy()
+            self.widget_id = kwargs['widget_id']
 
             # Make a widget_id if it's not set already
             if self.widget_id is None:
                 self.widget_id = "piechart_" + str(random.randint(0,65535))
             
-            self.color_by             = color_by 
-            self.global_color_order   = global_color_order
-            self.count_by             = count_by
-            self.count_by_set         = count_by_set
-            self.style                = style
-            self.min_render_angle_deg = min_render_angle_deg
-            self.x_view               = x_view
-            self.y_view               = y_view
-            self.x_ins                = x_ins
-            self.y_ins                = y_ins
-            self.w                    = w
-            self.h                    = h
-            self.draw_border          = draw_border
-            self.draw_background      = draw_background
+            self.color_by             = kwargs['color_by'] 
+            self.global_color_order   = kwargs['global_color_order']
+            self.count_by             = kwargs['count_by']
+            self.count_by_set         = kwargs['count_by_set']
+            self.style                = kwargs['style']
+            self.min_render_angle_deg = kwargs['min_render_angle_deg']
+            self.x_view               = kwargs['x_view']
+            self.y_view               = kwargs['y_view']
+            self.x_ins                = kwargs['x_ins']
+            self.y_ins                = kwargs['y_ins']
+            self.w                    = kwargs['w']
+            self.h                    = kwargs['h']
+            self.draw_border          = kwargs['draw_border']
+            self.draw_background      = kwargs['draw_background']
 
             # Color by must not be none
             if self.color_by is None:

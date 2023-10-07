@@ -89,47 +89,9 @@ class RTHistogramMixin(object):
                   draw_labels=True,           # draw labels flag
                   draw_border=True            # draw a border around the histogram
                  ):
-        rt_histogram = self.RTHistogram(self, df, bin_by, color_by=color_by, global_color_order=global_color_order,
-                                        count_by=count_by,count_by_set=count_by_set,widget_id=widget_id, first_line_i=first_line_i,
-                                        global_max=global_max,x_view=x_view,y_view=y_view,w=w,h=h,bar_h=bar_h,v_gap=v_gap,
-                                        draw_labels=draw_labels,draw_border=draw_border)
-        # Calculate max
-        if just_calc_max:
-            return rt_histogram.renderSVG(True)
-        
-        # Render SVG
-        else:
-            return rt_histogram.renderSVG()
-
-    #
-    # histogramInstance()
-    # - create a RTHistogram object
-    #    
-    def histogramInstance(self,
-                          df,                          # dataframe to render
-                          bin_by,                      # string or an array of strings
-                          # -------------------------  #  everything else is a default...
-                          color_by           = None,   # just the default color or a string for a field
-                          global_color_order = None,   # color by ordering... if none (default), will be created and filled in...
-                          count_by           = None,   # none means just count rows, otherwise, use a field to sum by
-                          count_by_set       = False,  # count by using a set operation
-                          widget_id          = None,   # naming the svg elements
-                          # -------------------------  # global rendering params
-                          first_line_i       = 0,      # first line index to render
-                          global_max         = None,   # maximum to use for the bar length calculation
-                          # -------------------------  # rendering specific params
-                          x_view             = 0,      # x offset for the view
-                          y_view             = 0,      # y offset for the view
-                          w                  = 128,    # width of the view
-                          h                  = 256,    # height of the view
-                          bar_h              = 14,     # bar height
-                          v_gap              = 0,      # gap between bars
-                          draw_labels        = True,   # draw labels flag
-                          draw_border        = True):  # draw a border around the histogram
-        return self.RTHistogram(self, df, bin_by, color_by=color_by, global_color_order=global_color_order,
-                                 count_by=count_by,count_by_set=count_by_set,widget_id=widget_id, first_line_i=first_line_i,
-                                 global_max=global_max,x_view=x_view,y_view=y_view,w=w,h=h,bar_h=bar_h,v_gap=v_gap,
-                                 draw_labels=draw_labels,draw_border=draw_border)
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTHistogram(self, **_params_)
 
     #
     # RTHistogram Class
@@ -140,57 +102,39 @@ class RTHistogramMixin(object):
         #
         def __init__(self,
                      rt_self,
-                     df,                         # dataframe to render
-                     bin_by,                     # string or an array of strings                  
-                     # ------------------------- # everything else is a default...
-                     color_by           = None,  # just the default color or a string for a field
-                     global_color_order = None,  # color by ordering... if none (default), will be created and filled in...
-                     count_by           = None,  # none means just count rows, otherwise, use a field to sum by
-                     count_by_set       = False, # count by using a set operation
-                     widget_id          = None,  # naming the svg elements
-                     # ------------------------- # global rendering params
-                     first_line_i       = 0,     # first line index to render
-                     global_max         = None,  # maximum to use for the bar length calculation
-                     # ------------------------- # rendering specific params
-                     x_view             = 0,     # x offset for the view
-                     y_view             = 0,     # y offset for the view
-                     w                  = 128,   # width of the view
-                     h                  = 256,   # height of the view
-                     bar_h              = 14,    # bar height
-                     v_gap              = 0,     # gap between bars
-                     draw_labels        = True,  # draw labels flag
-                     draw_border        = True): # draw a border around the histogram
+                     **kwargs):
             self.parms              = locals().copy()
             self.rt_self            = rt_self
-            self.df                 = df.copy()
+            self.df                 = kwargs['df'].copy()
 
             # Make sure the bin_by is a list...
+            bin_by = kwargs['bin_by']
             if type(bin_by) != list: # Make it into a list for consistency
                 self.bin_by = [bin_by]
             else:
                 self.bin_by = bin_by
 
-            self.color_by           = color_by
-            self.global_color_order = global_color_order
-            self.count_by           = count_by
-            self.count_by_set       = count_by_set
+            self.color_by           = kwargs['color_by']
+            self.global_color_order = kwargs['global_color_order']
+            self.count_by           = kwargs['count_by']
+            self.count_by_set       = kwargs['count_by_set']
 
             # Make a histogram_id if it's not set already
-            if widget_id is None:
+            if kwargs['widget_id'] is None:
                 self.widget_id = "histogram_" + str(random.randint(0,65535))
             else:
-                self.widget_id          = widget_id
+                self.widget_id          = kwargs['widget_id']
 
-            self.first_line_i       = first_line_i
-            self.global_max         = global_max
-            self.x_view             = x_view
-            self.y_view             = y_view
-            self.w                  = w
-            self.h                  = h
-            self.bar_h              = bar_h
-            self.v_gap              = v_gap
-            self.draw_labels        = draw_labels
-            self.draw_border        = draw_border
+            self.first_line_i       = kwargs['first_line_i']
+            self.global_max         = kwargs['global_max']
+            self.x_view             = kwargs['x_view']
+            self.y_view             = kwargs['y_view']
+            self.w                  = kwargs['w']
+            self.h                  = kwargs['h']
+            self.bar_h              = kwargs['bar_h']
+            self.v_gap              = kwargs['v_gap']
+            self.draw_labels        = kwargs['draw_labels']
+            self.draw_border        = kwargs['draw_border']
 
             # Apply bin-by transforms
             self.df, self.bin_by = rt_self.transformFieldListAndDataFrame(self.df, self.bin_by)

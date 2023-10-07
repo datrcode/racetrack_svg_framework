@@ -107,59 +107,9 @@ class RTCalendarHeatmapMixin(object):
                         draw_outlines   = True,             # draw month outlines
                         draw_day_labels = False,            # draw day labels
                         draw_labels     = True):            # draw labels
-        rt_calendar_heatmap = self.calendarHeatmapInstance(df=df, ts_field=ts_field, ts_min=ts_min, ts_max=ts_max, count_by=count_by, count_by_set=count_by_set,
-                                                           color_by=color_by, color_magnitude=color_magnitude, widget_id=widget_id, month_stroke_width=month_stroke_width,
-                                                           global_max=global_max, global_min=global_min, sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params,
-                                                           sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent, x_view=x_view, y_view=y_view,
-                                                           w=w, h=h, txt_h=txt_h, x_ins=x_ins, y_ins=y_ins, h_gap=h_gap, month_gap=month_gap, cell_framing=cell_framing,
-                                                           draw_outlines=draw_outlines, draw_day_labels=draw_day_labels, draw_labels=draw_labels)
-        return rt_calendar_heatmap.renderSVG(just_calc_max)
-
-    #
-    # calendarHeatmapInstance() - return an instance of an RTCalendarHeatmap
-    #
-    def calendarHeatmapInstance(self,
-                                df,                                 # Dataframe to render
-                                # --------------------------------- #
-                                ts_field           = None,          # timestamp field -- if None, will be guessed
-                                ts_min             = None,          # minimum timestamp -- if None, calculated from df
-                                ts_max             = None,          # maximum timestamp -- if None, calculated from df
-                                count_by           = None,          # count by field -- if None, count by rows in the df
-                                count_by_set       = False,         # use a set operation vs numerical summation
-                                color_by           = None,          # not implemented yet
-                                color_magnitude    = 'linear',      # 'linear' or 'log'
-                                widget_id          = None,          # widget id for embedding in the svg output
-                                month_stroke_width = 1.0,           # stroke width for month outlines
-                                # --------------------------------- # global options
-                                global_max            = None,       # maximum to use for the daily cells
-                                global_min            = None,       # minimum value for the daily cells
-                                # --------------------------------- # small multiple options
-                                sm_type               = None,       # should be the method name // similar to the smallMultiples method
-                                sm_w                  = None,       # override the width of the small multiple
-                                sm_h                  = None,       # override the height of the small multiple
-                                sm_params             = {},         # dictionary of parameters for the small multiples
-                                sm_x_axis_independent = True,       # Use independent axis for x (xy, temporal, and linkNode)
-                                sm_y_axis_independent = True,       # Use independent axis for y (xy, temporal, periodic, pie)
-                                # --------------------------------- #
-                                x_view          = 0,                # coordinates of the svg frame
-                                y_view          = 0,
-                                w               = None,             # overall width of the view / None -- will calculate best possible
-                                h               = None,             # overall height of the view / None -- will calculate best possible
-                                txt_h           = 14,               # maximum text height 
-                                x_ins           = 3,                # border insets
-                                y_ins           = 3,
-                                h_gap           = None,             # between each year
-                                month_gap       = None,             # gap between months
-                                cell_framing    = True,             # frame each day
-                                draw_outlines   = True,             # draw month outlines
-                                draw_day_labels = False,            # draw day labels
-                                draw_labels     = True):            # draw labels
-        return self.RTCalendarHeatmap(self, df=df, ts_field=ts_field, ts_min=ts_min, ts_max=ts_max, count_by=count_by, count_by_set=count_by_set,
-                                      color_by=color_by, color_magnitude=color_magnitude, widget_id=widget_id, month_stroke_width=month_stroke_width,
-                                      global_max=global_max, global_min=global_min, sm_type=sm_type, sm_w=sm_w, sm_h=sm_h, sm_params=sm_params,
-                                      sm_x_axis_independent=sm_x_axis_independent, sm_y_axis_independent=sm_y_axis_independent, x_view=x_view, y_view=y_view,
-                                      w=w, h=h, txt_h=txt_h, x_ins=x_ins, y_ins=y_ins, h_gap=h_gap, month_gap=month_gap, cell_framing=cell_framing,
-                                      draw_outlines=draw_outlines, draw_day_labels=draw_day_labels, draw_labels=draw_labels)
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTCalendarHeatmap(self, **_params_)
 
     #
     # RTCalendarHeatmap() - Inner Class for Calendar Heatmap
@@ -170,81 +120,45 @@ class RTCalendarHeatmapMixin(object):
         #
         def __init__(self,
                      rt_self,
-                     df,                                 # Dataframe to render
-                     # --------------------------------- #
-                     ts_field           = None,          # timestamp field -- if None, will be guessed
-                     ts_min             = None,          # minimum timestamp -- if None, calculated from df
-                     ts_max             = None,          # maximum timestamp -- if None, calculated from df
-                     count_by           = None,          # count by field -- if None, count by rows in the df
-                     count_by_set       = False,         # use a set operation vs numerical summation
-                     color_by           = None,          # not implemented yet
-                     color_magnitude    = 'linear',      # 'linear' or 'log'
-                     widget_id          = None,          # widget id for embedding in the svg output
-                     month_stroke_width = 1.0,           # stroke width for month outlines
-                     # --------------------------------- # global options
-                     global_max            = None,       # maximum to use for the daily cells
-                     global_min            = None,       # minimum value for the daily cells
-                     just_calc_max         = False,      # forces return of the maximum for this render config ...
-                                                         # ... which will then be used for the global max across bar charts...
-                     # --------------------------------- # small multiple options
-                     sm_type               = None,       # should be the method name // similar to the smallMultiples method
-                     sm_w                  = None,       # override the width of the small multiple
-                     sm_h                  = None,       # override the height of the small multiple
-                     sm_params             = {},         # dictionary of parameters for the small multiples
-                     sm_x_axis_independent = True,       # Use independent axis for x (xy, temporal, and linkNode)
-                     sm_y_axis_independent = True,       # Use independent axis for y (xy, temporal, periodic, pie)
-                     # --------------------------------- #
-                     x_view          = 0,                # coordinates of the svg frame
-                     y_view          = 0,
-                     w               = None,             # overall width of the view / None -- will calculate best possible
-                     h               = None,             # overall height of the view / None -- will calculate best possible
-                     txt_h           = 14,               # maximum text height 
-                     x_ins           = 3,                # border insets
-                     y_ins           = 3,
-                     h_gap           = None,             # between each year
-                     month_gap       = None,             # gap between months
-                     cell_framing    = True,             # frame each day
-                     draw_outlines   = True,             # draw month outlines
-                     draw_day_labels = False,            # draw day labels
-                     draw_labels     = True):            # draw labels
+                     **kwargs):
             self.parms                  = locals().copy()
             self.rt_self                = rt_self
-            self.df                     = df.copy()
-            self.ts_field               = ts_field
-            self.ts_min                 = ts_min
-            self.ts_max                 = ts_max
-            self.count_by               = count_by
-            self.count_by_set           = count_by_set
-            self.color_by               = color_by
-            self.color_magnitude        =  color_magnitude
-            self.widget_id              =  widget_id
+            self.df                     = kwargs['df'].copy()
+            self.ts_field               = kwargs['ts_field']
+            self.ts_min                 = kwargs['ts_min']
+            self.ts_max                 = kwargs['ts_max']
+            self.count_by               = kwargs['count_by']
+            self.count_by_set           = kwargs['count_by_set']
+            self.color_by               = kwargs['color_by']
+            self.color_magnitude        = kwargs['color_magnitude']
+            self.widget_id              = kwargs['widget_id']
 
             # Make a widget_id if it's not set already
             if self.widget_id is None:
                 self.widget_id = "calendar_heatmap_" + str(random.randint(0,65535))
 
-            self.month_stroke_width     = month_stroke_width
-            self.global_max             = global_max
-            self.global_min             = global_min
-            self.sm_type                = sm_type
-            self.sm_w                   = sm_w
-            self.sm_h                   = sm_h
-            self.sm_params              = sm_params
-            self.sm_x_axis_independent  = sm_x_axis_independent
-            self.sm_y_axis_independent  = sm_y_axis_independent
-            self.x_view                 = x_view
-            self.y_view                 = y_view
-            self.w                      = w
-            self.h                      = h
-            self.txt_h                  = txt_h
-            self.x_ins                  = x_ins
-            self.y_ins                  = y_ins
-            self.h_gap                  = h_gap
-            self.month_gap              = month_gap
-            self.cell_framing           = cell_framing
-            self.draw_outlines          = draw_outlines
-            self.draw_day_labels        = draw_day_labels
-            self.draw_labels            = draw_labels
+            self.month_stroke_width     = kwargs['month_stroke_width']
+            self.global_max             = kwargs['global_max']
+            self.global_min             = kwargs['global_min']
+            self.sm_type                = kwargs['sm_type']
+            self.sm_w                   = kwargs['sm_w']
+            self.sm_h                   = kwargs['sm_h']
+            self.sm_params              = kwargs['sm_params']
+            self.sm_x_axis_independent  = kwargs['sm_x_axis_independent']
+            self.sm_y_axis_independent  = kwargs['sm_y_axis_independent']
+            self.x_view                 = kwargs['x_view']
+            self.y_view                 = kwargs['y_view']
+            self.w                      = kwargs['w']
+            self.h                      = kwargs['h']
+            self.txt_h                  = kwargs['txt_h']
+            self.x_ins                  = kwargs['x_ins']
+            self.y_ins                  = kwargs['y_ins']
+            self.h_gap                  = kwargs['h_gap']
+            self.month_gap              = kwargs['month_gap']
+            self.cell_framing           = kwargs['cell_framing']
+            self.draw_outlines          = kwargs['draw_outlines']
+            self.draw_day_labels        = kwargs['draw_day_labels']
+            self.draw_labels            = kwargs['draw_labels']
 
             # Determine the timestamp field
             if self.ts_field is None:

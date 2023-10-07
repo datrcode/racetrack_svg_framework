@@ -428,23 +428,9 @@ class RTLinkNodeMixin(object):
                  txt_h=12,                     # text height for labeling
                  draw_labels=True,             # draw labels flag # not implemented yet
                  draw_border=True):            # draw a border around the graph
-        rt_linknode = self.RTLinkNode(self,df,relationships,pos=pos,use_pos_for_bounds=use_pos_for_bounds,render_pos_context=render_pos_context, view_window=view_window,
-                                      pos_context_opacity=pos_context_opacity,bounds_percent=bounds_percent,color_by=color_by,count_by=count_by,
-                                      count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
-                                      node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,node_labels=node_labels,node_labels_only=node_labels_only,
-                                      max_node_size=max_node_size,min_node_size=min_node_size,
-                                      link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, 
-                                      link_arrow_length=link_arrow_length,link_dash=link_dash,
-                                      link_max_curvature_px=link_max_curvature_px,link_parallel_perc=link_parallel_perc,link_ortho_perc=link_ortho_perc,
-                                      max_link_size=max_link_size,min_link_size=min_link_size,
-                                      label_only=label_only, timing_marks=timing_marks, ts_field=ts_field, timing_mark_length=timing_mark_length,
-                                      convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
-                                      convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
-                                      sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
-                                      sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,sm_mode=sm_mode,sm_t=sm_t,
-                                      x_view=x_view,y_view=y_view,w=w,h=h,x_ins=x_ins,y_ins=y_ins,
-                                      txt_h=txt_h,draw_labels=draw_labels,draw_border=draw_border)
-        return rt_linknode.renderSVG()
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTLinkNode(self, **_params_)
 
     #
     # __minAndMaxLinkSize__()
@@ -557,101 +543,7 @@ class RTLinkNodeMixin(object):
                         _fm_ = '|'.join(k_fm) if len(k_fm) > 1 else str(k_fm[0])
                         _to_ = '|'.join(k_to) if len(k_to) > 1 else str(k_to[0])
                         nx_g.add_edge(_fm_,_to_,weight=gb.iloc[i])
-
         return nx_g
-
-    #
-    # linkNodeInstance() - create a RTLinkNode instance
-    #    
-    def linkNodeInstance(self,
-                         df,                                  # dataframe(s) to render ... unlike other parts, this can be more than one...
-                         relationships,                       # list of tuple pairs... pairs can be single strings or tuples of strings
-                                                              # [('f0','f1')] // 1 relationship: f0 to f1
-                                                              # [('f0','f1'),('f1','f2')] // 2 relationships: f0 to f1 and f1 to f2
-                                                              # [(('f0','f1'),('f2','f3'))] // 1 relationship: 'f0'|'f1' to 'f2'|'f3'
-                         # ---------------------------------- # everything else is a default...
-                         pos                      = {},       # networkx style position dictionary pos['node_name'] = 2d array of positions e.g., [[0...1],[0...1]]
-                         view_window              = None,     # (wx0, wy0, wx1, wy1) // if none, will be derived from pos parameter
-
-                         use_pos_for_bounds       = True,     # use the pos values for the boundary of the view
-                         render_pos_context       = False,    # Render all the pos keys by default...  to provide context for the other nodes
-                         pos_context_opacity      = 0.8,      # opacity of the pos context nodes
-                         bounds_percent           = .05,      # inset the graph into the view by this percent... so that the nodes aren't right at the edges 
-                         color_by                 = None,     # just the default color or a string for a field
-                         count_by                 = None,     # none means just count rows, otherwise, use a field to sum by
-                         count_by_set             = False,    # count by summation (by default)... count_by column is checked
-                         widget_id                = None,     # naming the svg elements                 
-                         # ---------------------------------- # linknode visualization
-                         node_color               = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
-                                                              # ... or a dictionary of the node string to either a string to color hash or a "#xxxxxx"
-                         node_border_color        = None,     # small edge around nodes ... should only be "#xxxxxx"
-                         node_size                = 'medium', # 'small', 'medium', 'large', 'vary', 'hidden' / None
-                         node_shape               = None,     # 'square', 'ellipse' / None, 'triangle', 'utriangle', 'diamond', 'plus', 'x', 'small_multiple',
-                                                              # ... or a dictionary of the field tuples node to a shape name
-                                                              # ... or a dictionary of the field tuples node to an SVG small multiple
-                                                              # ... or a function pointer to a shape function
-                         node_opacity             = 1.0,      # fixed node opacity
-                         node_labels              = None,     # Dictionary of node string to array of strings for additional labeling options
-                         node_labels_only         = False,    # Only label based on the node_labels dictionary                         
-                         max_node_size            = 4,        # for node vary...
-                         min_node_size            = 0.3,      # for node vary...
-                         link_color               = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
-                         link_size                = 'small',  # 'nil', 'small', 'medium', 'large', 'vary', 'hidden' / None
-                         link_opacity             = '1.0',    # link opacity
-                         link_shape               = 'line',   # 'curve','line'
-                         link_arrow               = True,     # draw an arrow at the end of the curve...
-                         link_arrow_length        = 10,       # length in pixels of the link arrow
-                         link_dash                = None,     # string for svg stroke-dash, callable, or dictionary of the relationship tuple to stroke dash string
-                         link_max_curvature_px    = 100,      # maximum link curvature outward
-                         link_parallel_perc       = 0.2,      # percent for control point parallel to the link
-                         link_ortho_perc          = 0.2,      # percent for control point orthogonal to the link
-                         max_link_size            = 4,        # for link vary...
-                         min_link_size            = 0.25,     # for link vary...
-                         label_only               = set(),    # label only set
-                         # ---------------------------------- # timing marks
-                         timing_marks             = False,    # flag to enable timing marks on links
-                         ts_field                 = None,     # timestamp field
-                         timing_mark_length       = 5,        # corresponds to the length of the timing mark
-                         # ---------------------------------- # convex hull annotations
-                         convex_hull_lu           = None,     # dictionary... regex for node name to convex hull name
-                         convex_hull_opacity      = 0.3,      # opacity of the convex hulls
-                         convex_hull_labels       = False,    # draw a label for the convex hull in the center of the convex hull
-                         convex_hull_stroke_width = None,     # Stroke width for the convex hull -- if None, will not be drawn...
-                         # ---------------------------------- # small multiple options
-                         sm_type                  = None,     # should be the method name // similar to the smallMultiples method
-                         sm_w                     = None,     # override the width of the small multiple
-                         sm_h                     = None,     # override the height of the small multiple
-                         sm_params                = {},       # dictionary of parameters for the small multiples
-                         sm_x_axis_independent    = True,     # Use independent axis for x (xy, temporal, and linkNode)
-                         sm_y_axis_independent    = True,     # Use independent axis for y (xy, temporal, periodic, pie)
-                         sm_mode                  = 'node',   # 'node' or 'link'
-                         sm_t                     = 0.5,      # location of the small multiple on the link // only applies to sm_mode == 'link'
-                         # ---------------------------------- # visualization geometry / etc.
-                         x_view                   = 0,        # x offset for the view
-                         y_view                   = 0,        # y offset for the view
-                         w                        = 256,      # width of the view
-                         h                        = 256,      # height of the view
-                         x_ins                    = 3,
-                         y_ins                    = 3,
-                         txt_h                    = 12,       # text height for labeling
-                         draw_labels              = True,     # draw labels flag # not implemented yet
-                         draw_border              = True):    # draw a border around the graph
-        return self.RTLinkNode(self,df,relationships,pos=pos,use_pos_for_bounds=use_pos_for_bounds,render_pos_context=render_pos_context, view_window=view_window,
-                               pos_context_opacity=pos_context_opacity,bounds_percent=bounds_percent,color_by=color_by,count_by=count_by,
-                               count_by_set=count_by_set,widget_id=widget_id,node_color=node_color,node_border_color=node_border_color,
-                               node_size=node_size,node_shape=node_shape,node_opacity=node_opacity,node_labels=node_labels,node_labels_only=node_labels_only,
-                               max_node_size=max_node_size,min_node_size=min_node_size,
-                               link_color=link_color,link_size=link_size,link_opacity=link_opacity,link_shape=link_shape,link_arrow=link_arrow, 
-                               link_arrow_length=link_arrow_length,link_dash=link_dash,
-                               link_max_curvature_px=link_max_curvature_px,link_parallel_perc=link_parallel_perc,link_ortho_perc=link_ortho_perc,
-                               max_link_size=max_link_size,min_link_size=min_link_size,
-                               label_only=label_only,timing_marks=timing_marks,ts_field=ts_field,timing_mark_length=timing_mark_length,
-                               convex_hull_lu=convex_hull_lu,convex_hull_opacity=convex_hull_opacity,
-                               convex_hull_labels=convex_hull_labels,convex_hull_stroke_width=convex_hull_stroke_width,
-                               sm_type=sm_type,sm_w=sm_w,sm_h=sm_h,sm_params=sm_params,
-                               sm_x_axis_independent=sm_x_axis_independent,sm_y_axis_independent=sm_y_axis_independent,sm_mode=sm_mode,sm_t=sm_t,
-                               x_view=x_view,y_view=y_view,w=w,h=h,x_ins=x_ins,y_ins=y_ins,
-                               txt_h=txt_h,draw_labels=draw_labels,draw_border=draw_border)
 
     #
     # RTLinkNode Class
@@ -661,159 +553,82 @@ class RTLinkNodeMixin(object):
         # Constructor
         #
         def __init__(self,
-                     rt_self,                             # outer class reference 
-                     df,                                  # dataframe(s) to render ... unlike other parts, this can be more than one...
-                     relationships,                       # list of tuple pairs... pairs can be single strings or tuples of strings
-                                                          # [('f0','f1')] // 1 relationship: f0 to f1
-                                                          # [('f0','f1'),('f1','f2')] // 2 relationships: f0 to f1 and f1 to f2
-                                                          # [(('f0','f1'),('f2','f3'))] // 1 relationship: 'f0'|'f1' to 'f2'|'f3'
-                     # ---------------------------------- # everything else is a default...
-                     pos                      = {},       # networkx style position dictionary pos['node_name'] = 2d array of positions e.g., [[0...1],[0...1]]
-                     view_window              = None,     # (wx0, wy0, wx1, wy1) // if none, will be derived from pos parameter
-
-                     use_pos_for_bounds       = True,     # use the pos values for the boundary of the view
-                     render_pos_context       = False,    # Render all the pos keys by default...  to provide context for the other nodes
-                     pos_context_opacity      = 0.8,      # opacity of the pos context nodes
-                     bounds_percent           = .05,      # inset the graph into the view by this percent... so that the nodes aren't right at the edges 
-                     color_by                 = None,     # just the default color or a string for a field
-                     count_by                 = None,     # none means just count rows, otherwise, use a field to sum by
-                     count_by_set             = False,    # count by summation (by default)... count_by column is checked
-                     widget_id                = None,     # naming the svg elements                 
-                     # ---------------------------------- # linknode visualization
-                     node_color               = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
-                                                          # ... or a dictionary of the node string to either a string to color hash or a "#xxxxxx"
-                     node_border_color        = None,     # small edge around nodes ... should only be "#xxxxxx"
-                     node_size                = 'medium', # 'small', 'medium', 'large', 'vary', 'hidden' / None
-                     node_shape               = None,     # 'square', 'ellipse' / None, 'triangle', 'utriangle', 'diamond', 'plus', 'x', 'small_multiple',
-                                                          # ... or a dictionary of the field tuples node to a shape name
-                                                          # ... or a dictionary of the field tuples node to an SVG small multiple
-                                                          # ... or a function pointer to a shape function
-                     node_opacity             = 1.0,      # fixed node opacity
-                     node_labels              = None,     # Dictionary of node string to array of strings for additional labeling options
-                     node_labels_only         = False,    # Only label based on the node_labels dictionary                     
-                     max_node_size            = 4,        # for node vary...
-                     min_node_size            = 0.3,      # for node vary...
-                     link_color               = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
-                     link_size                = 'small',  # 'nil', 'small', 'medium', 'large', 'vary', 'hidden' / None
-                     link_opacity             = '1.0',    # link opacity
-                     link_shape               = 'line',   # 'curve','line'
-                     link_arrow               = True,     # draw an arrow at the end of the curve...
-                     link_arrow_length        = 10,       # length in pixels of the link arrow
-                     link_dash                = None,     # String for the stroke-dash, callable, or dictionary of relationship tuple to the stroke-dash string
-                     link_max_curvature_px    = 100,      # maximum link curvature outward
-                     link_parallel_perc       = 0.2,      # percent for control point parallel to the link
-                     link_ortho_perc          = 0.2,      # percent for control point orthogonal to the link
-                     max_link_size            = 4,        # for link vary...
-                     min_link_size            = 0.25,     # for link vary...
-                     label_only               = set(),    # label only set
-                     # ---------------------------------- # timing marks
-                     timing_marks             = False,    # flag to enable timing marks on links
-                     ts_field                 = None,     # timestamp field
-                     timing_mark_length       = 5,        # corresponds to the length of the timing mark
-                     # ---------------------------------- # convex hull annotations
-                     convex_hull_lu           = None,     # dictionary... regex for node name to convex hull name
-                     convex_hull_opacity      = 0.3,      # opacity of the convex hulls
-                     convex_hull_labels       = False,    # draw a label for the convex hull in the center of the convex hull
-                     convex_hull_stroke_width = None,     # Stroke width for the convex hull -- if None, will not be drawn...
-                     # ---------------------------------- # small multiple options
-                     sm_type                  = None,     # should be the method name // similar to the smallMultiples method
-                     sm_w                     = None,     # override the width of the small multiple
-                     sm_h                     = None,     # override the height of the small multiple
-                     sm_params                = {},       # dictionary of parameters for the small multiples
-                     sm_x_axis_independent    = True,     # Use independent axis for x (xy, temporal, and linkNode)
-                     sm_y_axis_independent    = True,     # Use independent axis for y (xy, temporal, periodic, pie)
-                     sm_mode                  = 'node',   # 'node' or 'link'
-                     sm_t                     = 0.5,      # location of the small multiple on the link // only applies to sm_mode == 'link'
-                     # ---------------------------------- # visualization geometry / etc.
-                     x_view                   = 0,        # x offset for the view
-                     y_view                   = 0,        # y offset for the view
-                     w                        = 256,      # width of the view
-                     h                        = 256,      # height of the view
-                     x_ins                    = 3,
-                     y_ins                    = 3,
-                     txt_h                    = 12,       # text height for labeling
-                     draw_labels              = True,     # draw labels flag # not implemented yet
-                     draw_border              = True):    # draw a border around the graph
-
+                     rt_self,
+                     **kwargs):
             self.parms                      = locals().copy()
-
             self.rt_self                    = rt_self
-            self.relationships              = relationships
-            self.pos                        = pos
-            self.view_window                = view_window
-            self.use_pos_for_bounds         = use_pos_for_bounds
-            self.render_pos_context         = render_pos_context
-            self.pos_context_opacity        = pos_context_opacity
-            self.bounds_percent             = bounds_percent
-            self.color_by                   = color_by
-            self.count_by                   = count_by
-            self.count_by_set               = count_by_set
-            self.widget_id                  = widget_id
+            self.relationships              = kwargs['relationships']
+            self.pos                        = kwargs['pos']
+            self.view_window                = kwargs['view_window']
+            self.use_pos_for_bounds         = kwargs['use_pos_for_bounds']
+            self.render_pos_context         = kwargs['render_pos_context']
+            self.pos_context_opacity        = kwargs['pos_context_opacity']
+            self.bounds_percent             = kwargs['bounds_percent']
+            self.color_by                   = kwargs['color_by']
+            self.count_by                   = kwargs['count_by']
+            self.count_by_set               = kwargs['count_by_set']
+            self.widget_id                  = kwargs['widget_id']
 
             # Make a widget_id if it's not set already
             if self.widget_id is None:
                 self.widget_id = "linknode_" + str(random.randint(0,65535))
 
-            self.node_color                 = node_color
-            self.node_border_color          = node_border_color
-            self.node_size                  = node_size
-            self.node_shape                 = node_shape
-            self.node_opacity               = node_opacity
-            self.node_labels                = node_labels
-            self.node_labels_only           = node_labels_only
-            self.max_node_size              = max_node_size
-            self.min_node_size              = min_node_size
-            self.link_color                 = link_color
-            self.link_size                  = link_size
-            self.link_opacity               = link_opacity
-            self.link_shape                 = link_shape
-            self.link_arrow                 = link_arrow
-            self.link_arrow_length          = link_arrow_length
-            self.link_dash                  = link_dash
-            self.link_max_curvature_px      = link_max_curvature_px
-            self.link_parallel_perc         = link_parallel_perc
-            self.link_ortho_perc            = link_ortho_perc
-            self.max_link_size              = max_link_size
-            self.min_link_size              = min_link_size
-            self.label_only                 = label_only
-            self.timing_marks               = timing_marks
-            self.ts_field                   = ts_field
-            self.timing_mark_length         = timing_mark_length
-            self.convex_hull_lu             = convex_hull_lu
-            self.convex_hull_opacity        = convex_hull_opacity
-            self.convex_hull_labels         = convex_hull_labels
-            self.convex_hull_stroke_width   = convex_hull_stroke_width
-            self.sm_type                    = sm_type
-            self.sm_w                       = sm_w
-            self.sm_h                       = sm_h
-            self.sm_params                  = sm_params
-            self.sm_x_axis_independent      = sm_x_axis_independent
-            self.sm_y_axis_independent      = sm_y_axis_independent
-            self.sm_mode                    = sm_mode
-            self.sm_t                       = sm_t
-            self.x_view                     = x_view
-            self.y_view                     = y_view
-            self.w                          = w
-            self.h                          = h
-            self.x_ins                      = x_ins
-            self.y_ins                      = y_ins
-            self.txt_h                      = txt_h
-            self.draw_labels                = draw_labels
-            self.draw_border                = draw_border
+            self.node_color                 = kwargs['node_color']
+            self.node_border_color          = kwargs['node_border_color']
+            self.node_size                  = kwargs['node_size']
+            self.node_shape                 = kwargs['node_shape']
+            self.node_opacity               = kwargs['node_opacity']
+            self.node_labels                = kwargs['node_labels']
+            self.node_labels_only           = kwargs['node_labels_only']
+            self.max_node_size              = kwargs['max_node_size']
+            self.min_node_size              = kwargs['min_node_size']
+            self.link_color                 = kwargs['link_color']
+            self.link_size                  = kwargs['link_size']
+            self.link_opacity               = kwargs['link_opacity']
+            self.link_shape                 = kwargs['link_shape']
+            self.link_arrow                 = kwargs['link_arrow']
+            self.link_arrow_length          = kwargs['link_arrow_length']
+            self.link_dash                  = kwargs['link_dash']
+            self.link_max_curvature_px      = kwargs['link_max_curvature_px']
+            self.link_parallel_perc         = kwargs['link_parallel_perc']
+            self.link_ortho_perc            = kwargs['link_ortho_perc']
+            self.max_link_size              = kwargs['max_link_size']
+            self.min_link_size              = kwargs['min_link_size']
+            self.label_only                 = kwargs['label_only']
+            self.timing_marks               = kwargs['timing_marks']
+            self.ts_field                   = kwargs['ts_field']
+            self.timing_mark_length         = kwargs['timing_mark_length']
+            self.convex_hull_lu             = kwargs['convex_hull_lu']
+            self.convex_hull_opacity        = kwargs['convex_hull_opacity']
+            self.convex_hull_labels         = kwargs['convex_hull_labels']
+            self.convex_hull_stroke_width   = kwargs['convex_hull_stroke_width']
+            self.sm_type                    = kwargs['sm_type']
+            self.sm_w                       = kwargs['sm_w']
+            self.sm_h                       = kwargs['sm_h']
+            self.sm_params                  = kwargs['sm_params']
+            self.sm_x_axis_independent      = kwargs['sm_x_axis_independent']
+            self.sm_y_axis_independent      = kwargs['sm_y_axis_independent']
+            self.sm_mode                    = kwargs['sm_mode']
+            self.sm_t                       = kwargs['sm_t']
+            self.x_view                     = kwargs['x_view']
+            self.y_view                     = kwargs['y_view']
+            self.w                          = kwargs['w']
+            self.h                          = kwargs['h']
+            self.x_ins                      = kwargs['x_ins']
+            self.y_ins                      = kwargs['y_ins']
+            self.txt_h                      = kwargs['txt_h']
+            self.draw_labels                = kwargs['draw_labels']
+            self.draw_border                = kwargs['draw_border']
 
             # Make sure it's a list... and prevent the added columns from corrupting original dataframe
             my_df_list = []
-            if type(df) != list:
-                my_df_list.append(df.copy())
+            if type(kwargs['df']) != list:
+                my_df_list.append(kwargs['df'].copy())
             else:
-                for _df in df:
+                for _df in kwargs['df']:
                     my_df_list.append(_df.copy())
             self.df = my_df_list
             
-            # Make a widget_id if it's not set already
-            if widget_id == None:
-                widget_id = "linknode_" + str(random.randint(0,65535))
-
             # Apply count-by transforms
             if self.count_by is not None and rt_self.isTField(self.count_by):
                 self.df,self.count_by = rt_self.applyTransform(self.df, self.count_by)

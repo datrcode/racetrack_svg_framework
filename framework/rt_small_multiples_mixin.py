@@ -41,59 +41,59 @@ class RTSmallMultiplesMixin(object):
     # NOTE:  ANY MODIFICATIONS TO THESE PARAMETERS NEED TO BE REFLECTED IN THE INSTANCE CREATION
     #        ... AND PROBABLY THE STANDALONE RENDERER AS WELL // ALL WITHIN THIS FILE
     #
-    def smallMultiples(self,
-                       df,                                 # Dataframe
-                       category_by,                        # Field(s) to separate small multiples by
-                       sm_type,                            # Visualization type (e.g., 'xy', 'linkNode', ...)
+    def __smallMultiples_impl__(self,
+                                df,                                 # Dataframe
+                                category_by,                        # Field(s) to separate small multiples by
+                                sm_type,                            # Visualization type (e.g., 'xy', 'linkNode', ...)
 
-                       #-----------------------------------# Defaults after this line
+                                #-----------------------------------# Defaults after this line
 
-                       sm_params             = {},         # Dictionary for customizing widget
-                       customize_params_fn   = None,       # Customize the parameters function
+                                sm_params             = {},         # Dictionary for customizing widget
+                                customize_params_fn   = None,       # Customize the parameters function
 
-                       ts_field              = None,       # For any temporal components
-                       count_by              = None,       # Passed to the widgets
-                       color_by              = None,       # Passed to the widgets
-                       global_color_order    = None,       # color by ordering... if none (default), will be calculated
-                       count_by_set          = False,      # count by using a set operation
+                                ts_field              = None,       # For any temporal components
+                                count_by              = None,       # Passed to the widgets
+                                color_by              = None,       # Passed to the widgets
+                                global_color_order    = None,       # color by ordering... if none (default), will be calculated
+                                count_by_set          = False,      # count by using a set operation
 
-                       temporal_granularity  = None,       # Minimum temporal granularity for the temporalBarChart component
+                                temporal_granularity  = None,       # Minimum temporal granularity for the temporalBarChart component
 
-                       #-----------------------------------# Small multiple params
+                                #-----------------------------------# Small multiple params
 
-                       show_df_multiple      = True,       # Show the "all data" version small multiple // note issues with xy scatterplots when data is aggregated
-                       max_categories        = None,       # Limit the number of small multiples shown
-                       grid_view             = False,      # For two category fields, make it into a grid
-                       shrink_wrap_rows      = False,      # For a grid view, shrink wrap rows
-                       sort_by               = 'records',  # 'records','alpha','field', 'similarity', or a list in the category_by schema
-                       sort_by_field         = None,       # For sort_by == 'field', the field name... for 'similarity', the exemplar key
-                       faded_sm_set          = None,       # small multiple labels to render as faded -- stored in a set as the string label (not the index tuple)
-                       faded_opacity         = 0.7,        # ... opacity to use when fading
+                                show_df_multiple      = True,       # Show the "all data" version small multiple // note issues with xy scatterplots when data is aggregated
+                                max_categories        = None,       # Limit the number of small multiples shown
+                                grid_view             = False,      # For two category fields, make it into a grid
+                                shrink_wrap_rows      = False,      # For a grid view, shrink wrap rows
+                                sort_by               = 'records',  # 'records','alpha','field', 'similarity', or a list in the category_by schema
+                                sort_by_field         = None,       # For sort_by == 'field', the field name... for 'similarity', the exemplar key
+                                faded_sm_set          = None,       # small multiple labels to render as faded -- stored in a set as the string label (not the index tuple)
+                                faded_opacity         = 0.7,        # ... opacity to use when fading
 
-                       x_axis_independent    = True,       # Use independent axis for x (xy, temporal, and linkNode)
-                       y_axis_independent    = True,       # Use independent axis for y (xy, temporal, periodic, pie)
+                                x_axis_independent    = True,       # Use independent axis for x (xy, temporal, and linkNode)
+                                y_axis_independent    = True,       # Use independent axis for y (xy, temporal, periodic, pie)
 
-                       category_to_sm        = None,       # If set to a dictionary, will be filled in with svg element per category
-                       category_to_instance  = None,       # If set to a dictionary, will be filled in with the class instance
-                       category_to_df        = None,       # If set to a dictionary, will be filled with the df subsetted to the category
+                                category_to_sm        = None,       # If set to a dictionary, will be filled in with svg element per category
+                                category_to_instance  = None,       # If set to a dictionary, will be filled in with the class instance
+                                category_to_df        = None,       # If set to a dictionary, will be filled with the df subsetted to the category
 
-                       #-----------------------------------# Render-specific params
+                                #-----------------------------------# Render-specific params
 
-                       widget_id             = None,       # Uniquely identify this widget -- embedded into svg element ids
-                       x_view                = 0,          # View coordinates
-                       y_view                = 0,
-                       w                     = 768,        # Width of the sm container
-                       h                     = 768,        # Height of the sm container
-                       w_sm_override         = None,       # Override the small multiple width
-                       h_sm_override         = None,       # Override the small multiple height
-                       txt_h                 = 14,         # Text height for the small multiple captions
-                       x_ins                 = 2,          # Left/right inserts
-                       y_ins                 = 2,          # Top/bottom inserts
-                       x_inter               = 2,          # Horizontal spacing between small multiples
-                       y_inter               = 4,          # Vertical spacing between small multiples
-                       background_override   = None,       # Override the background color
-                       draw_labels           = True,       # Draw label under each small multiple
-                       draw_border           = True):      # Draw border around the whole chart
+                                widget_id             = None,       # Uniquely identify this widget -- embedded into svg element ids
+                                x_view                = 0,          # View coordinates
+                                y_view                = 0,
+                                w                     = 768,        # Width of the sm container
+                                h                     = 768,        # Height of the sm container
+                                w_sm_override         = None,       # Override the small multiple width
+                                h_sm_override         = None,       # Override the small multiple height
+                                txt_h                 = 14,         # Text height for the small multiple captions
+                                x_ins                 = 2,          # Left/right inserts
+                                y_ins                 = 2,          # Top/bottom inserts
+                                x_inter               = 2,          # Horizontal spacing between small multiples
+                                y_inter               = 4,          # Vertical spacing between small multiples
+                                background_override   = None,       # Override the background color
+                                draw_labels           = True,       # Draw label under each small multiple
+                                draw_border           = True):      # Draw border around the whole chart
         
         my_params = locals().copy()
 
@@ -201,7 +201,6 @@ class RTSmallMultiplesMixin(object):
 
         # Get most of the params ready... most the params == params that won't change between small multiples
         widget_func         = getattr(self, sm_type)
-        widget_create_class = getattr(self, 'RT' + sm_type[0].upper() + sm_type[1:])
 
         most_params = sm_params.copy()
         most_params['count_by']    = count_by
@@ -292,8 +291,8 @@ class RTSmallMultiplesMixin(object):
                     key_df = cat_gb.get_group(key)
                     my_params = most_params.copy()
                     my_params['df'] = key_df
-                    my_params['just_calc_max'] = True
-                    local_min,local_max = widget_func(**my_params)
+                    rt_comp_instance = widget_func(**my_params)
+                    local_min,local_max = rt_comp_instance.renderSVG(just_calc_max=True)
                     if global_min is None:
                         global_min,global_max = local_min,local_max
                     global_min,global_max = min(global_min,local_min),max(global_max,local_max)
@@ -314,8 +313,8 @@ class RTSmallMultiplesMixin(object):
                     key_df = cat_gb.get_group(key)
                     my_params = most_params.copy()
                     my_params['df'] = key_df
-                    my_params['just_calc_max'] = True
-                    local_max,local_min = widget_func(**my_params)
+                    rt_comp_instance = widget_func(**my_params)
+                    local_min,local_max = rt_comp_instance.renderSVG(just_calc_max=True)
                     if global_max is None:
                         global_max,global_min = local_max,local_min
                     else:
@@ -544,15 +543,14 @@ class RTSmallMultiplesMixin(object):
                 customize_params_fn(None, my_params)
 
             sm_svg = widget_func(**my_params)
-            svg += sm_svg
+            svg += sm_svg._repr_svg_()
 
             if category_to_sm is not None:
                 category_to_sm['__show_df_multiple__'] = sm_svg
 
             if category_to_instance is not None:
                 instance_params = my_params.copy()
-                instance_params['rt_self'] = self
-                category_to_instance['__show_df_multiple__'] = widget_create_class(**instance_params)
+                category_to_instance['__show_df_multiple__'] = widget_func(**instance_params)
             
             if category_to_df is not None:
                 category_to_df['__show_df_multiple__'] = df
@@ -595,15 +593,14 @@ class RTSmallMultiplesMixin(object):
                     customize_params_fn(key, my_params)
 
                 sm_svg = widget_func(**my_params)
-                svg += sm_svg
+                svg += sm_svg._repr_svg_()
 
                 # Save the small multiple svg if the parameter was passed to the method
                 if category_to_sm is not None:
                     category_to_sm[key] = sm_svg
                 if category_to_instance is not None:
                     instance_params = my_params.copy()
-                    instance_params['rt_self'] = self
-                    category_to_instance[key] = widget_create_class(**instance_params)
+                    category_to_instance[key] = widget_func(**instance_params)
                 if category_to_df is not None:
                     category_to_df[key] = key_df
 
@@ -660,7 +657,7 @@ class RTSmallMultiplesMixin(object):
                     customize_params_fn(key, my_params)
 
                 sm_svg = widget_func(**my_params)
-                svg += sm_svg
+                svg += sm_svg._repr_svg_()
 
                 # Add the labels
                 if shrink_wrap_rows and draw_labels:
@@ -675,8 +672,7 @@ class RTSmallMultiplesMixin(object):
                     category_to_sm[key] = sm_svg
                 if category_to_instance is not None:
                     instance_params = my_params.copy()
-                    instance_params['rt_self'] = self
-                    category_to_instance[key] = widget_create_class(**instance_params)
+                    category_to_instance[key] = widget_func(**instance_params)
                 if category_to_df is not None:
                     category_to_df[key] = key_df
 
@@ -723,88 +719,51 @@ class RTSmallMultiplesMixin(object):
         return svg
 
     #
-    # smallMultiplesInstance() - return an instnace of a Small Multiple RT Component.
+    # smallMultiples() - return an instance of a Small Multiple RT Component.
     #
-    def smallMultiplesInstance(self,
-                               df,                                 # Dataframe
-                               category_by,                        # Field(s) to separate small multiples by
-                               sm_type,                            # Visualization type (e.g., 'xy', 'linkNode', ...)
-                               #-----------------------------------# Defaults after this line
-                               sm_params             = {},         # Dictionary for customizing widget
-                               customize_params_fn   = None,       # Customize the parameters function
-                               ts_field              = None,       # For any temporal components
-                               count_by              = None,       # Passed to the widgets
-                               color_by              = None,       # Passed to the widgets
-                               global_color_order    = None,       # color by ordering... if none (default), will be calculated
-                               count_by_set          = False,      # count by using a set operation
-                               temporal_granularity  = None,       # Minimum temporal granularity for the temporalBarChart component
-                               #-----------------------------------# Small multiple params
-                               show_df_multiple      = True,       # Show the "all data" version small multiple // note issues with xy scatterplots when data is aggregated
-                               max_categories        = None,       # Limit the number of small multiples shown
-                               grid_view             = False,      # For two category fields, make it into a grid
-                               shrink_wrap_rows      = False,      # For a grid view, shrink wrap rows
-                               sort_by               = 'records',  # 'records','alpha','field', 'similarity', or a list in the category_by schema
-                               sort_by_field         = None,       # For sort_by == 'field', the field name... for 'similarity', the exemplar key
-                               faded_sm_set          = None,       # small multiple labels to render as faded -- stored in a set as the string label (not the index tuple)
-                               faded_opacity         = 0.7,        # ... opacity to use when fading
-                               x_axis_independent    = True,       # Use independent axis for x (xy, temporal, and linkNode)
-                               y_axis_independent    = True,       # Use independent axis for y (xy, temporal, periodic, pie)
-                               #-----------------------------------# Render-specific params
-                               widget_id             = None,       # Uniquely identify this widget -- embedded into svg element ids
-                               x_view                = 0,          # View coordinates
-                               y_view                = 0,
-                               w                     = 768,        # Width of the sm container
-                               h                     = 768,        # Height of the sm container
-                               w_sm_override         = None,       # Override the small multiple width
-                               h_sm_override         = None,       # Override the small multiple height
-                               txt_h                 = 14,         # Text height for the small multiple captions
-                               x_ins                 = 2,          # Left/right inserts
-                               y_ins                 = 2,          # Top/bottom inserts
-                               x_inter               = 2,          # Horizontal spacing between small multiples
-                               y_inter               = 4,          # Vertical spacing between small multiples
-                               background_override   = None,       # Override the background color
-                               draw_labels           = True,       # Draw label under each small multiple
-                               draw_border           = True):      # Draw border around the whole chart
-        return self.RTSmallMultiples(self,
-                                     df                    = df,                    # Dataframe
-                                     category_by           = category_by,           # Field(s) to separate small multiples by
-                                     sm_type               = sm_type,               # Visualization type (e.g., 'xy', 'linkNode', ...)
-                                     #----------------------------------------------# Defaults after this line
-                                     sm_params             = sm_params,             # Dictionary for customizing widget
-                                     customize_params_fn   = customize_params_fn,   # Customize the parameters function
-                                     ts_field              = ts_field,              # For any temporal components
-                                     count_by              = count_by,              # Passed to the widgets
-                                     color_by              = color_by,              # Passed to the widgets
-                                     global_color_order    = global_color_order,    # color by ordering... if none (default), will be calculated
-                                     count_by_set          = count_by_set,          # count by using a set operation
-                                     temporal_granularity  = temporal_granularity,  # Minimum temporal granularity for the temporalBarChart component
-                                     #----------------------------------------------# Small multiple params
-                                     show_df_multiple      = show_df_multiple,      # Show the "all data" version small multiple // note issues with xy scatterplots when data is aggregated
-                                     max_categories        = max_categories,        # Limit the number of small multiples shown
-                                     grid_view             = grid_view,             # For two category fields, make it into a grid
-                                     shrink_wrap_rows      = shrink_wrap_rows,      # For a grid view, shrink wrap rows
-                                     sort_by               = sort_by,               # 'records','alpha','field', 'similarity', or a list in the category_by schema
-                                     sort_by_field         = sort_by_field,         # For sort_by == 'field', the field name... for 'similarity', the exemplar key
-                                     faded_sm_set          = faded_sm_set,          # small multiple labels to render as faded -- stored in a set as the string label (not the index tuple)
-                                     faded_opacity         = faded_opacity,         # ... opacity to use when fading
-                                     x_axis_independent    = x_axis_independent,    # Use independent axis for x (xy, temporal, and linkNode)
-                                     y_axis_independent    = y_axis_independent,    # Use independent axis for y (xy, temporal, periodic, pie)
-                                     #----------------------------------------------# Render-specific params
-                                     widget_id             = widget_id,             # Uniquely identify this widget -- embedded into svg element ids
-                                     x_view                = x_view,                # View coordinates
-                                     y_view                = y_view,
-                                     w                     = w,                     # Width of the sm container
-                                     h                     = h,                     # Height of the sm container
-                                     w_sm_override         = w_sm_override,         # Override the small multiple width
-                                     h_sm_override         = h_sm_override,         # Override the small multiple height
-                                     txt_h                 = txt_h,                 # Text height for the small multiple captions
-                                     x_ins                 = x_ins,                 # Left/right inserts
-                                     y_ins                 = y_ins,                 # Top/bottom inserts
-                                     x_inter               = x_inter,               # Horizontal spacing between small multiples
-                                     y_inter               = y_inter,               # Vertical spacing between small multiples
-                                     background_override   = background_override,   # Override the background color
-                                     draw_labels           = draw_labels,           # Draw label under each small multiple
-                                     draw_border           = draw_border)           # Draw border around the whole chart
+    def smallMultiples(self,
+                       df,                                 # Dataframe
+                       category_by,                        # Field(s) to separate small multiples by
+                       sm_type,                            # Visualization type (e.g., 'xy', 'linkNode', ...)
+                       #-----------------------------------# Defaults after this line
+                       sm_params             = {},         # Dictionary for customizing widget
+                       customize_params_fn   = None,       # Customize the parameters function
+                       ts_field              = None,       # For any temporal components
+                       count_by              = None,       # Passed to the widgets
+                       color_by              = None,       # Passed to the widgets
+                       global_color_order    = None,       # color by ordering... if none (default), will be calculated
+                       count_by_set          = False,      # count by using a set operation
+                       temporal_granularity  = None,       # Minimum temporal granularity for the temporalBarChart component
+                       #-----------------------------------# Small multiple params
+                       show_df_multiple      = True,       # Show the "all data" version small multiple // note issues with xy scatterplots when data is aggregated
+                       max_categories        = None,       # Limit the number of small multiples shown
+                       grid_view             = False,      # For two category fields, make it into a grid
+                       shrink_wrap_rows      = False,      # For a grid view, shrink wrap rows
+                       sort_by               = 'records',  # 'records','alpha','field', 'similarity', or a list in the category_by schema
+                       sort_by_field         = None,       # For sort_by == 'field', the field name... for 'similarity', the exemplar key
+                       faded_sm_set          = None,       # small multiple labels to render as faded -- stored in a set as the string label (not the index tuple)
+                       faded_opacity         = 0.7,        # ... opacity to use when fading
+                       x_axis_independent    = True,       # Use independent axis for x (xy, temporal, and linkNode)
+                       y_axis_independent    = True,       # Use independent axis for y (xy, temporal, periodic, pie)
+                       #-----------------------------------# Render-specific params
+                       widget_id             = None,       # Uniquely identify this widget -- embedded into svg element ids
+                       x_view                = 0,          # View coordinates
+                       y_view                = 0,
+                       w                     = 768,        # Width of the sm container
+                       h                     = 768,        # Height of the sm container
+                       w_sm_override         = None,       # Override the small multiple width
+                       h_sm_override         = None,       # Override the small multiple height
+                       txt_h                 = 14,         # Text height for the small multiple captions
+                       x_ins                 = 2,          # Left/right inserts
+                       y_ins                 = 2,          # Top/bottom inserts
+                       x_inter               = 2,          # Horizontal spacing between small multiples
+                       y_inter               = 4,          # Vertical spacing between small multiples
+                       background_override   = None,       # Override the background color
+                       draw_labels           = True,       # Draw label under each small multiple
+                       draw_border           = True):      # Draw border around the whole chart
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTSmallMultiples(self, **_params_)
 
     #
     # RTSmallMultiples Class
@@ -812,100 +771,64 @@ class RTSmallMultiplesMixin(object):
     class RTSmallMultiples(RTComponent):
         def __init__(self,
                      rt_self,
-                     df,                                 # Dataframe
-                     category_by,                        # Field(s) to separate small multiples by
-                     sm_type,                            # Visualization type (e.g., 'xy', 'linkNode', ...)
-                     #-----------------------------------# Defaults after this line
-                     sm_params             = {},         # Dictionary for customizing widget
-                     customize_params_fn   = None,       # Customize the parameters function
-                     ts_field              = None,       # For any temporal components
-                     count_by              = None,       # Passed to the widgets
-                     color_by              = None,       # Passed to the widgets
-                     global_color_order    = None,       # color by ordering... if none (default), will be calculated
-                     count_by_set          = False,      # count by using a set operation
-                     temporal_granularity  = None,       # Minimum temporal granularity for the temporalBarChart component
-                     #-----------------------------------# Small multiple params
-                     show_df_multiple      = True,       # Show the "all data" version small multiple // note issues with xy scatterplots when data is aggregated
-                     max_categories        = None,       # Limit the number of small multiples shown
-                     grid_view             = False,      # For two category fields, make it into a grid
-                     shrink_wrap_rows      = False,      # For a grid view, shrink wrap rows
-                     sort_by               = 'records',  # 'records','alpha','field', 'similarity', or a list in the category_by schema
-                     sort_by_field         = None,       # For sort_by == 'field', the field name... for 'similarity', the exemplar key
-                     faded_sm_set          = None,       # small multiple labels to render as faded -- stored in a set as the string label (not the index tuple)
-                     faded_opacity         = 0.7,        # ... opacity to use when fading
-                     x_axis_independent    = True,       # Use independent axis for x (xy, temporal, and linkNode)
-                     y_axis_independent    = True,       # Use independent axis for y (xy, temporal, periodic, pie)
-                     #-----------------------------------# Render-specific params
-                     widget_id             = None,       # Uniquely identify this widget -- embedded into svg element ids
-                      x_view                = 0,          # View coordinates
-                     y_view                = 0,
-                     w                     = 768,        # Width of the sm container
-                     h                     = 768,        # Height of the sm container
-                     w_sm_override         = None,       # Override the small multiple width
-                     h_sm_override         = None,       # Override the small multiple height
-                     txt_h                 = 14,         # Text height for the small multiple captions
-                     x_ins                 = 2,          # Left/right inserts
-                     y_ins                 = 2,          # Top/bottom inserts
-                     x_inter               = 2,          # Horizontal spacing between small multiples
-                     y_inter               = 4,          # Vertical spacing between small multiples
-                     background_override   = None,       # Override the background color
-                     draw_labels           = True,       # Draw label under each small multiple
-                     draw_border           = True):      # Draw border around the whole chart
+                     **kwargs):
             self.parms     = locals().copy()
             self.rt_self   = rt_self
-            self.df        = df.copy()
-            self.widget_id = widget_id
+            self.df        = kwargs['df'].copy()
+            self.widget_id = kwargs['widget_id']
             if self.widget_id is None:
                 self.widget_id = "smallMultiples_"+str(random.randint(0,65535))
-            self.category_by           = category_by
-            self.sm_type               = sm_type
-            self.sm_params             = sm_params
-            self.customize_params_fn   = customize_params_fn
-            self.ts_field              = ts_field
-            self.count_by              = count_by
-            self.color_by              = color_by
-            self.global_color_order    = global_color_order
-            self.count_by_set          = count_by_set
-            self.temporal_granularity  = temporal_granularity
-            self.show_df_multiple      = show_df_multiple
-            self.max_categories        = max_categories
-            self.grid_view             = grid_view
-            self.shrink_wrap_rows      = shrink_wrap_rows
-            self.sort_by               = sort_by
-            self.sort_by_field         = sort_by_field
-            self.faded_sm_set          = faded_sm_set
-            self.faded_opacity         = faded_opacity
-            self.x_axis_independent    = x_axis_independent
-            self.y_axis_independent    = y_axis_independent
-            self.x_view                = x_view
-            self.y_view                = y_view
-            self.w                     = w
-            self.h                     = h
-            self.w_sm_override         = w_sm_override
-            self.h_sm_override         = h_sm_override
-            self.txt_h                 = txt_h
-            self.x_ins                 = x_ins
-            self.y_ins                 = y_ins
-            self.x_inter               = x_inter
-            self.y_inter               = y_inter
-            self.background_override   = background_override
-            self.draw_labels           = draw_labels
-            self.draw_border           = draw_border
+            self.category_by           = kwargs['category_by']
+            self.sm_type               = kwargs['sm_type']
+            self.sm_params             = kwargs['sm_params']
+            self.customize_params_fn   = kwargs['customize_params_fn']
+            self.ts_field              = kwargs['ts_field']
+            self.count_by              = kwargs['count_by']
+            self.color_by              = kwargs['color_by']
+            self.global_color_order    = kwargs['global_color_order']
+            self.count_by_set          = kwargs['count_by_set']
+            self.temporal_granularity  = kwargs['temporal_granularity']
+            self.show_df_multiple      = kwargs['show_df_multiple']
+            self.max_categories        = kwargs['max_categories']
+            self.grid_view             = kwargs['grid_view']
+            self.shrink_wrap_rows      = kwargs['shrink_wrap_rows']
+            self.sort_by               = kwargs['sort_by']
+            self.sort_by_field         = kwargs['sort_by_field']
+            self.faded_sm_set          = kwargs['faded_sm_set']
+            self.faded_opacity         = kwargs['faded_opacity']
+            self.x_axis_independent    = kwargs['x_axis_independent']
+            self.y_axis_independent    = kwargs['y_axis_independent']
+            self.x_view                = kwargs['x_view']
+            self.y_view                = kwargs['y_view']
+            self.w                     = kwargs['w']
+            self.h                     = kwargs['h']
+            self.w_sm_override         = kwargs['w_sm_override']
+            self.h_sm_override         = kwargs['h_sm_override']
+            self.txt_h                 = kwargs['txt_h']
+            self.x_ins                 = kwargs['x_ins']
+            self.y_ins                 = kwargs['y_ins']
+            self.x_inter               = kwargs['x_inter']
+            self.y_inter               = kwargs['y_inter']
+            self.background_override   = kwargs['background_override']
+            self.draw_labels           = kwargs['draw_labels']
+            self.draw_border           = kwargs['draw_border']
 
-            # Determine the timestamp field
-            if self.ts_field is None:
+            # Ensure the timestamp field (ts_field) is set
+            if (self.sm_type == 'temporalBarChart' or \
+                self.sm_type == 'periodicBarChart' or \
+                self.sm_type == 'calendarHeatmap') and self.ts_field is None:
                 choices = self.df.select_dtypes(np.datetime64).columns
                 if len(choices) == 1:
                     self.ts_field = choices[0]
                 elif len(choices) > 1:
-                    print('multiple timestamp fields... choosing the first (RTSmallMultiples)')
+                    print('multiple timestamp fields... choosing the first (smallMultiples)')
                     self.ts_field = choices[0]
                 else:
-                    raise Exception('no timestamp field supplied to RTSmallMultiples(), cannot automatically determine field')
-            
+                    raise Exception('no timestamp field supplied to smallMultiples(), cannot automatically determine field')
+
             # Calculate temporal_granulaity if needed
-            if sm_type == 'temporalBarChart' and self.temporal_granularity is None:
-                self.temporal_granularity = self.rt_self.temporalGranularity(df, ts_field)
+            if kwargs['sm_type'] == 'temporalBarChart' and self.temporal_granularity is None:
+                self.temporal_granularity = self.rt_self.temporalGranularity(self.df, self.ts_field)
 
             # Geometry lookup for tracking state
             self.geom_to_df           = {}
@@ -929,45 +852,45 @@ class RTSmallMultiplesMixin(object):
             self.category_to_sm       = {} # <== Reset the state tracking for all three dictionaries...
             self.category_to_instance = {}
             self.category_to_df       = {}
-            self.last_render = self.rt_self.smallMultiples(self.df,
-                                                           category_by           = self.category_by,
-                                                           sm_type               = self.sm_type,
-                                                           sm_params             = self.sm_params,
-                                                           customize_params_fn   = self.customize_params_fn,
-                                                           ts_field              = self.ts_field,
-                                                           count_by              = self.count_by,
-                                                           color_by              = self.color_by,
-                                                           global_color_order    = self.global_color_order,
-                                                           count_by_set          = self.count_by_set,
-                                                           temporal_granularity  = self.temporal_granularity,
-                                                           show_df_multiple      = self.show_df_multiple,
-                                                           max_categories        = self.max_categories,
-                                                           grid_view             = self.grid_view,
-                                                           shrink_wrap_rows      = self.shrink_wrap_rows,
-                                                           sort_by               = self.sort_by,
-                                                           sort_by_field         = self.sort_by_field,
-                                                           faded_sm_set          = self.faded_sm_set,
-                                                           faded_opacity         = self.faded_opacity,
-                                                           x_axis_independent    = self.x_axis_independent,
-                                                           y_axis_independent    = self.y_axis_independent,
-                                                           category_to_sm        = self.category_to_sm,        # <== State Tracking
-                                                           category_to_instance  = self.category_to_instance,  # <== State Tracking
-                                                           category_to_df        = self.category_to_df,        # <== State Tracking
-                                                           widget_id             = self.widget_id,
-                                                           x_view                = self.x_view,
-                                                           y_view                = self.y_view,
-                                                           w                     = self.w,
-                                                           h                     = self.h,
-                                                           w_sm_override         = self.w_sm_override,
-                                                           h_sm_override         = self.h_sm_override,
-                                                           txt_h                 = self.txt_h,
-                                                           x_ins                 = self.x_ins,
-                                                           y_ins                 = self.y_ins,
-                                                           x_inter               = self.x_inter,
-                                                           y_inter               = self.y_inter,
-                                                           background_override   = self.background_override,
-                                                           draw_labels           = self.draw_labels,
-                                                           draw_border           = self.draw_border)
+            self.last_render = self.rt_self.__smallMultiples_impl__(self.df,
+                                                                    category_by           = self.category_by,
+                                                                    sm_type               = self.sm_type,
+                                                                    sm_params             = self.sm_params,
+                                                                    customize_params_fn   = self.customize_params_fn,
+                                                                    ts_field              = self.ts_field,
+                                                                    count_by              = self.count_by,
+                                                                    color_by              = self.color_by,
+                                                                    global_color_order    = self.global_color_order,
+                                                                    count_by_set          = self.count_by_set,
+                                                                    temporal_granularity  = self.temporal_granularity,
+                                                                    show_df_multiple      = self.show_df_multiple,
+                                                                    max_categories        = self.max_categories,
+                                                                    grid_view             = self.grid_view,
+                                                                    shrink_wrap_rows      = self.shrink_wrap_rows,
+                                                                    sort_by               = self.sort_by,
+                                                                    sort_by_field         = self.sort_by_field,
+                                                                    faded_sm_set          = self.faded_sm_set,
+                                                                    faded_opacity         = self.faded_opacity,
+                                                                    x_axis_independent    = self.x_axis_independent,
+                                                                    y_axis_independent    = self.y_axis_independent,
+                                                                    category_to_sm        = self.category_to_sm,        # <== State Tracking
+                                                                    category_to_instance  = self.category_to_instance,  # <== State Tracking
+                                                                    category_to_df        = self.category_to_df,        # <== State Tracking
+                                                                    widget_id             = self.widget_id,
+                                                                    x_view                = self.x_view,
+                                                                    y_view                = self.y_view,
+                                                                    w                     = self.w,
+                                                                    h                     = self.h,
+                                                                    w_sm_override         = self.w_sm_override,
+                                                                    h_sm_override         = self.h_sm_override,
+                                                                    txt_h                 = self.txt_h,
+                                                                    x_ins                 = self.x_ins,
+                                                                    y_ins                 = self.y_ins,
+                                                                    x_inter               = self.x_inter,
+                                                                    y_inter               = self.y_inter,
+                                                                    background_override   = self.background_override,
+                                                                    draw_labels           = self.draw_labels,
+                                                                    draw_border           = self.draw_border)
             return self.last_render
 
         #
@@ -1073,26 +996,26 @@ class RTSmallMultiplesMixin(object):
 
         # Call the original smallMultiples method with the lookup parameter present
         my_category_to_sm = {}
-        self.smallMultiples(master_df, 
-                            my_cat_column, 
-                            sm_type, 
-                            sm_params=sm_params,
-                            ts_field=ts_field,
-                            count_by=count_by,
-                            color_by=color_by,
-                            count_by_set=count_by_set,
-                            show_df_multiple=False,
-                            x_axis_independent=x_axis_independent,
-                            y_axis_independent=y_axis_independent,
-                            category_to_sm=my_category_to_sm,
-                            widget_id=parent_id,
-                            w_sm_override=sm_w,
-                            h_sm_override=sm_h)
+        self.__smallMultiples_impl__(master_df, 
+                                     my_cat_column, 
+                                     sm_type, 
+                                     sm_params=sm_params,
+                                     ts_field=ts_field,
+                                     count_by=count_by,
+                                     color_by=color_by,
+                                     count_by_set=count_by_set,
+                                     show_df_multiple=False,
+                                     x_axis_independent=x_axis_independent,
+                                     y_axis_independent=y_axis_independent,
+                                     category_to_sm=my_category_to_sm,
+                                     widget_id=parent_id,
+                                     w_sm_override=sm_w,
+                                     h_sm_override=sm_h)
 
         # Re-write the SVG for the xy coordinate... // seems kindof clunky to do it this way... fragile
         updated_category_to_sm = {}
         for k in my_category_to_sm:
-            k_svg = my_category_to_sm[k]
+            k_svg = my_category_to_sm[k]._repr_svg_()
             updated_category_to_sm[k] = self.__overwriteSVGOriginPosition__(k_svg, str_to_xy.get(k), sm_w, sm_h)
 
         return updated_category_to_sm
@@ -1133,7 +1056,7 @@ class RTSmallMultiplesMixin(object):
         if 'max_categories' in params_copy.keys():                      # remove max categories so that we can compare against everything
             params_copy.pop('max_categories')
 
-        self.smallMultiples(**params_copy)                              # perform the actual instance creation -- results in category_to_instance variable
+        self.__smallMultiples_impl__(**params_copy)                     # perform the actual instance creation -- results in category_to_instance variable
 
         # Have the classes create the their feature vectors
         category_to_fv = {}
