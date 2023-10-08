@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 import hashlib
 import random
@@ -146,6 +147,79 @@ class RACETrack(RTAnnotationsMixin,
         return ipc_display.Image(data=b.getvalue(),format='png',embed=True)
 
     #
+    # isPandas() - is this a pandas dataframe?
+    #
+    def isPandas(self, df):
+        return type(df) == pd.core.frame.DataFrame
+
+    #
+    # isPolars() - is this a polars dataframe?
+    #
+    def isPolars(self, df):
+        return type(df) == pl.dataframe.frame.DataFrame
+
+    #
+    # columnsAreTimestamps()
+    # - Helper method to make a column into a suitable timestamp column
+    # - ... because apparently the way to make a column into a type continues to evolve :(
+    # - "format" parameter only applies to the polars typing method
+    #
+    def columnsAreTimestamps(self, df, columns, format=None):
+        if type(columns) != list:
+            columns = [columns]
+        if   self.isPandas(df):
+            for _column_ in columns:
+                df[_column_] = df[_column_].astype('datetime64[ms]')
+        elif self.isPolars(df):
+            for _column_ in columns:
+                _format_ = format
+                if _format_ is None:
+                    _format_ = self.guessTimestampFormat(str(df[0][_column_][0]))
+                df = df.with_columns(pl.col(_column_).str.strptime(pl.Datetime, format=_format_).cast(pl.Datetime))
+        else:
+            raise Exception('columnsAreTimestamps() - not a pandas or polars dataframe')        
+        return df
+
+    #
+    # guessTimestampFormat()
+    # ... warning: bad code ahead :(
+    # ... i hate timestamps
+    #
+    def guessTimestampFormat(self, sample):
+        if    len(sample) == 24 and ('t' in sample or 'T' in sample) and (sample[-1] == 'Z' or sample[-1] == 'z'):
+            return "%Y-%m-%dT%H:%M:%S.%fZ"
+        elif  len(sample) == 23 and ('t' in sample or 'T' in sample):
+            return "%Y-%m-%dT%H:%M:%S.%f"
+        elif  len(sample) == 23 and ' ' in sample:
+            return "%Y-%m-%d %H:%M:%S.%f"
+        elif  len(sample) == 20 and ('t' in sample or 'T' in sample) and (sample[-1] == 'Z' or sample[-1] == 'z'):
+            return "%Y-%m-%dT%H:%M:%SZ"
+        elif  len(sample) == 19 and ' ' in sample:
+            return "%Y-%m-%d %H:%M:%S"        
+        elif  len(sample) == 19 and ('t' in sample or 'T' in sample):
+            return "%Y-%m-%dT%H:%M:%S"
+        elif  len(sample) == 19 and ' ' in sample:
+            return "%Y-%m-%d %H:%M:%S"
+        elif  len(sample) == 17 and ('t' in sample or 'T' in sample) and (sample[-1] == 'Z' or sample[-1] == 'z'): # Does this really occur?
+            return "%Y-%m-%dT%H:%MZ"
+        elif  len(sample) == 16 and ('t' in sample or 'T' in sample):
+            return "%Y-%m-%dT%H:%M"
+        elif  len(sample) == 16 and ' ' in sample:
+            return "%Y-%m-%d %H:%M"
+        elif  len(sample) == 13 and ('t' in sample or 'T' in sample): # Doesn't seem to work in polars... wants both hour and minute
+            return "%Y-%m-%dT%H"
+        elif  len(sample) == 13 and ' ' in sample:  # Doesn't seem to work in polars... wants both hour and minute
+            return "%Y-%m-%d %H"
+        elif  len(sample) == 10:
+            return "%Y-%m-%d"
+        elif  len(sample) == 7:
+            return "%Y-%m"
+        elif  len(sample) == 4:
+            return "%Y"
+        else:
+            raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}"')
+
+    #
     # Return a consistent hashcode for a string
     #
     def hashcode(self,s):
@@ -255,7 +329,7 @@ class RACETrack(RTAnnotationsMixin,
                 else:
                     new_field_list.append(x)
         return df, new_field_list
-    
+
     #
     # Determine if a field is a tfield
     #
@@ -278,37 +352,91 @@ class RACETrack(RTAnnotationsMixin,
         if tfield is not None and tfield.startswith('|tr|') and tfield not in df.columns:
             transform = tfield.split('|')[2]
             field     = '|'.join(tfield.split('|')[3:])
-            
-            if   transform == 'day_of_week':
-                df[tfield] = df[field].apply(lambda x: str(x.day_name()[:3]))
-            elif transform == 'day_of_week_hour':
-                df[tfield] = df[field].apply(lambda x: f'{x.day_name()[:3]}-{x.hour:02}')
-            elif transform == 'year':
-                df[tfield] = df[field].apply(lambda x: str(x.year))
-            elif transform == 'year_quarter':
-                df[tfield] = df[field].apply(lambda x: f'{x.year}Q{x.quarter}')
-            elif transform == 'quarter':
-                df[tfield] = df[field].apply(lambda x: f'Q{x.quarter}')
-            elif transform == 'month':
-                df[tfield] = df[field].apply(lambda x: x.month_name()[:3])
-            elif transform == 'year_month':
-                df[tfield] = df[field].apply(lambda x: f'{x.year}-{x.month:02}')
-            elif transform == 'year_month_day':
-                df[tfield] = df[field].apply(lambda x: f'{x.year}-{x.month:02}-{x.day:02}')
-            elif transform == 'day':
-                df[tfield] = df[field].apply(lambda x: f'{x.day:02}')
-            elif transform == 'day_of_year':
-                df[tfield] = df[field].apply(lambda x: f'{x.day_of_year:03}')
-            elif transform == 'day_of_year_hour':
-                df[tfield] = df[field].apply(lambda x: f'{x.day_of_year:03}_{x.hour:02}')
-            elif transform == 'hour':
-                df[tfield] = df[field].apply(lambda x: f'{x.hour:02}')
-            elif transform == 'minute':
-                df[tfield] = df[field].apply(lambda x: f'{x.minute:02}')
-            elif transform == 'second':
-                df[tfield] = df[field].apply(lambda x: f'{x.second:02}')
-            elif transform == 'log_bins':
-                df[tfield] = df[field].apply(lambda x: self.transformLogBins(x))
+
+            #
+            # PANDAS Version
+            #
+            if self.isPandas(df):            
+                if   transform == 'day_of_week':
+                    df[tfield] = df[field].apply(lambda x: str(x.day_name()[:3]))
+                elif transform == 'day_of_week_hour':
+                    df[tfield] = df[field].apply(lambda x: f'{x.day_name()[:3]}-{x.hour:02}')
+                elif transform == 'year':
+                    df[tfield] = df[field].apply(lambda x: str(x.year))
+                elif transform == 'year_quarter':
+                    df[tfield] = df[field].apply(lambda x: f'{x.year}Q{x.quarter}')
+                elif transform == 'quarter':
+                    df[tfield] = df[field].apply(lambda x: f'Q{x.quarter}')
+                elif transform == 'month':
+                    df[tfield] = df[field].apply(lambda x: x.month_name()[:3])
+                elif transform == 'year_month':
+                    df[tfield] = df[field].apply(lambda x: f'{x.year}-{x.month:02}')
+                elif transform == 'year_month_day':
+                    df[tfield] = df[field].apply(lambda x: f'{x.year}-{x.month:02}-{x.day:02}')
+                elif transform == 'day':
+                    df[tfield] = df[field].apply(lambda x: f'{x.day:02}')
+                elif transform == 'day_of_year':
+                    df[tfield] = df[field].apply(lambda x: f'{x.day_of_year:03}')
+                elif transform == 'day_of_year_hour':
+                    df[tfield] = df[field].apply(lambda x: f'{x.day_of_year:03}_{x.hour:02}')
+                elif transform == 'hour':
+                    df[tfield] = df[field].apply(lambda x: f'{x.hour:02}')
+                elif transform == 'minute':
+                    df[tfield] = df[field].apply(lambda x: f'{x.minute:02}')
+                elif transform == 'second':
+                    df[tfield] = df[field].apply(lambda x: f'{x.second:02}')
+                elif transform == 'log_bins':
+                    df[tfield] = df[field].apply(lambda x: self.transformLogBins(x))
+
+            #
+            # POLARS Version
+            #            
+            elif self.isPolars(df):
+                if   transform == 'day_of_week':
+                    df = df.with_columns(pl.col(field).dt.strftime('%A').str.slice(0,3).alias(tfield))
+                elif transform == 'day_of_week_hour':
+                    _intermediate_dow_  = '__day_of_week_hour_dow__'
+                    df = df.with_columns(pl.col(field).dt.strftime('%A').str.slice(0,3).alias(_intermediate_dow_))
+                    _intermediate_hour_ = '__day_of_week_hour_hour__'
+                    df = df.with_columns(pl.col(field).dt.strftime('-%H').alias(_intermediate_hour_))
+                    df = df.with_columns(pl.concat_str(_intermediate_dow_, _intermediate_hour_).alias(tfield))
+                elif transform == 'year':
+                    df = df.with_columns(pl.col(field).dt.strftime('%Y').alias(tfield))
+                elif transform == 'year_quarter':
+                    _intermediate_quarter_ = '__quarter__'                    
+                    df = df.with_columns(pl.col(field).dt.quarter().cast(str).alias(_intermediate_quarter_))
+                    _intermediate_year_    = '__year__'
+                    df = df.with_columns(pl.col(field).dt.strftime('%YQ').alias(_intermediate_year_))
+                    df = df.with_columns(pl.concat_str(_intermediate_year_, _intermediate_quarter_).alias(tfield))
+                elif transform == 'quarter':
+                    _intermediate_quarter_ = '__quarter__'
+                    df = df.with_columns(pl.col(field).dt.quarter().cast(str).alias(_intermediate_quarter_))
+                    df = df.with_columns(pl.format('Q{}', _intermediate_quarter_).alias(tfield))
+                elif transform == 'month':
+                    df = df.with_columns(pl.col(field).dt.strftime('%h').alias(tfield))
+                elif transform == 'year_month':
+                    df = df.with_columns(pl.col(field).dt.strftime('%Y-%m').alias(tfield))
+                elif transform == 'year_month_day':
+                    df = df.with_columns(pl.col(field).dt.strftime('%Y-%m-%d').alias(tfield))
+                elif transform == 'day':
+                    df = df.with_columns(pl.col(field).dt.strftime('%d').alias(tfield))
+                elif transform == 'day_of_year':
+                    df = df.with_columns(pl.col(field).dt.strftime('%j').alias(tfield))
+                elif transform == 'day_of_year_hour':
+                    df = df.with_columns(pl.col(field).dt.strftime('%j_%H').alias(tfield))
+                elif transform == 'hour':
+                    df = df.with_columns(pl.col(field).dt.strftime('%H').alias(tfield))
+                elif transform == 'minute':
+                    df = df.with_columns(pl.col(field).dt.strftime('%M').alias(tfield))
+                elif transform == 'second':
+                    df = df.with_columns(pl.col(field).dt.strftime('%S').alias(tfield))                    
+                elif transform == 'log_bins':
+                    #
+                    # FILL THIS IN!!!
+                    #
+                    raise Exception('applyTransform() - log_bins isn\'t implemented for polars dataframes')
+            else:
+                raise Exception('applyTransform() - df is neither a pandas nor a polars dataframe')
 
         return df,tfield
 
@@ -342,24 +470,26 @@ class RACETrack(RTAnnotationsMixin,
             elif transform == 'month':
                 _order = _order_month
             elif transform == 'year_month':
-                for _date in pd.date_range(start=df['timestamp'].min(), end=df['timestamp'].max(), freq='M'):
+                for _date in pd.date_range(start=df[field].min(), end=df[field].max(), freq='M'):
                     _order.append(f'{_date.year}-{_date.month:02}')
             elif transform == 'year_month_day':
-                for _date in pd.date_range(start=df['timestamp'].min(), end=df['timestamp'].max(), freq='D'):
+                for _date in pd.date_range(start=df[field].min(), end=df[field].max(), freq='D'):
                     _order.append(f'{_date.year}-{_date.month:02}-{_date.day:02}')
             elif transform == 'day':
                 for _day in range(1,32):
                     _order.append(f'{_day:02}')
             elif transform == 'day_of_year':
                 if df[field].min().year == df[field].max().year:
-                    for _day in range(df[field].min().day_of_year, df[field].max().day_of_year+1):
+                    _day_min, _day_max = pd.to_datetime(df[field].min()).day_of_year, pd.to_datetime(df[field].max()).day_of_year
+                    for _day in range(_day_min,_day_max+1):
                         _order.append(f'{_day:03}')
                 else:
                     for _day in range(1,366):
                         _order.append(f'{_day:03}')
             elif transform == 'day_of_year_hour':
                 if df[field].min().year == df[field].max().year:
-                    for _day in range(df[field].min().day_of_year, df[field].max().day_of_year+1):
+                    _day_min, _day_max = pd.to_datetime(df[field].min()).day_of_year, pd.to_datetime(df[field].max()).day_of_year                    
+                    for _day in range(_day_min,_day_max+1):
                         for _hour in range(0,24):
                             _order.append(f'{_day:03}_{_hour:02}')
                 else:
@@ -441,18 +571,29 @@ class RACETrack(RTAnnotationsMixin,
             return False
         if type(df) == list:
             for _df in df:
-                if count_by in _df.columns:
-                    if _df[count_by].dtypes != np.int64   and \
-                       _df[count_by].dtypes != np.int32   and \
-                       _df[count_by].dtypes != np.float64 and \
-                       _df[count_by].dtypes != np.float32:
-                       return True
+                if self.isPandas(_df):
+                    if count_by in _df.columns:
+                        if _df[count_by].dtypes != np.int64   and \
+                        _df[count_by].dtypes != np.int32   and \
+                        _df[count_by].dtypes != np.float64 and \
+                        _df[count_by].dtypes != np.float32:
+                            return True
+                elif self.isPolars(_df):
+                    if _df[count_by].is_float() == False and _df[count_by].is_integer() == False:
+                        return True
+                else:
+                    raise Exception('countBySet() - not a pandas or polars dataframe')
             return False
         else:
-            return df[count_by].dtypes != np.int64   and \
-                   df[count_by].dtypes != np.int32   and \
-                   df[count_by].dtypes != np.float64 and \
-                   df[count_by].dtypes != np.float32
+            if self.isPandas(df):
+                return df[count_by].dtypes != np.int64   and \
+                       df[count_by].dtypes != np.int32   and \
+                       df[count_by].dtypes != np.float64 and \
+                       df[count_by].dtypes != np.float32
+            elif self.isPolars(df):
+                return df[count_by].is_float() == False and df[count_by].is_integer() == False
+            else:
+                raise Exception('countBySet() - not a pandas or polars dataframe')
     
     #
     # fieldIsArithmetic()
@@ -460,10 +601,15 @@ class RACETrack(RTAnnotationsMixin,
     # ... maybe the oposite of the above?
     #
     def fieldIsArithmetic(self, df, field):
-        return df[field].dtypes == np.int64   or \
-               df[field].dtypes == np.int32   or \
-               df[field].dtypes == np.float64 or \
-               df[field].dtypes == np.float32
+        if self.isPandas(df):
+            return df[field].dtypes == np.int64   or \
+                   df[field].dtypes == np.int32   or \
+                   df[field].dtypes == np.float64 or \
+                   df[field].dtypes == np.float32
+        elif self.isPolars(df):
+            return df[field].is_float() or df[field].is_integer()
+        else:
+            raise Exception('fieldIsArithmetic() - not a pandas or polars dataframe')
 
     #
     # Determine color ordering based on quantity
@@ -473,41 +619,102 @@ class RACETrack(RTAnnotationsMixin,
                          color_by,             # color_by field
                          count_by,             # count_by field
                          count_by_set=False):  # for the field set, count by set operation
+        # If no color, then return none...
         if color_by is None:
             return None
-        return self.colorQuantities(df, color_by, count_by, count_by_set).sort_values(ascending=False)
-
-    #
-    # Determine color quantities (unsorted)
-    #
-    def colorQuantities(self, 
-                        df,                  # dataframe 
-                        color_by,            # color_by field
-                        count_by,            # count_by field
-                        count_by_set=False): # for the field set, count by set operation
-        if color_by is None:
-            return None
-
+        
         # Make sure we can count by numeric summation
         if count_by_set == False:
             count_by_set = self.countBySet(df, count_by)
+        
+        if   self.isPandas(df):      
+            return self.__colorQuantities_pandas__(df, color_by, count_by, count_by_set)
+        elif self.isPolars(df):
+            return self.__colorQuantities_polars__(df, color_by, count_by, count_by_set)
+        else:
+            raise Exception('colorRenderOrder() - not a pandas or polars dataframe')
 
+    #
+    # Determine color quantities
+    #
+    def __colorQuantities_pandas__(self, 
+                                   df,            # dataframe 
+                                   color_by,      # color_by field
+                                   count_by,      # count_by field
+                                   count_by_set): # for the field set, count by set operation
         # For count by set... when count_by == color by... then we'll count by rows
         if count_by is not None and count_by_set and count_by == color_by:
             count_by = None
 
         if count_by is None:
-            return df.groupby(color_by).size()
+            return df.groupby(color_by).size().sort_values(ascending=False)
         elif count_by_set:
             _df = pd.DataFrame(df.groupby([color_by,count_by]).size()).reset_index()
-            return _df.groupby(color_by).size()
+            return _df.groupby(color_by).size().sort_values(ascending=False)
         elif count_by == color_by:
             _df = df.groupby(color_by).size().reset_index()
             _df['__mult__'] = _df.apply(lambda x: x[color_by]*x[0],axis=1)
-            return _df.groupby(color_by)['__mult__'].sum()
+            return _df.groupby(color_by)['__mult__'].sum().sort_values(ascending=False)
         else:
-            return df.groupby(color_by)[count_by].sum()
+            return df.groupby(color_by)[count_by].sum().sort_values(ascending=False)
 
+    #
+    # Determine color quantities
+    # ... polars has no concept of index... so this isn't going to be a 1-for-1 method...
+    # ... i hope there isn't a columns named 'count_by' or 'color_by'
+    #
+    def __colorQuantities_polars__(self, 
+                                   df,            # dataframe 
+                                   color_by,      # color_by field
+                                   count_by,      # count_by field
+                                   count_by_set): # for the field set, count by set operation
+        # For count by set... when count_by == color by... then we'll count by rows
+        if count_by is not None and count_by_set and count_by == color_by:
+            count_by = None
+
+        # Remove all the columns that aren't used for the operation...
+        # ... and rename them to 'count_by' and 'color_by'
+        if count_by is not None:
+            _to_drop_ = list(df.columns)
+            _to_drop_.remove(color_by)
+            if count_by in _to_drop_:
+                _to_drop_.remove(count_by)
+            df = df.drop(_to_drop_)
+            if color_by != count_by:
+                df = df.rename({color_by:'color_by', count_by:'count_by'})
+                color_by = 'color_by'
+                count_by = 'count_by'
+            else:
+                df = df.rename({color_by:'color_by'})
+                color_by = count_by = 'color_by'
+        else:
+            _to_drop_ = list(df.columns)
+            _to_drop_.remove(color_by)
+            df = df.drop(_to_drop_)
+            df = df.rename({color_by:'color_by'})
+            color_by = 'color_by'
+
+        if count_by is None:            
+            _df_ = df.group_by(color_by).agg(pl.count()) # .sort('count', descending=True)
+        elif count_by_set:
+            _df_ = df.group_by(color_by).n_unique() # .sort(count_by,descending=True)
+        elif count_by == color_by:
+            _df_ = df.group_by(color_by).agg(pl.count())
+            _df_ = _df_.with_columns(pl.col(color_by).mul(pl.col('count')).alias('__mult__'))
+            _df_ = _df_.sort('__mult__',descending=True)
+            _df_ = _df_.drop('count')
+            _df_ = _df_.rename({'__mult__':'count'})
+        else:
+            _df_ = df.group_by(color_by).agg(pl.sum(count_by)) # .sort(count_by, descending=True)
+
+        if 'count_by' in set(_df_.columns):
+            _df_ = _df_.rename({'count_by':'count'})
+        _df_ = _df_.rename({'color_by':'index'})
+
+        _df_ = _df_.sort('index').sort('count', descending=True)
+        
+        return _df_
+    
     #
     # Colorize Bar
     #
@@ -522,26 +729,39 @@ class RACETrack(RTAnnotationsMixin,
                     bar_len,             # total bar length -- for vertical, this is the height
                     bar_sz,              # size of bar -- for vertical, this is the width
                     horz):               # true for horizontal bars (histogram), false for vertical bars
+        if   self.isPandas(df):
+            return self.__colorizeBar_pandas__(df, global_color_order, color_by, count_by, count_by_set, x, y, bar_len, bar_sz, horz)
+        elif self.isPolars(df):
+            return self.__colorizeBar_polars__(df, global_color_order, color_by, count_by, count_by_set, x, y, bar_len, bar_sz, horz)
+        else:
+            raise Exception('colorizeBar() - not a pandas or polars dataframe')
+
+    def __colorizeBar_pandas__(self,
+                               df,                  # dataframe
+                               global_color_order,  # global color ordering - returned from colorRenderOrder()
+                               color_by,            # color_by field
+                               count_by,            # count_by field
+                               count_by_set,        # for the field set, count by set operation
+                               x,                   # x coordinate of the bar base
+                               y,                   # y coordinate of the bar base
+                               bar_len,             # total bar length -- for vertical, this is the height
+                               bar_sz,              # size of bar -- for vertical, this is the width
+                               horz):               # true for horizontal bars (histogram), false for vertical bars
         svg = ''
         if bar_len > 0:
             _co = self.co_mgr.getTVColor('data','default')
-
             # Default bar w/out color
             if horz:
                 svg += f'<rect x="{x}" y="{y}" width="{bar_len}" height="{bar_sz}" fill="{_co}" />'
             else:
                 svg += f'<rect x="{x}" y="{y-bar_len}" width="{bar_sz}" height="{bar_len}" fill="{_co}" />'
-            
             # Colorize it
             if color_by is not None:
-                quantities   = self.colorQuantities(df, color_by, count_by, count_by_set)
+                quantities   = self.colorRenderOrder(df, color_by, count_by, count_by_set)
                 value        = quantities.sum()
                 quantities   = quantities[quantities > value/bar_len]
                 intersection = self.__myIntersection__(global_color_order.index, quantities.index)
-                if horz:
-                    d = x
-                else:
-                    d = y
+                d = x if horz else y
                 for cb_bin in intersection:
                     v = quantities[cb_bin]
                     l = bar_len * v / value
@@ -553,7 +773,45 @@ class RACETrack(RTAnnotationsMixin,
                         else:
                             svg += f'<rect x="{x}" y="{d-l}" width="{bar_sz}" height="{l}" fill="{_co}" />'
                             d -= l
-                            
+        return svg
+
+    def __colorizeBar_polars__(self,
+                               df,                  # dataframe
+                               global_color_order,  # global color ordering - returned from colorRenderOrder()
+                               color_by,            # color_by field
+                               count_by,            # count_by field
+                               count_by_set,        # for the field set, count by set operation
+                               x,                   # x coordinate of the bar base
+                               y,                   # y coordinate of the bar base
+                               bar_len,             # total bar length -- for vertical, this is the height
+                               bar_sz,              # size of bar -- for vertical, this is the width
+                               horz):               # true for horizontal bars (histogram), false for vertical bars
+        svg = ''
+        if bar_len > 0:
+            _co = self.co_mgr.getTVColor('data','default')
+            # Default bar w/out color
+            if horz:
+                svg += f'<rect x="{x}" y="{y}" width="{bar_len}" height="{bar_sz}" fill="{_co}" />'
+            else:
+                svg += f'<rect x="{x}" y="{y-bar_len}" width="{bar_sz}" height="{bar_len}" fill="{_co}" />'
+            # Colorize it
+            if color_by is not None:
+                quantities   = self.colorRenderOrder(df, color_by, count_by, count_by_set)
+                value        = quantities.sum()['count'][0]
+                quantities   = quantities.filter(pl.col('count') > value/bar_len)
+                intersection = self.__myIntersection__(global_color_order['index'], quantities['index'])
+                d = x if horz else y
+                for cb_bin in intersection:
+                    v = quantities.filter(pl.col('index') == cb_bin)['count'][0]
+                    l = bar_len * v / value
+                    if l >= 1.0:
+                        _co = self.co_mgr.getColor(cb_bin)
+                        if horz:
+                            svg += f'<rect x="{d}" y="{y}" width="{l}" height="{bar_sz}" fill="{_co}" />'
+                            d += l
+                        else:
+                            svg += f'<rect x="{x}" y="{d-l}" width="{bar_sz}" height="{l}" fill="{_co}" />'
+                            d -= l
         return svg
 
     #
@@ -770,6 +1028,14 @@ for (i=32;i<128;i++) {
     # renderBoxPlotColumn() - render a single boxplot column (originally from the TemporalBarchart Implementation)
     #
     def renderBoxPlotColumn(self, style, k_df, cx, yT, group_by_max, group_by_min, bar_w, count_by, color_by, cap_swarm_at):
+        if self.isPandas(k_df):
+            return self.__renderBoxPlotColumn_pandas__(style, k_df, cx, yT, group_by_max, group_by_min, bar_w, count_by, color_by, cap_swarm_at)
+        elif self.isPolars(k_df):
+            return self.__renderBoxPlotColumn_polars__(style, k_df, cx, yT, group_by_max, group_by_min, bar_w, count_by, color_by, cap_swarm_at)
+        else:
+            raise Exception('renderBoxPlotColumn() - not a pandas or polars dataframe')
+
+    def __renderBoxPlotColumn_pandas__(self, style, k_df, cx, yT, group_by_max, group_by_min, bar_w, count_by, color_by, cap_swarm_at):
         svg = ''
         if len(k_df) > 0:
             color = self.co_mgr.getTVColor('data','default') 
@@ -823,6 +1089,85 @@ for (i=32;i<128;i++) {
                         svg += f'<circle cx="{cx}" cy="{yT(v)}" r="1.5" fill="{color}" />'
                     if v < q3_plus_15iqr:
                         svg += f'<circle cx="{cx}" cy="{yT(v)}" r="1.5" fill="{color}" />'
+
+                # Add the swarm elements
+                if style == 'boxplot_w_swarm':
+                    # Provide cap... because this could take forever for large dataframes
+                    if cap_swarm_at is not None and len(k_df) > cap_swarm_at:
+                        _df = k_df.sample(cap_swarm_at)
+                    else:
+                        _df = k_df
+
+                    if color_by is None:
+                        for v in _df[count_by]:
+                            sy    = yT(v)
+                            mycx = cx + random.random() * bar_w/2 - bar_w/4
+                            svg += f'<line x1="{mycx-1}" y1="{sy-1}" x2="{mycx+1}" y2="{sy+1}" stroke="{color}" stroke-width="0.5" />'
+                            svg += f'<line x1="{mycx-1}" y1="{sy+1}" x2="{mycx+1}" y2="{sy-1}" stroke="{color}" stroke-width="0.5" />'
+                    else:
+                        for ksw,ksw_df in _df.groupby(color_by):
+                            my_color = self.co_mgr.getColor(ksw)
+                            for v in ksw_df[count_by]:
+                                sy    = yT(v)
+                                mycx = cx + random.random() * bar_w/2 - bar_w/4
+                                svg += f'<line x1="{mycx-1}" y1="{sy-1}" x2="{mycx+1}" y2="{sy+1}" stroke="{my_color}" stroke-width="0.5" />'
+                                svg += f'<line x1="{mycx-1}" y1="{sy+1}" x2="{mycx+1}" y2="{sy-1}" stroke="{my_color}" stroke-width="0.5" />'
+        return svg
+
+    def __renderBoxPlotColumn_polars__(self, style, k_df, cx, yT, group_by_max, group_by_min, bar_w, count_by, color_by, cap_swarm_at):
+        svg = ''
+        if len(k_df) > 0:
+            color = self.co_mgr.getTVColor('data','default') 
+
+            # Just plot points if less than 5...
+            if len(k_df) < 5:
+                x_sz = 3
+                for _value in k_df[count_by]:
+                    sy = yT(_value)
+                    svg += f'<line x1="{cx-x_sz}" y1="{sy-x_sz}" x2="{cx+x_sz}" y2="{sy+x_sz}" stroke="{color}" stroke-width="2" />'
+                    svg += f'<line x1="{cx-x_sz}" y1="{sy+x_sz}" x2="{cx+x_sz}" y2="{sy-x_sz}" stroke="{color}" stroke-width="2" />'
+            else:
+                # Derived partially from: https://byjus.com/maths/box-plot/
+                _med           = k_df[count_by].median()
+                q3             = k_df[count_by].quantile(0.75)
+                q1             = k_df[count_by].quantile(0.25)
+                iqr            = q3-q1                           # difference between 1st and 3rd quartile
+                q3_plus_15iqr  = q3 + 1.5*iqr
+                q1_minus_15iqr = q1 - 1.5*iqr
+
+                # for uniform distributions... non-normal distributions, the tops and bottoms can exceed the max and mins...
+                upper_color,upper_is_max = color,False
+                if q3_plus_15iqr > group_by_max:
+                    q3_plus_15iqr = group_by_max
+                    upper_color,upper_is_max   = self.co_mgr.getTVColor('label','error'),True
+                lower_color,lower_is_min = color,False
+                if q1_minus_15iqr < group_by_min:
+                    q1_minus_15iqr = group_by_min
+                    lower_color,lower_is_min   = self.co_mgr.getTVColor('label','error'),True
+
+                svg += f'<line x1="{cx-bar_w/2}" y1="{yT(q3_plus_15iqr)}"     x2="{cx+bar_w/2}"     y2="{yT(q3_plus_15iqr)}"    stroke="{upper_color}" stroke-width="1.5" />'
+                svg += f'<rect  x="{cx-bar_w/2}"  y="{yT(q3)}"             width="{bar_w}"      height="{yT(q1)-yT(q3)}"        stroke="{color}"       stroke-width="1"   fill-opacity="0.0" />'
+                svg += f'<line x1="{cx-bar_w/2}" y1="{yT(q3)}"                x2="{cx+bar_w/2}"     y2="{yT(q3)}"               stroke="{color}"       stroke-width="1.5" />'
+                svg += f'<line x1="{cx-bar_w/2}" y1="{yT(_med)}"              x2="{cx+bar_w/2}"     y2="{yT(_med)}"             stroke="{color}"       stroke-width="1.5" />'
+                svg += f'<line x1="{cx-bar_w/2}" y1="{yT(q1)}"                x2="{cx+bar_w/2}"     y2="{yT(q1)}"               stroke="{color}"       stroke-width="1.5" />'
+                svg += f'<line x1="{cx-bar_w/2}" y1="{yT(q1_minus_15iqr)}"    x2="{cx+bar_w/2}"     y2="{yT(q1_minus_15iqr)}"   stroke="{lower_color}" stroke-width="1.5" />'
+
+                svg += f'<line x1="{cx}"          y1="{yT(q3)}"                x2="{cx}"            y2="{yT(q3_plus_15iqr)}"    stroke="{upper_color}" stroke-width="0.5" />'
+                if upper_is_max:
+                    svg += f'<line x1="{cx}"      y1="{yT(q3_plus_15iqr)}"     x2="{cx+5}"          y2="{yT(q3_plus_15iqr)+5}"  stroke="{upper_color}" stroke-width="0.5" />'
+                    svg += f'<line x1="{cx}"      y1="{yT(q3_plus_15iqr)}"     x2="{cx-5}"          y2="{yT(q3_plus_15iqr)+5}"  stroke="{upper_color}" stroke-width="0.5" />'
+                svg += f'<line x1="{cx}"          y1="{yT(q1)}"                x2="{cx}"            y2="{yT(q1_minus_15iqr)}"   stroke="{lower_color}" stroke-width="0.5" />'
+                if lower_is_min:
+                    svg += f'<line x1="{cx}"      y1="{yT(q1_minus_15iqr)}"    x2="{cx+5}"          y2="{yT(q1_minus_15iqr)-5}" stroke="{upper_color}" stroke-width="0.5" />'
+                    svg += f'<line x1="{cx}"      y1="{yT(q1_minus_15iqr)}"    x2="{cx-5}"          y2="{yT(q1_minus_15iqr)-5}" stroke="{upper_color}" stroke-width="0.5" />'
+
+                # Add marks for any items that are outliers
+                _df = k_df.filter(pl.col(count_by) > q3_plus_15iqr)
+                for v in _df[count_by]:
+                    svg += f'<circle cx="{cx}" cy="{yT(v)}" r="1.5" fill="{color}" />'
+                _df = k_df.filter(pl.col(count_by) < q1_minus_15iqr)
+                for v in _df[count_by]:
+                    svg += f'<circle cx="{cx}" cy="{yT(v)}" r="1.5" fill="{color}" />'
 
                 # Add the swarm elements
                 if style == 'boxplot_w_swarm':

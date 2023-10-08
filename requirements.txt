@@ -2,6 +2,7 @@ networkx
 numpy
 pandas
 panel==0.14.2
+polars
 shapely
 squarify
 svglib
