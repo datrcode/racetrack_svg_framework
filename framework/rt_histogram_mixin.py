@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 import random
 
@@ -105,7 +106,7 @@ class RTHistogramMixin(object):
                      **kwargs):
             self.parms              = locals().copy()
             self.rt_self            = rt_self
-            self.df                 = kwargs['df'].copy()
+            self.df                 = rt_self.copyDataFrame(kwargs['df'])
 
             # Make sure the bin_by is a list...
             bin_by = kwargs['bin_by']
@@ -176,19 +177,13 @@ class RTHistogramMixin(object):
                 self.first_line_i =  0
             self.last_render = None
 
-        #
-        # renderSVG() - create the SVG
-        #
-        def renderSVG(self, just_calc_max=False, track_state=False):
-            # Leave space for a label
-            max_bar_w = self.w - self.bar_h
-                                            
-            # Determine the color order (for each bar)
-            if self.global_color_order is None:
-                self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
 
-            # Determine the bin order (for the bars)
-            if    self.count_by == None:
+        #
+        # binOrder() - determine the bin order (pandas)
+        # - side effects include modification of dataframe and changes to the count_by_field member variable
+        #
+        def __binOrder_pandas__(self):
+            if    self.count_by is None:
                 order = self.df.groupby(by=self.bin_by).size().sort_values(ascending=False)
             elif  self.count_by_set:
                 if self.count_by in self.bin_by:
@@ -206,8 +201,53 @@ class RTHistogramMixin(object):
                 else:
                     self.count_by_field = self.count_by
                 order = self.df.groupby(by=self.bin_by)[self.count_by_field].sum().sort_values(ascending=False)
-
             gb = self.df.groupby(self.bin_by)
+            return order, gb
+        
+        #
+        # binOrder() - determine the bin order (polars)
+        #
+        def __binOrder_polars__(self):
+            self.df = self.df.sort(self.bin_by) # not necessary... but makes the bins that are equal ordered alphabetically/naturally
+            if   self.count_by is None:
+                order = self.df.group_by(self.bin_by, maintain_order=True).agg(pl.count().alias('__count__')).sort('__count__', descending=True)
+            elif self.count_by_set:
+                if self.count_by in self.bin_by:
+                    df_min  = self.df.drop(set(self.df.columns) - set(self.bin_by))
+                    df_dupe = df_min.with_columns(pl.col(self.count_by).alias('__count__'))
+                    order   = df_dupe.group_by(self.bin_by, maintain_order=True).n_unique().sort('__count__', descending=True)
+                else:
+                    df_min  = self.df.drop(set(self.df.columns) - set(self.bin_by) - set([self.count_by]))
+                    order   = df_min.group_by(self.bin_by, maintain_order=True).n_unique()
+                    order   = order.rename({self.count_by:'__count__'}).sort('__count__', descending=True)
+            else:
+                if self.count_by in self.bin_by:
+                    df_min  = self.df.drop(set(self.df.columns) - set(self.bin_by))
+                    df_dupe = df_min.with_columns(pl.col(self.count_by).alias('__count__'))
+                    order   = df_dupe.group_by(self.bin_by, maintain_order=True).agg(pl.sum('__count__')).sort('__count__', descending=True)
+                else:
+                    df_min  = self.df.drop(set(self.df.columns) - set(self.bin_by) - set([self.count_by]))
+                    order   = df_min.group_by(self.bin_by, maintain_order=True).agg(pl.sum(self.count_by).alias('__count__')).sort('__count__', descending=True)
+            return order, self.df.partition_by(self.bin_by, as_dict=True)
+
+        #
+        # renderSVG() - create the SVG
+        #
+        def renderSVG(self, just_calc_max=False, track_state=False):
+            # Leave space for a label
+            max_bar_w = self.w - self.bar_h
+                                            
+            # Determine the color order (for each bar)
+            if self.global_color_order is None:
+                self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
+
+            # Determine the bin order (for the bars)
+            if self.rt_self.isPandas(self.df):
+                order, gb = self.__binOrder_pandas__()
+            elif self.rt_self.isPolars(self.df):
+                order, gb = self.__binOrder_polars__()
+            else:
+                raise Exception('RTHistogram.renderSVG() - only pandas and polars dataframes supported')
 
             # If the height/width are less than the minimums, turn off labeling... and make the min_bar_w = 1
             # ... for small multiples
@@ -231,7 +271,13 @@ class RTHistogramMixin(object):
 
             # Determine the max bin size... make sure it isn't zero
             if self.global_max is None:
-                max_group_by = order.iloc[0]
+                if   self.rt_self.isPandas(self.df):
+                    max_group_by = order.iloc[0]
+                elif self.rt_self.isPolars(self.df):
+                    max_group_by = order['__count__'][0]
+                else:
+                    raise Exception('RTHistogram.renderSVG() - only pandas or polars dataframes supported [2]')
+                
                 if just_calc_max:
                     return 0,max_group_by
                 if max_group_by == 0:
@@ -250,15 +296,26 @@ class RTHistogramMixin(object):
                 self.first_line_i = i = 0
             y = 0
             while y < (self.h - 1.9*self.bar_h) and i < len(order):
-                # Width of the bar in pixels
-                px = max_bar_w * order.iloc[i] / max_group_by
-
                 # Bin label... used for the id... and used for the labeling (if draw_labels is true)
-                if type(order.index[i]) != list and type(order.index[i]) != tuple:
-                    bin_text = str(order.index[i])
-                else:
-                    bin_text = ' | '.join([str(x) for x in order.index[i]])
-                
+                if self.rt_self.isPandas(self.df):
+                    px = max_bar_w * order.iloc[i] / max_group_by
+                    if type(order.index[i]) != list and type(order.index[i]) != tuple:
+                        bin_text = str(order.index[i])
+                    else:
+                        bin_text = ' | '.join([str(x) for x in order.index[i]])
+                    k_df = gb.get_group(order.index[i])
+                elif self.rt_self.isPolars(self.df):
+                    px = max_bar_w * order['__count__'][i] / max_group_by
+                    _list_ = []
+                    for _bin_ in self.bin_by:
+                        _list_.append(order[_bin_][i])
+                    _tuple_ = tuple(_list_)
+                    bin_text = ' | '.join([str(x) for x in _tuple_])
+                    if len(_tuple_) == 1:
+                        k_df = gb[_tuple_[0]]
+                    else:
+                        k_df = gb[_tuple_]
+
                 # Make a safe id to reference this element later
                 element_id = self.widget_id + "_" + self.rt_self.encSVGID(bin_text)
 
@@ -268,12 +325,11 @@ class RTHistogramMixin(object):
                 # Render the bar ... next section does the color... but this makes sure it's at least filled in...
                 svg += f'<rect id="{element_id}" width="{px}" height="{self.bar_h}" x="0" y="{y}" fill="{color}" stroke="{color}"/>'
                 if track_state:
-                    self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = gb.get_group(order.index[i])
+                    self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = k_df
 
                 # 'Color By' options
                 if self.color_by is not None:
-                    row_df = gb.get_group(order.index[i])
-                    svg += self.rt_self.colorizeBar(row_df, self.global_color_order, self.color_by, self.count_by, self.count_by_set, 0, y, px, self.bar_h, True)
+                    svg += self.rt_self.colorizeBar(k_df, self.global_color_order, self.color_by, self.count_by, self.count_by_set, 0, y, px, self.bar_h, True)
 
                 # Render the label
                 if self.draw_labels:
@@ -315,30 +371,20 @@ class RTHistogramMixin(object):
         #
         def smallMultipleFeatureVector(self):
             # Determine the bin order (for the bars)
-            if    self.count_by == None:
-                order = self.df.groupby(by=self.bin_by).size().sort_values(ascending=False)
-            elif  self.count_by_set:
-                if self.count_by in self.bin_by:
-                    _df = self.df.groupby(by=self.bin_by).size()
-                    order = _df.groupby(by=self.bin_by).size().sort_values(ascending=False)
-                else:
-                    _combined =  self.bin_by.copy()
-                    _combined.append(self.count_by)
-                    _df = self.df.groupby(by=_combined).size()
-                    order = _df.groupby(by=self.bin_by).size().sort_values(ascending=False)
+            if self.rt_self.isPandas(self.df):
+                order, gb = self.__binOrder_pandas__()
+            elif self.rt_self.isPolars(self.df):
+                order, gb = self.__binOrder_polars__()
             else:
-                if self.count_by in self.bin_by:
-                    self.df['__count_by_copy__'] = self.df[self.count_by]
-                    self.count_by_field = '__count_by_copy__'
-                else:
-                    self.count_by_field = self.count_by
-                order = self.df.groupby(by=self.bin_by)[self.count_by_field].sum().sort_values(ascending=False)
-
-            gb = self.df.groupby(self.bin_by)
+                raise Exception('RTHistogram.renderSVG() - only pandas and polars dataframes supported')
 
             # Determine the max bin size... make sure it isn't zero
             if self.global_max is None:
-                max_group_by = order.iloc[0]
+                if self.rt_self.isPandas(self.df):
+                    max_group_by = order.iloc[0]
+                elif self.rt_self.isPolars(self.df):
+                    max_group_by = order['__count__'][0]
+
                 if max_group_by == 0:
                     max_group_by = 1
             else:
@@ -348,15 +394,20 @@ class RTHistogramMixin(object):
             max_bar_w,fv,i = 1.0,{},0
             while i < len(order):
                 # Width of the bar in pixels
-                px = max_bar_w * order.iloc[i] / max_group_by
-
-                if type(order.index[i]) != list and type(order.index[i]) != tuple:
-                    bin_text = str(order.index[i])
-                else:
-                    bin_text = ' | '.join([str(x) for x in order.index[i]])
-
+                if self.rt_self.isPandas(self.df):
+                    px = max_bar_w * order.iloc[i] / max_group_by
+                    if type(order.index[i]) != list and type(order.index[i]) != tuple:
+                        bin_text = str(order.index[i])
+                    else:
+                        bin_text = ' | '.join([str(x) for x in order.index[i]])
+                elif self.rt_self.isPolars(self.df):
+                    px = max_bar_w * order['__count__'][i] / max_group_by
+                    _list_ = []
+                    for _bin_ in self.bin_by:
+                        _list_.append(order[_bin_][i])
+                    _tuple_ = tuple(_list_)
+                    bin_text = ' | '.join([str(x) for x in _tuple_])
                 fv[bin_text] = px
-                
                 i += 1
 
             # Make it into a unit vector

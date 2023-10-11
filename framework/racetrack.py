@@ -159,6 +159,17 @@ class RACETrack(RTAnnotationsMixin,
         return type(df) == pl.dataframe.frame.DataFrame
 
     #
+    # copyDataFrame() - copy/clone a dataframe
+    #
+    def copyDataFrame(self, df):
+        if   self.isPandas(df):
+            return df.copy()
+        elif self.isPolars(df):
+            return df.clone()
+        else:
+            raise Exception('copyDataFrame() - accepts only pandas or polars dataframes')
+
+    #
     # columnsAreTimestamps()
     # - Helper method to make a column into a suitable timestamp column
     # - ... because apparently the way to make a column into a type continues to evolve :(
