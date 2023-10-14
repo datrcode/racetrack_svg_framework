@@ -373,6 +373,9 @@ class RTTemporalBarChartMixin(object):
             self.cap_swarm_at          = kwargs['cap_swarm_at']
 
             self.df2                        = kwargs['df2']
+            if self.df2 is not None:
+                self.df2 = rt_self.copyDataFrame(self.df2)
+
             self.df2_fade                   = kwargs['df2_fade']
             self.x2_field                   = kwargs['x2_field']
             self.x2_field_is_scalar         = kwargs['x2_field_is_scalar']
@@ -420,14 +423,13 @@ class RTTemporalBarChartMixin(object):
                     self.df2 = self.df
                     self.df2_is_df = True
                 else:
-                    self.df2 = self.df2.copy()
                     self.df2_is_df = False
 
                 if self.x2_field is None:
                     if self.df2_is_df:
                         self.x2_field = self.ts_field
                     else:
-                        self.x2_field = self.guessTimestampField(self.df2)
+                        self.x2_field = self.rt_self.guessTimestampField(self.df2)
 
                 if type(self.y2_field) != list:
                     self.y2_field = [self.y2_field]
@@ -815,7 +817,7 @@ class RTTemporalBarChartMixin(object):
 
             # Handle the xy overlay
             self.df2_extends_beyond = False
-            if self.y2_field is not None:
+            if self.y2_field is not None and self.rt_self.isPandas(self.df2):
                 # Apply the fade (if set)
                 if self.df2_fade is not None:
                     _co  =  self.rt_self.co_mgr.getTVColor('background', 'default')
@@ -845,8 +847,6 @@ class RTTemporalBarChartMixin(object):
                     self.y2_axis_col = f'my_y2_{self.widget_id}'
                     if self.y2_field_is_scalar:
                         _min,_max = self.df2[self.y2_field].min().iloc[0],self.df2[self.y2_field].max().iloc[0]
-                        print(_min)
-                        print(_max)
                         if _min == _max:
                             _min -= 0.5
                             _max += 0.5
