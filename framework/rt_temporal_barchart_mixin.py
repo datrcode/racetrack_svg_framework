@@ -469,6 +469,17 @@ class RTTemporalBarChartMixin(object):
             return self.last_render
 
         #
+        # orderAndRanges() -- determine order and ranges
+        #
+        def orderAndRanges(self, time_rez_i):
+            if self.rt_self.isPandas(self.df):
+                return self.__orderAndRanges_pandas__(time_rez_i)
+            elif self.rt_self.isPolars(self.df):
+                return self.__orderAndRanges_polars__(time_rez_i)
+            else:
+                raise Exception('RTTemporalPlot.renderSVG() - only pandas and polars are implemented')
+            
+        #
         def __orderAndRanges_pandas__(self, time_rez_i):
             if self.count_by is None or self.count_by_set == False:
                 order = self.df.groupby(pd.Grouper(key=self.ts_field,freq=self.rt_self.time_rezes[time_rez_i]))
@@ -732,12 +743,7 @@ class RTTemporalBarChartMixin(object):
             svg += f'<line x1="{x_left}" y1="{y_baseline+1}" x2="{x_left + w_usable}" y2="{y_baseline+1}"          stroke="{axis_color}" stroke-width="1" />'
 
             # Group and determine the maximum
-            if self.rt_self.isPandas(self.df):
-                order, group_by_min, group_by_max, groupby = self.__orderAndRanges_pandas__(time_rez_i)
-            elif self.rt_self.isPolars(self.df):
-                order, group_by_min, group_by_max, groupby = self.__orderAndRanges_polars__(time_rez_i)
-            else:
-                raise Exception('RTTemporalPlot.renderSVG() - only pandas and polars are implemented')
+            order, group_by_min, group_by_max, groupby = self.orderAndRanges(time_rez_i)
             
             if self.global_max is not None:
                 group_by_min, group_by_max = self.global_min, self.global_max

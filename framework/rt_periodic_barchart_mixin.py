@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 import random
 import re
@@ -179,7 +180,7 @@ class RTPeriodicBarChartMixin(object):
                      **kwargs):
             self.parms     = locals().copy()
             self.rt_self   = rt_self
-            self.df        = kwargs['df'].copy()
+            self.df        = rt_self.copyDataFrame(kwargs['df'])
             self.widget_id = kwargs['widget_id']
             
             # Make a widget_id if it's not set already
@@ -217,14 +218,7 @@ class RTPeriodicBarChartMixin(object):
 
             # Determine the timestamp field
             if self.ts_field is None:
-                choices = self.df.select_dtypes(np.datetime64).columns
-                if len(choices) == 1:
-                    self.ts_field = choices[0]
-                elif len(choices) > 1:
-                    print('RTPeriodicBarChart: multiple timestamp fields... choosing the first (periodicBarChart)')
-                    self.ts_field = choices[0]
-                else:
-                    raise Exception('no timestamp field supplied to RTPeriodicBarChart(), cannot automatically determine field')
+                self.ts_field = rt_self.guessTimestampField(self.df)
             
             # Determine the periodicity index
             self.time_period = kwargs['time_period']
@@ -246,6 +240,61 @@ class RTPeriodicBarChartMixin(object):
             # Geometry lookup for tracking state
             self.geom_to_df = {}
             self.last_render = None
+
+        #
+        # dataFrameRanges() - calculate the max and min of the bars
+        #
+        def dataFrameRanges(self, period_field):
+            if   self.rt_self.isPandas(self.df):
+                return self.__dataFrameRanges_pandas__(period_field)
+            elif self.rt_self.isPolars(self.df):
+                return self.__dataFrameRanges_polars__(period_field)
+            else:
+                raise Exception('RTPeriodicBarChart.dataFrameRanges() -- only pandas and polars supported')
+
+        #
+        def __dataFrameRanges_pandas__(self, period_field):
+            group_by = self.df.groupby(period_field)
+            if   self.count_by is None:
+                group_by_min = 0
+                group_by_max = group_by.size().max()
+            elif self.count_by_set:
+                _df         = self.df.groupby([period_field,self.count_by]).size().reset_index()
+                _df_for_max = _df.groupby(period_field)
+                group_by_min = 0
+                group_by_max = _df_for_max.size().max()
+            elif self.style.startswith('boxplot'):
+                group_by_min = self.df[self.count_by].min()                    
+                group_by_max = self.df[self.count_by].max()
+            else:
+                group_by_min = 0
+                group_by_max = group_by[self.count_by].sum().max()
+            return group_by, group_by_min, group_by_max
+
+        #
+        def __dataFrameRanges_polars__(self, period_field):
+            group_by_min = 0
+            if   self.count_by is None:
+                tmp_df = self.df.drop(set(self.df.columns) - set([period_field])) \
+                                .group_by(period_field)                           \
+                                .agg(pl.count()                                   \
+                                       .alias('__count__'))
+                group_by_max = tmp_df['__count__'].max()
+            elif self.count_by_set:
+                tmp_df = self.df.drop(set(self.df.columns) - set([period_field, self.count_by])) \
+                                .group_by(period_field)                                          \
+                                .n_unique()
+                group_by_max = tmp_df[self.count_by].max()
+            elif self.style.startswith('boxplot'):
+                group_by_min = self.df[self.count_by].min()                    
+                group_by_max = self.df[self.count_by].max()
+            else:
+                tmp_df = self.df.drop(set(self.df.columns) - set([period_field, self.count_by])) \
+                                .group_by(period_field)                                          \
+                                .agg(pl.sum(self.count_by)                                       \
+                                       .alias('__count__'))
+                group_by_max = tmp_df['__count__'].max()
+            return self.df.group_by(period_field), group_by_min, group_by_max
 
         #
         # SVG Representation Renderer
@@ -289,23 +338,8 @@ class RTPeriodicBarChartMixin(object):
                 w_usable  = self.w - (3*self.y_ins + self.txt_h)
 
             # Create a new field with the periodic value there
-            period_field = 'periodbc_' + str(random.randint(0,10000))
-            if   self.time_period == 'quarter':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: str(x.quarter))
-            elif self.time_period == 'month':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: x.month_name()[:3])            
-            elif self.time_period == 'day_of_month':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: f'{x.day:02}')            
-            elif self.time_period == 'day_of_week':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: str(x.day_name()[:3]))            
-            elif self.time_period == 'day_of_week_hour':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: f'{x.day_name()[:3]}-{x.hour:02}')            
-            elif self.time_period == 'hour':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: f'{x.hour:02}')            
-            elif self.time_period == 'minute':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: f'{x.minute:02}')
-            elif self.time_period == 'second':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: f'{x.second:02}')
+            t_field = self.rt_self.createTField(self.ts_field, self.time_period)
+            self.df, period_field = self.rt_self.applyTransform(self.df, t_field)
 
             # Total number of bins
             bins    = self.rt_self.time_periods_bins[self.period_i]
@@ -347,25 +381,9 @@ class RTPeriodicBarChartMixin(object):
                     max_bar_h = self.h - 2*self.y_ins - self.txt_h - 2
 
             # Determine the max
-            group_by_max,group_by_min = self.global_max,self.global_min
-            group_by = self.df.groupby(period_field)
-
-            if group_by_max is None:
-                if   self.count_by is None:
-                    group_by_min = 0
-                    group_by_max = group_by.size().max()
-                elif self.count_by_set:
-                    _df         = self.df.groupby([period_field,self.count_by]).size().reset_index()
-                    _df_for_max = _df.groupby(period_field)
-                    group_by_min = 0
-                    group_by_max = _df_for_max.size().max()
-                elif self.style.startswith('boxplot'):
-                    group_by_min = self.df[self.count_by].min()                    
-                    group_by_max = self.df[self.count_by].max()
-                else:
-                    group_by_min = 0
-                    group_by_max = group_by[self.count_by].sum().max()
-
+            group_by, group_by_min, group_by_max = self.dataFrameRanges(period_field)
+            if self.global_max is not None:
+                self.group_by_min, self.group_by_max = self.global_min, self.global_max
             if just_calc_max:
                 return group_by_min,group_by_max
 
@@ -506,46 +524,16 @@ class RTPeriodicBarChartMixin(object):
         #
         def smallMultipleFeatureVector(self):
             # Create a new field with the periodic value there
-            period_field = 'periodbc_' + str(random.randint(0,10000))
-            if   self.time_period == 'quarter':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: str(x.quarter))
-            elif self.time_period == 'month':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: x.month_name()[:3])            
-            elif self.time_period == 'day_of_month':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: f'{x.day:02}')            
-            elif self.time_period == 'day_of_week':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: str(x.day_name()[:3]))            
-            elif self.time_period == 'day_of_week_hour':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: f'{x.day_name()[:3]}-{x.hour:02}')            
-            elif self.time_period == 'hour':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: f'{x.hour:02}')            
-            elif self.time_period == 'minute':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: f'{x.minute:02}')
-            elif self.time_period == 'second':
-                self.df[period_field] = self.df[self.ts_field].apply(lambda x: f'{x.second:02}')
+            t_field = self.rt_self.createTField(self.ts_field, self.time_period)
+            self.df, period_field = self.rt_self.applyTransform(self.df, t_field)
 
             # Total number of bins
             bins    = self.rt_self.time_periods_bins[self.period_i]
 
             # Determine the max
-            group_by_max,group_by_min = self.global_max,self.global_min
-            group_by = self.df.groupby(period_field)
-
-            if group_by_max is None:
-                if   self.count_by is None:
-                    group_by_min = 0
-                    group_by_max = group_by.size().max()
-                elif self.count_by_set:
-                    _df         = self.df.groupby([period_field,self.count_by]).size().reset_index()
-                    _df_for_max = _df.groupby(period_field)
-                    group_by_min = 0
-                    group_by_max = _df_for_max.size().max()
-                elif self.style.startswith('boxplot'):
-                    group_by_min = self.df[self.count_by].min()                    
-                    group_by_max = self.df[self.count_by].max()
-                else:
-                    group_by_min = 0
-                    group_by_max = group_by[self.count_by].sum().max()
+            group_by, group_by_min, group_by_max = self.dataFrameRanges(period_field)
+            if self.global_max is not None:
+                self.global_min, self.global_max = group_by_min, group_by_max
             
             # Iterate over the keys
             max_bar_h,fv = 1.0,{}
