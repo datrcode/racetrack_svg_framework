@@ -197,7 +197,9 @@ class RACETrack(RTAnnotationsMixin,
     # ... i hate timestamps
     #
     def guessTimestampFormat(self, sample):
-        if    len(sample) == 24 and ('t' in sample or 'T' in sample) and (sample[-1] == 'Z' or sample[-1] == 'z'):
+        if    len(sample) == 26 and ('t' in sample or 'T' in sample):
+            return "%Y-%m-%dT%H:%M:%S%.f"
+        elif  len(sample) == 24 and ('t' in sample or 'T' in sample) and (sample[-1] == 'Z' or sample[-1] == 'z'):
             return "%Y-%m-%dT%H:%M:%S.%fZ"
         elif  len(sample) == 23 and ('t' in sample or 'T' in sample):
             return "%Y-%m-%dT%H:%M:%S.%f"
@@ -229,6 +231,40 @@ class RACETrack(RTAnnotationsMixin,
             return "%Y"
         else:
             raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}"')
+
+
+    #
+    # guessTimestampField() - guess the timestamp field
+    #
+    def guessTimestampField(self, df):
+        if   self.isPandas(df):
+            return self.__guessTimestampField_pandas__(df)
+        elif self.isPolars(df):
+            return self.__guessTimestampField_polars__(df)
+        else:
+            raise Exception(f'guessTimestampField() - only handles pandas and polars')
+    def __guessTimestampField_pandas__(self, df):
+        choices = df.select_dtypes(np.datetime64).columns
+        if len(choices) == 1:
+            return choices[0]
+        elif len(choices) > 1:
+            print('multiple timestamp fields... choosing the first (__guessTimestampField_pandas__)')
+            return choices[0]
+        else:
+            raise Exception('no timestamp field supplied, cannot automatically determine field (__guessTimestampField_pandas__)')
+    def __guessTimestampField_polars__(self, df):
+        just_dt_columns = df.select(pl.col(pl.Datetime('us')))
+        if len(just_dt_columns) == 0:
+            just_dt_columns = df.select(pl.col(pl.Datetime('ns')))
+        if len(just_dt_columns) == 0:
+            just_dt_columns = df.select(pl.col(pl.Datetime('ms')))
+        if   len(just_dt_columns.columns) > 1:
+            print('multiple timestamp fields... choosing the first (__guessTimestampField_polars__)')
+            return just_dt_columns.columns[0]
+        elif len(just_dt_columns.columns) == 1:
+            return just_dt_columns.columns[0]
+        else:
+            raise Exception('no timestamp field supplied, cannot automatically determine field (__guessTimestampField_polars__)')
 
     #
     # Return a consistent hashcode for a string
@@ -412,7 +448,8 @@ class RACETrack(RTAnnotationsMixin,
                     df = df.with_columns(pl.col(field).dt.strftime('-%H').alias(_intermediate_hour_))
                     df = df.with_columns(pl.concat_str(_intermediate_dow_, _intermediate_hour_).alias(tfield))
                 elif transform == 'year':
-                    df = df.with_columns(pl.col(field).dt.strftime('%Y').alias(tfield))
+                    # df = df.with_columns(pl.col(field).dt.strftime('%Y').cast(pl.Int64).alias(tfield))
+                    df = df.with_columns(pl.col(field).dt.strftime('%Y').cast(pl.Int64).alias(tfield))
                 elif transform == 'year_quarter':
                     _intermediate_quarter_ = '__quarter__'                    
                     df = df.with_columns(pl.col(field).dt.quarter().cast(str).alias(_intermediate_quarter_))
@@ -430,17 +467,22 @@ class RACETrack(RTAnnotationsMixin,
                 elif transform == 'year_month_day':
                     df = df.with_columns(pl.col(field).dt.strftime('%Y-%m-%d').alias(tfield))
                 elif transform == 'day':
+                    # df = df.with_columns(pl.col(field).dt.strftime('%d').cast(pl.Int64).alias(tfield))
                     df = df.with_columns(pl.col(field).dt.strftime('%d').alias(tfield))
                 elif transform == 'day_of_year':
+                    # df = df.with_columns(pl.col(field).dt.strftime('%j').cast(pl.Int64).alias(tfield))
                     df = df.with_columns(pl.col(field).dt.strftime('%j').alias(tfield))
                 elif transform == 'day_of_year_hour':
                     df = df.with_columns(pl.col(field).dt.strftime('%j_%H').alias(tfield))
                 elif transform == 'hour':
+                    # df = df.with_columns(pl.col(field).dt.strftime('%H').cast(pl.Int64).alias(tfield))
                     df = df.with_columns(pl.col(field).dt.strftime('%H').alias(tfield))
                 elif transform == 'minute':
+                    # df = df.with_columns(pl.col(field).dt.strftime('%M').cast(pl.Int64).alias(tfield))
                     df = df.with_columns(pl.col(field).dt.strftime('%M').alias(tfield))
                 elif transform == 'second':
-                    df = df.with_columns(pl.col(field).dt.strftime('%S').alias(tfield))                    
+                    # df = df.with_columns(pl.col(field).dt.strftime('%S').cast(pl.Int64).alias(tfield))
+                    df = df.with_columns(pl.col(field).dt.strftime('%S').alias(tfield))
                 elif transform == 'log_bins':
                     #
                     # FILL THIS IN!!!
