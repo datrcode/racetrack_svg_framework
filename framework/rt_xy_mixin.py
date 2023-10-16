@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
@@ -246,7 +247,7 @@ class RTXYMixin(object):
         return (64,64)
 
     #
-    # Identify the required fields in the dataframe from linknode parameters
+    # Identify the required fields for this component
     #
     def xyRequiredFields(self, **kwargs):
         columns_set = set()
@@ -381,10 +382,10 @@ class RTXYMixin(object):
     # Create a column on the 0..1 scale for an axis
     # - can be used externally to make consistent scales across small multiples
     #
-    def xyCreateAxisColumn(self, 
-                           df, 
-                           field, 
-                           is_scalar, 
+    def xyCreateAxisColumn(self,
+                           df,
+                           field,
+                           is_scalar,
                            new_axis_field,
                            order          = None,   # Order of the values on the axis
                            fill_transform = True,   # Fill in missing transform values
@@ -392,59 +393,54 @@ class RTXYMixin(object):
                            timestamp_max  = None,   # Maximum timestamp field
                            _min           = None,   # Minimum for scalar axis
                            _max           = None):  # Maximum for scalar axis
+        if self.isPandas(df):
+            return self.__xyCreateAxisColumn_pandas__(df, field, is_scalar, new_axis_field, order, fill_transform, timestamp_min, timestamp_max, _min, _max)
+        elif self.isPolars(df):
+            return self.__xyCreateAxisColumn_polars__(df, field, is_scalar, new_axis_field, order, fill_transform, timestamp_min, timestamp_max, _min, _max)
+        else:
+            raise Exception('RTXY.xyCreateAxisColumn() - only pandas and polars is supported')
+
+    # Pandas version
+    def __xyCreateAxisColumn_pandas__(self, 
+                                      df, 
+                                      field, 
+                                      is_scalar, 
+                                      new_axis_field,
+                                      order          = None,   # Order of the values on the axis
+                                      fill_transform = True,   # Fill in missing transform values
+                                      timestamp_min  = None,   # Minimum timestamp field
+                                      timestamp_max  = None,   # Maximum timestamp field
+                                      _min           = None,   # Minimum for scalar axis
+                                      _max           = None):  # Maximum for scalar axis
         if type(field) != list:
             field = [field]
-        is_time = False
-        field_countable = (df[field[0]].dtypes == np.int64   or df[field[0]].dtypes == np.int32 or \
-                           df[field[0]].dtypes == np.float64 or df[field[0]].dtypes == np.float32)
+        is_time = False        
+        field_countable = self.fieldIsArithmetic(df, field[0])
         f0 = field[0]
-
         transFunc = None
-
         # Numeric scaling
         if field_countable and is_scalar and len(field) == 1:
-            if _min is None:
-                my_min = df[f0].min()
-            else:
-                my_min = _min
-
-            if _max is None:
-                my_max = df[f0].max()
-            else:
-                my_max = _max
-
+            my_min = df[f0].min() if _min is None else _min
+            my_max = df[f0].max() if _max is None else _max
             if my_min == my_max:
                 my_min -= 0.5
                 my_max += 0.5
             df[new_axis_field] = ((df[f0] - my_min)/(my_max - my_min))
             label_min = str(my_min)
             label_max = str(my_max)
-
             transFunc = lambda x: ((x - my_min)/(my_max - my_min))
-
         # Timestamp scaling
         elif len(field) == 1 and is_datetime(df[field[0]]):
             # Use dataframe for min... or the parameter version if set
-            if timestamp_min is None:
-                my_min = df[f0].min()
-            else:
-                my_min = timestamp_min
-
-            # Use dataframe for min... or the parameter version if set
-            if timestamp_max is None:
-                my_max = df[f0].max()
-            else:
-                my_max = timestamp_max
-
+            my_min = df[f0].min() if timestamp_min is None else timestamp_min
+            my_max = df[f0].max() if timestamp_max is None else timestamp_max
             if my_min == my_max:
                 my_max += timedelta(seconds=1)
             df[new_axis_field] = ((df[f0] - my_min)/(my_max - my_min))
             label_min = timestamp_min # df[f0].min()
             label_max = timestamp_max # df[f0].max()
             is_time = True
-
             transFunc = lambda x: ((x - my_min)/(my_max - my_min))
-        
         # Equal scaling
         else:
             # This fills in the natural ordering of the data if the fill_transform is enabled (it's true by default)
@@ -457,15 +453,11 @@ class RTXYMixin(object):
                     for _field in field:
                         if self.isTField(_field):
                             raise Exception('xy - fill_transform is specified but there are multiple fields with at least one transform... create your own order...')
-                order_filled_by_transform = False
-                
+                order_filled_by_transform = False                
             gb = df.groupby(field)
             if order is None:
-                # 0...1 assignment
-                if len(gb) >= 2:
-                    my_inc = self.XYInc(1.0/(len(gb)-1))
-                else:
-                    my_inc = self.XYInc(1.0/len(gb))
+                # 0...1 assignment              
+                my_inc = self.XYInc(1.0/(len(gb)-1)) if len(gb) >= 2 else self.XYInc(1.0/len(gb))
                 df[new_axis_field] = gb[field[0]].transform(lambda x: my_inc.nextValue(x))
                 # Labeling
                 gb_df = gb.size().reset_index() # is this the most optimal?
@@ -482,13 +474,9 @@ class RTXYMixin(object):
                 my_inc = self.OrderInc(order, order_is_complete == False)
                 df[new_axis_field] = gb[field[0]].transform(lambda x: my_inc.nextValue(x))
                 # Labeling
-                label_min = order[0]
-                if order_is_complete or order_filled_by_transform:
-                    label_max = order[-1]
-                else:
-                    label_max = 'ee' # everthing else
-                
-        return is_time, label_min, label_max, transFunc, order
+                label_min = order[0]                
+                label_max = order[-1] if (order_is_complete or order_filled_by_transform) else 'ee'
+        return df, is_time, label_min, label_max, transFunc, order
 
     #
     # XYInc... simple incrememter to handle non-numeric coordinate axes
@@ -518,6 +506,122 @@ class RTXYMixin(object):
                 else:
                     return self._order.index(x.name)/(len(self._order)-1)
             return 1.0
+
+    # Polars version
+    def __xyCreateAxisColumn_polars__(self, 
+                                    df, 
+                                    field, 
+                                    is_scalar, 
+                                    new_axis_field,
+                                    order          = None,   # Order of the values on the axis
+                                    fill_transform = True,   # Fill in missing transform values
+                                    timestamp_min  = None,   # Minimum timestamp field
+                                    timestamp_max  = None,   # Maximum timestamp field
+                                    _min           = None,   # Minimum for scalar axis
+                                    _max           = None):  # Maximum for scalar axis
+        if type(field) != list:
+            field = [field]
+        is_time = False    
+        field_countable = self.fieldIsArithmetic(df, field[0])
+        f0 = field[0]
+        transFunc = None
+        # Numeric scaling // DONE!
+        if field_countable and is_scalar and len(field) == 1:
+            my_min = df[f0].min() if _min is None else _min
+            my_max = df[f0].max() if _max is None else _max
+            if my_min == my_max:
+                my_min -= 0.5
+                my_max += 0.5
+            df = df.with_columns(((pl.col(f0)-my_min)/(my_max-my_min)).alias(new_axis_field))
+            label_min = str(my_min)
+            label_max = str(my_max)
+            transFunc = lambda x: ((x - my_min)/(my_max - my_min))
+        # Timestamp scaling // DONE!
+        elif len(field) == 1 and df[field[0]].dtype == pl.Datetime:
+            # Use dataframe for min... or the parameter version if set
+            my_min = df[f0].min() if timestamp_min is None else timestamp_min
+            my_max = df[f0].max() if timestamp_max is None else timestamp_max
+            if my_min == my_max:
+                my_max += timedelta(seconds=1)
+            df = df.with_columns(((pl.col(f0)-my_min)/(my_max-my_min)).alias(new_axis_field))
+            label_min = timestamp_min
+            label_max = timestamp_max
+            is_time = True
+            transFunc = lambda x: ((x - my_min)/(my_max - my_min))    
+        # Equal scaling
+        else:
+            # This fills in the natural ordering of the data if the fill_transform is enabled (it's true by default)
+            # ... unclear what should be done if this is multifield and one or more transforms exists
+            if fill_transform and order is None and len(field) == 1 and self.isTField(f0):
+                order = self.transformNaturalOrder(df, f0)
+                order_filled_by_transform = True
+            else:
+                if fill_transform and order is None and len(field) > 1:
+                    for _field in field:
+                        if self.isTField(_field):
+                            raise Exception('xy - fill_transform is specified but there are multiple fields with at least one transform... create your own order...')
+                order_filled_by_transform = False
+
+            # Determine all the possibilities in the dataframe
+            if len(field) == 1:
+                all_combos = sorted(list(set(df[field[0]])))
+            else:
+                df         = df.sort(field)
+                group_by   = df.group_by(field, maintain_order=True)
+                all_combos    = []
+                for k, k_df in group_by:
+                    all_combos.append(k)
+
+            # Determine the order & create the dictionary
+            if order is None:
+                order = all_combos
+                # Create the dictionary
+                _order_len_ = (len(order)-1) if len(order) > 1 else 1
+                _dict_, i = {}, 0
+                for x in order:
+                    _dict_[x] = i/_order_len_
+                    i += 1
+            else:
+                gb_set, order_set = set(all_combos), set(order)
+                order_is_complete = (len(gb_set) == len(order_set)) and (len(gb_set & order_set) == len(order_set))
+                if order_is_complete:
+                    # Create the dictionary
+                    _order_len_ = (len(order)-1) if len(order) > 1 else 1
+                    _dict_, i = {}, 0
+                    for x in order:
+                        _dict_[x] = i/_order_len_
+                        i += 1
+                else:
+                    order.append('ee') # last order is the 'everything else' category...
+                    # Create the dictionary
+                    _order_len_ = (len(order)-1) if len(order) > 1 else 1
+                    _dict_, i = {}, 0
+                    for x in order:
+                        _dict_[x] = i/_order_len_
+                        i += 1
+                    for x in (gb_set - order_set):
+                        _dict_[x] = 1.0
+
+            # Create the new column from the dictionary
+            if len(field) == 1:
+                df = df.with_columns(pl.col(field[0]).map_dict(_dict_).alias(new_axis_field))
+            else:
+                def myMapRows(k):
+                    return _dict_[k]
+                axis_series = df.drop(set(df.columns) - set(field)).select(field).map_rows(myMapRows)['map']
+                df = df.with_columns(pl.Series(new_axis_field, axis_series))
+
+            # Compute the min and max labels
+            def concatAsStrs(x):
+                if type(x) == list:
+                    s = str(x[0])
+                    for i in range(1,len(x)):
+                        s += '|' + str(x[i])
+                else:
+                    return str(x)
+            label_min, label_max = concatAsStrs(order[0]), concatAsStrs(order[-1])
+
+        return df, is_time, label_min, label_max, transFunc, order
 
     #
     # For background context, transform an existing path description using the transforms and return as an SVG path.
@@ -712,7 +816,7 @@ class RTXYMixin(object):
                      **kwargs):
             self.parms                   = locals().copy()
             self.rt_self                 = rt_self
-            self.df                      = kwargs['df'].copy()
+            self.df                      = rt_self.copyDataFrame(kwargs['df'])
             self.x_field                 = kwargs['x_field']
             self.y_field                 = kwargs['y_field']
             self.x_field_is_scalar       = kwargs['x_field_is_scalar'] 
@@ -754,7 +858,7 @@ class RTXYMixin(object):
             #
             # Are we fitting to something?  Or just diplaying what the user wants to show as a secondary?
             #
-            if kwargs['poly_fit_degree'] is None:
+            if kwargs['poly_fit_degree'] is None or self.rt_self.isPolars(self.df): # Polars only supported on this path...
                 self.x2_field                = kwargs['x2_field']
                 self.x2_field_is_scalar      = kwargs['x2_field_is_scalar']
                 self.x2_axis_col             = kwargs['x2_axis_col']
@@ -765,7 +869,7 @@ class RTXYMixin(object):
                 # y2_field is really the only required param to make the df2 work...
                 if kwargs['y2_field'] is not None:
                     if kwargs['df2'] is not None:
-                        self.df2 = kwargs['df2'].copy()
+                        self.df2 = rt_self.copyDataFrame(kwargs['df2'])
                         self.df2_is_df = False
                     else:
                         self.df2 = self.df
@@ -927,7 +1031,9 @@ class RTXYMixin(object):
 
             # Setup the y2 info (if the y2_field is set)
             self.timestamp_min, self.timestamp_max, self.x_min, self.x_max = None,None,None,None
-            if len(self.x_field) == 1 and is_datetime(self.df[self.x_field[0]]): # TIME
+            if len(self.x_field) == 1 and \
+                ( (self.rt_self.isPandas(self.df) and is_datetime(self.df[self.x_field[0]])) or
+                  (self.rt_self.isPolars(self.df) and self.df[self.x_field[0]].dtype == pl.Datetime)): # TIME
                 self.timestamp_min = self.df[self.x_field[0]].min()
                 self.timestamp_max = self.df[self.x_field[0]].max()
                 if self.y2_field is not None:                    
@@ -953,8 +1059,15 @@ class RTXYMixin(object):
                     if self.df2[self.x2_field[0]].max() > self.x_max:
                         self.x_max = self.df2[self.x2_field[0]].max()
             elif self.y2_field is not None and self.df2_is_df == False and self.x_order is None: # CATEGORICALS
-                _set0 = set(self.df. groupby(self.x_field). groups.keys())
-                _set1 = set(self.df2.groupby(self.x2_field).groups.keys())
+                if   self.rt_self.isPandas(self.df):
+                    _set0 = set(self.df. groupby(self.x_field). groups.keys())
+                    _set1 = set(self.df2.groupby(self.x2_field).groups.keys())
+                elif self.rt_self.isPolars(self.df):
+                    _set0, _set1 = set(), set()
+                    for k, k_df in self.df.group_by(self.x_field):
+                        _set0.add(k)
+                    for k, k_df in self.df2.group_by(self.x2_field):
+                        _set1.add(k)
                 self.x_order = sorted(list(_set0 | _set1))
 
             # Geometry lookup for tracking state
@@ -1045,30 +1158,36 @@ class RTXYMixin(object):
             # Create the extra columns for the x and y coordinates
             if self.x_axis_col is None:
                 self.x_axis_col = 'my_x_' + self.widget_id
-                self.x_is_time, self.x_label_min, self.x_label_max, self.x_trans_func, self.x_order = self.rt_self.xyCreateAxisColumn(self.df, self.x_field, self.x_field_is_scalar, self.x_axis_col, self.x_order, self.x_fill_transforms, 
-                                                                                                                                      self.timestamp_min, self.timestamp_max, self.x_min, self.x_max)
+                self.df, self.x_is_time, self.x_label_min, self.x_label_max, self.x_trans_func, self.x_order = self.rt_self.xyCreateAxisColumn(self.df, self.x_field, self.x_field_is_scalar, self.x_axis_col, self.x_order, self.x_fill_transforms, 
+                                                                                                                                               self.timestamp_min, self.timestamp_max, self.x_min, self.x_max)
             if self.y_axis_col is None:
                 self.y_axis_col = 'my_y_' + self.widget_id
-                self.y_is_time, self.y_label_min, self.y_label_max, self.y_trans_func, self.y_order = self.rt_self.xyCreateAxisColumn(self.df, self.y_field, self.y_field_is_scalar, self.y_axis_col, self.y_order, self.y_fill_transforms)
+                self.df, self.y_is_time, self.y_label_min, self.y_label_max, self.y_trans_func, self.y_order = self.rt_self.xyCreateAxisColumn(self.df, self.y_field, self.y_field_is_scalar, self.y_axis_col, self.y_order, self.y_fill_transforms)
 
             # Secondary axis settings
             self.y2_label_min, self.y2_label_max = None,None
             if self.y2_field is not None and self.y2_axis_col is None:
                 self.y2_axis_col = 'my_y2_' + self.widget_id
-                self.y2_is_time, self.y2_label_min, self.y2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.y2_field, self.y2_field_is_scalar, self.y2_axis_col)
+                self.df2, self.y2_is_time, self.y2_label_min, self.y2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.y2_field, self.y2_field_is_scalar, self.y2_axis_col)
                 if self.df2_is_df:
                     self.x2_axis_col = self.x_axis_col
                 else:
                     self.x2_axis_col = 'my_x2_' + self.widget_id
-                    self.x2_is_time, self.x2_label_min, self.x2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.x2_field, self.x2_field_is_scalar, self.x2_axis_col, self.x_order, self.x_fill_transforms, 
-                                                                                                                                               self.timestamp_min, self.timestamp_max, self.x_min, self.x_max)
+                    self.df2, self.x2_is_time, self.x2_label_min, self.x2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.x2_field, self.x2_field_is_scalar, self.x2_axis_col, self.x_order, self.x_fill_transforms, 
+                                                                                                                                                         self.timestamp_min, self.timestamp_max, self.x_min, self.x_max)
 
             # Create the pixel-level columns
-            self.df[self.x_axis_col+"_px"] = self.x_left                + self.df[self.x_axis_col]*self.w_usable
-            self.df[self.y_axis_col+"_px"] = self.y_ins + self.h_usable - self.df[self.y_axis_col]*self.h_usable
-            if self.align_pixels:
-                self.df[self.x_axis_col+"_px"] = self.df[self.x_axis_col+"_px"].astype(np.int32)
-                self.df[self.y_axis_col+"_px"] = self.df[self.y_axis_col+"_px"].astype(np.int32)
+            if self.rt_self.isPandas(self.df):
+                self.df[self.x_axis_col+"_px"] = self.x_left                + self.df[self.x_axis_col]*self.w_usable
+                self.df[self.y_axis_col+"_px"] = self.y_ins + self.h_usable - self.df[self.y_axis_col]*self.h_usable
+                if self.align_pixels:
+                    self.df[self.x_axis_col+"_px"] = self.df[self.x_axis_col+"_px"].astype(np.int32)
+                    self.df[self.y_axis_col+"_px"] = self.df[self.y_axis_col+"_px"].astype(np.int32)
+            elif self.rt_self.isPolars(self.df):
+                self.df = self.df.with_columns((self.x_left                + pl.col(self.x_axis_col)*self.w_usable).alias(self.x_axis_col+"_px"))
+                self.df = self.df.with_columns((self.y_ins + self.h_usable - pl.col(self.y_axis_col)*self.h_usable).alias(self.y_axis_col+"_px"))
+                if self.align_pixels:
+                    self.df = self.df.with_columns([pl.col(self.x_axis_col+'_px').cast(pl.Int32), pl.col(self.y_axis_col+'_px').cast(pl.Int32)])
 
             self.x_trans_norm_func = None
             if self.x_trans_func is not None:
@@ -1078,15 +1197,22 @@ class RTXYMixin(object):
                 self.y_trans_norm_func = lambda x: self.y_ins + self.h_usable - self.y_trans_func(x) * self.h_usable
 
             # Secondary axis pixel-level columns
-            if self.y2_field:
+            if self.y2_field and self.rt_self.isPandas(self.df2):
                 if self.df2_is_df == False:
                     self.df2[self.x2_axis_col+"_px"] = self.x_left  + self.df2[self.x2_axis_col]*self.w_usable
                     if self.align_pixels:
                         self.df2[self.x2_axis_col+"_px"] =                self.df2[self.x2_axis_col+"_px"].astype(np.int32)
-
                 self.df2[self.y2_axis_col+"_px"] = self.y_ins + self.h_usable - self.df2[self.y2_axis_col]*self.h_usable
                 if self.align_pixels:
                     self.df2[self.y2_axis_col+"_px"] =                              self.df2[self.y2_axis_col+"_px"].astype(np.int32)
+            elif self.y2_field and self.rt_self.isPolars(self.df2):
+                if self.df2_is_df == False:
+                    self.df2 = self.df2.with_columns((self.x_left                + pl.col(self.x2_axis_col)*self.w_usable).alias(self.x2_axis_col+"_px"))
+                    if self.align_pixels:
+                        self.df2 = self.df2.with_columns([pl.col(self.x2_axis_col+'_px').cast(pl.Int32)])
+                self.df2 = self.df2.with_columns((self.y_ins + self.h_usable - pl.col(self.y2_axis_col)*self.h_usable).alias(self.y2_axis_col+"_px"))
+                if self.align_pixels:
+                    self.df2 = self.df2.with_columns([pl.col(self.y2_axis_col+'_px').cast(pl.Int32)])
 
             # Create the SVG ... render the background
             svg = f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
@@ -1166,8 +1292,8 @@ class RTXYMixin(object):
             #
             if self.line_groupby_field is not None     and \
                type(self.line_groupby_field) == list   and \
-               is_datetime(self.df[self.line_groupby_field[-1]]):
-                
+               ( (self.rt_self.isPandas(self.df) and is_datetime(self.df[self.line_groupby_field[-1]])) or
+                 (self.rt_self.isPolars(self.df) and self.df[self.line_groupby_field[-1]].dtype == pl.Datetime) ):
                 color = self.rt_self.co_mgr.getTVColor('data','default')
                 _gb_fields = self.line_groupby_field[:-1]
                 if len(_gb_fields) == 1:
@@ -1175,9 +1301,18 @@ class RTXYMixin(object):
 
                 _ts_field = self.line_groupby_field[-1]
 
-                gb = self.df.groupby(_gb_fields)
+                if   self.rt_self.isPandas(self.df):
+                    gb = self.df.groupby(_gb_fields)
+                elif self.rt_self.isPolars(self.df):
+                    gb = self.df.group_by(_gb_fields)
+
                 for k,k_df in gb:
-                    gbxy = k_df.groupby([_ts_field, self.x_axis_col+"_px",self.y_axis_col+"_px"])
+                    if   self.rt_self.isPandas(self.df):
+                        gbxy = k_df.groupby([_ts_field, self.x_axis_col+"_px",self.y_axis_col+"_px"])
+                    elif self.rt_self.isPolars(self.df):
+                        k_df = k_df.sort(_ts_field)
+                        gbxy = k_df.group_by([_ts_field, self.x_axis_col+"_px",self.y_axis_col+"_px"], maintain_order=True)
+
                     points = ''
                     for xy,xy_df in gbxy:
                         points += f'{xy[1]},{xy[2]} '
@@ -1189,14 +1324,25 @@ class RTXYMixin(object):
                             color = self.rt_self.co_mgr.getTVColor('data','default')                            
                     if len(points) > 0:
                         svg += f'<polyline points="{points}" stroke="{color}" stroke-width="{self.line_groupby_w}" fill="none" />'
+
             #
             # ... second version handles the normal use cases...
             #
             elif self.line_groupby_field:
                 color = self.rt_self.co_mgr.getTVColor('data','default')
-                gb = self.df.groupby(self.line_groupby_field)
+
+                if self.rt_self.isPandas(self.df):
+                    gb = self.df.groupby(self.line_groupby_field)
+                else:
+                    gb = self.df.group_by(self.line_groupby_field)
+
                 for k,k_df in gb:
-                    gbxy = k_df.groupby([self.x_axis_col+"_px",self.y_axis_col+"_px"])
+                    if   self.rt_self.isPandas(self.df):
+                        gbxy = k_df.groupby([self.x_axis_col+"_px",self.y_axis_col+"_px"])
+                    elif self.rt_self.isPolars(self.df):
+                        k_df = k_df.sort(self.x_axis_col+"_px")
+                        gbxy = k_df.group_by([self.x_axis_col+"_px",self.y_axis_col+"_px"], maintain_order=True)
+
                     points = ''
                     for xy,xy_df in gbxy:
                         points += f'{xy[0]},{xy[1]} '
@@ -1211,9 +1357,17 @@ class RTXYMixin(object):
 
             # Handle the line 2 option // like the first one... but some additional options, reassignments
             if self.line2_groupby_field:
-                gb = self.df2.groupby(self.line2_groupby_field)
+                if   self.rt_self.isPandas(self.df2):
+                    gb = self.df2.groupby(self.line2_groupby_field)
+                elif self.rt_self.isPolars(self.df2):
+                    gb = self.df2.group_by(self.line2_groupby_field)
+
                 for k,k_df in gb:
-                    gbxy = k_df.groupby([self.x2_axis_col+"_px",self.y2_axis_col+"_px"])
+                    if   self.rt_self.isPandas(self.df2):
+                        gbxy = k_df.groupby([self.x2_axis_col+"_px",self.y2_axis_col+"_px"])
+                    elif self.rt_self.isPolars(self.df2):
+                        k_df = k_df.sort(self.x2_axis_col+'_px')
+                        gbxy = k_df.groupby([self.x2_axis_col+"_px",self.y2_axis_col+"_px"], maintain_order=True)
                     points = ''
                     for xy,xy_df in gbxy:
                         points += f'{xy[0]},{xy[1]} '
@@ -1629,10 +1783,16 @@ class RTXYMixin(object):
             # Determine the max
             v_max,v_lu = 0,{}
             for n in range(1,N+1):
-                if n < N:
-                    _df = self.df.query(f'`{_col}` >= {(n-1)/N} and `{_col}` <  {n/N}')
-                else:
-                    _df = self.df.query(f'`{_col}` >= {(n-1)/N} and `{_col}` <= {n/N}')
+                if   self.rt_self.isPandas(self.df):
+                    if n < N:
+                        _df = self.df.query(f'`{_col}` >= {(n-1)/N} and `{_col}` <  {n/N}')
+                    else:
+                        _df = self.df.query(f'`{_col}` >= {(n-1)/N} and `{_col}` <= {n/N}')
+                elif self.rt_self.isPolars(self.df):
+                    if n < N:
+                        _df = self.df.filter((pl.col(_col) >= (n-1)/N) & (pl.col(_col) <  n/N))
+                    else:
+                        _df = self.df.filter((pl.col(_col) >= (n-1)/N) & (pl.col(_col) <= n/N))
 
                 # Use the count-by to determine how to sum    
                 if self.count_by is None:

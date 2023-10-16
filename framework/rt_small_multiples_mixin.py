@@ -233,7 +233,7 @@ class RTSmallMultiplesMixin(object):
                 xFillTransforms = True # Default Value...
                 if 'x_fill_transforms' in sm_params.keys():
                     xFillTransforms = sm_params['x_fill_transforms']
-                x_is_time,x_label_min,x_label_max,xTrans,xOrder = self.xyCreateAxisColumn(df, sm_params['x_field'], x_field_is_scalar, sm_x_axis, xOrder, xFillTransforms)
+                df, x_is_time,x_label_min,x_label_max,xTrans,xOrder = self.xyCreateAxisColumn(df, sm_params['x_field'], x_field_is_scalar, sm_x_axis, xOrder, xFillTransforms)
                 most_params['x_axis_col']        = sm_x_axis
                 most_params['x_is_time']         = x_is_time
                 most_params['x_label_min']       = x_label_min
@@ -256,7 +256,7 @@ class RTSmallMultiplesMixin(object):
                 yFillTransforms = True # Default Value...
                 if 'y_fill_transforms' in sm_params.keys():
                     yFillTransforms = sm_params['y_fill_transforms']
-                y_is_time,y_label_min,y_label_max,yTrans,yOrder = self.xyCreateAxisColumn(df, sm_params['y_field'], y_field_is_scalar, sm_y_axis, yOrder, yFillTransforms)
+                df, y_is_time,y_label_min,y_label_max,yTrans,yOrder = self.xyCreateAxisColumn(df, sm_params['y_field'], y_field_is_scalar, sm_y_axis, yOrder, yFillTransforms)
                 most_params['y_axis_col']        = sm_y_axis
                 most_params['y_is_time']         = y_is_time
                 most_params['y_label_min']       = y_label_min
