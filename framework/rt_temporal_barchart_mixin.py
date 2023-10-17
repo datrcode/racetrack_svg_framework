@@ -823,7 +823,7 @@ class RTTemporalBarChartMixin(object):
 
             # Handle the xy overlay
             self.df2_extends_beyond = False
-            if self.y2_field is not None and self.rt_self.isPandas(self.df2):
+            if self.y2_field is not None:
                 # Apply the fade (if set)
                 if self.df2_fade is not None:
                     _co  =  self.rt_self.co_mgr.getTVColor('background', 'default')
@@ -843,33 +843,57 @@ class RTTemporalBarChartMixin(object):
                 # Determine if any of the frame falls outside of this range / clamp it if so...
                 if self.df2[self.x2_field].min() < _ts0 or self.df2[self.x2_field].max() > _ts1:
                     self.df2_extends_beyond = True
-                    self.df2 = self.df2.query(f"`{self.x2_field}` >= @_ts0 and `{self.x2_field}` <= @_ts1")
+                    if   self.rt_self.isPandas(self.df2):
+                        self.df2 = self.df2.query(f"`{self.x2_field}` >= @_ts0 and `{self.x2_field}` <= @_ts1")
+                    elif self.rt_self.isPolars(self.df2):
+                        self.df2 = self.df2.filter((pl.col(self.x2_field) >= _ts0) & (pl.col(self.x2_field) <= _ts1))
                 # Scale the x coordinates
                 if self.x2_axis_col is None:
                     self.x2_axis_col = f'my_x2_{self.widget_id}'
-                    self.df2[self.x2_axis_col] = (self.df2[self.x2_field] - _ts0)/(_ts1 - _ts0)
+                    if   self.rt_self.isPandas(self.df2):
+                        self.df2[self.x2_axis_col] = (self.df2[self.x2_field] - _ts0)/(_ts1 - _ts0)
+                    elif self.rt_self.isPolars(self.df2):
+                        self.df2 = self.df2.with_columns(((pl.col(self.x2_field)-_ts0)/(_ts1 - _ts0)).alias(self.x2_axis_col))
                 # Scale the y coordinates
                 if self.y2_axis_col is None:
                     self.y2_axis_col = f'my_y2_{self.widget_id}'
                     if self.y2_field_is_scalar:
-                        _min,_max = self.df2[self.y2_field].min().iloc[0],self.df2[self.y2_field].max().iloc[0]
+                        if   self.rt_self.isPandas(self.df2):
+                            _min,_max = self.df2[self.y2_field].min().iloc[0],self.df2[self.y2_field].max().iloc[0]
+                        elif self.rt_self.isPolars(self.df2):
+                            _min = self.df2[self.y2_field[0]].min()
+                            _max = self.df2[self.y2_field[0]].max()
                         if _min == _max:
                             _min -= 0.5
                             _max += 0.5
-                        self.df2[self.y2_axis_col] = (self.df2[self.y2_field] - _min)/(_max - _min)
+                        if   self.rt_self.isPandas(self.df2):
+                            self.df2[self.y2_axis_col] = (self.df2[self.y2_field] - _min)/(_max - _min)
+                        elif self.rt_self.isPolars(self.df2):
+                            self.df2 = self.df2.with_columns(((pl.col(self.y2_field)-_min)/(_max - _min)).alias(self.y2_axis_col))
                     else:
                         raise Exception('temporalBarChart() - y2_field in non-scalar modes not implemented yet')
-                # Create the pixels columns
-                self.df2[self.x2_axis_col+'_px'] = x_left     + self.df2[self.x2_axis_col]*w_usable
-                self.df2[self.y2_axis_col+'_px'] = y_baseline - self.df2[self.y2_axis_col]*max_bar_h
-                # Pixelize it...
-                self.df2[self.x2_axis_col+'_px'] = self.df2[self.x2_axis_col+'_px'].astype(np.int32)
-                self.df2[self.y2_axis_col+'_px'] = self.df2[self.y2_axis_col+'_px'].astype(np.int32)
+                if   self.rt_self.isPandas(self.df2):                
+                    # Create the pixels columns
+                    self.df2[self.x2_axis_col+'_px'] = x_left     + self.df2[self.x2_axis_col]*w_usable
+                    self.df2[self.y2_axis_col+'_px'] = y_baseline - self.df2[self.y2_axis_col]*max_bar_h
+                    # Pixelize it...
+                    self.df2[self.x2_axis_col+'_px'] = self.df2[self.x2_axis_col+'_px'].astype(np.int32)
+                    self.df2[self.y2_axis_col+'_px'] = self.df2[self.y2_axis_col+'_px'].astype(np.int32)
+                elif self.rt_self.isPolars(self.df2):
+                    # Create the pixels columns
+                    self.df2 = self.df2.with_columns((x_left     + pl.col(self.x2_axis_col)*w_usable ).alias(self.x2_axis_col + '_px'))
+                    self.df2 = self.df2.with_columns((y_baseline - pl.col(self.y2_axis_col)*max_bar_h).alias(self.y2_axis_col + '_px'))
+                    # Pixelize it...
+                    self.df2 = self.df2.with_columns([pl.col(self.x2_axis_col+'_px').cast(pl.Int32), pl.col(self.y2_axis_col+'_px').cast(pl.Int32)])
                 # Draw the lines (if configured)
                 if self.line2_groupby_field is not None:
                     _gb = self.df2.groupby(by=self.line2_groupby_field)
                     for k,k_df in _gb:
-                        _points,gbxy = '',k_df.groupby([self.x2_axis_col+'_px',self.y2_axis_col+'_px'])
+                        if   self.rt_self.isPandas(k_df):
+                            _points,gbxy = '',k_df.groupby([self.x2_axis_col+'_px',self.y2_axis_col+'_px'])    
+                        elif self.rt_self.isPolars(k_df):
+                            k_df = k_df.sort(self.x2_axis_col+'_px')
+                            _points,gbxy = '',k_df.groupby([self.x2_axis_col+'_px',self.y2_axis_col+'_px'], maintain_order=True)
                         for xy,xy_df in gbxy:
                             _points += f'{xy[0]},{xy[1]} '
                         _co = self.rt_self.co_mgr.getTVColor('data','default')
