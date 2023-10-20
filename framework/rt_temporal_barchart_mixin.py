@@ -651,8 +651,28 @@ class RTTemporalBarChartMixin(object):
             # Determine the mins and maxes and ensure it's a datetime64
             if self.ts_min is None:
                 self.ts_min = self.df[self.ts_field].min()
+            else:
+                if   self.rt_self.isPandas(self.df):
+                    self.df = self.df[self.df[self.ts_field] >= self.ts_min]
+                elif self.rt_self.isPolars(self.df):
+                    if type(self.ts_min) == str:
+                        _ts_min_ = datetime.fromisoformat(self.ts_min)
+                    else:
+                        _ts_min_ = self.ts_min
+                    self.df = self.df.filter(pl.col(self.ts_field) >= _ts_min_)
+
             if self.ts_max is None:
-                self.ts_max = self.df[self.ts_field].max()        
+                self.ts_max = self.df[self.ts_field].max()
+            else:
+                if   self.rt_self.isPandas(self.df):
+                    self.df = self.df[self.df[self.ts_field] < self.ts_max]
+                elif self.rt_self.isPolars(self.df):
+                    if type(self.ts_max) == str:
+                        _ts_max_ = datetime.fromisoformat(self.ts_max)
+                    else:
+                        _ts_max_ = self.ts_max
+                    self.df = self.df.filter(pl.col(self.ts_field) < _ts_max_)
+
             if type(self.ts_min) != np.datetime64:
                 self.ts_min = np.datetime64(self.ts_min)
             if type(self.ts_max) != np.datetime64:
