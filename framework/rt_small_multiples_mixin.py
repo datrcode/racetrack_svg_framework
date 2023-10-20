@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 import random
 import inspect
@@ -30,6 +31,67 @@ __name__ = 'rt_small_multiples_mixin'
 # Small Multiples Mixin
 #
 class RTSmallMultiplesMixin(object):
+    #
+    # categoryOrder() - determine the order of the categories
+    # - category_by should be a list of fields
+    #
+    def categoryOrder(self, df, category_by, sort_by, sort_by_field):
+        if type(category_by) != list:
+            category_by = [category_by]
+        if   self.isPandas(df):
+            return self.__categoryOrder_pandas__(df, category_by, sort_by, sort_by_field)
+        elif self.isPolars(df):
+            return self.__categoryOrder_polars__(df, category_by, sort_by, sort_by_field)
+        else:
+            raise Exception('RTSmallMultiples.categoryOrder() - only pandas and polars are supported')
+
+    #
+    def __categoryOrder_pandas__(self, df, category_by, sort_by, sort_by_field):
+        cat_gb = df.groupby(category_by)
+        if   sort_by is None or sort_by == 'alpha':
+            cat_order = cat_gb.count()
+        elif type(sort_by) == list:            
+            cat_order = pd.Series(np.zeros(len(sort_by)), index=sort_by)
+        elif sort_by == 'records' or sort_by_field is None or sort_by_field in category_by:    
+            cat_order = cat_gb.size().sort_values(ascending=False)
+        elif sort_by == 'field':
+            # Count by numeric summation
+            if self.fieldIsArithmetic(df, sort_by_field):
+                cat_order = cat_gb[sort_by_field].sum().sort_values(ascending=False)            
+            # Count by set operation
+            else:
+                _list = list(category_by)
+                _list.append(sort_by_field)
+                tmp_gb = df.groupby(_list)
+                tmp_df = pd.DataFrame(tmp_gb.size()).reset_index()
+                cat_order  = tmp_df.groupby(category_by).size().sort_values(ascending=False)
+        else:
+            raise Exception('smallMultiples() - sort by must be "records", "field", "alpha", "similarity", or a list')
+        return cat_gb, cat_order
+
+    #
+    def __categoryOrder_polars__(self, df, category_by, sort_by, sort_by_field):
+        if   sort_by is None or sort_by == 'alpha': # (Y_check)
+            df_min    = df.drop(set(df.columns) - set(category_by))
+            cat_order = df_min.unique(subset=category_by).sort(category_by)
+        elif type(sort_by) == list: # (Y)
+            cat_order = pl.DataFrame({'category_by':sort_by})
+        elif sort_by == 'records' or sort_by_field is None or sort_by_field in category_by: # (Y_check)
+            cat_order = df.group_by(category_by, maintain_order=True).agg(pl.count().alias('__count__')).sort('__count__', descending=True)
+        elif sort_by == 'field': # (Y)
+            # Count by numeric summation
+            if self.fieldIsArithmetic(df, sort_by_field): # (Y_check)
+                df_min    = df.drop(set(df.columns) - set(category_by) - set([sort_by_field]))
+                cat_order = df_min.group_by(category_by, maintain_order=True).agg(pl.sum(sort_by_field).alias('__count__')).sort('__count__', descending=True)            
+            # Count by set operation
+            else: # (Y_check)
+                df_min    = df.drop(set(df.columns) - set(category_by) - set([sort_by_field]))
+                cat_order = df_min.group_by(category_by, maintain_order=True).n_unique()
+                cat_order = cat_order.rename({sort_by_field:'__count__'}).sort('__count__', descending=True)
+        else:
+            raise Exception('smallMultiples() - sort by must be "records", "field", "alpha", "similarity", or a list')
+        return df.partition_by(category_by, as_dict=True), cat_order
+
     #
     # For future reference, to make this work with a new widget:
     #
@@ -98,7 +160,7 @@ class RTSmallMultiplesMixin(object):
         my_params = locals().copy()
 
         # Preserve original
-        df = df.copy()
+        df = self.copyDataFrame(df)
 
         # Check widget ... since there's widget specific processing
         _implemented_types = ['boxplot', 'calendarHeatmap', 'histogram', 'linkNode', 'periodicBarChart', 'pieChart', 'temporalBarChart', 'xy']
@@ -131,10 +193,10 @@ class RTSmallMultiplesMixin(object):
 
         # Transform the categories if necessary (and the count and color bys as well)
         df, category_by = self.transformFieldListAndDataFrame(df, category_by)
-        df, color_bys = self.transformFieldListAndDataFrame(df, [color_by])
-        color_by = color_bys[0]
-        df, count_bys = self.transformFieldListAndDataFrame(df, [count_by])
-        count_by = count_bys[0]
+        df, color_bys   = self.transformFieldListAndDataFrame(df, [color_by])
+        color_by        = color_bys[0]
+        df, count_bys   = self.transformFieldListAndDataFrame(df, [count_by])
+        count_by        = count_bys[0]
 
         # Transform any of the sm params...
         required_columns = getattr(self, f'{sm_type}RequiredFields')(**sm_params)
@@ -145,42 +207,14 @@ class RTSmallMultiplesMixin(object):
         if (sm_type == 'temporalBarChart' or \
             sm_type == 'periodicBarChart' or \
             sm_type == 'calendarHeatmap') and ts_field is None:
-            choices = df.select_dtypes(np.datetime64).columns
-            if len(choices) == 1:
-                ts_field = choices[0]
-            elif len(choices) > 1:
-                print('multiple timestamp fields... choosing the first (smallMultiples)')
-                ts_field = choices[0]
-            else:
-                raise Exception('no timestamp field supplied to smallMultiples(), cannot automatically determine field')
+            ts_field = self.guessTimestampField(df)
                 
         # Calculate temporal_granulaity if needed
         if sm_type == 'temporalBarChart' and temporal_granularity is None:
             temporal_granularity = self.temporalGranularity(df, ts_field)
 
         # Determine categories and ordering // cat_order and cat_gb need to be set
-        cat_gb = df.groupby(category_by)
-        if   sort_by is None or sort_by == 'alpha':
-            cat_order = cat_gb.count()
-        elif type(sort_by) == list:            
-            cat_order = pd.Series(np.zeros(len(sort_by)), index=sort_by)
-        elif sort_by == 'records' or sort_by_field is None or sort_by_field in category_by:    
-            cat_order = cat_gb.size().sort_values(ascending=False)
-        elif sort_by == 'field':
-            # Count by numeric summation
-            if df[sort_by_field].dtypes == np.int64   or df[sort_by_field].dtypes == np.int32 or \
-               df[sort_by_field].dtypes == np.float64 or df[sort_by_field].dtypes == np.float32:
-                cat_order = cat_gb[sort_by_field].sum().sort_values(ascending=False)
-            
-            # Count by set operation
-            else:
-                _list = list(category_by)
-                _list.append(sort_by_field)
-                tmp_gb = df.groupby(_list)
-                tmp_df = pd.DataFrame(tmp_gb.size()).reset_index()
-                cat_order  = tmp_df.groupby(category_by).size().sort_values(ascending=False)
-        else:
-            raise Exception('smallMultiples() - sort by must be "records", "field", "alpha", "similarity", or a list')
+        cat_gb, cat_order = self.categoryOrder(df, category_by, sort_by, sort_by_field)
 
         # Determine the color ordering (not for xy though...)
         if count_by_set == False:
@@ -287,8 +321,12 @@ class RTSmallMultiplesMixin(object):
                     max_categories = len(cat_order)
 
                 for cat_i in range(0,max_categories):
-                    key = cat_order.index[cat_i]
-                    key_df = cat_gb.get_group(key)
+                    if self.isPandas(df):
+                        key    = cat_order.index[cat_i]
+                        key_df = cat_gb.get_group(key)
+                    else:
+                        key    = cat_order[category_by][cat_i].rows()[0]
+                        key_df = cat_gb[key]
                     my_params = most_params.copy()
                     my_params['df'] = key_df
                     rt_comp_instance = widget_func(**my_params)
@@ -309,8 +347,12 @@ class RTSmallMultiplesMixin(object):
                     max_categories = len(cat_order)
 
                 for cat_i in range(0,max_categories):
-                    key = cat_order.index[cat_i]
-                    key_df = cat_gb.get_group(key)
+                    if self.isPandas(df):
+                        key    = cat_order.index[cat_i]
+                        key_df = cat_gb.get_group(key)
+                    else:
+                        key    = cat_order[category_by][cat_i].rows()[0]
+                        key_df = cat_gb[key]
                     my_params = most_params.copy()
                     my_params['df'] = key_df
                     rt_comp_instance = widget_func(**my_params)
@@ -386,7 +428,10 @@ class RTSmallMultiplesMixin(object):
             # Else... calculate the placement based on the data... with shrinkwrapping on the rows
             else:
                 row_sort = fieldOrder(self, df, category_by[0], sort_by, sort_by_field)
-                row_gb   = df.groupby(category_by[0])
+                if   self.isPandas(df):
+                    row_gb   = df.groupby(category_by[0])
+                elif self.isPolars(df):
+                    row_gb   = df.partition_by(category_by[0], as_dict=True)
 
                 longest_row = 1
 
@@ -396,7 +441,7 @@ class RTSmallMultiplesMixin(object):
                     row_lu[k] = i
                     row_order.append(k)
                     grid_rows.append(k)
-                    k_df = row_gb.get_group(k)
+                    k_df = row_gb.get_group(k) if self.isPandas(df) else row_gb[k] if self.isPolars(df) else None
                     this_rows_order = fieldOrder(self, k_df, category_by[1], sort_by, sort_by_field)
                     for j in range(0,len(this_rows_order)):
                         l = this_rows_order.index[j]
@@ -564,7 +609,7 @@ class RTSmallMultiplesMixin(object):
         if grid_lu is None:
             for cat_i in range(0,max_categories):
                 # Convert key to a category string
-                key = cat_order.index[cat_i]
+                key = cat_order.index[cat_i] if self.isPandas(df) else cat_order[category_by][cat_i].rows()[0] if self.isPolars(df) else None
 
                 if type(key) == tuple:
                     key_str = ''
@@ -574,7 +619,8 @@ class RTSmallMultiplesMixin(object):
                         key_str += str(_part)
                 else:
                     key_str = str(key)
-                key_df = cat_gb.get_group(key)
+
+                key_df = cat_gb.get_group(key) if self.isPandas(df) else cat_gb[key] if self.isPolars(df) else None
 
                 # Calculate placement
                 xi_sm  = tile_i%sm_columns                            # index position
@@ -621,7 +667,7 @@ class RTSmallMultiplesMixin(object):
         # ... draw the grid
         else:
             for key in grid_lu.keys():
-                key_df = cat_gb.get_group(key)
+                key_df = cat_gb.get_group(key) if self.isPandas(df) else cat_gb[key] if self.isPolars(df) else None
                 xi_sm,yi_sm = grid_lu[key]
 
                 if type(key) == tuple:
@@ -774,7 +820,7 @@ class RTSmallMultiplesMixin(object):
                      **kwargs):
             self.parms     = locals().copy()
             self.rt_self   = rt_self
-            self.df        = kwargs['df'].copy()
+            self.df        = rt_self.copyDataFrame(kwargs['df'])
             self.widget_id = kwargs['widget_id']
             if self.widget_id is None:
                 self.widget_id = "smallMultiples_"+str(random.randint(0,65535))
@@ -906,8 +952,14 @@ class RTSmallMultiplesMixin(object):
                 if _poly.intersects(to_intersect):
                     _dfs.append(self.category_to_df[_category])
             if len(_dfs) > 0:
-                _dfs_together = pd.concat(_dfs)
-                _dfs_together = _dfs_together.drop_duplicates()
+                if   self.rt_self.isPandas(self.df):
+                    _dfs_together = pd.concat(_dfs)
+                    _dfs_together = _dfs_together.drop_duplicates()
+                elif self.rt_self.isPolars(self.df):
+                    _dfs_together = pl.concat(_dfs)
+                    _dfs_together = _dfs_together.unique()                
+                else:
+                    raise Exception('RTSmallMultiples.overlappingDataFrames() - only pandas and polars are supported')
                 return _dfs_together
             else:
                 return None
@@ -922,7 +974,7 @@ class RTSmallMultiplesMixin(object):
                             df,                     # single dataframe or a list of dataframes
                             required_columns):      # required columns as a set
         # if it's already one, just return it...
-        if type(df) == pd.DataFrame or type(df) != list:
+        if self.rt_self.isPandas(df) or self.rt_self.isPolars(df) or type(df) != list:
             return df
 
         # combined together if they meet the required columns
@@ -968,14 +1020,23 @@ class RTSmallMultiplesMixin(object):
 
         # Align each individual dataframe list with the required columns ... then concatenate them together
         my_cat_column = 'my_cat_col_' + str(random.randint(0,65535))
-        master_df = pd.DataFrame()
-        for k in str_to_df_list.keys():
-            df_list    = str_to_df_list[k]
-            aligned_df = self.__alignDataFrames__(df_list,required_columns)
-            pd.set_option('mode.chained_assignment', None)    # verified that the operation occurs correctly 2023-01-11 20:00EST
-            aligned_df[my_cat_column] = k
-            pd.set_option('mode.chained_assignment', 'warn')
-            master_df = pd.concat([master_df, aligned_df])
+
+        if   self.isPandas(df):
+            master_df = pd.DataFrame()
+            for k in str_to_df_list.keys():
+                df_list    = str_to_df_list[k]
+                aligned_df = self.__alignDataFrames__(df_list,required_columns)
+                pd.set_option('mode.chained_assignment', None)    # verified that the operation occurs correctly 2023-01-11 20:00EST
+                aligned_df[my_cat_column] = k
+                pd.set_option('mode.chained_assignment', 'warn')
+                master_df = pd.concat([master_df, aligned_df])
+        elif self.isPolars(df):
+            master_df = pl.DataFrame()
+            for k in str_to_df_list.keys():
+                df_list    = str_to_df_list[k]
+                aligned_df = self.__alignDataFrames__(df_list,required_columns)
+                aligned_df = aligned_df.with_columns(pl.lit(k).alias(my_cat_column))
+                master_df = pl.concat([master_df, aligned_df])
 
         # Find the timestamp field... or figure out what to use...
         accepted_args = set(inspect.getfullargspec(getattr(self, sm_type)).args)
@@ -1299,26 +1360,29 @@ def howManyFit(w_sm,h_sm,w,h):
     rows = int(h/h_sm)
     return rows*cols
 
-
 #
 # fieldOrder()
 #
 def fieldOrder(rt_self,
-               df, 
-               field, 
-               sort_by, 
+               df,
+               field,
+               sort_by,
                sort_by_field):
-    
-    #
+    if rt_self.isPandas(df):
+        return __fieldOrder_pandas__(rt_self, df, field, sort_by, sort_by_field)
+    else:
+        raise Exception('SmallMultiples.fieldOrder() -- only implemented for pandas')
+
+#
+def __fieldOrder_pandas__(rt_self,
+                          df, 
+                          field, 
+                          sort_by, 
+                          sort_by_field):
     # Sort by rows
-    #
     if   sort_by == 'records' or (sort_by == 'field' and sort_by_field is None):
-        #print('by records')
         return df.groupby(field).size().sort_values(ascending=False)
-    
-    #
     # Sort by a field
-    #
     elif sort_by == 'field':        
         if rt_self.fieldIsArithmetic(df,sort_by_field):
             #print('by field (arithmetic)')
@@ -1327,10 +1391,7 @@ def fieldOrder(rt_self,
             #print('by field (set operation)')
             _df = pd.DataFrame(df.groupby([field,sort_by_field]).size())
             return _df.groupby(field).size().sort_values(ascending=False)
-
-    #
     # Sort naturally
-    #
     elif sort_by == 'natural':
         if   field.startswith('|tr|month|'):
             _set,_arr = set(df[field]),[]
@@ -1350,10 +1411,7 @@ def fieldOrder(rt_self,
             return _series
         else:
             return df.groupby(field).count()
-
-    #
     # Alphabetical
-    #
     else:
         #print('by alpha')
         return df.groupby(field).count()
