@@ -284,7 +284,7 @@ class RTPieChartMixin(object):
             if self.color_by is not None:
                 counter = self.rt_self.polarsCounter(self.df, self.color_by, self.count_by, self.count_by_set)
                 totals  = counter['__count__'].sum()
-                tracking_gb = self.df.partition_by(self.color_by)
+                tracking_gb = self.df.partition_by(self.color_by, as_dict=True)
                 # Common render code
                 deg, not_rendered = 0, []
                 my_intersection = self.rt_self.__myIntersection__(self.global_color_order['index'], counter[self.color_by])
@@ -306,10 +306,10 @@ class RTPieChartMixin(object):
                                 for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
                                     _poly_angle = pi * (_poly_degree-90) / 180.0 
                                     _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
-                                self.geom_to_df[Polygon(_poly_points)] = tracking_gb.get_group(cb_bin)
+                                self.geom_to_df[Polygon(_poly_points)] = tracking_gb[cb_bin]
                         deg = deg_end
                     elif track_state:
-                        not_rendered.append(tracking_gb.get_group(cb_bin))
+                        not_rendered.append(tracking_gb[cb_bin])
                 
                 # For any arcs that weren't long enough allocate them to the end
                 if len(not_rendered) > 0 and track_state:
@@ -406,27 +406,34 @@ class RTPieChartMixin(object):
             # Otherwise, break the cases down by how we're counting...
             fv,fv_norm = {},{}
             if self.color_by is not None:
-                # Count By Rows
-                if   self.count_by is None:
-                    totals = len(self.df) # total number of rows
-                    tmp_df = pd.DataFrame(self.df.groupby(self.color_by).size())
-                    total_i = 0
-                # Count By Set
-                elif self.count_by_set:
-                    tmp_df = pd.DataFrame(self.df.groupby([self.color_by,self.count_by]).size()).reset_index()
-                    totals = len(tmp_df)
-                    tmp_df = pd.DataFrame(tmp_df.groupby(self.color_by).size())
-                    total_i = 0
-                # Count By Numbers
+                if self.rt_self.isPandas(self.df):
+                    # Count By Rows
+                    if   self.count_by is None:
+                        totals = len(self.df) # total number of rows
+                        tmp_df = pd.DataFrame(self.df.groupby(self.color_by).size())
+                        total_i = 0
+                    # Count By Set
+                    elif self.count_by_set:
+                        tmp_df = pd.DataFrame(self.df.groupby([self.color_by,self.count_by]).size()).reset_index()
+                        totals = len(tmp_df)
+                        tmp_df = pd.DataFrame(tmp_df.groupby(self.color_by).size())
+                        total_i = 0
+                    # Count By Numbers
+                    else:
+                        tmp_df = pd.DataFrame(self.df.groupby(self.color_by)[self.count_by].sum())
+                        totals = tmp_df[self.count_by].sum()
+                        total_i = self.count_by
+                    # Common render code
+                    for cb_bin in tmp_df.index:
+                        my_total = tmp_df.loc[cb_bin][total_i]
+                        fv[cb_bin] = my_total/totals
+                elif self.rt_self.isPolars(self.df):
+                    counter = self.rt_self.polarsCounter(self.df, self.color_by, self.count_by, self.count_by_set)
+                    totals  = counter['__count__'].sum()
+                    for i in range(len(counter)):
+                        fv[counter[self.color_by][i]] = counter['__count__'][i] / totals
                 else:
-                    tmp_df = pd.DataFrame(self.df.groupby(self.color_by)[self.count_by].sum())
-                    totals = tmp_df[self.count_by].sum()
-                    total_i = self.count_by
-
-                # Common render code
-                for cb_bin in tmp_df.index:
-                    my_total = tmp_df.loc[cb_bin][total_i]
-                    fv[cb_bin] = my_total/totals
+                    raise Exception('RTPieChart.smallMultipleFeatureVector() - only pandas and polars supported')
 
                 # Make it into a unit vector
                 sq_sum = 0
