@@ -615,6 +615,31 @@ class RACETrack(RTAnnotationsMixin,
             raise Exception(f'Unknown type ("{type(something)}") for ("{something}") encountered in identifyColumnsFromParameters()')
 
     #
+    # polarsCounter() -- return a dataframe with fields and an __count__ column.
+    #
+    def polarsCounter(self, df, fields, count_by=None, count_by_set=False):
+        fields = [fields] if type(fields) != list else fields
+        if count_by is not None and count_by_set == False:
+            if self.fieldIsArithmetic(df, count_by) == False:
+                count_by_set = True
+        if count_by is None:
+            return df.group_by(fields).agg(pl.count().alias('__count__'))
+        elif count_by_set and count_by in fields:
+            df_min = df.drop(set(df.columns) - set(fields) - set([count_by]))
+            df_dupe = df_min.with_columns(pl.col(count_by).alias('__count__'))
+            return df_dupe.group_by(fields).n_unique()
+        elif count_by_set:
+            df_min = df.drop(set(df.columns) - set(fields) - set([count_by])).rename({count_by:'__count__'})
+            return df_min.group_by(fields).n_unique()
+        elif count_by in fields:
+            df_min = df.drop(set(df.columns) - set(fields) - set([count_by]))
+            df_dupe = df_min.with_columns(pl.col(count_by).alias('__count__'))
+            return df_dupe.group_by(fields).sum()
+        else:
+            df_min = df.drop(set(df.columns) - set(fields) - set([count_by])).rename({count_by:'__count__'})
+            return df_min.group_by(fields).sum()
+
+    #
     # Determine If A Column Has To Be Counted By Set Operation
     #
     def countBySet(self, 

@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 
 from shapely.geometry import Polygon
@@ -65,25 +66,25 @@ class RTPieChartMixin(object):
     # Make the SVG for a piechart
     #    
     def pieChart(self,
-                 df,                              # dataframe to render
-                 # ------------------------------ # everything else is a default...
-                color_by             = None,      # just the default color or a string for a field
-                global_color_order   = None,      # color by ordering... if none (default), will be created and filled in...
-                count_by             = None,      # none means just count rows, otherwise, use a field to sum by # Not Implemented
-                count_by_set         = False,     # count by summation (by default)... column is checked
-                widget_id            = None,      # naming the svg elements
-                # ------------------------------- # custom render for this component
-                style                = 'pie',     # 'pie' or 'waffle'
-                min_render_angle_deg = 5,         # minimum render angle
-                # ------------------------------- # visualization geometry / etc.
-                x_view               = 0,         # x offset for the view
-                y_view               = 0,         # y offset for the view
-                x_ins                = 3,         # side inserts
-                y_ins                = 3,         # top & bottom inserts
-                w                    = 256,       # width of the view
-                h                    = 256,       # height of the view
-                draw_border          = True,      # draw a border around the histogram
-                draw_background      = False):    # useful to turn off in small multiples settings
+                 df,                               # dataframe to render
+                 # ------------------------------- # everything else is a default...
+                 color_by             = None,      # just the default color or a string for a field
+                 global_color_order   = None,      # color by ordering... if none (default), will be created and filled in...
+                 count_by             = None,      # none means just count rows, otherwise, use a field to sum by # Not Implemented
+                 count_by_set         = False,     # count by summation (by default)... column is checked
+                 widget_id            = None,      # naming the svg elements
+                 # ------------------------------- # custom render for this component
+                 style                = 'pie',     # 'pie' or 'waffle'
+                 min_render_angle_deg = 5,         # minimum render angle
+                 # ------------------------------- # visualization geometry / etc.
+                 x_view               = 0,         # x offset for the view
+                 y_view               = 0,         # y offset for the view
+                 x_ins                = 3,         # side inserts
+                 y_ins                = 3,         # top & bottom inserts
+                 w                    = 256,       # width of the view
+                 h                    = 256,       # height of the view
+                 draw_border          = True,      # draw a border around the histogram
+                 draw_background      = False):    # useful to turn off in small multiples settings
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTPieChart(self, **_params_)
@@ -100,7 +101,7 @@ class RTPieChartMixin(object):
                      **kwargs):
             self.parms     = locals().copy()
             self.rt_self   = rt_self
-            self.df        = kwargs['df'].copy()
+            self.df        = rt_self.copyDataFrame(kwargs['df'])
             self.widget_id = kwargs['widget_id']
 
             # Make a widget_id if it's not set already
@@ -135,7 +136,7 @@ class RTPieChartMixin(object):
                 self.df,self.color_by = rt_self.applyTransform(self.df, self.color_by)
 
             # Simple solution to color_by == count_by problem // unsure of the performance penalty
-            if self.color_by == self.count_by:
+            if rt_self.isPandas(self.df) and self.color_by == self.count_by:
                 new_col = 'color_by_' + str(random.randint(0,65535))
                 self.df[new_col] = self.df[self.color_by]
                 self.color_by = new_col
@@ -186,9 +187,17 @@ class RTPieChartMixin(object):
             if len(self.df) > 0:
                 # Render the different styles
                 if self.style   == 'pie':
-                    svg += self.__renderPieStyle__(w_usable, h_usable, track_state)
+                    if   self.rt_self.isPandas(self.df):
+                        svg += self.__renderPieStyle_pandas__(w_usable, h_usable, track_state)
+                    elif self.rt_self.isPolars(self.df):
+                        svg += self.__renderPieStyle_polars__(w_usable, h_usable, track_state)
+                    else:
+                        raise Exception("RTPieChart() - only pandas and polars supported")
                 elif self.style == 'waffle':
-                    svg += self.__renderWaffleStyle__(w_usable, h_usable)
+                    if   self.rt_self.isPandas(self.df):                
+                        svg += self.__renderWaffleStyle__(w_usable, h_usable)
+                    else:
+                        raise Exception('RTPieChart() - only pandas is supported for waffle style')
                 else:
                     raise Exception(f'RTPieChart() - do not under style "{self.style}"')
 
@@ -259,7 +268,64 @@ class RTPieChartMixin(object):
         #
         # Render the standard pie chart style
         #
-        def __renderPieStyle__(self, w_usable, h_usable, track_state):
+        def __renderPieStyle_polars__(self, w_usable, h_usable, track_state):
+            cx = self.x_ins + w_usable/2
+            cy = self.y_ins + h_usable/2
+            if w_usable < h_usable:
+                r = w_usable/2
+            else:
+                r = h_usable/2
+            default_color = self.rt_self.co_mgr.getTVColor('data','default')
+
+            # Draw the default data color circle...
+            svg = f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{default_color}" stroke-opacity="0.0" />'
+
+            # Otherwise, break the cases down by how we're counting...
+            if self.color_by is not None:
+                counter = self.rt_self.polarsCounter(self.df, self.color_by, self.count_by, self.count_by_set)
+                totals  = counter['__count__'].sum()
+                tracking_gb = self.df.partition_by(self.color_by)
+                # Common render code
+                deg, not_rendered = 0, []
+                my_intersection = self.rt_self.__myIntersection__(self.global_color_order['index'], counter[self.color_by])
+                for cb_bin in my_intersection:
+                    my_color = cb_bin
+                    my_total = counter.filter(pl.col(self.color_by) == cb_bin)['__count__'][0]
+                    # Replicated arc code
+                    degrees_to_render = 360.0*my_total/totals
+                    if degrees_to_render > self.min_render_angle_deg:
+                        _co = self.rt_self.co_mgr.getColor(my_color)
+                        deg_end = deg + degrees_to_render
+                        if degrees_to_render >= 360.0:
+                            svg += f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{_co}" stroke-opacity="0.0" />'
+                        else:
+                            svg += f'<path d="{arcPath(cx,cy,r,deg,deg_end)}" fill="{_co}" stroke-opacity="0.0" />'
+
+                            if track_state:
+                                _poly_points = [[cx,cy]]
+                                for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
+                                    _poly_angle = pi * (_poly_degree-90) / 180.0 
+                                    _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
+                                self.geom_to_df[Polygon(_poly_points)] = tracking_gb.get_group(cb_bin)
+                        deg = deg_end
+                    elif track_state:
+                        not_rendered.append(tracking_gb.get_group(cb_bin))
+                
+                # For any arcs that weren't long enough allocate them to the end
+                if len(not_rendered) > 0 and track_state:
+                    deg_end = 359
+                    _poly_points = [[cx,cy]]
+                    for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
+                        _poly_angle = pi * (_poly_degree-90) / 180.0 
+                        _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
+                    self.geom_to_df[Polygon(_poly_points)] = not_rendered
+
+            return svg
+
+        #
+        # Render the standard pie chart style
+        #
+        def __renderPieStyle_pandas__(self, w_usable, h_usable, track_state):
             cx = self.x_ins + w_usable/2
             cy = self.y_ins + h_usable/2
             if w_usable < h_usable:
