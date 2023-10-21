@@ -405,13 +405,21 @@ class RTSmallMultiplesMixin(object):
 
                 col_lu,col_order = {},[]
                 for i in range(0,len(col_sort)):
-                    col_lu[col_sort.index[i]] = i
-                    col_order.append(col_sort.index[i])
+                    if self.isPandas(df):
+                        col_lu[col_sort.index[i]] = i
+                        col_order.append(col_sort.index[i])
+                    else:
+                        col_lu[col_sort['field'][i]] = i
+                        col_order.append(col_sort['field'][i])
 
                 row_lu,row_order = {},[]
                 for i in range(0,len(row_sort)):
-                    row_lu[row_sort.index[i]] = i
-                    row_order.append(row_sort.index[i])
+                    if self.isPandas(df):
+                        row_lu[row_sort.index[i]] = i
+                        row_order.append(row_sort.index[i])
+                    else:
+                        row_lu[row_sort['field'][i]] = i
+                        row_order.append(row_sort['field'][i])
 
                 for key,key_df in cat_gb:
                     grid_lu[key] = (col_lu[key[1]], row_lu[key[0]])
@@ -437,7 +445,10 @@ class RTSmallMultiplesMixin(object):
 
                 row_lu,row_order,grid_rows = {},[],[]
                 for i in range(0,len(row_sort)):
-                    k = row_sort.index[i]
+                    if   self.isPandas(df):
+                        k = row_sort.index[i]
+                    elif self.isPolars(df):
+                        k = row_sort['field'][i]
                     row_lu[k] = i
                     row_order.append(k)
                     grid_rows.append(k)
@@ -1368,10 +1379,12 @@ def fieldOrder(rt_self,
                field,
                sort_by,
                sort_by_field):
-    if rt_self.isPandas(df):
+    if   rt_self.isPandas(df):
         return __fieldOrder_pandas__(rt_self, df, field, sort_by, sort_by_field)
+    elif rt_self.isPolars(df):
+        return __fieldOrder_polars__(rt_self, df, field, sort_by, sort_by_field)
     else:
-        raise Exception('SmallMultiples.fieldOrder() -- only implemented for pandas')
+        raise Exception('SmallMultiples.fieldOrder() -- only pandas or polars supported')
 
 #
 def __fieldOrder_pandas__(rt_self,
@@ -1416,3 +1429,41 @@ def __fieldOrder_pandas__(rt_self,
         #print('by alpha')
         return df.groupby(field).count()
 
+#
+def __fieldOrder_polars__(rt_self,
+                          df, 
+                          field, 
+                          sort_by, 
+                          sort_by_field):
+    # Sort by rows
+    if   sort_by == 'records' or (sort_by == 'field' and sort_by_field is None):
+        df_min = df.drop(set(df_pl.columns) - set([sort_by])).rename({sort_by:'field'})    
+        return df_min.group_by('field', maintain_order=True).agg(pl.count().alias('__count__')).sort('__count__', descending=True)
+    # Sort by a field
+    elif sort_by == 'field':        
+        if rt_self.fieldIsArithmetic(df,sort_by_field):
+            df_min = df.drop(set(df.columns) - set([field]) - set([sort_by_field])).rename({field:'field',sort_by_field:'__count__'})
+            return df_min.group_by('field', maintain_order=True).agg(pl.sum('__count__')).sort('__count__', descending=True)
+        else:
+            df_min = df.drop(set(df.columns) - set(field) - set([sort_by_field])).rename({field:'field', sort_by_field:'__count__'})
+            return df_min.group_by('field', maintain_order=True).n_unique().sort('__count__', descending=True)
+    # Sort naturally
+    elif sort_by == 'natural':
+        if   field.startswith('|tr|month|'):
+            _set,_arr = set(df[field]),[]
+            for _mon in ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']:
+                if _mon in _set:
+                    _arr.append(_mon)
+            return pl.DataFrame({'field':_arr})
+        elif field.startswith('|tr|day_of_week|'):
+            _set,_arr = set(df[field]),[]
+            for _dow in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']:
+                if _dow in _set:
+                    _arr.append(_dow)
+            return pl.DataFrame({'field':_arr})
+        else:
+            return df.groupby(field).count()
+    # Alphabetical
+    else:
+        df = df.drop(df.columns - set([field])).rename({field:'field'}).unique()
+        return df.sort('field')
