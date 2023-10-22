@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 import networkx as nx
 import random
@@ -114,7 +115,7 @@ class RTLinkNodeMixin(object):
     def nodeLabeler(self, df, node_field, label_field, node_labels=None, word_wrap=True, max_line_len=32, max_lines=4):
         if node_labels is None:
             node_labels = {}
-        gb = df.groupby(node_field)
+        gb = df.groupby(node_field) if self.isPandas(df) else df.group_by(node_field) if self.isPolars(df) else None
         for k,k_df in gb:
             node_str = self.nodeString(k)
             label_array = node_labels[node_str] if node_str in node_labels.keys() else [] # maybe just adding to?
@@ -257,9 +258,15 @@ class RTLinkNodeMixin(object):
 
                         # create the edge table
                         if len(flds) == 1:
-                            gb = _df.groupby(flds[0])
+                            if self.isPandas(_df):
+                                gb = _df.groupby(flds[0])
+                            elif self.isPolars(_df):
+                                gb = _df.group_by(flds[0])
                         else:
-                            gb = _df.groupby(flds)
+                            if self.isPandas(_df):
+                                gb = _df.groupby(flds)
+                            elif self.isPolars(_df):
+                                gb = _df.group_by(flds)
 
                         # iterate over the edges
                         for k,k_df in gb:
@@ -446,11 +453,8 @@ class RTLinkNodeMixin(object):
         count_by_set = False
         if count_by is not None:
             for _df in df:
-                if  _df[count_by].dtypes != np.int64    and \
-                    _df[count_by].dtypes != np.int32    and \
-                    _df[count_by].dtypes != np.float64  and \
-                    _df[count_by].dtypes != np.float32:
-                        count_by_set = True
+                if self.fieldIsArithmetic(_df, count_by) == False:
+                    count_by_set = True
         # Iterate over the relationships
         for rel_tuple in relationships:
             # Flatten out into the groupby array, the fm_flds array, and the to_flds array            
@@ -465,17 +469,24 @@ class RTLinkNodeMixin(object):
             for _df in df:
                 # if the _df has all of the columns
                 if len(set(_df.columns) & set(flat)) == len(set(flat)):
-                    gb = _df.groupby(flat)
-                    if count_by is None: 
-                        gb_sz = gb.size()
-                    elif count_by_set:
-                        gb_sz = gb[count_by].nunique()
+                    if self.isPandas(_df):
+                        gb = _df.groupby(flat)
+                        if count_by is None: 
+                            gb_sz = gb.size()
+                        elif count_by_set:
+                            gb_sz = gb[count_by].nunique()
+                        else:
+                            gb_sz = gb[count_by].sum()
+                        for i in range(0,len(gb)):
+                            _weight_ = gb_sz.iloc[i]
+                            _min_ = _weight_ if _min_ is None else min(_min_, _weight_)
+                            _max_ = _weight_ if _max_ is None else max(_max_, _weight_)
+                    elif self.isPolars(_df):
+                        counter = self.polarsCounter(_df, flat, count_by, count_by_set)
+                        _min_ = counter['__count__'].min()
+                        _max_ = counter['__count__'].max()
                     else:
-                        gb_sz = gb[count_by].sum()
-                    for i in range(0,len(gb)):
-                        _weight_ = gb_sz.iloc[i]
-                        _min_ = _weight_ if _min_ is None else min(_min_, _weight_)
-                        _max_ = _weight_ if _max_ is None else max(_max_, _weight_)
+                        raise Exception('RTLinkNode.minAndMaxLinkSize() - only pandas and polars supported')
         if _min_ == _max_:
             _max_ = _min_ + 1
         return _min_,_max_
@@ -498,11 +509,8 @@ class RTLinkNodeMixin(object):
         count_by_set = False
         if count_by is not None:
             for _df in df:
-                if  _df[count_by].dtypes != np.int64    and \
-                    _df[count_by].dtypes != np.int32    and \
-                    _df[count_by].dtypes != np.float64  and \
-                    _df[count_by].dtypes != np.float32:
-                        count_by_set = True
+                if self.fieldIsArithmetic(_df, count_by) == False:
+                    count_by_set = True
 
         # Create the return graph structure
         nx_g = nx.Graph()
@@ -527,22 +535,41 @@ class RTLinkNodeMixin(object):
             # Iterate over the dfs
             for _df in df:
 
+                def stringify(_list_):
+                    _str_ = str(_list_[0])
+                    for _x_ in _list_[1:]:
+                        _str_ += '|' + str(_x_)
+                    return _str_
+
                 # if the _df has all of the columns
                 if len(set(_df.columns) & set(flat)) == len(set(flat)):
-
-                    if count_by is None or count_by_set: # count_by_set not implemented...
-                        gb = _df.groupby(flat).size()
+                    if self.isPandas(_df):
+                        if count_by is None or count_by_set: # count_by_set not implemented...
+                            gb = _df.groupby(flat).size()
+                        else:
+                            gb = _df.groupby(flat)[count_by].sum()
+                        for i in range(0,len(gb)):
+                            k = gb.index[i]
+                            k_fm   = k[:len(fm_flds)]
+                            k_to   = k[len(fm_flds):]
+                            _fm_   = stringify(k_fm)
+                            _to_   = stringify(k_to)
+                            nx_g.add_edge(_fm_,_to_,weight=gb.iloc[i])
+                    elif self.isPolars(_df):
+                        counter = self.polarsCounter(_df, flat, count_by, count_by_set)
+                        for i in range(len(counter)):
+                            _row_   = counter[i]
+                            fm_list = []
+                            for _fm_fld_ in fm_flds:
+                                fm_list.append(_row_[_fm_fld_][0])
+                            to_list = []
+                            for _to_fld_ in to_flds:
+                                to_list.append(_row_[_to_fld_][0])
+                            _fm_ = stringify(fm_list)
+                            _to_ = stringify(to_list)
+                            nx_g.add_edge(_fm_,_to_,weight=_row_['__count__'][0])
                     else:
-                        gb = _df.groupby(flat)[count_by].sum()
-
-                    for i in range(0,len(gb)):
-                        k = gb.index[i]
-
-                        k_fm   = k[:len(fm_flds)]
-                        k_to   = k[len(fm_flds):]
-                        _fm_ = '|'.join(k_fm) if len(k_fm) > 1 else str(k_fm[0])
-                        _to_ = '|'.join(k_to) if len(k_to) > 1 else str(k_to[0])
-                        nx_g.add_edge(_fm_,_to_,weight=gb.iloc[i])
+                        raise Exception('RTLinkNode.createNetworkXGraph() - only pandas and polars is supported')
         return nx_g
 
     #
@@ -623,10 +650,10 @@ class RTLinkNodeMixin(object):
             # Make sure it's a list... and prevent the added columns from corrupting original dataframe
             my_df_list = []
             if type(kwargs['df']) != list:
-                my_df_list.append(kwargs['df'].copy())
+                my_df_list.append(rt_self.copyDataFrame(kwargs['df']))
             else:
                 for _df in kwargs['df']:
-                    my_df_list.append(_df.copy())
+                    my_df_list.append(rt_self.copyDataFrame(_df))
             self.df = my_df_list
             
             # Apply count-by transforms
@@ -742,7 +769,7 @@ class RTLinkNodeMixin(object):
                         to_flds = [to_flds]                    
                     for _df in self.df:
                         if len(set(_df.columns) & set(flat)) == len(set(flat)):
-                            gb = _df.groupby(flat)                            
+                            gb = _df.groupby(flat) if self.rt_self.isPandas(_df) else _df.group_by(flat) if self.rt_self.isPolars(_df) else None
                             for k,k_df in gb:
                                 k_fm   = k[:len(fm_flds)]
                                 k_to   = k[len(fm_flds):]
@@ -922,11 +949,8 @@ class RTLinkNodeMixin(object):
                     count_by_set = False
                     if self.count_by is not None:
                         for _df in self.df:
-                            if  _df[self.count_by].dtypes != np.int64    and \
-                                _df[self.count_by].dtypes != np.int32    and \
-                                _df[self.count_by].dtypes != np.float64  and \
-                                _df[self.count_by].dtypes != np.float32:
-                                    count_by_set = True
+                            if self.rt_self.fieldIsArithmetic(_df, self.count_by) == False:
+                                count_by_set = True
                     _sz_min, _sz_max = self.rt_self.__minAndMaxLinkSize__(self.df, self.relationships, self.count_by)
                     _sz = None
 
@@ -952,18 +976,30 @@ class RTLinkNodeMixin(object):
 
                         # if the _df has all of the columns
                         if len(set(_df.columns) & set(flat)) == len(set(flat)):
-                            gb = _df.groupby(flat)
-                            if self.count_by is None: 
-                                gb_sz = gb.size()
-                            elif count_by_set:
-                                gb_sz = gb[self.count_by].nunique()
+                            gb = _df.groupby(flat) if self.rt_self.isPandas(_df) else _df.group_by(flat) if self.rt_self.isPolars(_df) else None
+
+                            if self.rt_self.isPandas(_df):
+                                if self.count_by is None: 
+                                    gb_sz = gb.size()
+                                elif count_by_set:
+                                    gb_sz = gb[self.count_by].nunique()
+                                else:
+                                    gb_sz = gb[self.count_by].sum()
                             else:
-                                gb_sz = gb[self.count_by].sum()
+                                counter = self.rt_self.polarsCounter(_df, flat, self.count_by, self.count_by_set)
 
                             gb_sz_i = 0
                             for k,k_df in gb:
-                                _weight_ =  gb_sz.iloc[gb_sz_i]
-                                gb_sz_i  += 1
+                                if self.rt_self.isPandas(_df):
+                                    _weight_ =  gb_sz.iloc[gb_sz_i]
+                                    gb_sz_i  += 1
+                                else:
+                                    if self.count_by is None:
+                                        _weight_ = len(k_df)
+                                    elif count_by_set:
+                                        _weight_ = k_df[self.count_by].n_unique()
+                                    else:
+                                        _weight_ = k_df[self.count_by].sum()
 
                                 k_fm   = k[:len(fm_flds)]
                                 k_to   = k[len(fm_flds):]
@@ -1127,7 +1163,7 @@ class RTLinkNodeMixin(object):
                                     link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
                                 
                                 # Timing marks
-                                if self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns:
+                                if self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns and self.rt_self.isPandas(k_df):
                                     _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
                                     _side_ = 1.0 if fm_str < to_str else -1.0
                                     k_df[_tfield_] = (k_df[self.ts_field] - _df[self.ts_field].min()) / (_df[self.ts_field].max() - _df[self.ts_field].min())
@@ -1142,6 +1178,8 @@ class RTLinkNodeMixin(object):
                                         _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
                                         _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
                                         svg += f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />'
+                                elif self.timing_marks and self.rt_self.isPolars(k_df):
+                                    print('RTLinkNode.__renderLinks__() -- polars not supported')
 
                 # Handle the small multiples
                 if self.sm_mode == 'link' and self.sm_type is not None:
@@ -1220,10 +1258,12 @@ class RTLinkNodeMixin(object):
                             # if the _df has all of the columns
                             if len(set(_df.columns) & set(flds)) == len(set(flds)):
                                 # create the node table
-                                if len(flds) == 1:
-                                    gb = _df.groupby(flds[0])
+                                if   self.rt_self.isPandas(_df):
+                                    gb = _df.groupby(flds[0]) if len(flds) == 1 else _df.groupby(flds)
+                                elif self.rt_self.isPolars(_df):
+                                    gb = _df.group_by(flds[0]) if len(flds) == 1 else _df.group_by(flds)
                                 else:
-                                    gb = _df.groupby(flds)
+                                    raise Exception('RTLinkNode.__renderNodes__() - only pandas and polars supported')
 
                                 # iterate over the nodes
                                 for k,k_df in gb:
