@@ -36,8 +36,8 @@ class RTSmallMultiplesMixin(object):
     # - category_by should be a list of fields
     #
     def categoryOrder(self, df, category_by, sort_by, sort_by_field):
-        if type(category_by) != list:
-            category_by = [category_by]
+        #if type(category_by) != list:
+        #    category_by = [category_by]
         if   self.isPandas(df):
             return self.__categoryOrder_pandas__(df, category_by, sort_by, sort_by_field)
         elif self.isPolars(df):
@@ -631,6 +631,10 @@ class RTSmallMultiplesMixin(object):
                 else:
                     key_str = str(key)
 
+                # Fix for the polars-version... for some reason, sometimes it's get tupled...
+                if type(key) == tuple and len(key) == 1:
+                    key = key[0]
+
                 key_df = cat_gb.get_group(key) if self.isPandas(df) else cat_gb[key] if self.isPolars(df) else None
 
                 # Calculate placement
@@ -985,14 +989,19 @@ class RTSmallMultiplesMixin(object):
                             df,                     # single dataframe or a list of dataframes
                             required_columns):      # required columns as a set
         # if it's already one, just return it...
-        if self.rt_self.isPandas(df) or self.rt_self.isPolars(df) or type(df) != list:
+        if self.isPandas(df) or self.isPolars(df) or type(df) != list:
             return df
 
         # combined together if they meet the required columns
         combined_df = pd.DataFrame()
         for _df in df:
             if len(set(_df.columns) & required_columns) == len(required_columns):
-                combined_df = pd.concat([combined_df,_df])
+                if self.isPandas(_df):
+                    combined_df = pd.concat([combined_df,_df])
+                elif self.isPolars(_df):
+                    combined_df = pl.concat([combined_df,_df])
+                else:
+                    raise Exception('RTSmallMultiples.__alignDataFrames__() - only pandas and polars supported')
         return combined_df
 
     #
@@ -1032,7 +1041,13 @@ class RTSmallMultiplesMixin(object):
         # Align each individual dataframe list with the required columns ... then concatenate them together
         my_cat_column = 'my_cat_col_' + str(random.randint(0,65535))
 
-        if   self.isPandas(df):
+        df_example = None
+        if type(df) == list and len(df) > 0:
+            df_example = df[0]
+        else:
+            df_example = df 
+
+        if   self.isPandas(df_example):
             master_df = pd.DataFrame()
             for k in str_to_df_list.keys():
                 df_list    = str_to_df_list[k]
@@ -1041,13 +1056,15 @@ class RTSmallMultiplesMixin(object):
                 aligned_df[my_cat_column] = k
                 pd.set_option('mode.chained_assignment', 'warn')
                 master_df = pd.concat([master_df, aligned_df])
-        elif self.isPolars(df):
+        elif self.isPolars(df_example):
             master_df = pl.DataFrame()
             for k in str_to_df_list.keys():
                 df_list    = str_to_df_list[k]
                 aligned_df = self.__alignDataFrames__(df_list,required_columns)
                 aligned_df = aligned_df.with_columns(pl.lit(k).alias(my_cat_column))
                 master_df = pl.concat([master_df, aligned_df])
+        else:
+            raise Exception('RTSmallMultiples.createSmallMultiples() - only pandas and polars supported', type(df))
 
         # Find the timestamp field... or figure out what to use...
         accepted_args = set(inspect.getfullargspec(getattr(self, sm_type)).args)
@@ -1437,7 +1454,7 @@ def __fieldOrder_polars__(rt_self,
                           sort_by_field):
     # Sort by rows
     if   sort_by == 'records' or (sort_by == 'field' and sort_by_field is None):
-        df_min = df.drop(set(df_pl.columns) - set([sort_by])).rename({sort_by:'field'})    
+        df_min = df.drop(set(df.columns) - set([sort_by])).rename({sort_by:'field'})    
         return df_min.group_by('field', maintain_order=True).agg(pl.count().alias('__count__')).sort('__count__', descending=True)
     # Sort by a field
     elif sort_by == 'field':        
