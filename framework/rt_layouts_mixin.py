@@ -511,9 +511,9 @@ class RTLayoutsMixin(object):
             else:
                 unk_count += 1
         if    str_count >  0 and tup_count == 0 and unk_count == 0:
-            return self.multiWidgetPanel(spec,df,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,**kwargs)
+            return self.multiWidgetPanel(df,spec,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,**kwargs)
         elif  str_count == 0 and tup_count >  0 and unk_count == 0:
-            return self.gridBagLayout   (spec,df,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,**kwargs)
+            return self.gridBagLayout   (df,spec,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,**kwargs)
         else:
             raise Exception(f'rt.layout() failed to recognize specification type {str_count}/{tup_count}/{unk_count}')
 
@@ -521,8 +521,8 @@ class RTLayoutsMixin(object):
     # Create the SVG multipanel widget based on the spec, the dataframe, and the dynamic variables
     #
     def multiWidgetPanel(self,
-                         spec,                                # Multiwidget specification
                          df,                                  # Dataframe to render
+                         spec,                                # Multiwidget specification
                          #------------------------------------#
                          widget_id      = None,               # Widget ID
                          #------------------------------------#
@@ -629,8 +629,8 @@ class RTLayoutsMixin(object):
     # ... spec --> spec[x,y,w,h - tuple] -> ('component',{'param1':'value1', ... })
     #
     def gridBagLayout(self,
-                      spec,                                # Multiwidget specification
                       df,                                  # Dataframe to render
+                      spec,                                # Multiwidget specification
                       #------------------------------------#
                       widget_id      = None,               # Widget ID
                       #------------------------------------#
