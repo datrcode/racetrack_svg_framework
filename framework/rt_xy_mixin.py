@@ -1491,8 +1491,14 @@ class RTXYMixin(object):
                             if   _local_color_by is None:
                                 color = self.rt_self.co_mgr.getTVColor('data','default')
                             elif _local_color_by in k_df.columns:
-                                if   pd.core.dtypes.common.is_datetime_or_timedelta_dtype(k_df[_local_color_by]):
-                                    _scaled_time = (k_df[_local_color_by].min() - self.df[_local_color_by].min())/(self.df[_local_color_by].max() - self.df[_local_color_by].min())
+                                if ( (self.rt_self.isPandas(k_df) and is_datetime(k_df[_local_color_by])) or
+                                     (self.rt_self.isPolars(k_df) and k_df[_local_color_by].dtype == pl.Datetime) ):
+                                    _global_min_ = self.df[_local_color_by].min()
+                                    _global_max_ = self.df[_local_color_by].max()
+                                    if _global_min_ == _global_max_:
+                                        _global_min_ -= 0.5
+                                        _global_max_ += 0.5
+                                    _scaled_time = (k_df[_local_color_by].min() - _global_min_)/(_global_max_ - _global_min_)
                                     color        = self.rt_self.co_mgr.spectrum(_scaled_time, 0.0, 1.0)
                                 elif self.color_magnitude is None:
                                     color_set = set(k_df[_local_color_by])
