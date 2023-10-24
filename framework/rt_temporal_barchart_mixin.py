@@ -649,6 +649,7 @@ class RTTemporalBarChartMixin(object):
                  self.h_gap = 0
         
             # Determine the mins and maxes and ensure it's a datetime64
+            _len_before_min_ = len(self.df)
             if self.ts_min is None:
                 self.ts_min = self.df[self.ts_field].min()
             else:
@@ -660,7 +661,12 @@ class RTTemporalBarChartMixin(object):
                     else:
                         _ts_min_ = self.ts_min
                     self.df = self.df.filter(pl.col(self.ts_field) >= _ts_min_)
+            if len(self.df) != _len_before_min_:
+                self.min_cropped = True
+            else:
+                self.min_cropped = False
 
+            _len_before_max_ = len(self.df)
             if self.ts_max is None:
                 self.ts_max = self.df[self.ts_field].max()
             else:
@@ -672,6 +678,10 @@ class RTTemporalBarChartMixin(object):
                     else:
                         _ts_max_ = self.ts_max
                     self.df = self.df.filter(pl.col(self.ts_field) < _ts_max_)
+            if len(self.df) != _len_before_max_:
+                self.max_cropped = True
+            else:
+                self.max_cropped = False
 
             if type(self.ts_min) != np.datetime64:
                 self.ts_min = np.datetime64(self.ts_min)
@@ -997,6 +1007,17 @@ class RTTemporalBarChartMixin(object):
                                                     self.txt_h, anchor='middle',  rotation=-90)
                     else:
                         svg += self.rt_self.svgText(_count_by_str, self.x_ins+self.txt_h, self.y_ins + adj_sm_h + max_bar_h,   self.txt_h, anchor='start',  rotation=-90)
+
+            # Draw cropped issues
+            if self.min_cropped:
+                _color_,_y_ = self.rt_self.co_mgr.getTVColor('label','error'),self.h/2
+                svg += f'<line x1="{1}" y1="{_y_}" x2="{7}" y2="{_y_-7}" stroke="{_color_}" stroke-width="{1.5}" />'
+                svg += f'<line x1="{1}" y1="{_y_}" x2="{7}" y2="{_y_+7}" stroke="{_color_}" stroke-width="{1.5}" />'
+
+            if self.max_cropped:
+                _color_,_y_ = self.rt_self.co_mgr.getTVColor('label','error'),self.h/2
+                svg += f'<line x1="{self.w-1}" y1="{_y_}" x2="{self.w-7}" y2="{_y_-6}" stroke="{_color_}" stroke-width="{1.5}" />'
+                svg += f'<line x1="{self.w-1}" y1="{_y_}" x2="{self.w-7}" y2="{_y_+6}" stroke="{_color_}" stroke-width="{1.5}" />'
 
             # Draw the border
             if self.draw_border:
