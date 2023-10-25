@@ -629,7 +629,7 @@ class RTTextMixin(object):
             _summary_svgs.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>')
             summary_i += 1
 
-        return self.tile([self.tile(_summary_svgs, horz=False),
+        return self.tile([self.tile(_summary_svgs, horz=False)._repr_svg_(),
                           f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>',
                           main_rttb.wrap(main_rttb.background() + main_rttb.unwrappedText() + main_underlines_svg)])
 
@@ -686,7 +686,7 @@ class RTTextMixin(object):
             _svgs.append(f'<svg x="0" y="0" width="{w}" height="{24}">' + \
                          f'<rect x="0" y="0" width="{w}" height="{24}" fill="#000000" />' + \
                          self.svgText(_desc, 3, 20, txt_h=19, color='#ffffff') + '</svg>')
-            _svgs.append(self.tile(_summary_svgs, horz=True))
+            _svgs.append(self.tile(_summary_svgs, horz=True)._repr_svg_())
             _svgs.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"></svg>')
         return self.tile(_svgs, horz=False)
 
@@ -759,7 +759,7 @@ class RTTextMixin(object):
             summary_tiles.append(rttb_summary.highlights(highlightsForText(_summary, main_words, 'orange'), opacity=opacity))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
 
-        return self.tile([self.tile(summary_tiles, horz=False),
+        return self.tile([self.tile(summary_tiles, horz=False)._repr_svg_(),
                           f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
                           rttb_main.highlights(highlightsForText(text_main, summary_words, 'yellow'), opacity=opacity)])
 
@@ -971,7 +971,7 @@ class RTTextMixin(object):
         # summary_tiles.append(self.xy(df_umap, x_field='x_umap', y_field='y_umap', color_by='color', count_by='size', dot_size='vary', dot_shape=_mydotshape_, draw_labels=False))
 
         # Compose the summary side
-        tile_composition = self.tile(summary_tiles, horz=False)
+        tile_composition = self.tile(summary_tiles, horz=False)._repr_svg_()
 
         # Compose the total
         composition = [tile_composition,
@@ -1378,7 +1378,7 @@ class RTTextMixin(object):
                 summary_tiles.append(rttb_summary.highlights(highlightsForText(_summary), opacity=opacity))
                 summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
 
-            return self.tile([self.tile(summary_tiles, horz=False),
+            return self.tile([self.tile(summary_tiles, horz=False)._repr_svg_(),
                             f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
                             rttb_main.highlights(highlightsForText(text_main), opacity=opacity)])
 
@@ -1427,7 +1427,7 @@ class RTTextMixin(object):
             summary_tiles.append(rttb_summary.highlights(probabilityHighlights(_summary), opacity=opacity))
             summary_tiles.append(f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>') # Spacers
 
-        return self.tile([self.tile(summary_tiles, horz=False),
+        return self.tile([self.tile(summary_tiles, horz=False)._repr_svg_(),
                           f'<svg x="0" y="0" width="{spacing}" height="{spacing}"> </svg>',
                           rttb_main.highlights(probabilityHighlights(text_main), opacity=opacity)])
 

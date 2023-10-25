@@ -1273,11 +1273,20 @@ class RTSmallMultiplesMixin(object):
         for _svg_ in svg_list:
             so_far.append(_svg_)
             if len(so_far) >= per_row:
-                rows.append(self.tile(so_far))
+                rows.append(self.tile(so_far)._repr_svg_())
                 so_far = []
         if len(so_far) > 0:
-            rows.append(self.tile(so_far))
+            rows.append(self.tile(so_far)._repr_svg_())
         return self.tile(rows, horz=False)
+
+    #
+    # svgObject() - simple container to return an svg string
+    #
+    class svgObject(object):
+        def __init__(self, svg_str):
+            self.my_svg_str = svg_str
+        def _repr_svg_(self):
+            return self.my_svg_str
 
     #
     # Tile a list of SVG's
@@ -1292,7 +1301,6 @@ class RTSmallMultiplesMixin(object):
                 w_overall += w
                 if h > h_max:
                     h_max = h
-
             svg = f'<svg width="{w_overall}" height="{h_max}" x="0" y="0">'
             w_overall = 0
             for _svg in svg_list:
@@ -1301,8 +1309,7 @@ class RTSmallMultiplesMixin(object):
                 w,h = self.__extractSVGWidthAndHeight__(_svg)
                 svg += self.__overwriteSVGOriginPosition__(_svg, (w_overall + w/2, h/2), w, h)
                 w_overall += w
-            return svg + '</svg>'
-        
+            return self.svgObject(svg + '</svg>')
         else:
             w_max,h_overall = 0,0
             for _svg in svg_list:
@@ -1312,7 +1319,6 @@ class RTSmallMultiplesMixin(object):
                 h_overall += h
                 if w > w_max:
                     w_max = w
-
             svg = f'<svg width="{w_max}" height="{h_overall}" x="0" y="0">'
             h_overall = 0
             for _svg in svg_list:
@@ -1321,7 +1327,7 @@ class RTSmallMultiplesMixin(object):
                 w,h = self.__extractSVGWidthAndHeight__(_svg)
                 svg += self.__overwriteSVGOriginPosition__(_svg, (w/2, h_overall + h/2), w, h)
                 h_overall += h
-            return svg + '</svg>'
+            return self.svgObject(svg + '</svg>')
 
 
     #
@@ -1347,7 +1353,7 @@ class RTSmallMultiplesMixin(object):
                         _row.append(self.xy(df, x_field=row_field, y_field=col_field, dot_size=dot_size, w=w_tile, h=h_tile, color_magnitude='stretch'))
                     else:
                         _row.append(self.xy(df, x_field=row_field, y_field=col_field, dot_size=dot_size, w=w_tile, h=h_tile, color_by=color_by))
-            _rows.append(self.tile(_row))
+            _rows.append(self.tile(_row)._repr_svg_())
         return self.tile(_rows, horz=False)
 
 #
