@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 import random
 import re
@@ -122,14 +123,11 @@ class RTBoxplotMixin(object):
                      **kwargs):
             self.parms              = locals().copy()
             self.rt_self            = rt_self
-            self.df                 = kwargs['df'].copy()
+            self.df                 = rt_self.copyDataFrame(kwargs['df'])
 
             # Make sure the bin_by is a list...
             bin_by = kwargs['bin_by']
-            if type(bin_by) != list: # Make it into a list for consistency
-                self.bin_by = [bin_by]
-            else:
-                self.bin_by = bin_by
+            self.bin_by = [bin_by] if type(bin_by) != list else bin_by
 
             self.style              = kwargs['style']
             self.cap_swarm_at       = kwargs['cap_swarm_at']
@@ -203,23 +201,22 @@ class RTBoxplotMixin(object):
                 self.renderSVG()
             return self.last_render
 
-        #
-        # renderSVG() - create the SVG
-        #
-        def renderSVG(self, just_calc_max=False, track_state=False):
-            # Determine the color order (for each bar)
-            if self.global_color_order is None:
-                self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
 
+        #
+        #
+        #
+        def __determineOrder__(self):
+            if self.rt_self.isPandas(self.df):
+                return self.__determineOrder_pandas__()
+            elif self.rt_self.isPolars(self.df):
+                return self.__determineOrder_polars__()
+            else:
+                raise Exception('RTBoxPlot.__determineOrder__()')
+
+        #
+        def __determineOrder_pandas__(self):
             # Aggregate into groups
             gb = self.df.groupby(by=self.bin_by)
-            
-            # Adjust the min_bar_w if this is small multiples are to be included
-            if self.sm_type is not None:
-                if self.sm_w is None or self.sm_h is None:
-                    self.sm_w,self.sm_h = getattr(self.rt_self, f'{self.sm_type}SmallMultipleDimensions')(**self.sm_params)
-            else:
-                self.sm_h,self.sm_w = 0,0 # Eliminate the dimensions from future calculations
 
             # Determine the order // assumption is that we've already checked & verified the style in __init__()
             # Counting by records... order by number of records
@@ -233,8 +230,11 @@ class RTBoxplotMixin(object):
                     w_count_by = self.bin_by.copy()
                     _df        = self.df.groupby(by=w_count_by).size()
                     order      = _df.groupby(by=self.bin_by).size().sort_values(ascending=self.ascending)
-            # Else... use the order_by field to determine the ordering
-            else:                     # barchart or boxplot
+            elif type(self.order_by) == list: # custom ordering... convert the order index into a categorical... remove missing... and sort by that
+                order.index = pd.Categorical(order.index, categories=self.order_by)
+                order = order[order.index.notnull()]
+                order = order.sort_index()
+            else: # barchart or boxplot ... mathematical version...
                 if   self.order_by is None:    # Order by number of records
                     order = gb.size().sort_values(ascending=self.ascending)
                 elif self.order_by == 'sum':
@@ -252,12 +252,59 @@ class RTBoxplotMixin(object):
                 else:
                     raise Exception(f'RTBoxplot - do not understand order_by "{self.order_by}"')
 
-            # Custom order ... convert the order index into a categorical... remove missing... and sort by that
-            if type(self.order_by) == list:
-                order.index = pd.Categorical(order.index, categories=self.order_by)
-                order = order[order.index.notnull()]
-                order = order.sort_index()
+            return gb, order
 
+        #
+        def __determineOrder_polars__(self):
+            pb = self.df.partition_by(self.bin_by, as_dict=True)
+            if    self.count_by is None or self.count_by_set: # barchart...
+                order = self.rt_self.polarsCounter(self.df, self.bin_by, self.count_by, self.count_by_set)
+            elif  type(self.order_by) == list: # user supplied a list... descend by that value
+                counts = []
+                for i in range(len(self.order_by)):
+                    counts.append(len(self.order_by) - i)
+                order = pl.DataFrame({'order':self.order_by, '__count__':counts})
+                raise Exception("RTBoxPlot.__determineOrder_polars__() -- what about items not in the user supplied order_by?")
+            else:
+                if self.order_by is None: # number of records
+                    order = self.rt_self.polarsCounter(self.df, self.bin_by, None)
+                elif self.order_by == 'sum':
+                    order = self.rt_self.polarsCounter(self.df, self.bin_by, self.count_by)
+                elif self.order_by == 'max':
+                    _df_min_ = self.df.drop(set(self.df.columns) - set(self.bin_by) - set([self.count_by]))
+                    order    = _df_min_.group_by(self.bin_by).max().rename({self.count_by:'__count__'})
+                elif self.order_by == 'median':
+                    _df_min_ = self.df.drop(set(self.df.columns) - set(self.bin_by) - set([self.count_by]))
+                    order    = _df_min_.group_by(self.bin_by).median().rename({self.count_by:'__count__'})
+                elif self.order_by == 'average' or self.order_by == 'mean':
+                    _df_min_ = self.df.drop(set(self.df.columns) - set(self.bin_by) - set([self.count_by]))
+                    order    = _df_min_.group_by(self.bin_by).mean().rename({self.count_by:'__count__'})
+                elif self.order_by == 'min':
+                    _df_min_ = self.df.drop(set(self.df.columns) - set(self.bin_by) - set([self.count_by]))
+                    order    = _df_min_.group_by(self.bin_by).min().rename({self.count_by:'__count__'})
+                else:
+                    raise Exception(f'RTBoxplot -- do not understand order_by "{self.order_by}"')
+
+            order = order.sort('__count__', descending=(not self.ascending))
+            return pb, order
+
+        #
+        # renderSVG() - create the SVG
+        #
+        def renderSVG(self, just_calc_max=False, track_state=False):
+            # Determine the color order (for each bar)
+            if self.global_color_order is None:
+                self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
+
+            # Adjust the min_bar_w if this is small multiples are to be included
+            if self.sm_type is not None:
+                if self.sm_w is None or self.sm_h is None:
+                    self.sm_w,self.sm_h = getattr(self.rt_self, f'{self.sm_type}SmallMultipleDimensions')(**self.sm_params)
+            else:
+                self.sm_h,self.sm_w = 0,0 # Eliminate the dimensions from future calculations
+
+            # Determine the ordering
+            gb, order     = self.__determineOrder__()
             self.gb_count = len(order)
 
             # From there, calculate the bar width and check to make sure it's within bounds
@@ -316,9 +363,16 @@ class RTBoxplotMixin(object):
             if group_by_max is None: # assumption is that group_by_min won't be None exclusively...
                 x,i = x_start,0
                 while x < (self.w - self.x_ins) and i < len(order):
-                    _index = order.index[i]
-                    _value = order.iloc[i]
-                    _df    = gb.get_group(_index)
+                    if self.rt_self.isPandas(self.df):
+                        _index = order.index[i]
+                        _value = order.iloc[i]
+                        _df    = gb.get_group(_index)
+                    elif self.rt_self.isPolars(self.df):
+                        _index = order[i].rows()[0][:len(self.bin_by)]
+                        if len(self.bin_by) == 1:
+                            _index = _index[0]
+                        _value = order['__count__'][i]
+                        _df    = gb[_index]
 
                     if self.style == 'boxplot' or self.style == 'boxplot_w_swarm':
                         if group_by_max is None:
@@ -366,10 +420,18 @@ class RTBoxplotMixin(object):
             # Render loop
             x,i = x_start,0
             while x < (self.w - self.x_ins) and i < len(order):
-                _index = order.index[i]
-                _value = order.iloc[i]
+                if self.rt_self.isPandas(self.df):
+                    _index = order.index[i]
+                    _value = order.iloc[i]
+                    _df    = gb.get_group(_index)
+                elif self.rt_self.isPolars(self.df):
+                    _index = order[i].rows()[0][:len(self.bin_by)]
+                    if len(self.bin_by) == 1:
+                        _index = _index[0]
+                    _value = order['__count__'][i]
+                    _df    = gb[_index]
+
                 px     = max_bar_h * _value / group_by_max
-                _df    = gb.get_group(_index)
 
                 if track_state:
                     _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-px],[x,y_baseline-px]])
@@ -498,6 +560,11 @@ class RTBoxplotMixin(object):
                 if _poly.intersects(to_intersect):
                     _dfs.append(self.geom_to_df[_poly])
             if len(_dfs) > 0:
-                return pd.concat(_dfs)
+                if self.rt_self.isPandas(self.df):
+                    return pd.concat(_dfs)
+                elif self.rt_self.isPolars(self.df):
+                    return pl.concat(_dfs)
+                else:
+                    raise Exception('RTBoxPlot.overlappingDataFrames() - only pandas and polars supported')
             else:
                 return None
