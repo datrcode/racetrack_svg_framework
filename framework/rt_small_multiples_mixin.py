@@ -878,14 +878,7 @@ class RTSmallMultiplesMixin(object):
             if (self.sm_type == 'temporalBarChart' or \
                 self.sm_type == 'periodicBarChart' or \
                 self.sm_type == 'calendarHeatmap') and self.ts_field is None:
-                choices = self.df.select_dtypes(np.datetime64).columns
-                if len(choices) == 1:
-                    self.ts_field = choices[0]
-                elif len(choices) > 1:
-                    print('multiple timestamp fields... choosing the first (smallMultiples)')
-                    self.ts_field = choices[0]
-                else:
-                    raise Exception('no timestamp field supplied to smallMultiples(), cannot automatically determine field')
+                self.ts_field = self.rt_self.guessTimestampField(self.df)
 
             # Calculate temporal_granulaity if needed
             if kwargs['sm_type'] == 'temporalBarChart' and self.temporal_granularity is None:

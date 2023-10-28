@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 import random
 
@@ -123,7 +124,7 @@ class RTCalendarHeatmapMixin(object):
                      **kwargs):
             self.parms                  = locals().copy()
             self.rt_self                = rt_self
-            self.df                     = kwargs['df'].copy()
+            self.df                     = rt_self.copyDataFrame(kwargs['df'])
             self.ts_field               = kwargs['ts_field']
             self.ts_min                 = kwargs['ts_min']
             self.ts_max                 = kwargs['ts_max']
@@ -162,14 +163,7 @@ class RTCalendarHeatmapMixin(object):
 
             # Determine the timestamp field
             if self.ts_field is None:
-                choices = self.df.select_dtypes(np.datetime64).columns
-                if len(choices) == 1:
-                    self.ts_field = choices[0]
-                elif len(choices) > 1:
-                    print('RTCalendarHeatmap: multiple timestamp fields... choosing the first (RTCalendarHeatmap.__init__)')
-                    self.ts_field = choices[0]
-                else:
-                    raise Exception('no timestamp field supplied to RTCalendarHeatmap(), cannot automatically determine field')
+                self.ts_field = rt_self.guessTimestampField(self.df)
 
             # Determine the mininum and maximum
             if self.ts_min is None:
@@ -358,27 +352,41 @@ class RTCalendarHeatmapMixin(object):
                     last_dow,last_mon = dow,mon
 
             # Group the dataframes appropriately
-            if self.sm_type is not None or self.count_by is None:  # By rows
-                _gb = self.df.groupby(pd.Grouper(key=self.ts_field,freq='D')).size()
-            elif self.count_by_set:    # By set value
-                tmp_df = pd.DataFrame(self.df.groupby([pd.Grouper(key=self.ts_field,freq='D'),self.count_by]).size()).reset_index()
-                _gb    = tmp_df.groupby(pd.Grouper(key=self.ts_field,freq='D')).size()
-            else:                 # By numerical summation
-                _gb = self.df.groupby(pd.Grouper(key=self.ts_field,freq='D'))[self.count_by].sum()
+            if   self.rt_self.isPandas(self.df):
+                if self.sm_type is not None or self.count_by is None:  # By rows
+                    _gb = self.df.groupby(pd.Grouper(key=self.ts_field,freq='D')).size()
+                elif self.count_by_set:    # By set value
+                    tmp_df = pd.DataFrame(self.df.groupby([pd.Grouper(key=self.ts_field,freq='D'),self.count_by]).size()).reset_index()
+                    _gb    = tmp_df.groupby(pd.Grouper(key=self.ts_field,freq='D')).size()
+                else:                 # By numerical summation
+                    _gb = self.df.groupby(pd.Grouper(key=self.ts_field,freq='D'))[self.count_by].sum()
+            elif self.rt_self.isPolars(self.df):
+                self.df = self.df.sort(self.ts_field)
+                _gb = self.df.group_by_dynamic(self.ts_field, every='1d')
+                if self.sm_type is not None or self.count_by is None:  # By rows
+                    _gb = _gb.agg(pl.count()).rename({'count':'__count__'})
+                elif self.count_by_set: # By set value
+                    _gb = _gb.agg(pl.col(self.count_by).n_unique()).rename({self.count_by:'__count__'})
+                else: # By numerical summation
+                    _gb = _gb.agg(pl.col(self.count_by).sum()).rename({self.count_by:'__count__'})
+            else:
+                raise Exception('RTCalendarHeatmap.renderSVG() - only pandas and polars supported')
 
             # Find the min and max values
             if self.global_max is None or self.global_min is None:
-                group_by_max = _gb.max()
-                group_by_min = _gb.max()
-                for i in range(len(_gb)): # There's got to be a better way to do this...
-                    _value  = _gb[i]
-                    if _value > 0 and _value < group_by_min:
-                        group_by_min = _value
-                    if group_by_max == group_by_min:
-                        if group_by_max == 0:
-                            group_by_max += 1
-                        else:
-                            group_by_min -= 1
+                if self.rt_self.isPandas(self.df):
+                    group_by_max,group_by_min = _gb.max(),_gb.min()
+                    for i in range(len(_gb)): # There's got to be a better way to do this...
+                        _value  = _gb[i]
+                        if _value > 0 and _value < group_by_min:
+                            group_by_min = _value
+                        if group_by_max == group_by_min:
+                            if group_by_max == 0:
+                                group_by_max += 1
+                            else:
+                                group_by_min -= 1
+                elif self.rt_self.isPolars(self.df):
+                    group_by_max,group_by_min = _gb['__count__'].max(),_gb['__count__'].min()
                 if just_calc_max:
                     return group_by_max,group_by_min
             else:
@@ -390,13 +398,24 @@ class RTCalendarHeatmapMixin(object):
             if self.sm_type is None:
                 # Make a special groupby for tracking state
                 if track_state:
-                    tracking_gb = self.df.groupby(pd.Grouper(key=self.ts_field,freq='D'))
+                    if self.rt_self.isPandas(self.df):
+                        tracking_gb = self.df.groupby(pd.Grouper(key=self.ts_field,freq='D'))
+                    else:
+                        raise Exception("RTCalendarHeatmap.renderSVG() - unsure how to track state")
 
                 # Iterate over the values & render
                 for i in range(len(_gb)):
-                    _value  = _gb[i]
+                    if self.rt_self.isPandas(self.df):
+                        _value  = _gb[i]
+                    elif self.rt_self.isPolars(self.df):
+                        _value  = _gb['__count__'][i]
+
                     if _value > 0:
-                        _ts_str = _gb.index[i]
+                        if   self.rt_self.isPandas(self.df):
+                            _ts_str = _gb.index[i]
+                        elif self.rt_self.isPolars(self.df):
+                            _ts_str = _gb[self.ts_field][i]
+
                         x,y = cell_coords[_ts_str]
                         _co = self.rt_self.co_mgr.spectrum(_value, group_by_min, group_by_max, self.color_magnitude)
                         if self.cell_framing:
@@ -414,7 +433,12 @@ class RTCalendarHeatmapMixin(object):
             #
             else:
                 node_to_dfs = {}
-                for k,k_df in self.df.groupby(pd.Grouper(key=self.ts_field,freq='D')):
+                if self.rt_self.isPandas(self.df):
+                    _groupby_ = self.df.groupby(pd.Grouper(key=self.ts_field,freq='D'))
+                elif self.rt_self.isPolars(self.df):
+                    _groupby_ = self.df.group_by_dynamic(self.ts_field,every='1d')
+
+                for k,k_df in _groupby_:
                     node_to_dfs[k] = k_df
                     if len(k_df) > 0 and track_state:
                         x,y =  self.node_to_xy[node_str]
