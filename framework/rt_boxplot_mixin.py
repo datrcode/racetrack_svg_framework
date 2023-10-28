@@ -231,6 +231,7 @@ class RTBoxplotMixin(object):
                     _df        = self.df.groupby(by=w_count_by).size()
                     order      = _df.groupby(by=self.bin_by).size().sort_values(ascending=self.ascending)
             elif type(self.order_by) == list: # custom ordering... convert the order index into a categorical... remove missing... and sort by that
+                order = gb[self.count_by].max().sort_values(ascending=self.ascending)
                 order.index = pd.Categorical(order.index, categories=self.order_by)
                 order = order[order.index.notnull()]
                 order = order.sort_index()
@@ -247,8 +248,6 @@ class RTBoxplotMixin(object):
                     order = gb[self.count_by].mean().sort_values(ascending=self.ascending)
                 elif self.order_by == 'min':
                     order = gb[self.count_by].min().sort_values(ascending=self.ascending)
-                elif type(self.order_by) == list:
-                    order = gb[self.count_by].max().sort_values(ascending=self.ascending)
                 else:
                     raise Exception(f'RTBoxplot - do not understand order_by "{self.order_by}"')
 
@@ -264,7 +263,6 @@ class RTBoxplotMixin(object):
                 for i in range(len(self.order_by)):
                     counts.append(len(self.order_by) - i)
                 order = pl.DataFrame({'order':self.order_by, '__count__':counts})
-                raise Exception("RTBoxPlot.__determineOrder_polars__() -- what about items not in the user supplied order_by?")
             else:
                 if self.order_by is None: # number of records
                     order = self.rt_self.polarsCounter(self.df, self.bin_by, None)
