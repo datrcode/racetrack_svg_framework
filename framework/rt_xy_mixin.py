@@ -1668,7 +1668,12 @@ class RTXYMixin(object):
                 if _poly.intersects(to_intersect):
                     _dfs.append(self.geom_to_df[_poly])
             if len(_dfs) > 0:
-                return pd.concat(_dfs)
+                if self.rt_self.isPandas(_dfs[0]):
+                    return pd.concat(_dfs)
+                elif self.rt_self.isPolars(_dfs[0]):
+                    return pl.concat(_dfs)
+                else:
+                    raise Exception('RTXY.overlappingDataFrames() - only pandas and polars supported')
             else:
                 return None
 
