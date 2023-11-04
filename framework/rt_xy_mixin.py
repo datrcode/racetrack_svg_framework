@@ -1287,368 +1287,66 @@ class RTXYMixin(object):
             svg += f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left + self.w_usable}" y2="{self.y_bottom}"   stroke="{axis_co}" stroke-width=".6" />'
 
             # Handle the line option... this needs to be rendered before the dots so that the lines are behind the dots
-            #
             # ... first version handles timestamped vector data...
-            #
             if self.line_groupby_field is not None     and \
                type(self.line_groupby_field) == list   and \
                ( (self.rt_self.isPandas(self.df) and is_datetime(self.df[self.line_groupby_field[-1]])) or
                  (self.rt_self.isPolars(self.df) and self.df[self.line_groupby_field[-1]].dtype == pl.Datetime) ):
-                color = self.rt_self.co_mgr.getTVColor('data','default')
-                _gb_fields = self.line_groupby_field[:-1]
-                if len(_gb_fields) == 1:
-                    _gb_fields = _gb_fields[0]
-
-                _ts_field = self.line_groupby_field[-1]
-
-                if   self.rt_self.isPandas(self.df):
-                    gb = self.df.groupby(_gb_fields)
-                elif self.rt_self.isPolars(self.df):
-                    gb = self.df.group_by(_gb_fields)
-
-                for k,k_df in gb:
-                    if   self.rt_self.isPandas(self.df):
-                        gbxy = k_df.groupby([_ts_field, self.x_axis_col+"_px",self.y_axis_col+"_px"])
-                    elif self.rt_self.isPolars(self.df):
-                        k_df = k_df.sort(_ts_field)
-                        gbxy = k_df.group_by([_ts_field, self.x_axis_col+"_px",self.y_axis_col+"_px"], maintain_order=True)
-
-                    points = ''
-                    for xy,xy_df in gbxy:
-                        points += f'{xy[1]},{xy[2]} '
-                    if self.color_by:
-                        color_set = set(k_df[self.color_by])
-                        if len(color_set) == 1:
-                            color = self.rt_self.co_mgr.getColor(color_set.pop())
-                        else:
-                            color = self.rt_self.co_mgr.getTVColor('data','default')                            
-                    if len(points) > 0:
-                        svg += f'<polyline points="{points}" stroke="{color}" stroke-width="{self.line_groupby_w}" fill="none" />'
-
-            #
+                svg += self.__rendersvg_line_groupby_timestamped__()
             # ... second version handles the normal use cases...
-            #
             elif self.line_groupby_field:
-                color = self.rt_self.co_mgr.getTVColor('data','default')
-
-                if self.rt_self.isPandas(self.df):
-                    gb = self.df.groupby(self.line_groupby_field)
-                else:
-                    gb = self.df.group_by(self.line_groupby_field)
-
-                for k,k_df in gb:
-                    if   self.rt_self.isPandas(self.df):
-                        gbxy = k_df.groupby([self.x_axis_col+"_px",self.y_axis_col+"_px"])
-                    elif self.rt_self.isPolars(self.df):
-                        k_df = k_df.sort(self.x_axis_col+"_px")
-                        gbxy = k_df.group_by([self.x_axis_col+"_px",self.y_axis_col+"_px"], maintain_order=True)
-
-                    points = ''
-                    for xy,xy_df in gbxy:
-                        points += f'{xy[0]},{xy[1]} '
-                    if self.color_by:
-                        color_set = set(k_df[self.color_by])
-                        if len(color_set) == 1:
-                            color = self.rt_self.co_mgr.getColor(color_set.pop())
-                        else:
-                            color = self.rt_self.co_mgr.getTVColor('data','default')                            
-                    if len(points) > 0:
-                        svg += f'<polyline points="{points}" stroke="{color}" stroke-width="{self.line_groupby_w}" fill="none" />'
-
+                svg += self.__rendersvg_line_groupby__()
             # Handle the line 2 option // like the first one... but some additional options, reassignments
             if self.line2_groupby_field:
-                if   self.rt_self.isPandas(self.df2):
-                    gb = self.df2.groupby(self.line2_groupby_field)
-                elif self.rt_self.isPolars(self.df2):
-                    gb = self.df2.group_by(self.line2_groupby_field)
-
-                for k,k_df in gb:
-                    if   self.rt_self.isPandas(self.df2):
-                        gbxy = k_df.groupby([self.x2_axis_col+"_px",self.y2_axis_col+"_px"])
-                    elif self.rt_self.isPolars(self.df2):
-                        k_df = k_df.sort(self.x2_axis_col+'_px')
-                        gbxy = k_df.groupby([self.x2_axis_col+"_px",self.y2_axis_col+"_px"], maintain_order=True)
-                    points = ''
-                    for xy,xy_df in gbxy:
-                        points += f'{xy[0]},{xy[1]} '
-
-                    if   self.line2_groupby_color:
-                        if   self.line2_groupby_color.startswith('#'):
-                            color = self.line2_groupby_color
-                        elif self.line2_groupby_color in k_df.columns:
-                            color_set = set(k_df[self.line2_groupby_color])
-                            if len(color_set) == 1:
-                                color = self.rt_self.co_mgr.getColor(color_set.pop())
-                            else:
-                                color = self.rt_self.co_mgr.getTVColor('data','default')                            
-                        else:
-                            color = self.rt_self.co_mgr.getTVColor('data','default')                            
-                    elif self.color_by and self.color_by in k_df.columns:
-                        color_set = set(k_df[self.color_by])
-                        if len(color_set) == 1:
-                            color = self.rt_self.co_mgr.getColor(color_set.pop())
-                        else:
-                            color = self.rt_self.co_mgr.getTVColor('data','default')                            
-                    else:
-                        color = self.rt_self.co_mgr.getTVColor('data','default')                            
-
-                    if len(points) > 0:
-                        if self.line2_groupby_dasharray:
-                            svg += f'<polyline points="{points}" stroke="{color}" stroke-width="{self.line2_groupby_w}" fill="none" stroke-dasharray="{self.line2_groupby_dasharray}" />'
-                        else:
-                            svg += f'<polyline points="{points}" stroke="{color}" stroke-width="{self.line2_groupby_w}" fill="none" />'
+                svg += self.__rendersvg_line2_groupby__()
 
             #
-            # If we're going to draw dots...
+            # Dot Render Loops
             #
-            node_to_xy  = {} # for small multiples
-            node_to_dfs = {} # for small multiples
+            # Small Multiples First -- can only be on the primary axis...
+            if self.dot_shape == 'small_multiple':
+                node_to_xy  = {} # for small multiples
+                node_to_dfs = {} # for small multiples
+                gb = self.df.groupby([self.x_axis_col+"_px",self.y_axis_col+"_px"])
+                for k, k_df in gb:
+                    x,y = k
+                    xy_as_str = str(x) + ',' + str(y)
+                    if xy_as_str not in node_to_dfs.keys():
+                        node_to_xy [xy_as_str] = (x,y)
+                        node_to_dfs[xy_as_str] = []
+                    node_to_dfs[xy_as_str].append(k_df)
+                    if track_state:
+                        _poly = Polygon([[x-self.sm_w/2,y-self.sm_h/2],
+                                            [x-self.sm_w/2,y+self.sm_h/2],
+                                            [x+self.sm_w/2,y+self.sm_h/2],
+                                            [x+self.sm_w/2,y-self.sm_h/2]])
+                        self.geom_to_df[_poly] = k_df
+                _ts_field = self.x_field[0] if self.x_is_time else None
+                sm_lu = self.rt_self.createSmallMultiples(self.df, node_to_dfs, node_to_xy,
+                                                          self.count_by, self.count_by_set, self.color_by, _ts_field, self.widget_id,
+                                                          self.sm_type, self.sm_params, self.sm_x_axis_independent, self.sm_y_axis_independent,
+                                                          self.sm_w, self.sm_h)
+                for node_str in sm_lu.keys():
+                    svg += sm_lu[node_str]
 
-            if dot_w is not None or dot2_w is not None:
-                #
-                # Repeat for both axes
-                #
-                for y_axis_i in range(0,2):
-                    if y_axis_i == 0:
-                        if dot_w is not None:
-                            _df,_x_axis_col,_y_axis_col,_local_color_by,_local_dot_w = self.df,self.x_axis_col,self.y_axis_col,self.color_by,dot_w
-                        else:
-                            continue
-                    else:
-                        if self.y2_field and dot2_w is not None:
-                            _df,_x_axis_col,_y_axis_col,_local_color_by,_local_dot_w = self.df2,self.x2_axis_col,self.y2_axis_col,self.line2_groupby_color,dot2_w
-                            if _local_color_by is None:
-                                _local_color_by = self.color_by
-                        else:
-                            continue
+            # Dots / Primary Axis
+            elif dot_w is not None:
+                if self.rt_self.isPandas(self.df):
+                    svg += self.__rendersvg_dots__       (self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w,  track_state)
+                elif self.rt_self.isPolars(self.df):
+                    svg += self.__rendersvg_dots_polars__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w,  track_state)
 
-                    #
-                    # Group by x,y for the render
-                    #
-                    gb = _df.groupby([_x_axis_col+"_px",_y_axis_col+"_px"])
-
-                    # Determine the min and max counts for the dot width / for contrast stretching, track counts
-                    max_xy,self.stretch_histogram,self.stretch_total = 0,{},0
-                    if _local_dot_w <= 0 or self.vary_opacity or self.color_magnitude is not None:
-                        for k,k_df in gb:
-                            # count by rows
-                            if   self.count_by is None:
-                                my_count = len(k_df)
-                            # count by set
-                            elif self.count_by_set:
-                                my_count = len(set(k_df[self.count_by]))
-                            # count by summation
-                            else:
-                                my_count = k_df[self.count_by].sum()
-                            
-                            if self.color_magnitude == 'stretch':
-                                self.stretch_total += my_count
-                                if my_count not in self.stretch_histogram.keys():
-                                    self.stretch_histogram[my_count] =  1
-                                else:
-                                    self.stretch_histogram[my_count] += 1 
-                                
-                            if max_xy < my_count:
-                                max_xy = my_count
-
-                    # Make sure the max is not zero
-                    if max_xy == 0:
-                        max_xy = 1
-                    
-                    # Contrast stretch calculation
-                    self.contrast_stretch = {}
-                    if self.color_magnitude == 'stretch':
-                        _total_so_far = 0
-                        _sorted       = sorted(list(self.stretch_histogram.keys()))
-                        for x in _sorted:
-                            _perc = _total_so_far / self.stretch_total
-                            self.contrast_stretch[x] = _perc
-                            _total_so_far += self.stretch_histogram[x] * x
-
-                    #
-                    # Render loop
-                    #
-                    for k,k_df in gb:
-                        x,y = k
-
-                        # Small Multiple Version // mirrors the linknode version
-                        if self.dot_shape == 'small_multiple':
-                            xy_as_str = str(x) + ',' + str(y)
-                            if xy_as_str not in node_to_dfs.keys():
-                                node_to_xy [xy_as_str] = (x,y)
-                                node_to_dfs[xy_as_str] = []
-                            node_to_dfs[xy_as_str].append(k_df)
-                            if track_state:
-                                _poly = Polygon([[x-self.sm_w/2,y-self.sm_h/2],
-                                                 [x-self.sm_w/2,y+self.sm_h/2],
-                                                 [x+self.sm_w/2,y+self.sm_h/2],
-                                                 [x+self.sm_w/2,y-self.sm_h/2]])
-                                self.geom_to_df[_poly] = k_df
-
-                        # Regular Version
-                        else:                    
-                            # Determine coloring options                            
-                            if   _local_color_by is None:
-                                color = self.rt_self.co_mgr.getTVColor('data','default')
-                            elif _local_color_by in k_df.columns:
-                                if ( (self.rt_self.isPandas(k_df) and is_datetime(k_df[_local_color_by])) or
-                                     (self.rt_self.isPolars(k_df) and k_df[_local_color_by].dtype == pl.Datetime) ):
-                                    _global_min_ = self.df[_local_color_by].min()
-                                    _global_max_ = self.df[_local_color_by].max()
-                                    if _global_min_ == _global_max_:
-                                        _global_min_ -= 0.5
-                                        _global_max_ += 0.5
-                                    _scaled_time = (k_df[_local_color_by].min() - _global_min_)/(_global_max_ - _global_min_)
-                                    color        = self.rt_self.co_mgr.spectrum(_scaled_time, 0.0, 1.0)
-                                elif self.color_magnitude is None:
-                                    color_set = set(k_df[_local_color_by])
-                                    if len(color_set) == 1:
-                                        color = self.rt_self.co_mgr.getColor(color_set.pop())
-                                    else:
-                                        color = self.rt_self.co_mgr.getTVColor('data','default')
-                                else:                                    
-                                    if self.count_by_set:                              # count by set
-                                        my_count = len(set(k_df[self.count_by]))                                    
-                                    elif self.count_by is not None:                    # count by summation
-                                        my_count = k_df[self.count_by].sum()
-                                    else:                                              # count by rows
-                                        my_count = len(k_df)
-                                    if self.color_magnitude == 'stretch':
-                                        color = self.rt_self.co_mgr.spectrum(self.contrast_stretch[my_count], 0, 1.0,    True)
-                                    else:
-                                        color = self.rt_self.co_mgr.spectrum(my_count, 0, max_xy, self.color_magnitude)
-                            elif _local_color_by.startswith('#') and len(_local_color_by) == 7:
-                                color = _local_color_by
-                            else:
-                                color = self.rt_self.co_mgr.getTVColor('data','default')
-
-                            # Render the dot
-                            # - Simple Render
-                            if _local_dot_w > 0 and self.vary_opacity == False:
-                                _my_dot_shape = self.dot_shape
-                                if callable(self.dot_shape):
-                                    _my_dot_shape = self.dot_shape(k_df, k, x, y, _local_dot_w, color, self.opacity)
-                                svg += self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity)
-
-                                # Track state (if requested)
-                                if track_state:
-                                    _poly = Polygon([[x-_local_dot_w,y-_local_dot_w],
-                                                     [x-_local_dot_w,y+_local_dot_w],
-                                                     [x+_local_dot_w,y+_local_dot_w],
-                                                     [x+_local_dot_w,y-_local_dot_w]])
-                                    self.geom_to_df[_poly] = k_df
-
-                            # - Complex Render
-                            else:
-                                # count by rows
-                                if   self.count_by is None:
-                                    my_count = len(k_df)
-                                # count by set
-                                elif self.count_by_set:
-                                    my_count = len(set(k_df[self.count_by]))
-                                # count by summation
-                                else:
-                                    my_count = k_df[self.count_by].sum()
-                                
-                                var_w = _local_dot_w
-                                var_o = 1.0 
-                                if _local_dot_w <= 0 and self.vary_opacity:                    
-                                    var_w = 0.2 + self.max_dot_size  * my_count/max_xy
-                                    var_o = 0.2 + 0.8           * my_count/max_xy                    
-                                elif _local_dot_w <= 0:
-                                    var_w = 0.2 + self.max_dot_size  * my_count/max_xy                    
-                                else:
-                                    var_o = 0.2 + 0.8           * my_count/max_xy
-                                
-                                _my_dot_shape = self.dot_shape
-                                if callable(self.dot_shape):
-                                    _my_dot_shape = self.dot_shape(k_df, k, x, y, var_w, color, var_o)
-
-                                svg += self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o)
-
-                                # Track state (if requested)
-                                if track_state:
-                                    _poly = Polygon([[x-var_w,y-var_w],
-                                                     [x-var_w,y+var_w],
-                                                     [x+var_w,y+var_w],
-                                                     [x+var_w,y-var_w]])
-                                    self.geom_to_df[_poly] = k_df
-
-                # Handle the small multiples // mostly a copy from the linknode version
-                if self.dot_shape == 'small_multiple':
-                    _ts_field = None
-                    if self.x_is_time:
-                        _ts_field = self.x_field[0]
-
-                    sm_lu = self.rt_self.createSmallMultiples(self.df, node_to_dfs, node_to_xy,
-                                                              self.count_by, self.count_by_set, self.color_by, _ts_field, self.widget_id,
-                                                              self.sm_type, self.sm_params, self.sm_x_axis_independent, self.sm_y_axis_independent,
-                                                              self.sm_w, self.sm_h)
-                    for node_str in sm_lu.keys():
-                        svg += sm_lu[node_str]
+            # Dots / Secondary Axis
+            if dot2_w is not None and self.df2 is not None:
+                _local_color_by = self.line2_groupby_color if self.line2_groupby_color is not None else self.color_by
+                if self.rt_self.isPandas(self.df):
+                    svg += self.__rendersvg_dots__       (self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w, track_state)
+                elif self.rt_self.isPolars(self.df):
+                    svg += self.__rendersvg_dots_polars__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w, track_state)
 
             # Draw labels
             if self.draw_labels:
-                #
-                # X Axis
-                #
-                if self.x_is_time:
-                    self.x_label_min,self.x_label_max = self.rt_self.condenseTimeLabels(self.x_label_min,self.x_label_max)
-
-                _x0_lab,     _x1_lab     = self.format(self.x_label_min),                self.format(self.x_label_max)
-                _x0_lab_len, _x1_lab_len = self.rt_self.textLength(_x0_lab, self.txt_h), self.rt_self.textLength(_x1_lab, self.txt_h)
-                x_field_str = '|'.join(self.x_field)
-                x_field_str_len = self.rt_self.textLength(x_field_str, self.txt_h)
-
-                if (_x0_lab_len + _x1_lab_len) < (self.w_usable * 0.8):
-                    svg += self.rt_self.svgText(_x0_lab, self.x_left,               self.h-self.y_ins, self.txt_h)
-                    svg += self.rt_self.svgText(_x1_lab, self.x_left+self.w_usable, self.h-self.y_ins, self.txt_h, anchor='end')
-                    
-                    # See if we can fit the x_field string in the middle
-                    if (_x0_lab_len + x_field_str_len + _x1_lab_len) < (self.w_usable * 0.8):
-                        svg += self.rt_self.svgText(x_field_str, self.x_left + self.w_usable/2, self.h - self.y_ins, self.txt_h, anchor='middle')
-                elif x_field_str_len < (self.w_usable * 0.8):
-                    svg += self.rt_self.svgText(x_field_str, self.x_left + self.w_usable/2, self.h - self.y_ins, self.txt_h, anchor='middle')
-
-                #
-                # Y Axis (Copy of last code block)
-                #
-                if self.y_is_time:
-                    self.y_label_min,self.y_label_max = self.rt_self.condenseTimeLabels(self.y_label_min,self.y_label_max)
-
-                _y0_lab,     _y1_lab     = self.format(self.y_label_min),                self.format(self.y_label_max)
-                _y0_lab_len, _y1_lab_len = self.rt_self.textLength(_y0_lab, self.txt_h), self.rt_self.textLength(_y1_lab, self.txt_h)
-                y_field_str = '|'.join(self.y_field)
-                y_field_str_len = self.rt_self.textLength(y_field_str, self.txt_h)
-
-                if (_y0_lab_len + _y1_lab_len) < (self.h_usable * 0.8):
-                    svg += self.rt_self.svgText(_y0_lab, self.x_left-4, self.y_ins+self.h_usable, self.txt_h,               rotation=-90)
-                    svg += self.rt_self.svgText(_y1_lab, self.x_left-4, self.y_ins,               self.txt_h, anchor='end', rotation=-90)
-                    
-                    # See if we can fit the x_field string in the middle
-                    if (_y0_lab_len + y_field_str_len + _y1_lab_len) < (self.h_usable * 0.8):
-                        svg += self.rt_self.svgText(y_field_str, self.x_left-4, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
-                elif y_field_str_len < (self.h_usable * 0.8):
-                    svg +=     self.rt_self.svgText(y_field_str, self.x_left-4, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
-
-                #
-                # Y2 Axis
-                #
-                if self.y2_label_min is not None:
-                    _y0_lab,     _y1_lab     = self.format(self.y2_label_min),               self.format(self.y2_label_max)
-                    _y0_lab_len, _y1_lab_len = self.rt_self.textLength(_y0_lab, self.txt_h), self.rt_self.textLength(_y1_lab, self.txt_h)
-                    y_field_str = '|'.join(self.y2_field)
-                    y_field_str_len = self.rt_self.textLength(y_field_str, self.txt_h)
-
-                    if (_y0_lab_len + _y1_lab_len) < (self.h_usable * 0.8):
-                        svg += self.rt_self.svgText(_y0_lab, self.w - 5, self.y_ins + self.h_usable, self.txt_h,               rotation=-90)
-                        svg += self.rt_self.svgText(_y1_lab, self.w - 5, self.y_ins,                 self.txt_h, anchor='end', rotation=-90)
-                        
-                        # See if we can fit the x_field string in the middle
-                        if (_y0_lab_len + y_field_str_len + _y1_lab_len) < (self.h_usable * 0.8):
-                            svg += self.rt_self.svgText(y_field_str, self.w - 5, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
-                    elif y_field_str_len < (self.h_usable * 0.8):
-                        svg +=     self.rt_self.svgText(y_field_str, self.w - 5, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
+                svg += self.__rendersvg_drawlabels__()
                         
             # Draw the border
             if self.draw_border:
@@ -1688,7 +1386,74 @@ class RTXYMixin(object):
                 return f'{float(as_str):{self.rt_self.fformat}}'
             else:
                 return as_str
-        
+
+        #
+        # __rendersvg_drawlabels__() - draw the axis labels
+        #
+        def __rendersvg_drawlabels__(self):
+            svg = ''
+            #
+            # X Axis
+            #
+            if self.x_is_time:
+                self.x_label_min,self.x_label_max = self.rt_self.condenseTimeLabels(self.x_label_min,self.x_label_max)
+
+            _x0_lab,     _x1_lab     = self.format(self.x_label_min),                self.format(self.x_label_max)
+            _x0_lab_len, _x1_lab_len = self.rt_self.textLength(_x0_lab, self.txt_h), self.rt_self.textLength(_x1_lab, self.txt_h)
+            x_field_str = '|'.join(self.x_field)
+            x_field_str_len = self.rt_self.textLength(x_field_str, self.txt_h)
+
+            if (_x0_lab_len + _x1_lab_len) < (self.w_usable * 0.8):
+                svg += self.rt_self.svgText(_x0_lab, self.x_left,               self.h-self.y_ins, self.txt_h)
+                svg += self.rt_self.svgText(_x1_lab, self.x_left+self.w_usable, self.h-self.y_ins, self.txt_h, anchor='end')
+                
+                # See if we can fit the x_field string in the middle
+                if (_x0_lab_len + x_field_str_len + _x1_lab_len) < (self.w_usable * 0.8):
+                    svg += self.rt_self.svgText(x_field_str, self.x_left + self.w_usable/2, self.h - self.y_ins, self.txt_h, anchor='middle')
+            elif x_field_str_len < (self.w_usable * 0.8):
+                svg += self.rt_self.svgText(x_field_str, self.x_left + self.w_usable/2, self.h - self.y_ins, self.txt_h, anchor='middle')
+
+            #
+            # Y Axis (Copy of last code block)
+            #
+            if self.y_is_time:
+                self.y_label_min,self.y_label_max = self.rt_self.condenseTimeLabels(self.y_label_min,self.y_label_max)
+
+            _y0_lab,     _y1_lab     = self.format(self.y_label_min),                self.format(self.y_label_max)
+            _y0_lab_len, _y1_lab_len = self.rt_self.textLength(_y0_lab, self.txt_h), self.rt_self.textLength(_y1_lab, self.txt_h)
+            y_field_str = '|'.join(self.y_field)
+            y_field_str_len = self.rt_self.textLength(y_field_str, self.txt_h)
+
+            if (_y0_lab_len + _y1_lab_len) < (self.h_usable * 0.8):
+                svg += self.rt_self.svgText(_y0_lab, self.x_left-4, self.y_ins+self.h_usable, self.txt_h,               rotation=-90)
+                svg += self.rt_self.svgText(_y1_lab, self.x_left-4, self.y_ins,               self.txt_h, anchor='end', rotation=-90)
+                
+                # See if we can fit the x_field string in the middle
+                if (_y0_lab_len + y_field_str_len + _y1_lab_len) < (self.h_usable * 0.8):
+                    svg += self.rt_self.svgText(y_field_str, self.x_left-4, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
+            elif y_field_str_len < (self.h_usable * 0.8):
+                svg +=     self.rt_self.svgText(y_field_str, self.x_left-4, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
+
+            #
+            # Y2 Axis
+            #
+            if self.y2_label_min is not None:
+                _y0_lab,     _y1_lab     = self.format(self.y2_label_min),               self.format(self.y2_label_max)
+                _y0_lab_len, _y1_lab_len = self.rt_self.textLength(_y0_lab, self.txt_h), self.rt_self.textLength(_y1_lab, self.txt_h)
+                y_field_str = '|'.join(self.y2_field)
+                y_field_str_len = self.rt_self.textLength(y_field_str, self.txt_h)
+
+                if (_y0_lab_len + _y1_lab_len) < (self.h_usable * 0.8):
+                    svg += self.rt_self.svgText(_y0_lab, self.w - 5, self.y_ins + self.h_usable, self.txt_h,               rotation=-90)
+                    svg += self.rt_self.svgText(_y1_lab, self.w - 5, self.y_ins,                 self.txt_h, anchor='end', rotation=-90)
+                    
+                    # See if we can fit the x_field string in the middle
+                    if (_y0_lab_len + y_field_str_len + _y1_lab_len) < (self.h_usable * 0.8):
+                        svg += self.rt_self.svgText(y_field_str, self.w - 5, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
+                elif y_field_str_len < (self.h_usable * 0.8):
+                    svg +=     self.rt_self.svgText(y_field_str, self.w - 5, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
+            return svg
+
         #
         # Draw gridlines
         #
@@ -1967,6 +1732,369 @@ class RTXYMixin(object):
             #        self.contrast_stretch[x] = _perc
             #        _total_so_far += self.stretch_histogram[x] * x
             #color = self.rt_self.co_mgr.spectrum(self.contrast_stretch[my_count], 0, 1.0,    True)
+
+        #
+        # __rendersvg_line_groupby_timestamped__(): render the line for groupby field w/ timestamp
+        #
+        def __rendersvg_line_groupby_timestamped__(self):
+            svg   = ''
+            color = self.rt_self.co_mgr.getTVColor('data','default')
+            _gb_fields = self.line_groupby_field[:-1]
+            if len(_gb_fields) == 1:
+                _gb_fields = _gb_fields[0]
+
+            _ts_field = self.line_groupby_field[-1]
+
+            if   self.rt_self.isPandas(self.df):
+                gb = self.df.groupby(_gb_fields)
+            elif self.rt_self.isPolars(self.df):
+                gb = self.df.group_by(_gb_fields)
+
+            for k,k_df in gb:
+                if   self.rt_self.isPandas(self.df):
+                    gbxy = k_df.groupby([_ts_field, self.x_axis_col+"_px",self.y_axis_col+"_px"])
+                elif self.rt_self.isPolars(self.df):
+                    k_df = k_df.sort(_ts_field)
+                    gbxy = k_df.group_by([_ts_field, self.x_axis_col+"_px",self.y_axis_col+"_px"], maintain_order=True)
+
+                points = ''
+                for xy,xy_df in gbxy:
+                    points += f'{xy[1]},{xy[2]} '
+                if self.color_by:
+                    color_set = set(k_df[self.color_by])
+                    if len(color_set) == 1:
+                        color = self.rt_self.co_mgr.getColor(color_set.pop())
+                    else:
+                        color = self.rt_self.co_mgr.getTVColor('data','default')                            
+                if len(points) > 0:
+                    svg += f'<polyline points="{points}" stroke="{color}" stroke-width="{self.line_groupby_w}" fill="none" />'
+            return svg
+
+        #
+        # __rendersvg_line_groupby__(): render the line for groupby field
+        #
+        def __rendersvg_line_groupby__(self):
+            svg = ''
+            color = self.rt_self.co_mgr.getTVColor('data','default')
+
+            if self.rt_self.isPandas(self.df):
+                gb = self.df.groupby(self.line_groupby_field)
+            else:
+                gb = self.df.group_by(self.line_groupby_field)
+
+            for k,k_df in gb:
+                if   self.rt_self.isPandas(self.df):
+                    gbxy = k_df.groupby([self.x_axis_col+"_px",self.y_axis_col+"_px"])
+                elif self.rt_self.isPolars(self.df):
+                    k_df = k_df.sort(self.x_axis_col+"_px")
+                    gbxy = k_df.group_by([self.x_axis_col+"_px",self.y_axis_col+"_px"], maintain_order=True)
+
+                points = ''
+                for xy,xy_df in gbxy:
+                    points += f'{xy[0]},{xy[1]} '
+                if self.color_by:
+                    color_set = set(k_df[self.color_by])
+                    if len(color_set) == 1:
+                        color = self.rt_self.co_mgr.getColor(color_set.pop())
+                    else:
+                        color = self.rt_self.co_mgr.getTVColor('data','default')                            
+                if len(points) > 0:
+                    svg += f'<polyline points="{points}" stroke="{color}" stroke-width="{self.line_groupby_w}" fill="none" />'
+            return svg
+
+        #
+        # __rendersvg_line2_groupby__(): render the line for groupby 2 field
+        #
+        def __rendersvg_line2_groupby__(self):
+            svg = ''
+            if   self.rt_self.isPandas(self.df2):
+                gb = self.df2.groupby(self.line2_groupby_field)
+            elif self.rt_self.isPolars(self.df2):
+                gb = self.df2.group_by(self.line2_groupby_field)
+
+            for k,k_df in gb:
+                if   self.rt_self.isPandas(self.df2):
+                    gbxy = k_df.groupby([self.x2_axis_col+"_px",self.y2_axis_col+"_px"])
+                elif self.rt_self.isPolars(self.df2):
+                    k_df = k_df.sort(self.x2_axis_col+'_px')
+                    gbxy = k_df.groupby([self.x2_axis_col+"_px",self.y2_axis_col+"_px"], maintain_order=True)
+                points = ''
+                for xy,xy_df in gbxy:
+                    points += f'{xy[0]},{xy[1]} '
+
+                if   self.line2_groupby_color:
+                    if   self.line2_groupby_color.startswith('#'):
+                        color = self.line2_groupby_color
+                    elif self.line2_groupby_color in k_df.columns:
+                        color_set = set(k_df[self.line2_groupby_color])
+                        if len(color_set) == 1:
+                            color = self.rt_self.co_mgr.getColor(color_set.pop())
+                        else:
+                            color = self.rt_self.co_mgr.getTVColor('data','default')                            
+                    else:
+                        color = self.rt_self.co_mgr.getTVColor('data','default')                            
+                elif self.color_by and self.color_by in k_df.columns:
+                    color_set = set(k_df[self.color_by])
+                    if len(color_set) == 1:
+                        color = self.rt_self.co_mgr.getColor(color_set.pop())
+                    else:
+                        color = self.rt_self.co_mgr.getTVColor('data','default')                            
+                else:
+                    color = self.rt_self.co_mgr.getTVColor('data','default')                            
+
+                if len(points) > 0:
+                    if self.line2_groupby_dasharray:
+                        svg += f'<polyline points="{points}" stroke="{color}" stroke-width="{self.line2_groupby_w}" fill="none" stroke-dasharray="{self.line2_groupby_dasharray}" />'
+                    else:
+                        svg += f'<polyline points="{points}" stroke="{color}" stroke-width="{self.line2_groupby_w}" fill="none" />'
+            return svg
+
+        #
+        #
+        #
+        def __rendersvg_dots_polars__(self, _df, _x_axis_col, _y_axis_col, _local_color_by, _local_dot_w, track_state):
+            svg  = ''
+            proc = []
+
+            # Count By Calc
+            if _local_dot_w <= 0 or self.vary_opacity or self.color_magnitude is not None:
+                if   self.count_by is None:
+                    proc.append(pl.count().alias('__countby__'))
+                elif self.count_by_set:
+                    proc.append(pl.n_unique(self.count_by).alias('__countby__'))
+                else:
+                    proc.append(pl.sum(self.count_by).alias('__countby__'))
+            
+            # Color By Calc
+            color, color_by_field = None, '__colorby__'
+            if _local_color_by in _df.columns:
+                if _df[_local_color_by].dtype == pl.Datetime:
+                    _tsmin_, _tsmax_ = _df[_local_color_by].min(), _df[_local_color_by].max()
+                    proc.append(((pl.col(_local_color_by).min() - _tsmin_)/(_tsmax_ - _tsmin_)).alias('__colorby__'))
+                elif self.color_magnitude is None:
+                    proc.append(pl.col(_local_color_by).alias('__colorby__'))
+                else:
+                    color_by_field = '__countby__'
+            elif _local_color_by is not None and _local_color_by.startswith('#') and len(_local_color_by) == 7:
+                color = _local_color_by
+            else:
+                color = self.rt_self.co_mgr.getTVColor('data','default')
+            
+            # Compute per pixel values
+            gb = _df.group_by([_x_axis_col+"_px",_y_axis_col+"_px"]).agg(*proc)
+
+            if _local_color_by in gb.columns:
+                _global_min_ = gb[_local_color_by].min()
+                _global_max_ = gb[_local_color_by].max()
+
+            # Determine the min and max counts for the dot width / for contrast stretching, track counts
+            if _local_dot_w <= 0 or self.vary_opacity or self.color_magnitude is not None:
+                max_xy = gb['__countby__'].max()
+                if self.color_magnitude == 'stretch':
+                    self.contrast_stretch = {}
+                    _sorted_ = sorted(list(set(gb['__countby__'])))
+                    for x in range(len(_sorted_)):
+                        self.contrast_stretch[_sorted_[x]] = x/len(_sorted_)
+
+            # State Tracking
+            if track_state or callable(self.dot_shape):
+                pb = _df.partition_by([_x_axis_col+"_px",_y_axis_col+"_px"], as_dict=True)
+
+            # Loop Over The Pixels
+            for _index_ in range(len(gb)):
+                # Pixel Coordinates
+                x, y = gb[_x_axis_col+"_px"][_index_], gb[_y_axis_col+"_px"][_index_]
+
+                # Color Options
+                if _local_color_by in _df.columns:
+                    if _df[_local_color_by].dtype == pl.Datetime:
+                        color        = self.rt_self.co_mgr.spectrum(gb[color_by_field][_index_], 0.0, 1.0)
+                    elif self.color_magnitude is None:
+                        if len(gb[color_by_field][_index_]) > 1:
+                            color = self.rt_self.co_mgr.getTVColor('data','default')
+                        else:
+                            color = self.rt_self.co_mgr.getColor(set(gb[color_by_field][_index_]).pop())
+                    elif self.color_magnitude == 'stretch':
+                        color = self.rt_self.co_mgr.spectrum(self.contrast_stretch[gb[color_by_field][_index_]], 0, 1.0, True)
+                    else:
+                        color = self.rt_self.co_mgr.spectrum(gb[color_by_field][_index_], 0, max_xy, self.color_magnitude)
+
+                # Two Versions of Rendering
+                if _local_dot_w > 0 and self.vary_opacity == False: # Simple Render
+                    _my_dot_shape = self.dot_shape
+                    if callable(self.dot_shape):
+                        k_df = pb[(x,y)]
+                        _my_dot_shape = self.dot_shape(k_df, (x,y), x, y, _local_dot_w, color, self.opacity)
+                    svg += self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity)
+                else: # Complex Render
+                    my_count = gb['__countby__'][_index_]
+                    
+                    var_w = _local_dot_w
+                    var_o = 1.0 
+                    if _local_dot_w <= 0 and self.vary_opacity:                    
+                        var_w = 0.2 + self.max_dot_size  * my_count/max_xy
+                        var_o = 0.2 + 0.8                * my_count/max_xy                    
+                    elif _local_dot_w <= 0:
+                        var_w = 0.2 + self.max_dot_size  * my_count/max_xy                    
+                    else:
+                        var_o = 0.2 + 0.8                * my_count/max_xy
+                    
+                    _my_dot_shape = self.dot_shape
+                    if callable(self.dot_shape):
+                        k_df = pb[(x,y)]
+                        _my_dot_shape = self.dot_shape(k_df, k, x, y, var_w, color, var_o)
+
+                    svg += self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o)
+
+                # Track state (if requested)
+                if track_state:
+                    k_df = pb[(x,y)]
+                    _poly = Polygon([[x-_local_dot_w,y-_local_dot_w],[x-_local_dot_w,y+_local_dot_w],
+                                        [x+_local_dot_w,y+_local_dot_w],[x+_local_dot_w,y-_local_dot_w]])
+                    self.geom_to_df[_poly] = k_df
+
+            return svg
+
+        #
+        # __rendersvg_dots__(): render the dots
+        #
+        def __rendersvg_dots__(self, _df,_x_axis_col,_y_axis_col,_local_color_by,_local_dot_w,track_state):
+            svg = ''
+            # Group by x,y for the render
+            gb = _df.groupby([_x_axis_col+"_px",_y_axis_col+"_px"])
+
+            # Determine the min and max counts for the dot width / for contrast stretching, track counts
+            max_xy,self.stretch_histogram,self.stretch_total = 0,{},0
+            if _local_dot_w <= 0 or self.vary_opacity or self.color_magnitude is not None:
+                for k,k_df in gb:
+                    # count by rows
+                    if   self.count_by is None:
+                        my_count = len(k_df)
+                    # count by set
+                    elif self.count_by_set:
+                        my_count = len(set(k_df[self.count_by]))
+                    # count by summation
+                    else:
+                        my_count = k_df[self.count_by].sum()
+                    
+                    if self.color_magnitude == 'stretch':
+                        self.stretch_total += my_count
+                        if my_count not in self.stretch_histogram.keys():
+                            self.stretch_histogram[my_count] =  1
+                        else:
+                            self.stretch_histogram[my_count] += 1 
+                        
+                    if max_xy < my_count:
+                        max_xy = my_count
+
+            # Make sure the max is not zero
+            if max_xy == 0:
+                max_xy = 1
+            
+            # Contrast stretch calculation
+            self.contrast_stretch = {}
+            if self.color_magnitude == 'stretch':
+                _total_so_far = 0
+                _sorted       = sorted(list(self.stretch_histogram.keys()))
+                for x in _sorted:
+                    _perc = _total_so_far / self.stretch_total
+                    self.contrast_stretch[x] = _perc
+                    _total_so_far += self.stretch_histogram[x] * x
+
+            #
+            # Render loop
+            #
+            for k,k_df in gb:
+                x,y = k
+
+                # Determine coloring options                            
+                if   _local_color_by is None:
+                    color = self.rt_self.co_mgr.getTVColor('data','default')
+                elif _local_color_by in k_df.columns:
+                    if ( (self.rt_self.isPandas(k_df) and is_datetime(k_df[_local_color_by])) or
+                         (self.rt_self.isPolars(k_df) and k_df[_local_color_by].dtype == pl.Datetime) ):
+                        _global_min_ = self.df[_local_color_by].min()
+                        _global_max_ = self.df[_local_color_by].max()
+                        if _global_min_ == _global_max_:
+                            _global_min_ -= 0.5
+                            _global_max_ += 0.5
+                        _scaled_time = (k_df[_local_color_by].min() - _global_min_)/(_global_max_ - _global_min_)
+                        color        = self.rt_self.co_mgr.spectrum(_scaled_time, 0.0, 1.0)
+                    elif self.color_magnitude is None:
+                        color_set = set(k_df[_local_color_by])
+                        if len(color_set) == 1:
+                            color = self.rt_self.co_mgr.getColor(color_set.pop())
+                        else:
+                            color = self.rt_self.co_mgr.getTVColor('data','default')
+                    else:                                    
+                        if self.count_by_set:                              # count by set
+                            my_count = len(set(k_df[self.count_by]))                                    
+                        elif self.count_by is not None:                    # count by summation
+                            my_count = k_df[self.count_by].sum()
+                        else:                                              # count by rows
+                            my_count = len(k_df)
+                        if self.color_magnitude == 'stretch':
+                            color = self.rt_self.co_mgr.spectrum(self.contrast_stretch[my_count], 0, 1.0,    True)
+                        else:
+                            color = self.rt_self.co_mgr.spectrum(my_count, 0, max_xy, self.color_magnitude)
+                elif _local_color_by.startswith('#') and len(_local_color_by) == 7:
+                    color = _local_color_by
+                else:
+                    color = self.rt_self.co_mgr.getTVColor('data','default')
+
+                # Render the dot
+                # - Simple Render
+                if _local_dot_w > 0 and self.vary_opacity == False:
+                    _my_dot_shape = self.dot_shape
+                    if callable(self.dot_shape):
+                        _my_dot_shape = self.dot_shape(k_df, k, x, y, _local_dot_w, color, self.opacity)
+                    svg += self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity)
+
+                    # Track state (if requested)
+                    if track_state:
+                        _poly = Polygon([[x-_local_dot_w,y-_local_dot_w],
+                                            [x-_local_dot_w,y+_local_dot_w],
+                                            [x+_local_dot_w,y+_local_dot_w],
+                                            [x+_local_dot_w,y-_local_dot_w]])
+                        self.geom_to_df[_poly] = k_df
+
+                # - Complex Render
+                else:
+                    # count by rows
+                    if   self.count_by is None:
+                        my_count = len(k_df)
+                    # count by set
+                    elif self.count_by_set:
+                        my_count = len(set(k_df[self.count_by]))
+                    # count by summation
+                    else:
+                        my_count = k_df[self.count_by].sum()
+                    
+                    var_w = _local_dot_w
+                    var_o = 1.0 
+                    if _local_dot_w <= 0 and self.vary_opacity:                    
+                        var_w = 0.2 + self.max_dot_size  * my_count/max_xy
+                        var_o = 0.2 + 0.8                * my_count/max_xy                    
+                    elif _local_dot_w <= 0:
+                        var_w = 0.2 + self.max_dot_size  * my_count/max_xy                    
+                    else:
+                        var_o = 0.2 + 0.8                * my_count/max_xy
+                    
+                    _my_dot_shape = self.dot_shape
+                    if callable(self.dot_shape):
+                        _my_dot_shape = self.dot_shape(k_df, k, x, y, var_w, color, var_o)
+
+                    svg += self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o)
+
+                    # Track state (if requested)
+                    if track_state:
+                        _poly = Polygon([[x-var_w,y-var_w],
+                                         [x-var_w,y+var_w],
+                                         [x+var_w,y+var_w],
+                                         [x+var_w,y-var_w]])
+                        self.geom_to_df[_poly] = k_df
+
+            return svg
 
     #
     # Condense a Time Label Down To The Minimum...
