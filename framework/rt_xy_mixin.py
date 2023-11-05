@@ -1850,7 +1850,7 @@ class RTXYMixin(object):
             return svg
 
         #
-        #
+        # __rendersvg_dots_polars__() - render dots for polars
         #
         def __rendersvg_dots_polars__(self, _df, _x_axis_col, _y_axis_col, _local_color_by, _local_dot_w, track_state):
             svg  = ''
@@ -1942,7 +1942,7 @@ class RTXYMixin(object):
                     _my_dot_shape = self.dot_shape
                     if callable(self.dot_shape):
                         k_df = pb[(x,y)]
-                        _my_dot_shape = self.dot_shape(k_df, k, x, y, var_w, color, var_o)
+                        _my_dot_shape = self.dot_shape(k_df, (x,y), x, y, var_w, color, var_o)
 
                     svg += self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o)
 
@@ -1950,7 +1950,7 @@ class RTXYMixin(object):
                 if track_state:
                     k_df = pb[(x,y)]
                     _poly = Polygon([[x-_local_dot_w,y-_local_dot_w],[x-_local_dot_w,y+_local_dot_w],
-                                        [x+_local_dot_w,y+_local_dot_w],[x+_local_dot_w,y-_local_dot_w]])
+                                     [x+_local_dot_w,y+_local_dot_w],[x+_local_dot_w,y-_local_dot_w]])
                     self.geom_to_df[_poly] = k_df
 
             return svg

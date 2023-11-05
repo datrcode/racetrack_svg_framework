@@ -252,6 +252,7 @@ class RTSmallMultiplesMixin(object):
             most_params['temporal_granularity'] = temporal_granularity
 
         # Handle dependent axes ... unfortunately, this is widget dependent
+        polars_requires_repartition = False
         if x_axis_independent == False or y_axis_independent == False:
             #
             # xy and x-axis
@@ -275,6 +276,7 @@ class RTSmallMultiplesMixin(object):
                 most_params['x_trans_func']      = xTrans
                 most_params['x_order']           = xOrder
                 most_params['x_fill_transforms'] = xFillTransforms
+                polars_requires_repartition      = True
 
             #
             # xy and y-axis
@@ -298,6 +300,7 @@ class RTSmallMultiplesMixin(object):
                 most_params['y_trans_func']      = yTrans
                 most_params['y_order']           = yOrder
                 most_params['y_fill_transforms'] = yFillTransforms
+                polars_requires_repartition      = True
             #
             # temporalBarChart and x-axis
             #
@@ -321,10 +324,10 @@ class RTSmallMultiplesMixin(object):
                     max_categories = len(cat_order)
 
                 for cat_i in range(0,max_categories):
-                    if self.isPandas(df):
+                    if   self.isPandas(df):
                         key    = cat_order.index[cat_i]
                         key_df = cat_gb.get_group(key)
-                    else:
+                    elif self.isPolars(df):
                         key    = cat_order[category_by][cat_i].rows()[0]
                         key_df = cat_gb[key]
                     my_params = most_params.copy()
@@ -366,6 +369,10 @@ class RTSmallMultiplesMixin(object):
                             global_min = local_min
                 most_params['global_max'] = global_max
                 most_params['global_min'] = global_min
+
+        # When you change the base df, that change does not propagate to previous partition_by's..
+        if polars_requires_repartition and self.isPolars(df):
+            cat_gb = df.partition_by(category_by, as_dict=True)
 
         ### ***************************************************************************************************************************
         ### POSITIONING & SIZING
