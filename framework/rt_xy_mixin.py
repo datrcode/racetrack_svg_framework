@@ -1910,10 +1910,11 @@ class RTXYMixin(object):
                     if _df[_local_color_by].dtype == pl.Datetime:
                         color        = self.rt_self.co_mgr.spectrum(gb[color_by_field][_index_], 0.0, 1.0)
                     elif self.color_magnitude is None:
-                        if len(gb[color_by_field][_index_]) > 1:
+                        _set_ = set(gb[color_by_field][_index_])
+                        if len(_set_) > 1:
                             color = self.rt_self.co_mgr.getTVColor('data','default')
                         else:
-                            color = self.rt_self.co_mgr.getColor(set(gb[color_by_field][_index_]).pop())
+                            color = self.rt_self.co_mgr.getColor(_set_.pop())
                     elif self.color_magnitude == 'stretch':
                         color = self.rt_self.co_mgr.spectrum(self.contrast_stretch[gb[color_by_field][_index_]], 0, 1.0, True)
                     else:
