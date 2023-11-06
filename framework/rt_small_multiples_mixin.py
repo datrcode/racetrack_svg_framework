@@ -518,10 +518,7 @@ class RTSmallMultiplesMixin(object):
                 max_categories = len(cat_order)
             if max_categories > len(cat_order):
                 max_categories = len(cat_order)
-            if show_df_multiple:
-                to_fit = max_categories + 1
-            else:
-                to_fit = max_categories
+            to_fit = (max_categories + 1) if show_df_multiple else max_categories
 
             # Determine the width and height of the small multiples themselves
             # Minimum dimensions for the widget
@@ -530,10 +527,7 @@ class RTSmallMultiplesMixin(object):
             # Binary search to find the best fit
             w_min_adj = dim_min[0] + x_inter
             h_min_adj = dim_min[1] + y_inter
-            if draw_labels:
-                my_txt_h = txt_h
-            else:
-                my_txt_h = 0
+            my_txt_h = txt_h if draw_labels else 0
                 
             w_sm, h_sm = findOptimalFit(w_min_adj, h_min_adj, my_txt_h, w - x_ins, h - y_ins, to_fit)
             sm_columns = int((w-2*x_ins)/(w_sm+x_inter))
@@ -552,6 +546,9 @@ class RTSmallMultiplesMixin(object):
 
         ###
         ### OVERRIDES for SM SIZE
+        ### - reworked on 2023-11-05 -- if the sm_w_override and sm_h_override's are set,
+        ###   then this part calculates a new sm_columns based on the overall w specified...
+        ###   and the length is whatever it takes to make it work...
         ###
         if w_sm_override is not None and h_sm_override is not None:
             # Override the size... this is only useful when the small multiples are being generated
@@ -568,10 +565,20 @@ class RTSmallMultiplesMixin(object):
                 else:
                     raise Exception("smallMultiples() - shrink_wrap_rows not implemented (w_sm_override)")
             else:
-                h    = 2*y_ins + rows_needed * h_sm + y_inter*(rows_needed - 1)
-                w    = 2*x_ins + sm_columns  * w_sm + x_inter*(sm_columns  - 1)
+                sm_columns = int((w-2*x_ins)/(w_sm+x_inter))
+                w          = 2*x_ins + sm_columns  * w_sm + x_inter*(sm_columns  - 1)
+                rows_needed = int(to_fit/sm_columns)
+                if (to_fit%sm_columns) != 0:
+                    rows_needed += 1
+                if rows_needed == 0:
+                    rows_needed = 1
+                h          = 2*y_ins + rows_needed * h_sm + y_inter*(rows_needed - 1)
                 if draw_labels:
                     h += txt_h * rows_needed
+                #h    = 2*y_ins + rows_needed * h_sm + y_inter*(rows_needed - 1)
+                #w    = 2*x_ins + sm_columns  * w_sm + x_inter*(sm_columns  - 1)
+                #if draw_labels:
+                #    h += txt_h * rows_needed
 
         most_params['w']           = w_sm
         most_params['h']           = h_sm
