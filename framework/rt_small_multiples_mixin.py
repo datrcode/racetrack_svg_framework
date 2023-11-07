@@ -250,6 +250,8 @@ class RTSmallMultiplesMixin(object):
             most_params['ts_field'] = ts_field
         if 'temporal_granularity' in accepted_args:
             most_params['temporal_granularity'] = temporal_granularity
+        if sm_type == 'linkNode':
+            most_params['use_pos_for_bounds'] = False
 
         # Handle dependent axes ... unfortunately, this is widget dependent
         polars_requires_repartition = False
@@ -311,8 +313,8 @@ class RTSmallMultiplesMixin(object):
             #
             # linkNode and position for bounds
             #
-            if x_axis_independent == False and sm_type == 'linkNode':
-                most_params['use_pos_for_bounds'] = False
+            if sm_type == 'linkNode' and x_axis_independent == False:
+                most_params['use_pos_for_bounds'] = True
             
             #
             # histogram/periodicBarChart/temporalBarChart/boxplot and y-axis
