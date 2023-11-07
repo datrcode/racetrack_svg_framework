@@ -521,7 +521,7 @@ class RTTemporalBarChartMixin(object):
                 _min_ = _sorted_.drop(set(self.df.columns) - set([self.ts_field]) - set([self.count_by]))
                 order = _min_.group_by_dynamic(self.ts_field, every=self.rt_self.time_rezes_polars[time_rez_i]).agg(pl.sum(self.count_by).alias('__count__'))
                 if self.style.startswith('boxplot'):
-                    group_by_min, group_by_max = self.df['__count__'].min(), self.df['__count__'].max()
+                    group_by_min, group_by_max = self.df[self.count_by].min(), self.df[self.count_by].max()
                 else:
                     group_by_min, group_by_max = 0, order['__count__'].max()
             return order, group_by_min, group_by_max, _sorted_.group_by_dynamic(self.ts_field, every=self.rt_self.time_rezes_polars[time_rez_i])
