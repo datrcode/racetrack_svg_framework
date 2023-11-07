@@ -78,6 +78,7 @@ class RTHistogramMixin(object):
                   # -------------------------- # global rendering params
                   first_line_i       = 0,      # first line index to render
                   global_max         = None,   # maximum to use for the bar length calculation
+                  global_min         = None,   # mininum to use for the bar length calculation -- which is treated as zero by histograms...
                   just_calc_max      = False,  # forces return of the maximum for this render config...
                                                # ... which will then be used for the global max across bar charts...                        
                   # ------------------------- # rendering specific params                  
@@ -128,6 +129,7 @@ class RTHistogramMixin(object):
 
             self.first_line_i       = kwargs['first_line_i']
             self.global_max         = kwargs['global_max']
+            self.global_min         = kwargs['global_min']
             self.x_view             = kwargs['x_view']
             self.y_view             = kwargs['y_view']
             self.w                  = kwargs['w']

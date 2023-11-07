@@ -329,6 +329,9 @@ class RTSmallMultiplesMixin(object):
                         key_df = cat_gb.get_group(key)
                     elif self.isPolars(df):
                         key    = cat_order[category_by][cat_i].rows()[0]
+                        # Fix for the polars-version... for some reason, sometimes it's get tupled...
+                        if type(key) == tuple and len(key) == 1:
+                            key = key[0]
                         key_df = cat_gb[key]
                     my_params = most_params.copy()
                     my_params['df'] = key_df
