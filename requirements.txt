@@ -1,7 +1,8 @@
 networkx
 numpy
 pandas
-panel==0.14.2
+panel
+pyarrow
 polars
 shapely
 squarify

@@ -1311,7 +1311,7 @@ class RTSmallMultiplesMixin(object):
                 w_overall += w
                 if h > h_max:
                     h_max = h
-            svg = f'<svg width="{w_overall}" height="{h_max}" x="0" y="0">'
+            svg = f'<svg width="{w_overall}" height="{h_max}" x="0" y="0" xmlns="http://www.w3.org/2000/svg">'
             w_overall = 0
             for _svg in svg_list:
                 if type(_svg) != str:
@@ -1329,7 +1329,7 @@ class RTSmallMultiplesMixin(object):
                 h_overall += h
                 if w > w_max:
                     w_max = w
-            svg = f'<svg width="{w_max}" height="{h_overall}" x="0" y="0">'
+            svg = f'<svg width="{w_max}" height="{h_overall}" x="0" y="0" xmlns="http://www.w3.org/2000/svg">'
             h_overall = 0
             for _svg in svg_list:
                 if type(_svg) != str:
