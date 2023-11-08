@@ -671,13 +671,13 @@ class RTTemporalBarChartMixin(object):
                 self.ts_max = self.df[self.ts_field].max()
             else:
                 if   self.rt_self.isPandas(self.df):
-                    self.df = self.df[self.df[self.ts_field] < self.ts_max]
+                    self.df = self.df[self.df[self.ts_field] <= self.ts_max]
                 elif self.rt_self.isPolars(self.df):
                     if type(self.ts_max) == str:
                         _ts_max_ = datetime.fromisoformat(self.ts_max)
                     else:
                         _ts_max_ = self.ts_max
-                    self.df = self.df.filter(pl.col(self.ts_field) < _ts_max_)
+                    self.df = self.df.filter(pl.col(self.ts_field) <= _ts_max_)
             if len(self.df) != _len_before_max_:
                 self.max_cropped = True
             else:
