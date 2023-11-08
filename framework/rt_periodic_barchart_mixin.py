@@ -383,7 +383,7 @@ class RTPeriodicBarChartMixin(object):
             # Determine the max
             group_by, group_by_min, group_by_max = self.dataFrameRanges(period_field)
             if self.global_max is not None:
-                self.group_by_min, self.group_by_max = self.global_min, self.global_max
+                group_by_min, group_by_max = self.global_min, self.global_max
             if just_calc_max:
                 return group_by_min,group_by_max
 
