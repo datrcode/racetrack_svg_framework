@@ -558,11 +558,6 @@ class RTBoxplotMixin(object):
                 if _poly.intersects(to_intersect):
                     _dfs.append(self.geom_to_df[_poly])
             if len(_dfs) > 0:
-                if self.rt_self.isPandas(self.df):
-                    return pd.concat(_dfs)
-                elif self.rt_self.isPolars(self.df):
-                    return pl.concat(_dfs)
-                else:
-                    raise Exception('RTBoxPlot.overlappingDataFrames() - only pandas and polars supported')
+                return self.rt_self.concatDataFrames(_dfs)
             else:
                 return None

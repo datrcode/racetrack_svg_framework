@@ -979,11 +979,10 @@ class RTSmallMultiplesMixin(object):
                 if _poly.intersects(to_intersect):
                     _dfs.append(self.category_to_df[_category])
             if len(_dfs) > 0:
+                _dfs_together = self.rt_self.concatDataFrames(_dfs)
                 if   self.rt_self.isPandas(self.df):
-                    _dfs_together = pd.concat(_dfs)
                     _dfs_together = _dfs_together.drop_duplicates()
                 elif self.rt_self.isPolars(self.df):
-                    _dfs_together = pl.concat(_dfs)
                     _dfs_together = _dfs_together.unique()                
                 else:
                     raise Exception('RTSmallMultiples.overlappingDataFrames() - only pandas and polars are supported')
@@ -1008,12 +1007,7 @@ class RTSmallMultiplesMixin(object):
         combined_df = pd.DataFrame()
         for _df in df:
             if len(set(_df.columns) & required_columns) == len(required_columns):
-                if self.isPandas(_df):
-                    combined_df = pd.concat([combined_df,_df])
-                elif self.isPolars(_df):
-                    combined_df = pl.concat([combined_df,_df])
-                else:
-                    raise Exception('RTSmallMultiples.__alignDataFrames__() - only pandas and polars supported')
+                combined_df = self.rt_self.concatDataFrames([combined_df,_df])
         return combined_df
 
     #

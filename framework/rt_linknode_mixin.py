@@ -1547,7 +1547,7 @@ class RTLinkNodeMixin(object):
                 if _poly.intersects(to_intersect):
                     _dfs.extend(self.geom_to_df[_poly]) # <== SLIGHTLY DIFFERENT THAN ALL OF THE OTHERS...
             if len(_dfs) > 0:
-                return pd.concat(_dfs)
+                return self.rt_self.concatDataFrames(_dfs)
             else:
                 return None
 

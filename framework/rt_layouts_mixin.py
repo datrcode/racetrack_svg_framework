@@ -18,6 +18,7 @@ import inspect
 import random
 
 import pandas as pd
+import polars as pl
 import numpy as np
 
 from shapely.affinity import translate
@@ -552,14 +553,7 @@ class RTLayoutsMixin(object):
 
         if ('temporal_granularity' not in kwargs.keys()) and 'temporalBarChart' in widgets_set:
             if ('ts_field' not in kwargs.keys()) or kwargs['ts_field'] is None:
-                choices = df.select_dtypes(np.datetime64).columns
-                if len(choices) == 1:
-                    ts_field = choices[0]
-                elif len(choices) > 1:
-                    print('multiple timestamp fields... choosing the first (multiWidgetPanel)')
-                    ts_field = choices[0]
-                else:
-                    raise Exception('no timestamp field supplied to multiWidgetPanel(), cannot automatically determine field')
+                ts_field = self.guessTimestampField(df)
             else:
                 ts_field = kwargs['ts_field']
             temporal_granularity = self.temporalGranularity(df, ts_field)
@@ -681,14 +675,7 @@ class RTLayoutsMixin(object):
         # Determine temporal granularity if there's a temporalBarChart...
         if ('temporal_granularity' not in kwargs.keys()) and 'temporalBarChart' in widgets_set:
             if ('ts_field' not in kwargs.keys()) or kwargs['ts_field'] is None:
-                choices = df.select_dtypes(np.datetime64).columns
-                if len(choices) == 1:
-                    ts_field = choices[0]
-                elif len(choices) > 1:
-                    print('multiple timestamp fields... choosing the first (gridBagLayout)')
-                    ts_field = choices[0]
-                else:
-                    raise Exception('no timestamp field supplied to gridBagLayout(), cannot automatically determine field')
+                ts_field = self.guessTimestampField(df)                
             else:
                 ts_field = kwargs['ts_field']
             temporal_granularity = self.temporalGranularity(df, ts_field)
@@ -780,7 +767,7 @@ class RTLayout(object):
                 if _df is not None and len(_df) > 0:
                     _dfs.append(_df)
         if len(_dfs) > 0:
-            return pd.concat(_dfs)
+            return self.rt_self.concatDataFrames(_dfs)
         else:
             return None
         

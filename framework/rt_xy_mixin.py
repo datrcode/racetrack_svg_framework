@@ -917,7 +917,7 @@ class RTXYMixin(object):
                         _df            = pd.DataFrame({'x':_x_values,'y':_y_values})
                         _df['groupby'] = k
                         _dfs.append(_df)
-                    self.df2 = pd.concat(_dfs)
+                    self.df2 = self.rt_self.concatDataFrames(_dfs)
 
                 # Common settings once the df2 is created
                 self.line2_groupby_field = 'groupby'
@@ -1366,12 +1366,7 @@ class RTXYMixin(object):
                 if _poly.intersects(to_intersect):
                     _dfs.append(self.geom_to_df[_poly])
             if len(_dfs) > 0:
-                if self.rt_self.isPandas(_dfs[0]):
-                    return pd.concat(_dfs)
-                elif self.rt_self.isPolars(_dfs[0]):
-                    return pl.concat(_dfs)
-                else:
-                    raise Exception('RTXY.overlappingDataFrames() - only pandas and polars supported')
+                return self.rt_self.concatDataFrames(_dfs)
             else:
                 return None
 

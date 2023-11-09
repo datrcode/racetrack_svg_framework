@@ -170,6 +170,17 @@ class RACETrack(RTAnnotationsMixin,
             raise Exception('copyDataFrame() - accepts only pandas or polars dataframes')
 
     #
+    # concatDataFrames() - concatenate dataframes
+    #
+    def concatDataFrames(self, dfs):
+        if   self.isPandas(dfs[0]):
+            return pd.concat(dfs)
+        elif self.isPolars(dfs[0]):
+            return pl.concat(dfs)
+        else:
+            raise Exception('concatDataFrames() - accepts only pandas or polars dataframes')
+
+    #
     # columnsAreTimestamps()
     # - Helper method to make a column into a suitable timestamp column
     # - ... because apparently the way to make a column into a type continues to evolve :(

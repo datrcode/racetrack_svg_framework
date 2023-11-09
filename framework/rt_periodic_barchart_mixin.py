@@ -568,6 +568,6 @@ class RTPeriodicBarChartMixin(object):
                 if _poly.intersects(to_intersect):
                     _dfs.append(self.geom_to_df[_poly])
             if len(_dfs) > 0:
-                return pd.concat(_dfs)
+                return self.rt_self.concatDataFrames(_dfs)
             else:
                 return None

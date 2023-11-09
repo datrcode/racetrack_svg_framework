@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 
 import threading
 
@@ -167,7 +168,13 @@ class RTReactiveHTML(ReactiveHTML):
         self.v_gap        = v_gap
         self.widget_h_gap = widget_h_gap
         self.widget_v_gap = widget_v_gap
-        self.kwargs       = kwargs 
+        self.kwargs       = kwargs
+        if   self.rt_self.isPandas(df):                     
+            df = df.copy()
+        elif self.rt_self.isPolars(df):
+            df = df.clone()
+        self.dfs        = [df]            
+                     
         # - Create the template ... copy of the above with variables filled in...
         self._template = f'<svg id="parent" width="{w}" height="{h}">'                               + \
                             f'<svg id="mod" width="{w}" height="{h}">'                               + \
@@ -180,11 +187,7 @@ class RTReactiveHTML(ReactiveHTML):
                             """ onmousemove="${script('myonmousemove')}"   """                       + \
                             """ onmouseup="${script('myonmouseup')}"       """                       + \
                             '/>'                                                                     + \
-                         '</svg>' 
-        if   self.rt_self.isPandas(df):
-            self.dfs        = [df.copy()]
-        elif self.rt_self.isPolars(df):
-            self.dfs        = [df.clone()]
+                         '</svg>'
         self.dfs_layout = [self.rt_self.layout(self.spec, df, w=self.w, h=self.h,
                                                h_gap=self.h_gap,v_gap=self.v_gap,
                                                widget_h_gap=self.widget_h_gap,widget_v_gap=self.widget_v_gap,
