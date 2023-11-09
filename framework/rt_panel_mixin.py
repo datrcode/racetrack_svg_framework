@@ -67,13 +67,13 @@ class RTPanelMixin(object):
                 <text id="txt36short" x="5" y="226"  font-family="Monospace" font-size="36px">abcdefghijklmnopqrstuvwxyz</text>
                 <text id="txt48" x="5" y="186" font-family="monospace" font-size="48px">abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ</text>
                 <rect id="screen" x="0" y="0" width="1024" height="256" fill-opacity="0.1"
-                  onmousedown="${script('_onmousedown_')}"
+                  onmousedown="${script('myonmousedown')}"
                 />
             </svg>
         """
 
         _scripts = {
-                '_onmousedown_':"""
+                'myonmousedown':"""
                     click.setAttribute("fill","#0000ff");
                     let my_num_chars       = 26*4 + 3;
                     let my_num_chars_short = 26
@@ -116,11 +116,10 @@ class RTPanelMixin(object):
 class RTReactiveHTML(ReactiveHTML):
     #
     # Inner Modification for RT SVG Render
-    # - The following is re-written in the constructor
     #
     mod_inner = param.String(default="""
         <rect x="0" y="0" width="100" height="100" fill="#808080" />
-        <circle cx="50" cy="50" r="40" fill="#000000" />
+        <circle cx="50" cy="50" r="40" fill="#ff0000" />
     """)
 
     #
@@ -134,9 +133,9 @@ class RTReactiveHTML(ReactiveHTML):
             </svg>
             <rect id="drag" x="-10" y="-10" width="5" height="5" fill="#ffffff" opacity="0.6" />
             <rect id="screen" x="0" y="0" width="100" height="100" opacity="0.05" 
-              onmousedown="${script('_onmousedown_')}"
-              onmousemove="${script('_onmousemove_')}"
-              onmouseup="${script('_onmouseup_')}"              
+              onmousedown="${script('myonmousedown')}"
+              onmousemove="${script('myonmousemove')}"
+              onmouseup="${script('myonmouseup')}"
             />
         </svg>
     """
@@ -177,12 +176,15 @@ class RTReactiveHTML(ReactiveHTML):
                             '<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" ' + \
                                   'fill="#ffffff" opacity="0.6" />'                                  + \
                             f'<rect id="screen" x="0" y="0" width="{w}" height="{h}" opacity="0.05"' + \
-                            """ onmousedown="${script('_onmousedown_')}"   """                       + \
-                            """ onmousemove="${script('_onmousemove_')}"   """                       + \
-                            """ onmouseup="${script('_onmouseup_')}"       """                       + \
+                            """ onmousedown="${script('myonmousedown')}"   """                       + \
+                            """ onmousemove="${script('myonmousemove')}"   """                       + \
+                            """ onmouseup="${script('myonmouseup')}"       """                       + \
                             '/>'                                                                     + \
                          '</svg>' 
-        self.dfs        = [df.copy()]
+        if   self.rt_self.isPandas(df):
+            self.dfs        = [df.copy()]
+        elif self.rt_self.isPolars(df):
+            self.dfs        = [df.clone()]
         self.dfs_layout = [self.rt_self.layout(self.spec, df, w=self.w, h=self.h,
                                                h_gap=self.h_gap,v_gap=self.v_gap,
                                                widget_h_gap=self.widget_h_gap,widget_v_gap=self.widget_v_gap,
@@ -302,30 +304,30 @@ class RTReactiveHTML(ReactiveHTML):
             state.shiftkey = false;
             state.drag_op  = false;            
         """,
-        '_onmousemove_':"""
+        'myonmousemove':"""
             if (state.drag_op) {
                 state.x1_drag  = event.offsetX;
                 state.y1_drag  = event.offsetY;
                 state.shiftkey = event.shiftKey;
-                self._updateDragRect_();
+                self.myUpdateDragRect();
             }
         """,
-        '_onmousedown_':"""
+        'myonmousedown':"""
             state.x0_drag  = event.offsetX;
             state.y0_drag  = event.offsetY;
             state.x1_drag  = event.offsetX+1;
             state.y1_drag  = event.offsetY+1;
             state.drag_op  = true;
             state.shiftkey = event.shiftKey;
-            self._updateDragRect_();
+            self.myUpdateDragRect();
         """,
-        '_onmouseup_':"""
+        'myonmouseup':"""
             if (state.drag_op) {
                 state.x1_drag  = event.offsetX;
                 state.y1_drag  = event.offsetY;
                 state.shiftkey = event.shiftKey;
                 state.drag_op  = false;
-                self._updateDragRect_();
+                self.myUpdateDragRect();
                 data.drag_x0          = state.x0_drag;
                 data.drag_y0          = state.y0_drag;
                 data.drag_x1          = state.x1_drag;
@@ -337,7 +339,7 @@ class RTReactiveHTML(ReactiveHTML):
         'mod_inner':"""
             mod.innerHTML = data.mod_inner;
         """,
-        '_updateDragRect_':"""
+        'myUpdateDragRect':"""
             if (state.drag_op) {
                 x = state.x0_drag; 
                 if (state.x1_drag < x) { x = state.x1_drag; }
