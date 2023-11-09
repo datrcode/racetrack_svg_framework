@@ -904,7 +904,6 @@ class RTSmallMultiplesMixin(object):
                 self.temporal_granularity = self.rt_self.temporalGranularity(self.df, self.ts_field)
 
             # Geometry lookup for tracking state
-            self.geom_to_df           = {}
             self.last_render          = None
             self.category_to_sm       = {}
             self.category_to_instance = {}
@@ -1003,11 +1002,12 @@ class RTSmallMultiplesMixin(object):
         if self.isPandas(df) or self.isPolars(df) or type(df) != list:
             return df
 
-        # combined together if they meet the required columns
-        combined_df = pd.DataFrame()
+        # combined together if they meet the required columns                                
+        combined_df = pd.DataFrame() if self.isPandas(df[0]) else pl.DataFrame() if self.isPolars(df[0]) else None
+                                
         for _df in df:
             if len(set(_df.columns) & required_columns) == len(required_columns):
-                combined_df = self.rt_self.concatDataFrames([combined_df,_df])
+                combined_df = self.concatDataFrames([combined_df,_df])
         return combined_df
 
     #
@@ -1078,14 +1078,7 @@ class RTSmallMultiplesMixin(object):
             if 'ts_field' in sm_params.keys():     # precedence is sm_params ts_field
                 ts_field = sm_params['ts_field']
             elif ts_field is None:                 # best guess from the columns // copied from temporalBarChart method
-                choices = master_df.select_dtypes(np.datetime64).columns
-                if len(choices) == 1:
-                    ts_field = choices[0]
-                elif len(choices) > 1:
-                    print('multiple timestamp fields... choosing the first (createSmallMultiples)')
-                    ts_field = choices[0]
-                else:
-                    raise Exception('no timestamp field supplied to createSmallMultiples(), cannot automatically determine field')            
+                ts_field = self.guessTimestampField(master_df)
             else:                                  # use the ts_field passed into this method
                 pass
 
