@@ -1001,14 +1001,14 @@ class RTSmallMultiplesMixin(object):
         # if it's already one, just return it...
         if self.isPandas(df) or self.isPolars(df) or type(df) != list:
             return df
-
-        # combined together if they meet the required columns                                
-        combined_df = pd.DataFrame() if self.isPandas(df[0]) else pl.DataFrame() if self.isPolars(df[0]) else None
-                                
+        
+        # Otherwise, concat together if the fields are ther... when wouldn't the fields be there? 2023-11-10
+        _dfs_ = []                                
         for _df in df:
             if len(set(_df.columns) & required_columns) == len(required_columns):
-                combined_df = self.concatDataFrames([combined_df,_df])
-        return combined_df
+                _dfs_.append(_df)
+
+        return self.concatDataFrames(_dfs_)
 
     #
     # createSmallMultiple()
@@ -1054,21 +1054,23 @@ class RTSmallMultiplesMixin(object):
             df_example = df 
 
         if   self.isPandas(df_example):
-            master_df = pd.DataFrame()
+            _dfs_ = []
             for k in str_to_df_list.keys():
                 df_list    = str_to_df_list[k]
                 aligned_df = self.__alignDataFrames__(df_list,required_columns)
                 pd.set_option('mode.chained_assignment', None)    # verified that the operation occurs correctly 2023-01-11 20:00EST
                 aligned_df[my_cat_column] = k
                 pd.set_option('mode.chained_assignment', 'warn')
-                master_df = pd.concat([master_df, aligned_df])
+                _dfs_.append(aligned_df)
+            master_df = pd.concat(_dfs_)
         elif self.isPolars(df_example):
-            master_df = pl.DataFrame()
+            _dfs_ = []
             for k in str_to_df_list.keys():
                 df_list    = str_to_df_list[k]
                 aligned_df = self.__alignDataFrames__(df_list,required_columns)
                 aligned_df = aligned_df.with_columns(pl.lit(k).alias(my_cat_column))
-                master_df = pl.concat([master_df, aligned_df])
+                _dfs_.append(aligned_df)
+            master_df = pl.concat(_dfs_)
         else:
             raise Exception('RTSmallMultiples.createSmallMultiples() - only pandas and polars supported', type(df))
 
@@ -1078,7 +1080,7 @@ class RTSmallMultiplesMixin(object):
             if 'ts_field' in sm_params.keys():     # precedence is sm_params ts_field
                 ts_field = sm_params['ts_field']
             elif ts_field is None:                 # best guess from the columns // copied from temporalBarChart method
-                ts_field = self.guessTimestampField(master_df)
+                ts_field = self.guessTimestampField(df)
             else:                                  # use the ts_field passed into this method
                 pass
 
