@@ -1285,13 +1285,10 @@ class RTXYMixin(object):
             axis_co = self.rt_self.co_mgr.getTVColor('axis',  'default')
             svg += f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left}"                 y2="{self.y_ins}"      stroke="{axis_co}" stroke-width=".6" />'
             svg += f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left + self.w_usable}" y2="{self.y_bottom}"   stroke="{axis_co}" stroke-width=".6" />'
-
+                
             # Handle the line option... this needs to be rendered before the dots so that the lines are behind the dots
-            # ... first version handles timestamped vector data...
-            if self.line_groupby_field is not None     and \
-               type(self.line_groupby_field) == list   and \
-               ( (self.rt_self.isPandas(self.df) and is_datetime(self.df[self.line_groupby_field[-1]])) or
-                 (self.rt_self.isPolars(self.df) and self.df[self.line_groupby_field[-1]].dtype == pl.Datetime) ):
+            # ... first version handles vector data...
+            if self.line_groupby_field is not None and type(self.line_groupby_field) == list:
                 svg += self.__rendersvg_line_groupby_timestamped__()
             # ... second version handles the normal use cases...
             elif self.line_groupby_field:
