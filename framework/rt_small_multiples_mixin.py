@@ -1080,7 +1080,7 @@ class RTSmallMultiplesMixin(object):
             if 'ts_field' in sm_params.keys():     # precedence is sm_params ts_field
                 ts_field = sm_params['ts_field']
             elif ts_field is None:                 # best guess from the columns // copied from temporalBarChart method
-                ts_field = self.guessTimestampField(df)
+                ts_field = self.guessTimestampField(master_df)
             else:                                  # use the ts_field passed into this method
                 pass
 
