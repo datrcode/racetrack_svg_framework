@@ -971,7 +971,7 @@ class RTSmallMultiplesMixin(object):
         def overlappingDataFrames(self, to_intersect):
             _dfs = []
             for _category in self.category_to_sm.keys():
-                _sm   = self.category_to_sm[_category]
+                _sm   = self.category_to_sm[_category]._repr_svg_()
                 x,y   = self.rt_self.__extractSVGXAndY__(_sm)
                 w,h   = self.rt_self.__extractSVGWidthAndHeight__(_sm)
                 _poly = Polygon([[x,y],[x,y+h],[x+w,y+h],[x+w,y]])
