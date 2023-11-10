@@ -978,9 +978,18 @@ class RTTemporalBarChartMixin(object):
 
             # Draw the labels // mirrors the rt_periodic_barchart_mixin codeblock
             if self.draw_labels:
-                svg += self.rt_self.svgText(self.rt_self.relevantTimeLabel(t0_label, time_rez_i), x_left,            self.h-3, self.txt_h)
-                svg += self.rt_self.svgText(self.rt_self.relevantTimeLabel(t1_label, time_rez_i), x_left + w_usable, self.h-3, self.txt_h, anchor='end')
-                svg += self.rt_self.svgText(self.rt_self.time_rezes_str[time_rez_i],                                          x_left + w_usable/2, self.h-3, self.txt_h, anchor='middle')
+                _label_x_min_  = self.rt_self.relevantTimeLabel(t0_label, time_rez_i)
+                _label_x_max_  = self.rt_self.relevantTimeLabel(t1_label, time_rez_i)
+                _label_x_axis_ = self.rt_self.time_rezes_str[time_rez_i]
+                _len_x_min_, _len_x_max_ = self.rt_self.textLength(_label_x_min_,  self.txt_h), self.rt_self.textLength(_label_x_max_, self.txt_h)
+                _len_x_axis_             = self.rt_self.textLength(_label_x_axis_, self.txt_h)
+
+                if (_len_x_min_ + _len_x_max_ + _len_x_axis_ + 20) < w_usable:
+                    svg += self.rt_self.svgText(_label_x_min_,  x_left,              self.h-3, self.txt_h)
+                    svg += self.rt_self.svgText(_label_x_max_,  x_left + w_usable,   self.h-3, self.txt_h, anchor='end')
+                    svg += self.rt_self.svgText(_label_x_axis_, x_left + w_usable/2, self.h-3, self.txt_h, anchor='middle')
+                elif (_len_x_axis_ + 10) < w_usable:
+                    svg += self.rt_self.svgText(_label_x_axis_, x_left + w_usable/2, self.h-3, self.txt_h, anchor='middle')
 
                 # Max Label
                 _str_max,_str_min = f'{group_by_max:{self.rt_self.fformat}}',''
