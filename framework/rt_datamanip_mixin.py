@@ -39,14 +39,7 @@ class RTDataManipMixin(object):
 
         # Determine the timestamp field
         if ts_field is None:
-            choices = df.select_dtypes(np.datetime64).columns
-            if len(choices) == 1:
-                ts_field = choices[0]
-            elif len(choices) > 1:
-                print('multiple timestamp fields... choosing the first (temporalStatsAggregation)')
-                ts_field = choices[0]
-            else:
-                raise Exception('no timestamp field supplied to temporalStatsAggregation(), cannot automatically determine field')
+            ts_field = self.guessTimestampField(df)
 
         # Determine if a field is a categorical type (for set-based operations only)
         field_is_set = {}
@@ -119,14 +112,7 @@ class RTDataManipMixin(object):
 
         # Determine the timestamp field
         if ts_field is None:
-            choices = df.select_dtypes(np.datetime64).columns
-            if len(choices) == 1:
-                ts_field = choices[0]
-            elif len(choices) > 1:
-                print('multiple timestamp fields... choosing the first (temporalStatsAggregation)')
-                ts_field = choices[0]
-            else:
-                raise Exception('no timestamp field supplied to temporalStatsAggregation(), cannot automatically determine field')
+            ts_field = self.guessTimestampField(df)
 
         # Determine if a field is a categorical type (for set-based operations only)
         field_is_set = {}

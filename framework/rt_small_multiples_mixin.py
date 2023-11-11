@@ -815,7 +815,7 @@ class RTSmallMultiplesMixin(object):
                        count_by_set          = False,      # count by using a set operation
                        temporal_granularity  = None,       # Minimum temporal granularity for the temporalBarChart component
                        #-----------------------------------# Small multiple params
-                       show_df_multiple      = True,       # Show the "all data" version small multiple // note issues with xy scatterplots when data is aggregated
+                       show_df_multiple      = False,      # Show the "all data" version small multiple // note issues with xy scatterplots when data is aggregated
                        max_categories        = None,       # Limit the number of small multiples shown
                        grid_view             = False,      # For two category fields, make it into a grid
                        shrink_wrap_rows      = False,      # For a grid view, shrink wrap rows
