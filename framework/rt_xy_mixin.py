@@ -279,7 +279,7 @@ class RTXYMixin(object):
            color_magnitude   = None,      # Only applies when color_by is None, options: None / 'linear' / 'log' / 'stretch'
            count_by          = None,      # none means just count rows, otherwise, use a field to sum by # Not Implemented
            count_by_set      = False,     # count by summation (by default)... column is checked
-           dot_size          = 'medium',  # Dot size - ['small', 'medium', 'large', 'vary', 'hidden'/None]
+           dot_size          = 'medium',  # Dot size - ['small', 'medium', 'large', 'huge', 'vary', 'hidden'/None]
            dot_shape         = 'ellipse', # Dot shape - ['square', 'ellipse', 'triangle, 'utriangle', 'diamond', 'plus', x', 'small_multiple', function_pointer]
            max_dot_size      = 5,         # Max dot size (used when the dot sz varies)
            opacity           = 1.0,       # Opacity of the dots
@@ -1132,28 +1132,22 @@ class RTXYMixin(object):
                 self.y_distribution_h = self.w_usable * self.distribution_h_perc
 
             # dot_w will be used for the actual geometry
-            if self.dot_size is None or self.dot_size == 'hidden':
-                dot_w =  None
-            elif self.dot_size == 'medium':
-                dot_w =  2
-            elif self.dot_size == 'small':
-                dot_w =  1
-            elif self.dot_size == 'large':
-                dot_w =  3
-            else:
-                dot_w = -1
-
-            # dot2_w ... should refactor...
-            if self.dot2_size is None or self.dot2_size == 'hidden':
-                dot2_w =  None
-            elif self.dot2_size == 'medium':
-                dot2_w =  2
-            elif self.dot2_size == 'small':
-                dot2_w =  1
-            elif self.dot2_size == 'large':
-                dot2_w =  3
-            else:
-                dot2_w = -1
+            def dotSizeNumber(_str_):
+                if _str_ is None or _str_ == 'hidden':
+                    return 0
+                elif type(_str_) == int:
+                    return _str_
+                elif _str_ == 'medium':
+                    return 2
+                elif _str_ == 'small':
+                    return 1
+                elif _str_ == 'large':
+                    return 3
+                elif _str_ == 'huge':
+                    return 8
+                return -1
+            dot_w  = dotSizeNumber(self.dot_size)
+            dot2_w = dotSizeNumber(self.dot2_size)
 
             # Create the extra columns for the x and y coordinates
             if self.x_axis_col is None:
@@ -1329,7 +1323,7 @@ class RTXYMixin(object):
             # Dots / Primary Axis
             elif dot_w is not None:
                 if self.rt_self.isPandas(self.df):
-                    svg += self.__rendersvg_dots__       (self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w,  track_state)
+                    svg += self.__rendersvg_dots_pandas__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w,  track_state)
                 elif self.rt_self.isPolars(self.df):
                     svg += self.__rendersvg_dots_polars__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w,  track_state)
 
@@ -1337,7 +1331,7 @@ class RTXYMixin(object):
             if dot2_w is not None and self.df2 is not None:
                 _local_color_by = self.line2_groupby_color if self.line2_groupby_color is not None else self.color_by
                 if self.rt_self.isPandas(self.df):
-                    svg += self.__rendersvg_dots__       (self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w, track_state)
+                    svg += self.__rendersvg_dots_pandas__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w, track_state)
                 elif self.rt_self.isPolars(self.df):
                     svg += self.__rendersvg_dots_polars__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w, track_state)
 
@@ -1849,7 +1843,7 @@ class RTXYMixin(object):
             proc = []
 
             # Count By Calc
-            if _local_dot_w <= 0 or self.vary_opacity or self.color_magnitude is not None:
+            if _local_dot_w < 0 or self.vary_opacity or self.color_magnitude is not None:
                 if   self.count_by is None:
                     proc.append(pl.count().alias('__countby__'))
                 elif self.count_by_set:
@@ -1880,7 +1874,7 @@ class RTXYMixin(object):
                 _global_max_ = gb[_local_color_by].max()
 
             # Determine the min and max counts for the dot width / for contrast stretching, track counts
-            if _local_dot_w <= 0 or self.vary_opacity or self.color_magnitude is not None:
+            if _local_dot_w < 0 or self.vary_opacity or self.color_magnitude is not None:
                 max_xy = gb['__countby__'].max()
                 if self.color_magnitude == 'stretch':
                     self.contrast_stretch = {}
@@ -1924,10 +1918,10 @@ class RTXYMixin(object):
                     
                     var_w = _local_dot_w
                     var_o = 1.0 
-                    if _local_dot_w <= 0 and self.vary_opacity:                    
+                    if _local_dot_w < 0 and self.vary_opacity:                    
                         var_w = 0.2 + self.max_dot_size  * my_count/max_xy
                         var_o = 0.2 + 0.8                * my_count/max_xy                    
-                    elif _local_dot_w <= 0:
+                    elif _local_dot_w < 0:
                         var_w = 0.2 + self.max_dot_size  * my_count/max_xy                    
                     else:
                         var_o = 0.2 + 0.8                * my_count/max_xy
@@ -1949,16 +1943,16 @@ class RTXYMixin(object):
             return svg
 
         #
-        # __rendersvg_dots__(): render the dots
+        # __rendersvg_dots_pandas__(): render the dots
         #
-        def __rendersvg_dots__(self, _df,_x_axis_col,_y_axis_col,_local_color_by,_local_dot_w,track_state):
+        def __rendersvg_dots_pandas__(self, _df,_x_axis_col,_y_axis_col,_local_color_by,_local_dot_w,track_state):
             svg = ''
             # Group by x,y for the render
             gb = _df.groupby([_x_axis_col+"_px",_y_axis_col+"_px"])
 
             # Determine the min and max counts for the dot width / for contrast stretching, track counts
             max_xy,self.stretch_histogram,self.stretch_total = 0,{},0
-            if _local_dot_w <= 0 or self.vary_opacity or self.color_magnitude is not None:
+            if _local_dot_w < 0 or self.vary_opacity or self.color_magnitude is not None:
                 for k,k_df in gb:
                     # count by rows
                     if   self.count_by is None:
@@ -2004,8 +1998,7 @@ class RTXYMixin(object):
                 if   _local_color_by is None:
                     color = self.rt_self.co_mgr.getTVColor('data','default')
                 elif _local_color_by in k_df.columns:
-                    if ( (self.rt_self.isPandas(k_df) and is_datetime(k_df[_local_color_by])) or
-                         (self.rt_self.isPolars(k_df) and k_df[_local_color_by].dtype == pl.Datetime) ):
+                    if is_datetime(k_df[_local_color_by]):
                         _global_min_ = self.df[_local_color_by].min()
                         _global_max_ = self.df[_local_color_by].max()
                         if _global_min_ == _global_max_:
@@ -2065,10 +2058,10 @@ class RTXYMixin(object):
                     
                     var_w = _local_dot_w
                     var_o = 1.0 
-                    if _local_dot_w <= 0 and self.vary_opacity:                    
+                    if _local_dot_w < 0 and self.vary_opacity:                    
                         var_w = 0.2 + self.max_dot_size  * my_count/max_xy
                         var_o = 0.2 + 0.8                * my_count/max_xy                    
-                    elif _local_dot_w <= 0:
+                    elif _local_dot_w < 0:
                         var_w = 0.2 + self.max_dot_size  * my_count/max_xy                    
                     else:
                         var_o = 0.2 + 0.8                * my_count/max_xy
