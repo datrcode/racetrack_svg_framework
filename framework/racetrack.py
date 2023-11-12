@@ -111,6 +111,7 @@ class RACETrack(RTAnnotationsMixin,
                                   'calendarHeatmap',
                                   'histogram',
                                   'linkNode',
+                                  'panelControl',       # Control Panel for Panel Impl
                                   'periodicBarChart',
                                   'pieChart',
                                   'temporalBarChart',

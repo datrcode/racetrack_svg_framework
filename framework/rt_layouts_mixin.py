@@ -24,6 +24,8 @@ import numpy as np
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point
 
+from rt_component import RTComponent
+
 from math import ceil
 
 __name__ = 'rt_layouts_mixin'
@@ -492,15 +494,16 @@ class RTLayoutsMixin(object):
                spec,                                # Multiwidget specification
                df,                                  # Dataframe to render
                #------------------------------------#
-               widget_id      = None,               # Widget ID
+               widget_id        = None,             # Widget ID
                #------------------------------------#
-               w              = 1024,               # Width of the multi-widget panel
-               h              = 1024,               # Height of the multi-widget panel
-               h_gap          = 0,                  # Horizontal left/right gap
-               v_gap          = 0,                  # Verticate top/bottom gap
-               widget_h_gap   = 1,                  # Horizontal gap between widgets
-               widget_v_gap   = 1,                  # Vertical gap between widgets
-               track_state    = False,              # Track state of geometry to data frame // for Panel
+               w                = 1024,             # Width of the multi-widget panel
+               h                = 1024,             # Height of the multi-widget panel
+               h_gap            = 0,                # Horizontal left/right gap
+               v_gap            = 0,                # Verticate top/bottom gap
+               widget_h_gap     = 1,                # Horizontal gap between widgets
+               widget_v_gap     = 1,                # Vertical gap between widgets
+               track_state      = False,            # Track state of geometry to data frame // for Panel
+               rt_reactive_html = None,             # Reference to Reactive HTML Panel // for Panel
                **kwargs):
         # Determine type of specification...
         str_count,tup_count,unk_count = 0,0,0
@@ -512,9 +515,9 @@ class RTLayoutsMixin(object):
             else:
                 unk_count += 1
         if    str_count >  0 and tup_count == 0 and unk_count == 0:
-            return self.multiWidgetPanel(df,spec,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,**kwargs)
+            return self.multiWidgetPanel(df,spec,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,rt_reactive_html,**kwargs)
         elif  str_count == 0 and tup_count >  0 and unk_count == 0:
-            return self.gridBagLayout   (df,spec,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,**kwargs)
+            return self.gridBagLayout   (df,spec,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,rt_reactive_html,**kwargs)
         else:
             raise Exception(f'rt.layout() failed to recognize specification type {str_count}/{tup_count}/{unk_count}')
 
@@ -525,15 +528,16 @@ class RTLayoutsMixin(object):
                          df,                                  # Dataframe to render
                          spec,                                # Multiwidget specification
                          #------------------------------------#
-                         widget_id      = None,               # Widget ID
+                         widget_id        = None,             # Widget ID
                          #------------------------------------#
-                         w              = 1024,               # Width of the multi-widget panel
-                         h              = 1024,               # Height of the multi-widget panel
-                         h_gap          = 0,                  # Horizontal left/right gap
-                         v_gap          = 0,                  # Verticate top/bottom gap
-                         widget_h_gap   = 1,                  # Horizontal gap between widgets
-                         widget_v_gap   = 1,                  # Vertical gap between widgets
-                         track_state    = False,              # Track state of geometry to data frame // for Panel 
+                         w                = 1024,             # Width of the multi-widget panel
+                         h                = 1024,             # Height of the multi-widget panel
+                         h_gap            = 0,                # Horizontal left/right gap
+                         v_gap            = 0,                # Verticate top/bottom gap
+                         widget_h_gap     = 1,                # Horizontal gap between widgets
+                         widget_v_gap     = 1,                # Vertical gap between widgets
+                         track_state      = False,            # Track state of geometry to data frame // for Panel 
+                         rt_reactive_html = None,             # Reference to Reactive HTML Panel // for Panel
                          **kwargs):
         # Widget ID
         if widget_id is None:
@@ -605,7 +609,9 @@ class RTLayoutsMixin(object):
                 # General application parameters
                 if 'temporal_granularity' in accepted_args and 'temporal_granularity' not in my_params:
                     my_params['temporal_granularity'] = temporal_granularity
-                    
+                if 'rt_reactive_html' in accepted_args:
+                    my_params['rt_reactive_html'] = rt_reactive_html
+
                 # Resolve the method name and invoke it adding to the svg string
                 _func      = getattr(self, widget_method)
                 _instance  = _func(**my_params)
@@ -623,18 +629,19 @@ class RTLayoutsMixin(object):
     # ... spec --> spec[x,y,w,h - tuple] -> ('component',{'param1':'value1', ... })
     #
     def gridBagLayout(self,
-                      df,                                  # Dataframe to render
-                      spec,                                # Multiwidget specification
-                      #------------------------------------#
-                      widget_id      = None,               # Widget ID
-                      #------------------------------------#
-                      w              = 1024,               # Width of the multi-widget panel
-                      h              = 1024,               # Height of the multi-widget panel
-                      h_gap          = 0,                  # Horizontal left/right gap
-                      v_gap          = 0,                  # Verticate top/bottom gap
-                      widget_h_gap   = 1,                  # Horizontal gap between widgets
-                      widget_v_gap   = 1,                  # Vertical gap between widgets
-                      track_state    = False,              # Track the state of the dataframe to geometry // for Panel
+                      df,                                    # Dataframe to render
+                      spec,                                  # Multiwidget specification
+                      #--------------------------------------#
+                      widget_id        = None,               # Widget ID
+                      #--------------------------------------#
+                      w                = 1024,               # Width of the multi-widget panel
+                      h                = 1024,               # Height of the multi-widget panel
+                      h_gap            = 0,                  # Horizontal left/right gap
+                      v_gap            = 0,                  # Verticate top/bottom gap
+                      widget_h_gap     = 1,                  # Horizontal gap between widgets
+                      widget_v_gap     = 1,                  # Vertical gap between widgets
+                      track_state      = False,              # Track the state of the dataframe to geometry // for Panel
+                      rt_reactive_html = None,               # Reference to Reactive HTML Panel // for Panel
                       **kwargs):
         # Widget ID
         if widget_id is None:
@@ -718,7 +725,9 @@ class RTLayoutsMixin(object):
             # General application parameters
             if 'temporal_granularity' in accepted_args and 'temporal_granularity' not in my_params:
                 my_params['temporal_granularity'] = temporal_granularity
-                
+            if 'rt_reactive_html' in accepted_args:
+                my_params['rt_reactive_html'] = rt_reactive_html
+
             # Resolve the method name and invoke it adding to the svg string
             _func      = getattr(self, widget_method)
             _instance  = _func(**my_params)
@@ -729,6 +738,86 @@ class RTLayoutsMixin(object):
             _instance_lu[_instance_bounds] = _instance
         svg += '</svg>'
         return RTLayout(self, _instance_lu, svg)
+
+    #
+    # panelControlPreferredDimensions() - preferred dimensions for the panel control panel
+    #
+    def panelControlPreferredDimensions(self, **kwargs):
+        return (256, 24)
+
+    #
+    # panelControlMinimumDimensions() - minimum dimensions for the panel control panel
+    #
+    def panelControlMinimumDimensions(self, **kwargs):
+        return (64, 20)
+
+    #
+    # panelControl() - return instance of the panel control panel
+    #
+    def panelControl(self,
+                     df=None,
+                     rt_reactive_html=None,
+                     txt_h=None,
+                     x_view=0,
+                     y_view=0,
+                     x_ins=2,
+                     y_ins=2,
+                     w=128,
+                     h=20):
+        _params_ = locals().copy()
+        _params_.pop('self')
+        return self.RTPanelControl(self, **_params_)
+
+    #
+    # RTPanelControl() - return instance of the panel control panel
+    #
+    class RTPanelControl(RTComponent):
+        #
+        # Constructor
+        #
+        def __init__(self, rt_self, **kwargs):
+            self.rt_self          = rt_self
+            self.df               = kwargs['df']
+            self.x_view           = kwargs['x_view']
+            self.y_view           = kwargs['y_view']
+            self.w                = kwargs['w']
+            self.h                = kwargs['h']
+            self.x_ins            = kwargs['x_ins']
+            self.y_ins            = kwargs['y_ins']
+            self.rt_reactive_html = kwargs['rt_reactive_html']
+            if 'txt_h' in kwargs.keys() and kwargs['txt_h'] is not None:
+                self.txt_h = kwargs['txt_h']
+            else:
+                self.txt_h = self.h - 2 * self.y_ins
+
+        #
+        # _repr_svg_() - SVG Representation
+        #
+        def _repr_svg_(self):
+            return self.renderSVG()
+        
+        #
+        # renderSVG() - render the SVG representation of the panel control
+        #
+        def renderSVG(self, track_state=False):
+            _svg_ = f'<svg id="panel_control" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
+            bg_color = self.rt_self.co_mgr.getTVColor('background','default')
+            _svg_ += f'<rect x="0" y="0" width="{self.w}" height="{self.h}" fill="{bg_color}" stroke="{bg_color}" stroke-width="1"/>'
+            # If an RT Reactive HTML component was specified, draw information about the state of the panel
+            if self.rt_reactive_html is not None:
+                # Blocks to indicate the depth
+                _depth_     = len(self.rt_reactive_html.dfs)
+                block_color = self.rt_self.co_mgr.getTVColor('data','default')
+                block_gap   = 2
+                block_w     = (self.h - 2 * self.y_ins) if self.h < 24 else 20
+                for xi in range(_depth_):
+                    x = self.x_ins + xi * (block_w + block_gap)
+                    _svg_ += f'<rect x="{x}" y="{self.y_ins}" width="{block_w}" height="{block_w}" fill="{block_color}" stroke="{block_color}" stroke-width="1"/>'
+                # Text string to indicate the size of the dataframe
+                if self.df is not None:
+                    _svg_ += self.rt_self.svgText(str(len(self.df)), self.x_ins + _depth_*(block_w+block_gap) + block_gap, self.y_ins + self.txt_h, self.txt_h)
+            _svg_ += '</svg>'
+            return _svg_
 
 #
 # RT Layout Instance
