@@ -51,6 +51,7 @@ from rt_small_multiples_mixin   import RTSmallMultiplesMixin
 from rt_temporal_barchart_mixin import RTTemporalBarChartMixin
 from rt_text_mixin              import RTTextMixin
 from rt_timeline_mixin          import RTTimelineMixin
+from rt_wordcloud_mixin         import RTWordCloudMixin
 from rt_xy_mixin                import RTXYMixin
 
 __name__ = 'racetrack'
@@ -72,6 +73,7 @@ class RACETrack(RTAnnotationsMixin,
                 RTTemporalBarChartMixin,
                 RTTextMixin,
                 RTTimelineMixin,
+                RTWordCloudMixin,
                 RTXYMixin):
     #
     # Constructor (or whatever this is called in Python)

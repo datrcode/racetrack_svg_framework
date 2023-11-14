@@ -8,3 +8,4 @@ shapely
 squarify
 svglib
 umap-learn
+wordcloud
