@@ -186,11 +186,9 @@ class RTReactiveHTML(ReactiveHTML):
         self.widget_h_gap = widget_h_gap
         self.widget_v_gap = widget_v_gap
         self.kwargs       = kwargs
-        if   self.rt_self.isPandas(df):                     
-            df = df.copy()
-        elif self.rt_self.isPolars(df):
-            df = df.clone()
-        self.dfs        = [df]            
+        self.df           = self.rt_self.copyDataFrame(df)
+        self.df_level     = 0
+        self.dfs          = [df]            
                      
         # - Create the template ... copy of the above with variables filled in...
         self._template = f'<svg id="parent" width="{w}" height="{h}">'                               + \
@@ -228,7 +226,7 @@ class RTReactiveHTML(ReactiveHTML):
     # Return the visible dataframe.
     #
     def visibleDataFrame(self):
-        return self.dfs[-1]
+        return self.dfs[self.df_level]
     
     def register_companion_viz(self, viz):
         self.companions.append(viz)
@@ -255,31 +253,38 @@ class RTReactiveHTML(ReactiveHTML):
                     _x1 += 1
                 if _y0 == _y1:
                     _y1 += 1
-                _df = self.dfs_layout[-1].overlappingDataFrames((_x0,_y0,_x1,_y1))
+                _df = self.dfs_layout[self.df_level].overlappingDataFrames((_x0,_y0,_x1,_y1))
                 # Go back up the stack...
                 if _df is None or len(_df) == 0:
-                    if len(self.dfs) > 1:
-                        self.dfs        = self.dfs    [:-1]
-                        self.dfs_layout = self.dfs_layout[:-1]
-                        self.mod_inner  = self.dfs_layout[-1]._repr_svg_()
+                    if self.df_level > 0:
+                        self.df_level   = self.df_level - 1
+                        self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_()
 
                         # ascend stack for all registered companion vizs
                         for c in self.companions:
                             if isinstance(c, RTReactiveHTML):
-                                if len(c.dfs) > 1:
-                                    c.dfs = c.dfs[:-1]
-                                    c.dfs_layout = c.dfs_layout[:-1]
-                                    c.mod_inner  = c.dfs_layout[-1]._repr_svg_()
+                                if c.df_level > 0:
+                                    c.df_level   = c.df_level - 1
+                                    c.mod_inner  = c.dfs_layout[c.df_level]._repr_svg_()
 
                 # Filter and go down the stack
                 else:
                     # Remove data option...
-                    if len(self.dfs) > 0 and self.drag_shiftkey:
-                        _df = self.dfs[-1].query('index not in @_df.index')
+                    if self.df_level > 0 and self.drag_shiftkey:
+                        if   self.rt_self.isPandas(self.df):
+                            _df = self.dfs[self.df_level].query('index not in @_df.index')
+                        elif self.rt_self.isPolars(self.df):
+                            raise Exception('RTPanel.applyDragOp() - subtraction not implemented for polars')
+                        else:
+                            raise Exception('RTPanel.applyDragOp() - only pandas and polars supported')
 
                     # Make sure we still have data...
                     if len(_df) > 0:
                         # Re-layout w/ new dataframe
+                        self.dfs         = self.dfs       [:(self.df_level+1)]
+                        self.dfs_layout  = self.dfs_layout[:(self.df_level+1)]
+                        self.df_level   += 1
+
                         _layout = self.rt_self.layout(self.spec,                      _df,
                                                       w=self.w,                       h=self.h, 
                                                       h_gap=self.h_gap,               v_gap=self.v_gap,
@@ -287,25 +292,24 @@ class RTReactiveHTML(ReactiveHTML):
                                                       track_state=True, rt_reactive_html=self,
                                                       **self.rt_params)
                         # Update the stack
-                        self.dfs.       append(_df)
+                        self.dfs       .append(_df)
                         self.dfs_layout.append(_layout)
                         self.mod_inner = _layout._repr_svg_()
 
                         # adjust layout for all registered companion vizs
                         for c in self.companions:
                             if isinstance(c, RTReactiveHTML):
-                                _clayout = c.rt_self.layout(c.spec,
-                                                            _df,
-                                                            w=c.w,
-                                                            h=c.h,
-                                                            h_gap=c.h_gap,
-                                                            v_gap=c.v_gap,
-                                                            widget_h_gap=c.widget_h_gap,
-                                                            widget_v_gap=c.widget_v_gap,
-                                                            track_state=True,
-                                                            rt_reactive_html=self,
+                                c.dfs         = c.dfs       [:(c.df_level+1)]
+                                c.dfs_layout  = c.dfs_layout[:(c.df_level+1)]
+                                c.df_level   += 1
+
+                                _clayout = c.rt_self.layout(c.spec,                        _df,
+                                                            w=c.w,                         h=c.h,
+                                                            h_gap=c.h_gap,                 v_gap=c.v_gap,
+                                                            widget_h_gap=c.widget_h_gap,   widget_v_gap=c.widget_v_gap,
+                                                            track_state=True,              rt_reactive_html=self,
                                                             **c.rt_params)
-                                c.dfs.append(_df)
+                                c.dfs       .append(_df)
                                 c.dfs_layout.append(_clayout)
                                 c.mod_inner = _clayout._repr_svg_()
 
