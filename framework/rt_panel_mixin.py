@@ -22,7 +22,7 @@ import panel as pn
 from panel.reactive import ReactiveHTML
 import param
 
-from rt_layouts_mixin import RTLayout
+from rt_layouts_mixin import RTComponentsLayout
 
 __name__ = 'rt_panel_mixin'
 

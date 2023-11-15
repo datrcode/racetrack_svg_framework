@@ -561,11 +561,9 @@ class RTLayoutsMixin(object):
             else:
                 ts_field = kwargs['ts_field']
             temporal_granularity = self.temporalGranularity(df, ts_field)
-            
-        # Start the SVG
-        svg,_instance_lu =  f'<svg id="{widget_id}" width="{w+1}" height="{h+1}" xmlns="http://www.w3.org/2000/svg">',{}
 
         # Go through the placement, identify the placement keys that are widgets... fill them in... then render them...
+        _instance_lu = {}
         for place in placement.keys():
             # Only keep the widgets
             render = False
@@ -615,14 +613,13 @@ class RTLayoutsMixin(object):
                 # Resolve the method name and invoke it adding to the svg string
                 _func      = getattr(self, widget_method)
                 _instance  = _func(**my_params)
-                svg       += _instance.renderSVG(track_state=track_state)
+                _instance.renderSVG(track_state=True)      # Force an initial render to track state
 
                 _px0,_py0,_px1,_py1 = my_params['x_view'], my_params['y_view'], my_params['x_view']+my_params['w'], my_params['y_view']+my_params['h']
                 _instance_bounds = Polygon([[_px0,_py0],[_px0,_py1],[_px1,_py1],[_px1,_py0]])
                 _instance_lu[_instance_bounds] = _instance
 
-        svg += '</svg>'
-        return RTLayout(self, _instance_lu, svg)
+        return RTComponentsLayout(self, widget_id, _instance_lu, w, h)
 
     #
     # Create the SVG multipanel widget using a gridbag-like layout method.
@@ -690,7 +687,7 @@ class RTLayoutsMixin(object):
             temporal_granularity = None
 
         # Start the SVG
-        svg,_instance_lu =  f'<svg id="{widget_id}" width="{w+1}" height="{h+1}" xmlns="http://www.w3.org/2000/svg">',{}
+        _instance_lu = {}
         for xywh_tuple in spec.keys():
             _x0,_y0,_tile_w,_tile_h = xywh_tuple
             spec_tuple = spec[xywh_tuple]
@@ -731,13 +728,13 @@ class RTLayoutsMixin(object):
             # Resolve the method name and invoke it adding to the svg string
             _func      = getattr(self, widget_method)
             _instance  = _func(**my_params)
-            svg       += _instance.renderSVG(track_state=track_state)
+            _instance.renderSVG(track_state=True)      # Force an initial render to track state
             
             _px0,_py0,_px1,_py1 = my_params['x_view'], my_params['y_view'], my_params['x_view']+my_params['w'], my_params['y_view']+my_params['h']
             _instance_bounds = Polygon([[_px0,_py0],[_px0,_py1],[_px1,_py1],[_px1,_py0]])
             _instance_lu[_instance_bounds] = _instance
-        svg += '</svg>'
-        return RTLayout(self, _instance_lu, svg)
+
+        return RTComponentsLayout(self, widget_id, _instance_lu, w, h)
 
     #
     # panelControlPreferredDimensions() - preferred dimensions for the panel control panel
@@ -785,6 +782,7 @@ class RTLayoutsMixin(object):
             self.x_ins            = kwargs['x_ins']
             self.y_ins            = kwargs['y_ins']
             self.rt_reactive_html = kwargs['rt_reactive_html']
+            self.last_render      = None                         # For Compatibility w/ RTComponent Usage
             if 'txt_h' in kwargs.keys() and kwargs['txt_h'] is not None:
                 self.txt_h = kwargs['txt_h']
             else:
@@ -792,6 +790,8 @@ class RTLayoutsMixin(object):
 
         #
         # _repr_svg_() - SVG Representation
+        # - always re-render (do not keep the last render around)
+        # - this method is unique across the RTComponent class since last_render is never used
         #
         def _repr_svg_(self):
             return self.renderSVG()
@@ -807,7 +807,7 @@ class RTLayoutsMixin(object):
             if self.rt_reactive_html is not None:
                 # Blocks to indicate the depth
                 _depth_     = self.rt_reactive_html.df_level + 1
-                _blocks_    = len(self.rt_reactive_html.dfs) + 1
+                _blocks_    = len(self.rt_reactive_html.dfs)
                 block_color = self.rt_self.co_mgr.getTVColor('data','default')
                 block_gap   = 2
                 block_w     = (self.h - 2 * self.y_ins) if self.h < 24 else 20
@@ -822,23 +822,29 @@ class RTLayoutsMixin(object):
             return _svg_
 
 #
-# RT Layout Instance
+# RT Layout Instance (new version)
 #
-class RTLayout(object):
+class RTComponentsLayout(object):
     #
     # Constructor
     #
-    def __init__(self, rt_self, instance_lu, svg):
+    def __init__(self, rt_self, widget_id, instance_lu, w, h):
         self.rt_self     = rt_self
+        self.widget_id   = widget_id
         self.instance_lu = instance_lu
-        self.svg         = svg
+        self.w           = w
+        self.h           = h
     
     #
     # SVG Representation
     #
     def _repr_svg_(self):
-        return self.svg
-    
+        _svg_ = f'<svg id="{self.widget_id}" width="{self.w+1}" height="{self.h+1}" xmlns="http://www.w3.org/2000/svg">'
+        for _poly in self.instance_lu.keys():
+            _svg_ += self.instance_lu[_poly]._repr_svg_()
+        _svg_ += '</svg>'
+        return _svg_
+        
     #
     # Return Overlapping Dataframes
     #
@@ -861,5 +867,3 @@ class RTLayout(object):
             return self.rt_self.concatDataFrames(_dfs)
         else:
             return None
-        
-    
