@@ -803,6 +803,8 @@ class RTLayoutsMixin(object):
             _svg_ = f'<svg id="panel_control" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
             bg_color = self.rt_self.co_mgr.getTVColor('background','default')
             _svg_ += f'<rect x="0" y="0" width="{self.w}" height="{self.h}" fill="{bg_color}" stroke="{bg_color}" stroke-width="1"/>'
+            _svg_ += self.rt_self.svgText('RT', self.x_ins, self.y_ins + self.txt_h, self.txt_h)
+            rt_l   = self.rt_self.textLength('RT', self.txt_h) + 2 * self.x_ins
             # If an RT Reactive HTML component was specified, draw information about the state of the panel
             if self.rt_reactive_html is not None:
                 # Blocks to indicate the depth
@@ -813,11 +815,11 @@ class RTLayoutsMixin(object):
                 block_w     = (self.h - 2 * self.y_ins) if self.h < 24 else 20
                 for xi in range(_blocks_):
                     _fill_ = block_color if xi < _depth_ else 'none'
-                    x = self.x_ins + xi * (block_w + block_gap)
+                    x = self.x_ins + rt_l + xi * (block_w + block_gap)
                     _svg_ += f'<rect x="{x}" y="{self.y_ins}" width="{block_w}" height="{block_w}" fill="{_fill_}" stroke="{block_color}" stroke-width="1"/>'
                 # Text string to indicate the size of the dataframe
                 if self.df is not None:
-                    _svg_ += self.rt_self.svgText(str(len(self.df)), self.x_ins + _blocks_*(block_w+block_gap) + block_gap, self.y_ins + self.txt_h, self.txt_h)
+                    _svg_ += self.rt_self.svgText(str(len(self.df)), self.x_ins + rt_l + _blocks_*(block_w+block_gap) + block_gap, self.y_ins + self.txt_h, self.txt_h)
             _svg_ += '</svg>'
             return _svg_
 
