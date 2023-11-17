@@ -268,6 +268,14 @@ class RTReactiveHTML(ReactiveHTML):
                                     c.mod_inner  = c.dfs_layout[c.df_level]._repr_svg_()
                 # Filter and go down the stack
                 else:
+                    # Align the dataframes if necessary
+                    if   self.rt_self.isPandas(_df):
+                        if self.df.columns.equals(_df.columns) == False:
+                            _df = _df.drop(set(_df.columns) - set(self.df.columns), axis=1)
+                    elif self.rt_self.isPolars(_df):
+                        if set(_df.columns) != set(self.df.columns):
+                            _df = _df.drop(set(_df.columns) - set(self.df.columns))
+
                     # Remove data option...
                     if self.df_level > 0 and self.drag_shiftkey:
                         if   self.rt_self.isPandas(self.df):
@@ -279,15 +287,27 @@ class RTReactiveHTML(ReactiveHTML):
 
                     # Make sure we still have data...
                     if len(_df) > 0:
+                        # See if the dataframe is already in the stack
+                        i_found = None
+                        if   self.rt_self.isPandas(self.df):
+                            for i in range(len(self.dfs)):
+                                if len(self.dfs[i]) == len(_df) and self.dfs[i].equals(_df):
+                                    i_found = i
+                                    break
+                        elif self.rt_self.isPolars(self.df):
+                            for i in range(len(self.dfs)):
+                                if len(self.dfs[i]) == len(_df) and self.dfs[i].frame_equal(_df):
+                                    i_found = i
+                                    break
+
                         # Dataframe already in the stack...  go to that stack position
-                        if False and self.df_level > 0 and _df in self.dfs: # Not Working :(
-                            self.df_level   = self.dfs.index(_df)
+                        if i_found is not None:
+                            self.df_level   = i_found
                             self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_()
                             for c in self.companions:
                                 if isinstance(c, RTReactiveHTML):
-                                    if c.df_level > 0:
-                                        c.df_level   = c.dfs.index(_df)
-                                        c.mod_inner  = c.dfs_layout[c.df_level]._repr_svg_()
+                                    c.df_level   = i_found
+                                    c.mod_inner  = c.dfs_layout[c.df_level]._repr_svg_()
                         # Push a new dataframe onto the stack
                         else:
                             # Re-layout w/ new dataframe
