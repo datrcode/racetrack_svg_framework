@@ -783,10 +783,14 @@ class RTLayoutsMixin(object):
             self.y_ins            = kwargs['y_ins']
             self.rt_reactive_html = kwargs['rt_reactive_html']
             self.last_render      = None                         # For Compatibility w/ RTComponent Usage
+            self.geom_to_df       = {}
+
             if 'txt_h' in kwargs.keys() and kwargs['txt_h'] is not None:
                 self.txt_h = kwargs['txt_h']
             else:
                 self.txt_h = self.h - 2 * self.y_ins
+                if self.txt_h > 24:
+                    self.txt_h = 24
 
         #
         # _repr_svg_() - SVG Representation
@@ -800,6 +804,7 @@ class RTLayoutsMixin(object):
         # renderSVG() - render the SVG representation of the panel control
         #
         def renderSVG(self, track_state=False):
+            self.geom_to_df = {}
             _svg_ = f'<svg id="panel_control" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
             bg_color = self.rt_self.co_mgr.getTVColor('background','default')
             _svg_ += f'<rect x="0" y="0" width="{self.w}" height="{self.h}" fill="{bg_color}" stroke="{bg_color}" stroke-width="1"/>'
@@ -814,14 +819,30 @@ class RTLayoutsMixin(object):
                 block_gap   = 2
                 block_w     = (self.h - 2 * self.y_ins) if self.h < 24 else 20
                 for xi in range(_blocks_):
-                    _fill_ = block_color if xi < _depth_ else 'none'
+                    _fill_   = block_color if xi < _depth_ else 'none'
                     x = self.x_ins + rt_l + xi * (block_w + block_gap)
                     _svg_ += f'<rect x="{x}" y="{self.y_ins}" width="{block_w}" height="{block_w}" fill="{_fill_}" stroke="{block_color}" stroke-width="1"/>'
+                    _poly_ = Polygon([[x, self.y_ins],[x, self.y_ins+block_w],[x+block_w, self.y_ins+block_w],[x+block_w, self.y_ins]])
+                    self.geom_to_df[_poly_] = self.rt_reactive_html.dfs[xi]
                 # Text string to indicate the size of the dataframe
                 if self.df is not None:
-                    _svg_ += self.rt_self.svgText(str(len(self.df)), self.x_ins + rt_l + _blocks_*(block_w+block_gap) + block_gap, self.y_ins + self.txt_h, self.txt_h)
+                    _readable_ = self.rt_self.readable(len(self.df))
+                    _svg_ += self.rt_self.svgText(_readable_, self.x_ins + rt_l + _blocks_*(block_w+block_gap) + block_gap, self.y_ins + self.txt_h, self.txt_h)
             _svg_ += '</svg>'
             return _svg_
+
+        #
+        # overlappingDataFrames() - Determine which dataframe geometris overlap with a specific one
+        #
+        def overlappingDataFrames(self, to_intersect):
+            _dfs = []
+            for _poly in self.geom_to_df.keys():
+                if _poly.intersects(to_intersect):
+                    _dfs.append(self.geom_to_df[_poly])
+            if len(_dfs) > 0:
+                return _dfs[0]
+            else:
+                return None
 
 #
 # RT Layout Instance (new version)

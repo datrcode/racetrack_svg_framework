@@ -77,6 +77,7 @@ class RTColorManager:
         self.type_color_lu['context'] = {}
         self.type_color_lu['context']['default']    = '#eeeeee'
         self.type_color_lu['context']['text']       = '#808080'
+        self.type_color_lu['context']['highlight']  = '#ff0000'
         
         # Fix Some specific colors // mostly just for testing...
         self.str_to_color_lu['blue']   = '#0000ff'

@@ -570,6 +570,21 @@ class RTAnnotationsMixin(object):
 
         return svg
 
+    #
+    # readable() - make a readable string out of a large number...
+    # - aim here is for four characters (or less)
+    #
+    def readable(self, x):
+        if abs(x) < 1000:
+            return str(x)
+        elif abs(x) < 1000000:
+            return f'{x/1000:.1f}k'
+        elif abs(x) < 1000000000:
+            return f'{x/1000000:.1f}m'
+        elif abs(x) < 1000000000000:
+            return f'{x/1000000000:.1f}b'
+        else:
+            return str(x)
 
     #
     # Split the string into the most to least significant parts; return as a list/array.
