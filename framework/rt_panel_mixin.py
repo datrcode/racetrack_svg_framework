@@ -203,12 +203,7 @@ class RTReactiveHTML(ReactiveHTML):
                             """ onmouseup="${script('myonmouseup')}"       """                       + \
                             '/>'                                                                     + \
                          '</svg>'
-        self.dfs_layout = [self.rt_self.layout(self.spec,                      df,                  
-                                               w=self.w,                       h=self.h,
-                                               h_gap=self.h_gap,               v_gap=self.v_gap,
-                                               widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap,
-                                               track_state=True,               rt_reactive_html=self,
-                                               **self.rt_params)]
+        self.dfs_layout = [self.__createLayout__(df)]
         self.mod_inner = self.dfs_layout[0]._repr_svg_()
 
         # - Create a lock for threading
@@ -223,6 +218,13 @@ class RTReactiveHTML(ReactiveHTML):
         # Viz companions for sync
         self.companions = []
     
+    #
+    # __createLayout__() - create the layout for the specified dataframe
+    #
+    def __createLayout__(self, __df__):
+        return self.rt_self.layout(self.spec, __df__, w=self.w, h=self.h, h_gap=self.h_gap, v_gap=self.v_gap,
+                                   widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap,
+                                   track_state=True, rt_reactive_html=self, **self.rt_params)
     #
     # Return the visible dataframe.
     #
@@ -314,12 +316,7 @@ class RTReactiveHTML(ReactiveHTML):
                             self.dfs         = self.dfs       [:(self.df_level+1)]
                             self.dfs_layout  = self.dfs_layout[:(self.df_level+1)]
                             self.df_level   += 1
-                            _layout = self.rt_self.layout(self.spec,                      _df,
-                                                          w=self.w,                       h=self.h, 
-                                                          h_gap=self.h_gap,               v_gap=self.v_gap,
-                                                          widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap,
-                                                          track_state=True,               rt_reactive_html=self,
-                                                          **self.rt_params)
+                            _layout = self.__createLayout__(_df)
                             # Update the stack
                             self.dfs       .append(_df)
                             self.dfs_layout.append(_layout)
@@ -332,12 +329,7 @@ class RTReactiveHTML(ReactiveHTML):
                                     c.dfs         = c.dfs       [:(c.df_level+1)]
                                     c.dfs_layout  = c.dfs_layout[:(c.df_level+1)]
                                     c.df_level   += 1
-                                    _clayout = c.rt_self.layout(c.spec,                        _df,
-                                                                w=c.w,                         h=c.h,
-                                                                h_gap=c.h_gap,                 v_gap=c.v_gap,
-                                                                widget_h_gap=c.widget_h_gap,   widget_v_gap=c.widget_v_gap,
-                                                                track_state=True,              rt_reactive_html=self,
-                                                                **c.rt_params)
+                                    _clayout      = c.__createLayout__(_df) 
                                     # Update the stack
                                     c.dfs       .append(_df)
                                     c.dfs_layout.append(_clayout)
