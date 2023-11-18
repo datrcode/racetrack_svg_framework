@@ -34,6 +34,7 @@ from IPython.core import display as ipc_display
 from IPython.display import Javascript, HTML, display
 
 from rt_annotations_mixin       import RTAnnotationsMixin
+from rt_art_mixin               import RTArtMixin
 from rt_boxplot_mixin           import RTBoxplotMixin
 from rt_calendarheatmap_mixin   import RTCalendarHeatmapMixin
 from rt_color_manager           import RTColorManager
@@ -57,6 +58,7 @@ from rt_xy_mixin                import RTXYMixin
 __name__ = 'racetrack'
 
 class RACETrack(RTAnnotationsMixin,
+                RTArtMixin,
                 RTBoxplotMixin,
                 RTCalendarHeatmapMixin,
                 RTDataManipMixin,
