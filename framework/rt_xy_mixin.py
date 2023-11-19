@@ -474,8 +474,11 @@ class RTXYMixin(object):
                 my_inc = self.OrderInc(order, order_is_complete == False)
                 df[new_axis_field] = gb[field[0]].transform(lambda x: my_inc.nextValue(x))
                 # Labeling
-                label_min = order[0]                
-                label_max = order[-1] if (order_is_complete or order_filled_by_transform) else 'ee'
+                if order is not None and len(order) > 0:
+                    label_min = order[0]                
+                    label_max = order[-1] if (order_is_complete or order_filled_by_transform) else 'ee'
+                else:
+                    label_min = label_max = 'zero len order'
         return df, is_time, label_min, label_max, transFunc, order
 
     #
@@ -499,12 +502,20 @@ class RTXYMixin(object):
         def __init__(self, _order, _reserve_na):
             self._order      = _order
             self._reserve_na = _reserve_na
+            self._div        = len(_order)
+            if self._reserve_na:
+                pass
+            else:
+                self._div -= 1
+            if self._div <= 0:
+                self._div = 1
+
         def nextValue(self, x):
             if x.name in self._order:
                 if self._reserve_na:
-                    return self._order.index(x.name)/len(self._order)
+                    return self._order.index(x.name)/self._div # len(self._order)
                 else:
-                    return self._order.index(x.name)/(len(self._order)-1)
+                    return self._order.index(x.name)/self._div # (len(self._order)-1)
             return 1.0
 
     # Polars version
