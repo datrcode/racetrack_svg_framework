@@ -70,6 +70,8 @@ class RTWordCloudMixin(object):
                   # ------------------------------- # everything else is a default...
                   widget_id            = None,      # naming the svg elements
                   # ------------------------------- # visualization geometry / etc.
+                  count_by             = None,      # for compatibility... no use... 
+                  color_by             = None,      # for compatibility... no use...
                   x_view               = 0,         # x offset for the view
                   y_view               = 0,         # y offset for the view
                   x_ins                = 3,         # side inserts
@@ -110,8 +112,8 @@ class RTWordCloudMixin(object):
             self.y_view               = kwargs['y_view']
             self.x_ins                = kwargs['x_ins']
             self.y_ins                = kwargs['y_ins']
-            self.w                    = kwargs['w']
-            self.h                    = kwargs['h']
+            self.w                    = int(kwargs['w'])
+            self.h                    = int(kwargs['h'])
             self.draw_border          = kwargs['draw_border']
             self.draw_background      = kwargs['draw_background']
 
