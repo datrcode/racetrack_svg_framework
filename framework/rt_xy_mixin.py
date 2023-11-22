@@ -1332,14 +1332,14 @@ class RTXYMixin(object):
                     svg += sm_lu[node_str]
 
             # Dots / Primary Axis
-            elif dot_w is not None:
+            elif dot_w is not None and dot_w != 0:
                 if self.rt_self.isPandas(self.df):
                     svg += self.__rendersvg_dots_pandas__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w,  track_state)
                 elif self.rt_self.isPolars(self.df):
                     svg += self.__rendersvg_dots_polars__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w,  track_state)
 
             # Dots / Secondary Axis
-            if dot2_w is not None and self.df2 is not None:
+            if dot2_w is not None and self.df2 is not None and dot2_w != 0:
                 _local_color_by = self.line2_groupby_color if self.line2_groupby_color is not None else self.color_by
                 if self.rt_self.isPandas(self.df):
                     svg += self.__rendersvg_dots_pandas__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w, track_state)
