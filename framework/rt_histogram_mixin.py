@@ -404,14 +404,15 @@ class RTHistogramMixin(object):
             counts  = []
             for i in range(buckets):
                 counts.append(len(percs.filter((pl.col('perc') > (i/buckets)) & (pl.col('perc') <= ((i+1)/buckets)))))
-            ybase = self.h-1.5*self.bar_h
+            ybase = self.h-self.bar_h-2
             _max_ = max(counts)
+            _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
             for i in range(buckets):
                 h = hist_h * counts[i]/_max_
                 if h > 1:
-                    svg += f'<rect width="{bucket_pixels-0.5}" height="{h}" x="{2+i*bucket_pixels}" y="{ybase-h}" fill="none" stroke="black" stroke-width="0.5" />'
+                    svg += f'<rect width="{bucket_pixels-0.5}" height="{h}" x="{2+i*bucket_pixels}" y="{ybase-h}" fill="{_color_}" stroke="none" stroke-width="0.5" />'
                 else:
-                    svg += f'<line x1="{2+i*bucket_pixels}" y1="{ybase-h}" x2="{2+(i+1)*bucket_pixels-0.5}" y2="{ybase-h}" stroke="black" stroke-width="0.5" />'
+                    svg += f'<line x1="{2+i*bucket_pixels}" y1="{ybase-h}" x2="{2+(i+1)*bucket_pixels-0.5}" y2="{ybase-h}" stroke="{_color_}" stroke-width="0.5" />'
             return svg
 
 
