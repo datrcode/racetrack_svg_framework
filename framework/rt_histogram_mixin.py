@@ -19,7 +19,7 @@ import numpy as np
 import random
 
 from shapely.geometry import Polygon
-from math import sqrt
+from math import sqrt, floor, ceil
 
 from rt_component import RTComponent
 
@@ -67,9 +67,9 @@ class RTHistogramMixin(object):
     # Make the SVG for a histogram from a dataframe
     #    
     def histogram(self,
-                  df,                         # dataframe to render
-                  bin_by,                     # string or an array of strings                  
-                  # ------------------------- # everything else is a default...                  
+                  df,                          # dataframe to render
+                  bin_by,                      # string or an array of strings                  
+                  # -------------------------- # everything else is a default...                  
                   color_by           = None,   # just the default color or a string for a field
                   global_color_order = None,   # color by ordering... if none (default), will be created and filled in...                  
                   count_by           = None,   # none means just count rows, otherwise, use a field to sum by
@@ -80,16 +80,17 @@ class RTHistogramMixin(object):
                   global_max         = None,   # maximum to use for the bar length calculation
                   global_min         = None,   # mininum to use for the bar length calculation -- which is treated as zero by histograms...
                   just_calc_max      = False,  # forces return of the maximum for this render config...
-                                               # ... which will then be used for the global max across bar charts...                        
-                  # ------------------------- # rendering specific params                  
-                  x_view=0,                   # x offset for the view
-                  y_view=0,                   # y offset for the view
-                  w=128,                      # width of the view
-                  h=256,                      # height of the view
-                  bar_h=14,                   # bar height
-                  v_gap=0,                    # gap between bars
-                  draw_labels=True,           # draw labels flag
-                  draw_border=True            # draw a border around the histogram
+                                               # ... which will then be used for the global max across bar charts...
+                  draw_distribution  = False,  # draw the distribution
+                  # -------------------------- # rendering specific params                  
+                  x_view=0,                    # x offset for the view
+                  y_view=0,                    # y offset for the view
+                  w=128,                       # width of the view
+                  h=256,                       # height of the view
+                  bar_h=14,                    # bar height
+                  v_gap=0,                     # gap between bars
+                  draw_labels=True,            # draw labels flag
+                  draw_border=True             # draw a border around the histogram
                  ):
         _params_ = locals().copy()
         _params_.pop('self')
@@ -130,6 +131,7 @@ class RTHistogramMixin(object):
             self.first_line_i       = kwargs['first_line_i']
             self.global_max         = kwargs['global_max']
             self.global_min         = kwargs['global_min']
+            self.draw_distribution  = kwargs['draw_distribution']
             self.x_view             = kwargs['x_view']
             self.y_view             = kwargs['y_view']
             self.w                  = kwargs['w']
@@ -341,6 +343,13 @@ class RTHistogramMixin(object):
                 i += 1
                 y += self.bar_h+1+self.v_gap
             
+            # Draw the distribution
+            if self.draw_distribution:
+                if   self.rt_self.isPandas(self.df):
+                    pass
+                elif self.rt_self.isPolars(self.df):
+                    svg += self.__renderDistribution_polars__(order, max_bar_w)
+            
             # Indicate how many more we are missing
             if self.draw_labels and i != len(order):
                 svg += self.rt_self.svgText(f'{len(order)-i} more', 2, self.h-3, self.bar_h-1, color=self.rt_self.co_mgr.getTVColor('label','error'))
@@ -365,6 +374,46 @@ class RTHistogramMixin(object):
             svg += '</svg>'
             self.last_render = svg
             return svg
+
+        #
+        # renderDistribution()
+        #
+        def XXX__renderDistribution_polars__(self, order, max_bar_w, bucket_pixels=1):
+            hist_h = self.h/3
+            if hist_h >= 100:
+                hist_h = 100
+            percs = order.with_columns((pl.col('__count__')/pl.col('__count__').max()).alias('perc'))['perc'].hist(bin_count=int(max_bar_w/bucket_pixels))
+            b, c, p  = percs['break_point'], percs['perc_count'], ''
+            c_max    = c.max()
+            for i in range(len(b)):
+                if b[i] >= 0.0 and b[i] <= 1.0:
+                    if len(p) == 0:
+                        p = 'M '
+                    else:
+                        p += ' L'
+                    p += f'{b[i] * max_bar_w} {self.h - 1.5 * self.bar_h - hist_h * c[i]/c_max}'
+            return '<path d="' + p + '" stroke="black" stroke-width="2" fill="none" />'
+
+        def __renderDistribution_polars__(self, order, max_bar_w, bucket_pixels=8):
+            svg     = ''
+            hist_h = self.h/3
+            if hist_h >= 100:
+                hist_h = 100
+            percs   = order.with_columns((pl.col('__count__')/pl.col('__count__').max()).alias('perc'))
+            buckets = floor(max_bar_w/bucket_pixels)
+            counts  = []
+            for i in range(buckets):
+                counts.append(len(percs.filter((pl.col('perc') > (i/buckets)) & (pl.col('perc') <= ((i+1)/buckets)))))
+            ybase = self.h-1.5*self.bar_h
+            _max_ = max(counts)
+            for i in range(buckets):
+                h = hist_h * counts[i]/_max_
+                if h > 1:
+                    svg += f'<rect width="{bucket_pixels-0.5}" height="{h}" x="{2+i*bucket_pixels}" y="{ybase-h}" fill="none" stroke="black" stroke-width="0.5" />'
+                else:
+                    svg += f'<line x1="{2+i*bucket_pixels}" y1="{ybase-h}" x2="{2+(i+1)*bucket_pixels-0.5}" y2="{ybase-h}" stroke="black" stroke-width="0.5" />'
+            return svg
+
 
         #
         # smallMultipleFeatureVector()
