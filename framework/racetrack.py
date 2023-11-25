@@ -509,10 +509,7 @@ class RACETrack(RTAnnotationsMixin,
                     # df = df.with_columns(pl.col(field).dt.strftime('%S').cast(pl.Int64).alias(tfield))
                     df = df.with_columns(pl.col(field).dt.strftime('%S').alias(tfield))
                 elif transform == 'log_bins':
-                    #
-                    # FILL THIS IN!!!
-                    #
-                    raise Exception('applyTransform() - log_bins isn\'t implemented for polars dataframes')
+                    df = df.with_columns(pl.col(field).apply(lambda x: self.transformLogBins(x)).alias(tfield))
             else:
                 raise Exception('applyTransform() - df is neither a pandas nor a polars dataframe')
 

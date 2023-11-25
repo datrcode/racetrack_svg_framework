@@ -37,7 +37,7 @@ class RTPeriodicBarChartMixin(object):
     #
     def __periodic_barchart_mixin_init__(self):
         # Only periods allowed
-        self.time_periods      = ['quarter', 'month', 'day_of_month', 'day_of_week', 'day_of_week_hour', 'hour', 'minute', 'second']
+        self.time_periods      = ['quarter', 'month', 'day', 'day_of_week', 'day_of_week_hour', 'hour', 'minute', 'second']
         
         # Number of bins in each period
         self.time_periods_bins = [4,         12,      31,             7,             7*24,               24,     60,       60]
@@ -47,10 +47,10 @@ class RTPeriodicBarChartMixin(object):
         for period_i in range(0,len(self.time_periods)):
             period = self.time_periods[period_i]
             if   period == 'quarter':
-                self.time_periods_strs.append(['1',  '2',  '3',  '4'])
+                self.time_periods_strs.append(['Q1',  'Q2',  'Q3',  'Q4'])
             elif period == 'month':
                 self.time_periods_strs.append(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'])
-            elif period == 'day_of_month':
+            elif period == 'day': # day of month
                 my_arr = []
                 for i in range(1,32):
                     my_arr.append(f'{i:02}')
