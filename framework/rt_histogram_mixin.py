@@ -345,10 +345,7 @@ class RTHistogramMixin(object):
             
             # Draw the distribution
             if self.draw_distribution:
-                if   self.rt_self.isPandas(self.df):
-                    pass
-                elif self.rt_self.isPolars(self.df):
-                    svg += self.__renderDistribution_polars__(order, max_bar_w)
+                svg += self.renderDistribution(self.df, order, max_bar_w)
             
             # Indicate how many more we are missing
             if self.draw_labels and i != len(order):
@@ -378,32 +375,30 @@ class RTHistogramMixin(object):
         #
         # renderDistribution()
         #
-        def XXX__renderDistribution_polars__(self, order, max_bar_w, bucket_pixels=1):
-            hist_h = self.h/3
-            if hist_h >= 100:
-                hist_h = 100
-            percs = order.with_columns((pl.col('__count__')/pl.col('__count__').max()).alias('perc'))['perc'].hist(bin_count=int(max_bar_w/bucket_pixels))
-            b, c, p  = percs['break_point'], percs['perc_count'], ''
-            c_max    = c.max()
-            for i in range(len(b)):
-                if b[i] >= 0.0 and b[i] <= 1.0:
-                    if len(p) == 0:
-                        p = 'M '
-                    else:
-                        p += ' L'
-                    p += f'{b[i] * max_bar_w} {self.h - 1.5 * self.bar_h - hist_h * c[i]/c_max}'
-            return '<path d="' + p + '" stroke="black" stroke-width="2" fill="none" />'
-
-        def __renderDistribution_polars__(self, order, max_bar_w, bucket_pixels=8):
+        def renderDistribution(self, df, order, max_bar_w, bucket_pixels=8):
             svg     = ''
             hist_h = self.h/3
             if hist_h >= 100:
                 hist_h = 100
-            percs   = order.with_columns((pl.col('__count__')/pl.col('__count__').max()).alias('perc'))
-            buckets = floor(max_bar_w/bucket_pixels)
             counts  = []
-            for i in range(buckets):
-                counts.append(len(percs.filter((pl.col('perc') > (i/buckets)) & (pl.col('perc') <= ((i+1)/buckets)))))
+
+            if self.rt_self.isPandas(df):
+                # Pandas
+                percs = order / order.max()
+                buckets = floor(max_bar_w/bucket_pixels)
+                for i in range(buckets):
+                    t_or_f = ((percs > (i/buckets)) & (percs <= ((i+1)/buckets))).value_counts()
+                    if True in t_or_f:
+                        counts.append(t_or_f.loc[True])
+                    else:
+                        counts.append(0)
+            elif self.rt_self.isPolars(df):
+                # Polars
+                percs   = order.with_columns((pl.col('__count__')/pl.col('__count__').max()).alias('perc'))
+                buckets = floor(max_bar_w/bucket_pixels)
+                for i in range(buckets):
+                    counts.append(len(percs.filter((pl.col('perc') > (i/buckets)) & (pl.col('perc') <= ((i+1)/buckets)))))
+
             ybase = self.h-self.bar_h-2
             _max_ = max(counts)
             _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
@@ -414,7 +409,6 @@ class RTHistogramMixin(object):
                 else:
                     svg += f'<line x1="{2+i*bucket_pixels}" y1="{ybase-h}" x2="{2+(i+1)*bucket_pixels-0.5}" y2="{ybase-h}" stroke="{_color_}" stroke-width="0.5" />'
             return svg
-
 
         #
         # smallMultipleFeatureVector()
