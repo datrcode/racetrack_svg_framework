@@ -57,7 +57,7 @@ class RTLinkNodeMixin(object):
     # -- ideally, zoom in by 2.0 and zoom out by -2.0 should result in the original transform
     #
     def viewWindowZoom(self, view_window, 
-                             zoom_amount=2.0,   # > 1.0 == zoom_in , < 0.0 == zoom_out...
+                             zoom_amount=1.0,   # > 0.0 == zoom_in , < 0.0 == zoom_out...
                              zoom_center=None): # None means that the current view center will be used
         if zoom_center is None:
             zoom_center = self.viewWindowCenter(view_window)
@@ -1209,10 +1209,6 @@ class RTLinkNodeMixin(object):
 
             return svg
 
-
-
-
-
         #
         # __renderNodes__() - render the nodes
         #
@@ -1483,11 +1479,16 @@ class RTLinkNodeMixin(object):
             return self.last_render
         
         #
-        # scrollView()
+        # applyScrollEvent()
         # - zoom in or out based on the specified coordinate.
         #
-        def scrollView(self, scroll_amount, coordinate=None):
+        def applyScrollEvent(self, scroll_amount, coordinate=None):
+            if coordinate is not None:
+                coord_wx = self.wx0 + (self.wx1 - self.wx0) * coordinate[0] / self.w
+                coord_wy = self.wy0 + (self.wy1 - self.wy0) * coordinate[1] / self.h
+                coordinate = (coord_wx, coord_wy)
             self.setViewWindow(self.rt_self.viewWindowZoom(self.view_window, scroll_amount, coordinate))
+            return True
 
         #
         # Set the view window

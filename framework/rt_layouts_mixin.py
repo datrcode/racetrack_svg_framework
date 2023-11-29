@@ -867,7 +867,17 @@ class RTComponentsLayout(object):
             _svg_ += self.instance_lu[_poly]._repr_svg_()
         _svg_ += '</svg>'
         return _svg_
-        
+
+    #
+    # Apply Scroll Event
+    #
+    def applyScrollEvent(self, scroll_amount, coordinate):
+        for _poly_ in self.instance_lu.keys():
+            bnds = _poly_.bounds
+            if coordinate[0] >= bnds[0] and coordinate[0] <= bnds[2] and coordinate[1] >= bnds[1] and coordinate[1] <= bnds[3]:
+                return self.instance_lu[_poly_].applyScrollEvent(scroll_amount/10.0, (coordinate[0] - bnds[0], coordinate[1] - bnds[1]))
+        return False
+
     #
     # Return Overlapping Dataframes
     #

@@ -161,6 +161,7 @@ class RTReactiveHTML(ReactiveHTML):
               onmousedown="${script('myonmousedown')}"
               onmousemove="${script('myonmousemove')}"
               onmouseup="${script('myonmouseup')}"
+              onmousewheel="${script('myonmousewheel')}"
             />
         </svg>
     """
@@ -208,6 +209,7 @@ class RTReactiveHTML(ReactiveHTML):
                             """ onmousedown="${script('myonmousedown')}"   """                       + \
                             """ onmousemove="${script('myonmousemove')}"   """                       + \
                             """ onmouseup="${script('myonmouseup')}"       """                       + \
+                            """ onmousewheel="${script('myonmousewheel')}" """                       + \
                             '/>'                                                                     + \
                          '</svg>'
         self.dfs_layout = [self.__createLayout__(df)]
@@ -220,7 +222,8 @@ class RTReactiveHTML(ReactiveHTML):
         super().__init__(**kwargs)
 
         # Watch for callbacks
-        self.param.watch(self.applyDragOp, 'drag_op_finished')
+        self.param.watch(self.applyDragOp,  'drag_op_finished')
+        self.param.watch(self.applyWheelOp, 'wheel_rots')
 
         # Viz companions for sync
         self.companions = []
@@ -244,6 +247,22 @@ class RTReactiveHTML(ReactiveHTML):
     def unregister_companion_viz(self, viz):
         if viz in self.companions:
             self.companions.remove(viz)
+
+    #
+    # Wheel operation state & method
+    #
+    wheel_x    = param.Integer(default=0)
+    wheel_y    = param.Integer(default=0)
+    wheel_rots = param.Integer(default=0) # Mult by 10 and rounded...
+    async def applyWheelOp(self,event):
+        self.lock.acquire()
+        try:
+            x, y, rots = self.wheel_x, self.wheel_y, self.wheel_rots/10.0
+            if rots != 0:
+                if self.dfs_layout[self.df_level].applyScrollEvent(scroll_amount=rots, coordinate=(x,y)):
+                    self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_()
+        finally:
+            self.lock.release()
 
     #
     # Drag operation state & method
@@ -389,6 +408,12 @@ class RTReactiveHTML(ReactiveHTML):
                 data.drag_shiftkey    = state.shiftkey
                 data.drag_op_finished = true;
             }
+        """,
+        'myonmousewheel':"""
+            event.preventDefault();
+            data.wheel_x    = event.offsetX;
+            data.wheel_y    = event.offsetY;
+            data.wheel_rots = Math.round(10*event.deltaY);
         """,
         'mod_inner':"""
             mod.innerHTML = data.mod_inner;

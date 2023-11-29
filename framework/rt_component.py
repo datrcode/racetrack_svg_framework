@@ -30,14 +30,15 @@ class RTComponent(object):
             pass
 
         #
-        # scrollView()
+        # applyScrollEvent()
         # - scroll the view by the specified amount
         # - coordinate is optional / depends on the type of view
         # -- for example, histogram usage doesn't need the coordinate
         # -- however, linknode uses it for determining the zoom center
+        # -- return True if the view actually changed (and needs a re-render)
         #
-        def scrollView(self, scroll_amount, coordinate=None):
-             pass
+        def applyScrollEvent(self, scroll_amount, coordinate=None):
+             return False
 
         #
         # renderSVG() - create the SVG Rendering

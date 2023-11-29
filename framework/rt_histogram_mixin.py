@@ -169,18 +169,18 @@ class RTHistogramMixin(object):
             return self.last_render
 
         #
-        # scrollView()
+        # applyScrollEvent()
         # - scroll the list by the specified amount
         # - coordinate included to make it similar to other view functionality
         # ... looks like we don't know the list length... so we can't bound the calc by that...
         #
-        def scrollView(self, scroll_amount, coordinate=None):
+        def applyScrollEvent(self, scroll_amount, coordinate=None):
             if (self.first_line_i+scroll_amount) >= 0:
                 self.first_line_i += scroll_amount
             else:
                 self.first_line_i =  0
             self.last_render = None
-
+            return True
 
         #
         # binOrder() - determine the bin order (pandas)
