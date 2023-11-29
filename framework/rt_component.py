@@ -45,7 +45,7 @@ class RTComponent(object):
         # - recommend that this method save the rendering into the last_render member variable.
         # - return value is an svg string
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
             pass
 
         #

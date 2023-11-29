@@ -95,6 +95,7 @@ class RTCalendarHeatmapMixin(object):
                         sm_x_axis_independent = True,       # Use independent axis for x (xy, temporal, and linkNode)
                         sm_y_axis_independent = True,       # Use independent axis for y (xy, temporal, periodic, pie)
                         # --------------------------------- #
+                        track_state     = False,            # state tracking for interactve filtering
                         x_view          = 0,                # coordinates of the svg frame
                         y_view          = 0,
                         w               = None,             # overall width of the view / None -- will calculate best possible
@@ -147,6 +148,7 @@ class RTCalendarHeatmapMixin(object):
             self.sm_params              = kwargs['sm_params']
             self.sm_x_axis_independent  = kwargs['sm_x_axis_independent']
             self.sm_y_axis_independent  = kwargs['sm_y_axis_independent']
+            self.track_state            = kwargs['track_state']
             self.x_view                 = kwargs['x_view']
             self.y_view                 = kwargs['y_view']
             self.w                      = kwargs['w']
@@ -261,7 +263,10 @@ class RTCalendarHeatmapMixin(object):
         #
         # renderSVG() - render the SVG for the view
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
+            if self.track_state:
+                self.geom_to_df = {}
+
             # Calculate the geometry
             self.__calculateGeometry__()
 
@@ -397,7 +402,7 @@ class RTCalendarHeatmapMixin(object):
             #
             if self.sm_type is None:
                 # Make a special groupby for tracking state
-                if track_state:
+                if self.track_state:
                     if self.rt_self.isPandas(self.df):
                         tracking_gb = self.df.groupby(pd.Grouper(key=self.ts_field,freq='D'))
                     else:
@@ -424,7 +429,7 @@ class RTCalendarHeatmapMixin(object):
                         else:
                             svg += f'<rect width="{self.cell_w}" height="{self.cell_h}" x="{x}" y="{y}" stroke-opacity="0.0" fill="{_co}" />'
 
-                        if track_state:
+                        if self.track_state:
                             _poly = Polygon([[x,y],[x+self.cell_w,y],[x+self.cell_w,y+self.cell_h],[x,y+self.cell_h]])
                             self.geom_to_df[_poly] = tracking_gb.get_group(_ts_str)
 
@@ -440,7 +445,7 @@ class RTCalendarHeatmapMixin(object):
 
                 for k,k_df in _groupby_:
                     node_to_dfs[k] = k_df
-                    if len(k_df) > 0 and track_state:
+                    if len(k_df) > 0 and self.track_state:
                         x,y =  self.node_to_xy[node_str]
                         x   -= self.sm_w/2
                         y   -= self.sm_h/2

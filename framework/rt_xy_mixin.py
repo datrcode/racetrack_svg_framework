@@ -359,6 +359,7 @@ class RTXYMixin(object):
 
            # ---------------------------------------  # visualization geometry / etc.
 
+           track_state               = False,         # state tracking for interactive filtering
            x_view                    = 0,             # x offset for the view
            y_view                    = 0,             # y offset for the view
            x_ins                     = 3,             # side inserts
@@ -963,6 +964,7 @@ class RTXYMixin(object):
             self.distribution_h_perc         = kwargs['distribution_h_perc']
             self.distribution_style          = kwargs['distribution_style']
 
+            self.track_state              = kwargs['track_state']
             self.x_view                   = kwargs['x_view']
             self.y_view                   = kwargs['y_view']
             self.x_ins                    = kwargs['x_ins']
@@ -1096,7 +1098,10 @@ class RTXYMixin(object):
         #
         # renderSVG() - render as SVG
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
+            if self.track_state:
+                self.geom_to_df = {}
+
             #
             # Geometry
             #
@@ -1317,7 +1322,7 @@ class RTXYMixin(object):
                         node_to_xy [xy_as_str] = (x,y)
                         node_to_dfs[xy_as_str] = []
                     node_to_dfs[xy_as_str].append(k_df)
-                    if track_state:
+                    if self.track_state:
                         _poly = Polygon([[x-self.sm_w/2,y-self.sm_h/2],
                                             [x-self.sm_w/2,y+self.sm_h/2],
                                             [x+self.sm_w/2,y+self.sm_h/2],
@@ -1334,17 +1339,17 @@ class RTXYMixin(object):
             # Dots / Primary Axis
             elif dot_w is not None and dot_w != 0:
                 if self.rt_self.isPandas(self.df):
-                    svg += self.__rendersvg_dots_pandas__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w,  track_state)
+                    svg += self.__rendersvg_dots_pandas__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w)
                 elif self.rt_self.isPolars(self.df):
-                    svg += self.__rendersvg_dots_polars__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w,  track_state)
+                    svg += self.__rendersvg_dots_polars__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w)
 
             # Dots / Secondary Axis
             if dot2_w is not None and self.df2 is not None and dot2_w != 0:
                 _local_color_by = self.line2_groupby_color if self.line2_groupby_color is not None else self.color_by
                 if self.rt_self.isPandas(self.df):
-                    svg += self.__rendersvg_dots_pandas__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w, track_state)
+                    svg += self.__rendersvg_dots_pandas__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w)
                 elif self.rt_self.isPolars(self.df):
-                    svg += self.__rendersvg_dots_polars__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w, track_state)
+                    svg += self.__rendersvg_dots_polars__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w)
 
             # Draw labels
             if self.draw_labels:
@@ -1849,7 +1854,7 @@ class RTXYMixin(object):
         #
         # __rendersvg_dots_polars__() - render dots for polars
         #
-        def __rendersvg_dots_polars__(self, _df, _x_axis_col, _y_axis_col, _local_color_by, _local_dot_w, track_state):
+        def __rendersvg_dots_polars__(self, _df, _x_axis_col, _y_axis_col, _local_color_by, _local_dot_w):
             svg  = ''
             proc = []
 
@@ -1894,7 +1899,7 @@ class RTXYMixin(object):
                         self.contrast_stretch[_sorted_[x]] = x/len(_sorted_)
 
             # State Tracking
-            if track_state or callable(self.dot_shape):
+            if self.track_state or callable(self.dot_shape):
                 pb = _df.partition_by([_x_axis_col+"_px",_y_axis_col+"_px"], as_dict=True)
 
             # Loop Over The Pixels
@@ -1945,7 +1950,7 @@ class RTXYMixin(object):
                     svg += self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o)
 
                 # Track state (if requested)
-                if track_state:
+                if self.track_state:
                     k_df = pb[(x,y)]
                     _poly = Polygon([[x-_local_dot_w,y-_local_dot_w],[x-_local_dot_w,y+_local_dot_w],
                                      [x+_local_dot_w,y+_local_dot_w],[x+_local_dot_w,y-_local_dot_w]])
@@ -1956,7 +1961,7 @@ class RTXYMixin(object):
         #
         # __rendersvg_dots_pandas__(): render the dots
         #
-        def __rendersvg_dots_pandas__(self, _df,_x_axis_col,_y_axis_col,_local_color_by,_local_dot_w,track_state):
+        def __rendersvg_dots_pandas__(self, _df,_x_axis_col,_y_axis_col,_local_color_by,_local_dot_w):
             svg = ''
             # Group by x,y for the render
             gb = _df.groupby([_x_axis_col+"_px",_y_axis_col+"_px"])
@@ -2048,7 +2053,7 @@ class RTXYMixin(object):
                     svg += self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity)
 
                     # Track state (if requested)
-                    if track_state:
+                    if self.track_state:
                         _poly = Polygon([[x-_local_dot_w,y-_local_dot_w],
                                             [x-_local_dot_w,y+_local_dot_w],
                                             [x+_local_dot_w,y+_local_dot_w],
@@ -2084,7 +2089,7 @@ class RTXYMixin(object):
                     svg += self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o)
 
                     # Track state (if requested)
-                    if track_state:
+                    if self.track_state:
                         _poly = Polygon([[x-var_w,y-var_w],
                                          [x-var_w,y+var_w],
                                          [x+var_w,y+var_w],

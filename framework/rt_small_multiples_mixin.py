@@ -827,6 +827,7 @@ class RTSmallMultiplesMixin(object):
                        y_axis_independent    = True,       # Use independent axis for y (xy, temporal, periodic, pie)
                        #-----------------------------------# Render-specific params
                        widget_id             = None,       # Uniquely identify this widget -- embedded into svg element ids
+                       track_state           = False,      # State tracking... unsure... but state tracking is done in another way for this widget...
                        x_view                = 0,          # View coordinates
                        y_view                = 0,
                        w                     = 768,        # Width of the sm container
@@ -878,6 +879,7 @@ class RTSmallMultiplesMixin(object):
             self.faded_opacity         = kwargs['faded_opacity']
             self.x_axis_independent    = kwargs['x_axis_independent']
             self.y_axis_independent    = kwargs['y_axis_independent']
+            self.track_state           = kwargs['track_state']
             self.x_view                = kwargs['x_view']
             self.y_view                = kwargs['y_view']
             self.w                     = kwargs['w']
@@ -920,7 +922,7 @@ class RTSmallMultiplesMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
             self.category_to_sm       = {} # <== Reset the state tracking for all three dictionaries...
             self.category_to_instance = {}
             self.category_to_df       = {}

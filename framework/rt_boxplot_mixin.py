@@ -93,6 +93,7 @@ class RTBoxplotMixin(object):
                 sm_x_axis_independent = True,   # Use independent axis for x (xy, temporal, and linkNode)
                 sm_y_axis_independent = True,   # Use independent axis for y (xy, temporal, periodic, pie)
                 # ----------------------------- # rendering specific params                  
+                track_state        = False,     # track state (for interactive filtering)
                 x_view             = 0,         # x offset for the view
                 y_view             = 0,         # y offset for the view
                 x_ins              = 3,         # x insert
@@ -155,6 +156,7 @@ class RTBoxplotMixin(object):
             self.sm_x_axis_independent   = kwargs['sm_x_axis_independent']
             self.sm_y_axis_independent   = kwargs['sm_y_axis_independent']
 
+            self.track_state             = kwargs['track_state']
             self.x_view                  = kwargs['x_view']
             self.y_view                  = kwargs['y_view']
             self.x_ins                   = kwargs['x_ins']
@@ -289,7 +291,10 @@ class RTBoxplotMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
+            if self.track_state:
+                self.geom_to_df = {}
+                
             # Determine the color order (for each bar)
             if self.global_color_order is None:
                 self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
@@ -431,7 +436,7 @@ class RTBoxplotMixin(object):
 
                 px     = max_bar_h * _value / group_by_max
 
-                if track_state:
+                if self.track_state:
                     _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-px],[x,y_baseline-px]])
                     self.geom_to_df[_poly] = _df
 

@@ -151,19 +151,20 @@ class RTPeriodicBarChartMixin(object):
                          sm_params             = {},            # dictionary of parameters for the small multiples
                          sm_x_axis_independent = True,          # Use independent axis for x (xy, temporal, and linkNode)
                          sm_y_axis_independent = True,          # Use independent axis for y (xy, temporal, periodic, pie)                         
-                         # ------------------------------------ #                                                  
-                         x_view           = 0,                  # x offset for the view
-                         y_view           = 0,                  # y offset for the view
-                         w                = 512,                # width of the view
-                         h                = 128,                # height of the view
-                         h_gap            = 0,                  # gap between bars.. should be a zero or a one...
-                         min_bar_w        = 2,                  # minimum bar width
-                         txt_h            = 14,                 # text height for the labels
-                         x_ins            = 3,                  # x insert (on both sides of the drawing)
-                         y_ins            = 3,
-                         draw_labels      = True,               # draw labels flag
-                         draw_border      = True,               # draw a border around the bar chart
-                         draw_context     = True):              # draw background hints about the years, months, days, etc.
+                         # ------------------------------------ #                
+                         track_state           = False,         # state tracking for interactive filtering                         
+                         x_view                = 0,             # x offset for the view
+                         y_view                = 0,             # y offset for the view
+                         w                     = 512,           # width of the view
+                         h                     = 128,           # height of the view
+                         h_gap                 = 0,             # gap between bars.. should be a zero or a one...
+                         min_bar_w             = 2,             # minimum bar width
+                         txt_h                 = 14,            # text height for the labels
+                         x_ins                 = 3,             # x insert (on both sides of the drawing)
+                         y_ins                 = 3,
+                         draw_labels           = True,          # draw labels flag
+                         draw_border           = True,          # draw a border around the bar chart
+                         draw_context          = True):         # draw background hints about the years, months, days, etc.
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTPeriodicBarChart(self, **_params_)
@@ -203,6 +204,7 @@ class RTPeriodicBarChartMixin(object):
             self.sm_params             = kwargs['sm_params']
             self.sm_x_axis_independent = kwargs['sm_x_axis_independent']
             self.sm_y_axis_independent = kwargs['sm_y_axis_independent']
+            self.track_state           = kwargs['track_state']
             self.x_view                = kwargs['x_view']
             self.y_view                = kwargs['y_view']
             self.w                     = kwargs['w']
@@ -307,7 +309,10 @@ class RTPeriodicBarChartMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
+            if self.track_state:
+                self.geom_to_df = {}
+
             # Color ordering
             if self.global_color_order is None:
                 self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
@@ -424,7 +429,7 @@ class RTPeriodicBarChartMixin(object):
                             
                     svg += self.rt_self.colorizeBar(k_df, self.global_color_order, self.color_by, self.count_by, self.count_by_set, x, y_baseline, px, bar_w, False)
 
-                    if track_state:
+                    if self.track_state:
                         _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-px],[x,y_baseline-px]])
                         self.geom_to_df[_poly] = k_df
 
@@ -446,7 +451,7 @@ class RTPeriodicBarChartMixin(object):
 
                     svg += self.rt_self.renderBoxPlotColumn(self.style, k_df, _cx, yT, group_by_max, group_by_min, _bar_w, self.count_by, self.color_by, self.cap_swarm_at)
 
-                    if track_state:
+                    if self.track_state:
                         _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-max_bar_h],[x,y_baseline-max_bar_h]])
                         self.geom_to_df[_poly] = k_df
 

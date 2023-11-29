@@ -82,15 +82,16 @@ class RTHistogramMixin(object):
                   just_calc_max      = False,  # forces return of the maximum for this render config...
                                                # ... which will then be used for the global max across bar charts...
                   draw_distribution  = False,  # draw the distribution
-                  # -------------------------- # rendering specific params                  
-                  x_view=0,                    # x offset for the view
-                  y_view=0,                    # y offset for the view
-                  w=128,                       # width of the view
-                  h=256,                       # height of the view
-                  bar_h=14,                    # bar height
-                  v_gap=0,                     # gap between bars
-                  draw_labels=True,            # draw labels flag
-                  draw_border=True             # draw a border around the histogram
+                  # -------------------------- # rendering specific params     
+                  track_state        = False,  # track state for interactive filtering             
+                  x_view             = 0,      # x offset for the view
+                  y_view             = 0,      # y offset for the view
+                  w                  = 128,    # width of the view
+                  h                  = 256,    # height of the view
+                  bar_h              = 14,     # bar height
+                  v_gap              = 0,      # gap between bars
+                  draw_labels        = True,   # draw labels flag
+                  draw_border        = True    # draw a border around the histogram
                  ):
         _params_ = locals().copy()
         _params_.pop('self')
@@ -132,6 +133,7 @@ class RTHistogramMixin(object):
             self.global_max         = kwargs['global_max']
             self.global_min         = kwargs['global_min']
             self.draw_distribution  = kwargs['draw_distribution']
+            self.track_state        = kwargs['track_state']
             self.x_view             = kwargs['x_view']
             self.y_view             = kwargs['y_view']
             self.w                  = kwargs['w']
@@ -237,7 +239,10 @@ class RTHistogramMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
+            if self.track_state:
+                self.geom_to_df = {}
+
             # Leave space for a label
             max_bar_w = self.w - self.bar_h
                                             
@@ -328,7 +333,7 @@ class RTHistogramMixin(object):
 
                 # Render the bar ... next section does the color... but this makes sure it's at least filled in...
                 svg += f'<rect id="{element_id}" width="{px}" height="{self.bar_h}" x="0" y="{y}" fill="{color}" stroke="{color}"/>'
-                if track_state:
+                if self.track_state:
                     self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = k_df
 
                 # 'Color By' options

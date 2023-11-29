@@ -424,17 +424,18 @@ class RTLinkNodeMixin(object):
                  sm_mode               = 'node', # 'node' or 'link'
                  sm_t                  = 0.5,    # location of the small multiple on the link // only applies to sm_mode == 'link'
 
-                 # -----------------------     # visualization geometry / etc.
+                 # ----------------------------- # visualization geometry / etc.
 
-                 x_view=0,                     # x offset for the view
-                 y_view=0,                     # y offset for the view
-                 w=256,                        # width of the view
-                 h=256,                        # height of the view
-                 x_ins=3,
-                 y_ins=3,
-                 txt_h=12,                     # text height for labeling
-                 draw_labels=True,             # draw labels flag # not implemented yet
-                 draw_border=True):            # draw a border around the graph
+                 track_state           = False,  # track state for interactive filtering
+                 x_view                = 0,      # x offset for the view
+                 y_view                = 0,      # y offset for the view
+                 w                     = 256,    # width of the view
+                 h                     = 256,    # height of the view
+                 x_ins                 = 3,
+                 y_ins                 = 3,
+                 txt_h                 = 12,     # text height for labeling
+                 draw_labels           = True,   # draw labels flag # not implemented yet
+                 draw_border           = True):  # draw a border around the graph
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTLinkNode(self, **_params_)
@@ -637,6 +638,7 @@ class RTLinkNodeMixin(object):
             self.sm_y_axis_independent      = kwargs['sm_y_axis_independent']
             self.sm_mode                    = kwargs['sm_mode']
             self.sm_t                       = kwargs['sm_t']
+            self.track_state                = kwargs['track_state']
             self.x_view                     = kwargs['x_view']
             self.y_view                     = kwargs['y_view']
             self.w                          = kwargs['w']
@@ -924,7 +926,7 @@ class RTLinkNodeMixin(object):
         #
         # __renderLinks__() - return links
         #
-        def __renderLinks__(self,track_state=False):
+        def __renderLinks__(self):
             # Render links
             svg          = ''
             count_by_set = True
@@ -1026,7 +1028,7 @@ class RTLinkNodeMixin(object):
                                     _co = self.rt_self.co_mgr.getTVColor('data','default')
 
                                 # Capture the state
-                                if track_state:
+                                if self.track_state:
                                     _line = LineString([[x1,y1],[x2,y2]])
                                     if _line not in self.geom_to_df.keys():
                                         self.geom_to_df[_line] = []
@@ -1212,7 +1214,7 @@ class RTLinkNodeMixin(object):
         #
         # __renderNodes__() - render the nodes
         #
-        def __renderNodes__(self, track_state=False):
+        def __renderNodes__(self):
             svg = ''
             node_already_rendered = set()
 
@@ -1304,7 +1306,7 @@ class RTLinkNodeMixin(object):
                                         node_to_dfs[node_str].append(k_df)
                                         node_to_xy[node_str] = (x,y)
 
-                                        if track_state:
+                                        if self.track_state:
                                             _poly = Polygon([[x-self.sm_w/2,y-self.sm_h/2],
                                                              [x+self.sm_w/2,y-self.sm_h/2],
                                                              [x+self.sm_w/2,y+self.sm_h/2],
@@ -1402,7 +1404,7 @@ class RTLinkNodeMixin(object):
                                             svg += self.rt_self.renderShape(_shape, x, y, _sz, _co, _co_border, self.node_opacity)
 
                                         # Track state
-                                        if track_state:
+                                        if self.track_state:
                                             _poly = Polygon([[x-_sz,y-_sz],
                                                              [x+_sz,y-_sz],
                                                              [x+_sz,y+_sz],
@@ -1501,7 +1503,10 @@ class RTLinkNodeMixin(object):
         #
         # renderSVG() - render as SVG
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
+            if self.track_state:
+                self.geom_to_df = {}
+
             # Determine geometry
             if self.view_window is None:
                 self.__calculateGeometry__()
@@ -1523,8 +1528,8 @@ class RTLinkNodeMixin(object):
 
             # Render convex hulls, links, and then nodes
             svg += self.__renderConvexHull__()
-            svg += self.__renderLinks__(track_state)
-            svg += self.__renderNodes__(track_state)
+            svg += self.__renderLinks__()
+            svg += self.__renderNodes__()
 
             # Defer render
             for x in self.defer_render:

@@ -313,6 +313,7 @@ class RTTemporalBarChartMixin(object):
 
                          # --------------------------- # rendering specific params
                          
+                         track_state          = False, # state tracking for interactive filtering
                          x_view               = 0,     # x offset for the view
                          y_view               = 0,     # y offset for the view
                          w                    = 512,   # width of the view
@@ -395,6 +396,8 @@ class RTTemporalBarChartMixin(object):
             self.sm_params             = kwargs['sm_params'].copy()
             self.sm_x_axis_independent = kwargs['sm_x_axis_independent']
             self.sm_y_axis_independent = kwargs['sm_y_axis_independent']
+
+            self.track_state           = kwargs['track_state']
             self.x_view                = kwargs['x_view']
             self.y_view                = kwargs['y_view']
             self.w                     = kwargs['w']
@@ -637,7 +640,10 @@ class RTTemporalBarChartMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
+            if self.track_state:
+                self.geom_to_df = {}
+
             # Determine the color order (for each bar) // Copied in whole from histogram method
             if self.global_color_order is None:
                 self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
@@ -796,7 +802,7 @@ class RTTemporalBarChartMixin(object):
                     svg += self.rt_self.colorizeBar(k_df, self.global_color_order, self.color_by, self.count_by, self.count_by_set, x, y_baseline, px, bar_w, False)
                     self.ts_to_x[k] = (x,bar_w)
 
-                    if track_state:
+                    if self.track_state:
                         _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-px],[x,y_baseline-px]])
                         self.geom_to_df[_poly] = k_df
 
@@ -819,7 +825,7 @@ class RTTemporalBarChartMixin(object):
                     svg += self.rt_self.renderBoxPlotColumn(self.style, k_df, _cx, yT, group_by_max, group_by_min, _bar_w, self.count_by, self.color_by, self.cap_swarm_at)
                     self.ts_to_x[k] = (x,bar_w)
 
-                    if track_state:
+                    if self.track_state:
                         _poly = Polygon([[x,y_baseline],[x+bar_w,y_baseline],[x+bar_w,y_baseline-max_bar_h],[x,y_baseline-max_bar_h]])
                         self.geom_to_df[_poly] = k_df
 

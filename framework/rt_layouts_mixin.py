@@ -579,11 +579,12 @@ class RTLayoutsMixin(object):
                 
                 # Create the custom params for the widget creation
                 my_params = kwargs.copy()
-                my_params['df']     = df
-                my_params['x_view'] = widget_loc[0]
-                my_params['y_view'] = widget_loc[1]
-                my_params['w']      = widget_loc[2]
-                my_params['h']      = widget_loc[3]
+                my_params['df']          = df
+                my_params['x_view']      = widget_loc[0]
+                my_params['y_view']      = widget_loc[1]
+                my_params['w']           = widget_loc[2]
+                my_params['h']           = widget_loc[3]
+                my_params['track_state'] = track_state
                 
                 # If the spec_tuple is actually a tuple, they copy those parts into the params as well
                 # - these should override any passed from this method (the kwargs.copy())
@@ -613,7 +614,6 @@ class RTLayoutsMixin(object):
                 # Resolve the method name and invoke it adding to the svg string
                 _func      = getattr(self, widget_method)
                 _instance  = _func(**my_params)
-                _instance.renderSVG(track_state=True)      # Force an initial render to track state
 
                 _px0,_py0,_px1,_py1 = my_params['x_view'], my_params['y_view'], my_params['x_view']+my_params['w'], my_params['y_view']+my_params['h']
                 _instance_bounds = Polygon([[_px0,_py0],[_px0,_py1],[_px1,_py1],[_px1,_py0]])
@@ -694,11 +694,12 @@ class RTLayoutsMixin(object):
                 
             # Create the custom params for the widget creation
             my_params = kwargs.copy()
-            my_params['df']     = df
-            my_params['x_view'] = h_gap + _x0 * _xppt + widget_h_gap
-            my_params['y_view'] = v_gap + _y0 * _yppt + widget_v_gap
-            my_params['w']      = _tile_w * _xppt - 2 * widget_h_gap
-            my_params['h']      = _tile_h * _yppt - 2 * widget_v_gap
+            my_params['df']          = df
+            my_params['x_view']      = h_gap + _x0 * _xppt + widget_h_gap
+            my_params['y_view']      = v_gap + _y0 * _yppt + widget_v_gap
+            my_params['w']           = _tile_w * _xppt - 2 * widget_h_gap
+            my_params['h']           = _tile_h * _yppt - 2 * widget_v_gap
+            my_params['track_state'] = track_state
                 
             # If the spec_tuple is actually a tuple, then copy those parts into the params as well
             # - these should override any passed from this method (the kwargs.copy())
@@ -728,7 +729,6 @@ class RTLayoutsMixin(object):
             # Resolve the method name and invoke it adding to the svg string
             _func      = getattr(self, widget_method)
             _instance  = _func(**my_params)
-            _instance.renderSVG(track_state=True)      # Force an initial render to track state
             
             _px0,_py0,_px1,_py1 = my_params['x_view'], my_params['y_view'], my_params['x_view']+my_params['w'], my_params['y_view']+my_params['h']
             _instance_bounds = Polygon([[_px0,_py0],[_px0,_py1],[_px1,_py1],[_px1,_py0]])
@@ -803,7 +803,7 @@ class RTLayoutsMixin(object):
         #
         # renderSVG() - render the SVG representation of the panel control
         #
-        def renderSVG(self, track_state=False):
+        def renderSVG(self):
             self.geom_to_df = {}
             _svg_ = f'<svg id="panel_control" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
             bg_color = self.rt_self.co_mgr.getTVColor('background','default')

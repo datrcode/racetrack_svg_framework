@@ -77,6 +77,7 @@ class RTPieChartMixin(object):
                  style                = 'pie',     # 'pie' or 'waffle'
                  min_render_angle_deg = 5,         # minimum render angle
                  # ------------------------------- # visualization geometry / etc.
+                 track_state          = False,     # track state for interactive filtering
                  x_view               = 0,         # x offset for the view
                  y_view               = 0,         # y offset for the view
                  x_ins                = 3,         # side inserts
@@ -114,6 +115,7 @@ class RTPieChartMixin(object):
             self.count_by_set         = kwargs['count_by_set']
             self.style                = kwargs['style']
             self.min_render_angle_deg = kwargs['min_render_angle_deg']
+            self.track_state          = kwargs['track_state']
             self.x_view               = kwargs['x_view']
             self.y_view               = kwargs['y_view']
             self.x_ins                = kwargs['x_ins']
@@ -160,7 +162,10 @@ class RTPieChartMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
+            if self.track_state:
+                self.geom_to_df = {}
+
             # Color ordering
             if self.global_color_order is None:
                 self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
@@ -188,9 +193,9 @@ class RTPieChartMixin(object):
                 # Render the different styles
                 if self.style   == 'pie':
                     if   self.rt_self.isPandas(self.df):
-                        svg += self.__renderPieStyle_pandas__(w_usable, h_usable, track_state)
+                        svg += self.__renderPieStyle_pandas__(w_usable, h_usable)
                     elif self.rt_self.isPolars(self.df):
-                        svg += self.__renderPieStyle_polars__(w_usable, h_usable, track_state)
+                        svg += self.__renderPieStyle_polars__(w_usable, h_usable)
                     else:
                         raise Exception("RTPieChart() - only pandas and polars supported")
                 elif self.style == 'waffle':
@@ -268,7 +273,7 @@ class RTPieChartMixin(object):
         #
         # Render the standard pie chart style
         #
-        def __renderPieStyle_polars__(self, w_usable, h_usable, track_state):
+        def __renderPieStyle_polars__(self, w_usable, h_usable):
             cx = self.x_ins + w_usable/2
             cy = self.y_ins + h_usable/2
             if w_usable < h_usable:
@@ -301,18 +306,18 @@ class RTPieChartMixin(object):
                         else:
                             svg += f'<path d="{arcPath(cx,cy,r,deg,deg_end)}" fill="{_co}" stroke-opacity="0.0" />'
 
-                            if track_state:
+                            if self.track_state:
                                 _poly_points = [[cx,cy]]
                                 for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
                                     _poly_angle = pi * (_poly_degree-90) / 180.0 
                                     _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
                                 self.geom_to_df[Polygon(_poly_points)] = tracking_gb[cb_bin]
                         deg = deg_end
-                    elif track_state:
+                    elif self.track_state:
                         not_rendered.append(tracking_gb[cb_bin])
                 
                 # For any arcs that weren't long enough allocate them to the end
-                if len(not_rendered) > 0 and track_state:
+                if len(not_rendered) > 0 and self.track_state:
                     deg_end = 359
                     _poly_points = [[cx,cy]]
                     for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
@@ -325,7 +330,7 @@ class RTPieChartMixin(object):
         #
         # Render the standard pie chart style
         #
-        def __renderPieStyle_pandas__(self, w_usable, h_usable, track_state):
+        def __renderPieStyle_pandas__(self, w_usable, h_usable):
             cx = self.x_ins + w_usable/2
             cy = self.y_ins + h_usable/2
             if w_usable < h_usable:
@@ -357,7 +362,7 @@ class RTPieChartMixin(object):
                     total_i = self.count_by
 
                 # Create a groupby just for state tracking
-                if track_state:
+                if self.track_state:
                     tracking_gb = self.df.groupby(self.color_by)
                     
                 # Common render code
@@ -376,18 +381,18 @@ class RTPieChartMixin(object):
                         else:
                             svg += f'<path d="{arcPath(cx,cy,r,deg,deg_end)}" fill="{_co}" stroke-opacity="0.0" />'
 
-                            if track_state:
+                            if self.track_state:
                                 _poly_points = [[cx,cy]]
                                 for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
                                     _poly_angle = pi * (_poly_degree-90) / 180.0 
                                     _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
                                 self.geom_to_df[Polygon(_poly_points)] = tracking_gb.get_group(cb_bin)
                         deg = deg_end
-                    elif track_state:
+                    elif self.track_state:
                         not_rendered.append(tracking_gb.get_group(cb_bin))
                 
                 # For any arcs that weren't long enough allocate them to the end
-                if len(not_rendered) > 0 and track_state:
+                if len(not_rendered) > 0 and self.track_state:
                     deg_end = 359
                     _poly_points = [[cx,cy]]
                     for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):

@@ -72,6 +72,7 @@ class RTWordCloudMixin(object):
                   # ------------------------------- # visualization geometry / etc.
                   count_by             = None,      # for compatibility... no use... 
                   color_by             = None,      # for compatibility... no use...
+                  track_state          = False,     # for compatibility... no use...
                   x_view               = 0,         # x offset for the view
                   y_view               = 0,         # y offset for the view
                   x_ins                = 3,         # side inserts
@@ -132,7 +133,7 @@ class RTWordCloudMixin(object):
         #
         # renderSVG() - create the SVG
         #
-        def renderSVG(self, just_calc_max=False, track_state=False):
+        def renderSVG(self, just_calc_max=False):
             if just_calc_max:
                 return float('inf') # Bad idea?  probably... shouldn't be used really...
 
