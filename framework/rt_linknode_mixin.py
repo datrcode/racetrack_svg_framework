@@ -1485,6 +1485,7 @@ class RTLinkNodeMixin(object):
         # - zoom in or out based on the specified coordinate.
         #
         def applyScrollEvent(self, scroll_amount, coordinate=None):
+            scroll_amount = scroll_amount / 1000.0
             if coordinate is not None:
                 coord_wx = self.wx0 + (self.wx1 - self.wx0) * coordinate[0] / self.w
                 coord_wy = self.wy0 + (self.wy1 - self.wy0) * coordinate[1] / self.h

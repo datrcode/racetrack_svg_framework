@@ -869,14 +869,33 @@ class RTComponentsLayout(object):
         return _svg_
 
     #
-    # Apply Scroll Event
+    # Apply Scroll Event / deprecated to move the event control back to the panel
     #
-    def applyScrollEvent(self, scroll_amount, coordinate):
+    def XXXapplyScrollEventXXX(self, scroll_amount, coordinate):
         for _poly_ in self.instance_lu.keys():
             bnds = _poly_.bounds
             if coordinate[0] >= bnds[0] and coordinate[0] <= bnds[2] and coordinate[1] >= bnds[1] and coordinate[1] <= bnds[3]:
                 return self.instance_lu[_poly_].applyScrollEvent(scroll_amount/10.0, (coordinate[0] - bnds[0], coordinate[1] - bnds[1]))
         return False
+    
+    #
+    # identifyComponent() - identify the component that the coordinate falls within
+    # - return the component, the key for this component, and the modified/relative coordinate adjusted to the component
+    #
+    def identifyComponent(self, coordinate):
+        for _poly_ in self.instance_lu.keys():
+            bnds = _poly_.bounds
+            if coordinate[0] >= bnds[0] and coordinate[0] <= bnds[2] and coordinate[1] >= bnds[1] and coordinate[1] <= bnds[3]:
+                return self.instance_lu[_poly_], _poly_, (coordinate[0] - bnds[0], coordinate[1] - bnds[1])
+        return None, None, None
+
+    #
+    # componentInstance() - return the component instance for the specified key
+    # - used in conjuction with the key returned in identifyComponent()
+    # - and should work across layers in the interactive stack
+    #
+    def componentInstance(self, k):
+        return self.instance_lu[k] if k in self.instance_lu.keys() else None
 
     #
     # Return Overlapping Dataframes

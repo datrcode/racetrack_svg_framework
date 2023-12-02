@@ -20,13 +20,50 @@ __name__ = 'rt_component'
 # - Other than documentation, does this actually do any checking?
 #
 class RTComponent(object):
+
+        # ===========================================================================================
+        # Rendering
+        # ===========================================================================================
+
         #
         # SVG Representation Renderer
         # - recommended that this method use a saved version of the last render:
         #   - self.last_render
         # - return value is an svg string
+        # - for Jupyter integration, SVG must have the xmlns XML tag
         #
         def _repr_svg_(self):
+            pass
+
+        #
+        # renderSVG() - create the SVG Rendering
+        # - recommend that this method save the rendering into the last_render member variable.
+        # - return value is an svg string
+        #
+        def renderSVG(self, just_calc_max=False):
+            pass
+
+        # ===========================================================================================
+        # Feature Vector Related Methods
+        # ===========================================================================================
+
+        #
+        # smallMultipleFeatureVector()
+        # ... feature vector for comparison with other small multiple instances of this class
+        #
+        def smallMultipleFeatureVector(self):
+            pass
+
+        # ===========================================================================================
+        # Interactivity Related Methods
+        # ===========================================================================================
+
+        #
+        # Determine which dataframe geometries overlap with a specific
+        # - to_intersect should be a shapely shape
+        # - return value is a pandas dataframe
+        #
+        def overlappingDataFrames(self, to_intersect):
             pass
 
         #
@@ -41,24 +78,9 @@ class RTComponent(object):
              return False
 
         #
-        # renderSVG() - create the SVG Rendering
-        # - recommend that this method save the rendering into the last_render member variable.
-        # - return value is an svg string
+        # applyViewConfiguration()
+        # - apply the view configuration from another RTComponent (of the same type)
+        # - return True if the view actually changed (and needs a re-render)
         #
-        def renderSVG(self, just_calc_max=False):
-            pass
-
-        #
-        # smallMultipleFeatureVector()
-        # ... feature vector for comparison with other small multiple instances of this class
-        #
-        def smallMultipleFeatureVector(self):
-            pass
-
-        #
-        # Determine which dataframe geometries overlap with a specific
-        # - to_intersect should be a shapely shape
-        # - return value is a pandas dataframe
-        #
-        def overlappingDataFrames(self, to_intersect):
-            pass
+        def applyViewConfiguration(self, other):
+             return False

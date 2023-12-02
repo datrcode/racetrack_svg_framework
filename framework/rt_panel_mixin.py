@@ -223,7 +223,7 @@ class RTReactiveHTML(ReactiveHTML):
 
         # Watch for callbacks
         self.param.watch(self.applyDragOp,  'drag_op_finished')
-        self.param.watch(self.applyWheelOp, 'wheel_rots')
+        self.param.watch(self.applyWheelOp, 'wheel_op_finished')
 
         # Viz companions for sync
         self.companions = []
@@ -251,17 +251,32 @@ class RTReactiveHTML(ReactiveHTML):
     #
     # Wheel operation state & method
     #
-    wheel_x    = param.Integer(default=0)
-    wheel_y    = param.Integer(default=0)
-    wheel_rots = param.Integer(default=0) # Mult by 10 and rounded...
+    wheel_x           = param.Integer(default=0)
+    wheel_y           = param.Integer(default=0)
+    wheel_rots        = param.Integer(default=0) # Mult by 10 and rounded...
+    wheel_op_finished = param.Boolean(default=False)
     async def applyWheelOp(self,event):
         self.lock.acquire()
         try:
-            x, y, rots = self.wheel_x, self.wheel_y, self.wheel_rots/10.0
-            if rots != 0:
-                if self.dfs_layout[self.df_level].applyScrollEvent(scroll_amount=rots, coordinate=(x,y)):
-                    self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_()
+            if self.wheel_op_finished:
+                x, y, rots = self.wheel_x, self.wheel_y, self.wheel_rots
+                if rots != 0:
+                    # Find the compnent where the scroll event occurred
+                    _comp_ , _key_ , _adj_coordinate_ = self.dfs_layout[self.df_level].identifyComponent((x,y))
+                    if _comp_ is not None:
+                        if _comp_.applyScrollEvent(rots, _adj_coordinate_):
+                            # Re-render current
+                            self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_()
+                            # Propagate the view configuration to the same component across the dataframe stack
+                            for i in range(len(self.dfs_layout)):
+                                if i != self.df_level:
+                                    _comp_stack_ = self.dfs_layout[i].componentInstance(_key_)
+                                    if _comp_stack_ is not None:
+                                        _comp_stack_.applyViewConfiguration(_comp_)
+
         finally:
+            self.wheel_op_finished = False
+            self.wheel_rots        = 0            
             self.lock.release()
 
     #
@@ -411,9 +426,10 @@ class RTReactiveHTML(ReactiveHTML):
         """,
         'myonmousewheel':"""
             event.preventDefault();
-            data.wheel_x    = event.offsetX;
-            data.wheel_y    = event.offsetY;
-            data.wheel_rots = Math.round(10*event.deltaY);
+            data.wheel_x           = event.offsetX;
+            data.wheel_y           = event.offsetY;
+            data.wheel_rots        = Math.round(10*event.deltaY);
+            data.wheel_op_finished = true;
         """,
         'mod_inner':"""
             mod.innerHTML = data.mod_inner;
