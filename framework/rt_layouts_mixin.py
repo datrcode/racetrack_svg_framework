@@ -873,7 +873,7 @@ class RTComponentsLayout(object):
     #
     def applyViewConfigurations(self, ref_layout):
         for _poly_ in self.instance_lu.keys():
-            self.instance_lu[_poly_].applyViewConfigurations(ref_layout.instance_lu[_poly_])
+            self.instance_lu[_poly_].applyViewConfiguration(ref_layout.instance_lu[_poly_])
 
     #
     # identifyComponent() - identify the component that the coordinate falls within
