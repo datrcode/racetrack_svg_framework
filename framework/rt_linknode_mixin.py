@@ -1494,12 +1494,30 @@ class RTLinkNodeMixin(object):
             return True
 
         #
-        # Set the view window
+        # applyViewConfiguration()
+        # - adjust the view window based on the other view window
+        # - return True if the view actually changed (and needs a re-render)
+        #
+        def applyViewConfiguration(self, other):
+             other_view_window = other.getViewWindow()
+             if other_view_window != self.getViewWindow():
+                 self.setViewWindow(other_view_window)
+                 return True
+             return False
+
+        #
+        # setViewWindow() - Set the view window and set flag to re-render on next call to _repr_svg_()
         # - will force a re-render on next call to _repr_svg_()
         #         
         def setViewWindow(self, view_window):
             self.view_window = view_window
             self.last_render = None
+        
+        #
+        # getViewWindow() - return the current view window
+        #
+        def getViewWindow(self):
+            return self.view_window
 
         #
         # renderSVG() - render as SVG

@@ -212,7 +212,8 @@ class RTReactiveHTML(ReactiveHTML):
                             """ onmousewheel="${script('myonmousewheel')}" """                       + \
                             '/>'                                                                     + \
                          '</svg>'
-        self.dfs_layout = [self.__createLayout__(df)]
+        self.dfs_layout = []
+        self.dfs_layout.append(self.__createLayout__(df))
         self.mod_inner = self.dfs_layout[0]._repr_svg_()
 
         # - Create a lock for threading
@@ -232,9 +233,12 @@ class RTReactiveHTML(ReactiveHTML):
     # __createLayout__() - create the layout for the specified dataframe
     #
     def __createLayout__(self, __df__):
-        return self.rt_self.layout(self.spec, __df__, w=self.w, h=self.h, h_gap=self.h_gap, v_gap=self.v_gap,
-                                   widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap,
-                                   track_state=True, rt_reactive_html=self, **self.rt_params)
+        _layout_ = self.rt_self.layout(self.spec, __df__, w=self.w, h=self.h, h_gap=self.h_gap, v_gap=self.v_gap,
+                                       widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap,
+                                       track_state=True, rt_reactive_html=self, **self.rt_params)
+        if len(self.dfs_layout) > 1: # Doesn't exist at the very first layout level
+            _layout_.applyViewConfigurations(self.dfs_layout[0]) # Apply any adjustments to the views that have occurred
+        return _layout_
     #
     # Return the visible dataframe.
     #

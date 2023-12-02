@@ -869,15 +869,12 @@ class RTComponentsLayout(object):
         return _svg_
 
     #
-    # Apply Scroll Event / deprecated to move the event control back to the panel
+    # applyViewConfigurations() - apply view configurations based on a reference layout.
     #
-    def XXXapplyScrollEventXXX(self, scroll_amount, coordinate):
+    def applyViewConfigurations(self, ref_layout):
         for _poly_ in self.instance_lu.keys():
-            bnds = _poly_.bounds
-            if coordinate[0] >= bnds[0] and coordinate[0] <= bnds[2] and coordinate[1] >= bnds[1] and coordinate[1] <= bnds[3]:
-                return self.instance_lu[_poly_].applyScrollEvent(scroll_amount/10.0, (coordinate[0] - bnds[0], coordinate[1] - bnds[1]))
-        return False
-    
+            self.instance_lu[_poly_].applyViewConfigurations(ref_layout.instance_lu[_poly_])
+
     #
     # identifyComponent() - identify the component that the coordinate falls within
     # - return the component, the key for this component, and the modified/relative coordinate adjusted to the component
