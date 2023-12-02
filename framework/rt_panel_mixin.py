@@ -236,7 +236,7 @@ class RTReactiveHTML(ReactiveHTML):
         _layout_ = self.rt_self.layout(self.spec, __df__, w=self.w, h=self.h, h_gap=self.h_gap, v_gap=self.v_gap,
                                        widget_h_gap=self.widget_h_gap, widget_v_gap=self.widget_v_gap,
                                        track_state=True, rt_reactive_html=self, **self.rt_params)
-        if len(self.dfs_layout) > 1: # Doesn't exist at the very first layout level
+        if len(self.dfs_layout) > 0: # Doesn't exist at the very first layout level
             _layout_.applyViewConfigurations(self.dfs_layout[0]) # Apply any adjustments to the views that have occurred
         return _layout_
     #
