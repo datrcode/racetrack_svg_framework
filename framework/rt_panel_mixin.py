@@ -405,16 +405,18 @@ class RTReactiveHTML(ReactiveHTML):
             }
         """,
         'myonmousedown':"""
-            state.x0_drag  = event.offsetX;
-            state.y0_drag  = event.offsetY;
-            state.x1_drag  = event.offsetX+1;
-            state.y1_drag  = event.offsetY+1;
-            state.drag_op  = true;
-            state.shiftkey = event.shiftKey;
-            self.myUpdateDragRect();
+            if (event.button == 0) {
+                state.x0_drag  = event.offsetX;
+                state.y0_drag  = event.offsetY;
+                state.x1_drag  = event.offsetX+1;
+                state.y1_drag  = event.offsetY+1;
+                state.drag_op  = true;
+                state.shiftkey = event.shiftKey;
+                self.myUpdateDragRect();
+            }
         """,
         'myonmouseup':"""
-            if (state.drag_op) {
+            if (state.drag_op && event.button == 0) {
                 state.x1_drag  = event.offsetX;
                 state.y1_drag  = event.offsetY;
                 state.shiftkey = event.shiftKey;
