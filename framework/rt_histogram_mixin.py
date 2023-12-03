@@ -177,6 +177,7 @@ class RTHistogramMixin(object):
         # ... looks like we don't know the list length... so we can't bound the calc by that...
         #
         def applyScrollEvent(self, scroll_amount, coordinate=None):
+            scroll_amount /= 100.0
             if (self.first_line_i+scroll_amount) >= 0:
                 self.first_line_i += scroll_amount
             else:
