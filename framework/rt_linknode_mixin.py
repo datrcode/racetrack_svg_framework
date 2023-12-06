@@ -413,6 +413,17 @@ class RTLinkNodeMixin(object):
                  convex_hull_labels       = False, # draw a label for the convex hull in the center of the convex hull
                  convex_hull_stroke_width = None,  # Stroke width for the convex hull -- if None, will not be drawn...
 
+                 # -----------------------     # background polygons // copied mostly from the xy implementation
+
+                 bg_shape_lu              = None,       # lookup for background shapes -- key will be used for varying colors (if bg_shape_label_color == 'vary')
+                                                        # ['key'] = [(x0,y0),(x1,y1),...] OR
+                                                        # ['key'] = svg path description
+                 bg_shape_label_color     = None,       # None = no label, 'vary', lookup to hash color, or a hash color
+                 bg_shape_opacity         = 1.0,        # None (== 0.0), number, lookup to opacity
+                 bg_shape_fill            = None,       # None, 'vary', lookup to hash color, or a hash color
+                 bg_shape_stroke_w        = 1.0,        # None, number, lookup to width
+                 bg_shape_stroke          = 'default',  # None, 'default', lookup to hash color, or a hash color
+
                  # -----------------------     # small multiple options
 
                  sm_type               = None,   # should be the method name // similar to the smallMultiples method
@@ -630,6 +641,14 @@ class RTLinkNodeMixin(object):
             self.convex_hull_opacity        = kwargs['convex_hull_opacity']
             self.convex_hull_labels         = kwargs['convex_hull_labels']
             self.convex_hull_stroke_width   = kwargs['convex_hull_stroke_width']
+
+            self.bg_shape_lu                = kwargs['bg_shape_lu']           # Copied from xy implementation --vvv
+            self.bg_shape_label_color       = kwargs['bg_shape_label_color']
+            self.bg_shape_opacity           = kwargs['bg_shape_opacity']
+            self.bg_shape_fill              = kwargs['bg_shape_fill']
+            self.bg_shape_stroke_w          = kwargs['bg_shape_stroke_w']
+            self.bg_shape_stroke            = kwargs['bg_shape_stroke']       # Copied from xy implementation --^^^
+
             self.sm_type                    = kwargs['sm_type']
             self.sm_w                       = kwargs['sm_w']
             self.sm_h                       = kwargs['sm_h']
@@ -1473,6 +1492,49 @@ class RTLinkNodeMixin(object):
             return svg
 
         #
+        # __renderBackgroundShapes__() - render background shapes
+        # - mostly a copy of the xy implementation
+        #
+        def __renderBackgroundShapes__(self):
+            _svg_ = ''
+            # Draw the background shapes
+            if self.bg_shape_lu is not None:
+                _bg_shape_labels = []
+                for k in self.bg_shape_lu.keys():
+                    shape_desc = self.bg_shape_lu[k]
+                    if   type(shape_desc) == str:   # path description
+                        _shape_svg, _label_svg = self.rt_self.__transformPathDescription__(k,
+                                                                                           shape_desc,
+                                                                                           self.xT,
+                                                                                           self.yT,
+                                                                                           self.bg_shape_label_color,
+                                                                                           self.bg_shape_opacity,
+                                                                                           self.bg_shape_fill,
+                                                                                           self.bg_shape_stroke_w,
+                                                                                           self.bg_shape_stroke, self.txt_h)
+                    elif type(shape_desc) == list:  # list of tuple pairs
+                        _shape_svg, _label_svg = self.rt_self.__transformPointsList__(k,
+                                                                                      shape_desc,
+                                                                                      self.xT,
+                                                                                      self.yT,
+                                                                                      self.bg_shape_label_color,
+                                                                                      self.bg_shape_opacity,
+                                                                                      self.bg_shape_fill,
+                                                                                      self.bg_shape_stroke_w,
+                                                                                      self.bg_shape_stroke, self.txt_h)
+                    else:
+                        raise Exception(f'RTLinkNode.renderSVG() - type "{type(shape_desc)}" as background lookup')
+
+                    _svg_ += _shape_svg
+                    _bg_shape_labels.append(_label_svg) # Defer render
+
+                # Render the labels
+                for _label_svg in _bg_shape_labels:
+                    _svg_ += _label_svg
+            
+            return _svg_
+
+        #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
@@ -1545,7 +1607,8 @@ class RTLinkNodeMixin(object):
             # Elements to render after nodes (labels, in this case)
             self.defer_render = []
 
-            # Render convex hulls, links, and then nodes
+            # Render background shapes, convex hulls, links, and then nodes
+            svg += self.__renderBackgroundShapes__()
             svg += self.__renderConvexHull__()
             svg += self.__renderLinks__()
             svg += self.__renderNodes__()
