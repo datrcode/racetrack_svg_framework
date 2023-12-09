@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-from shapely.geometry              import Point, Polygon
+from shapely.geometry              import Point, Polygon, LineString, GeometryCollection, MultiLineString
 from shapely.geometry.multipolygon import MultiPolygon
 from math import sqrt,acos
 
@@ -136,6 +136,7 @@ class RTGeometryMixin(object):
     #
     # Converts a shapely polygon to an SVG path...
     # ... assumes that the ordering (CW, CCW) of both the exterior and interior points is correct...
+    # - if there's no shape in _poly, will return None
     #
     def shapelyPolygonToSVGPathDescription(self, _poly):
         if type(_poly) == MultiPolygon:
@@ -145,13 +146,25 @@ class RTGeometryMixin(object):
                     path_str += ' '
                 path_str += self.shapelyPolygonToSVGPathDescription(_subpoly)
             return path_str
-        else:
+        elif type(_poly) == LineString:
+            coords = _poly.coords
+            path_str = f'M {coords[0][0]} {coords[0][1]} '
+            for i in range(1,len(coords)):
+                path_str += f'L {coords[i][0]} {coords[i][1]} '
+            return path_str
+        elif type(_poly) == MultiLineString:
+            path_str = ''
+            for _subline in _poly.geoms:
+                if len(path_str) > 0:
+                    path_str += ' '
+                path_str += self.shapelyPolygonToSVGPathDescription(_subline)
+            return path_str
+        elif type(_poly) == Polygon:
             # Draw the exterior shape first
             xx, yy = _poly.exterior.coords.xy
             path_str = f'M {xx[0]} {yy[0]} '
             for i in range(1,len(xx)):
                 path_str += f' L {xx[i]} {yy[i]}'
-
             # Determine if the interior exists... and then render that...
             interior_len = len(list(_poly.interiors))
             if interior_len > 0:
@@ -161,6 +174,12 @@ class RTGeometryMixin(object):
                     for i in range(1,len(xx)):
                         path_str += f' L {xx[i]} {yy[i]}'
             return path_str + ' Z'
+        elif type(_poly) == GeometryCollection:
+            if len(_poly.geoms) > 0:
+                raise Exception('shapelyPolygonToSVGPahtDescription() - geometrycollection not empty')    
+            return None
+        else:
+            raise Exception('shapelyPolygonToSVGPahtDescription() - cannot process type', type(_poly))
 
     #
     # Determine counterclockwise angle
