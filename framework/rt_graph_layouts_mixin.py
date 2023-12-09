@@ -270,13 +270,27 @@ class RTGraphLayoutsMixin(object):
             return _max_depth + 1
 
     #
+    # dagLeavesOnly() - for a directed acycle graph, return a set of the leaves
+    #
+    def dagLeavesOnly(self, G):
+        leaves = set()
+        for node in G.nodes():
+            nbor_count = 0
+            for nbor in G.neighbors(node):
+                nbor_count += 1
+            if nbor_count == 1:
+                leaves.add(node)
+        return leaves
+
+    #
     # hyperTreeLayout()
     # - create a hypertree layout
     #
     def hyperTreeLayout(self,
-                        _graph,                # networkx graph
-                        roots          = None, # root(s) to use... if not set, will be calculated
-                        bounds_percent = 0.1): # for tree map positioning
+                        _graph,                        # networkx graph
+                        roots                 = None,  # root(s) to use... if not set, will be calculated
+                        touch_up_with_springs = False, # touch up the center of the layout with a spring layout
+                        bounds_percent        = 0.1):  # for tree map positioning
         # Make sure root is a list
         if type(roots) != list:
             roots = [roots]
@@ -334,6 +348,14 @@ class RTGraphLayoutsMixin(object):
             ht_state = HTState(angle=0.0, angle_inc=2.0*pi/self.__totalLeaves__(G, my_root, my_root, _leaf_count), max_depth=self.__treeDepth__(G,my_root,my_root))
             for x in G[my_root]:
                 self.__hyperTreePlaceChildren__(pos, G, my_root, my_root, 0, ht_state, 0, 0, _child_count, _leaf_count)
+            
+            # Touch up center w/ spring layout
+            if touch_up_with_springs:
+                dists   = dict(nx.all_pairs_shortest_path_length(G))
+                leaves  = self.dagLeavesOnly(G)
+                centers = set(G.nodes()) - leaves
+                pos = self.springLayout(G, pos, centers, iterations=20, spring_exp=0.1, only_sel_adj=True, dists=dists)
+                # pos = self.springLayout(G, pos, leaves,  iterations=200, spring_exp=0.1, only_sel_adj=True, dists=dists)
 
         # Separate the connected components
         if len(S) > 1:
@@ -355,10 +377,11 @@ class RTGraphLayoutsMixin(object):
                                    cen_y,
                                    _child_count,
                                    _leaf_count):
+        _R_ = 8.0
         # Place Leaves Directly
         if _child_count[_node] == 0:
-            pos[_node] = [cen_x + _depth * cos(ht_state.angle) / ht_state.max_depth,
-                          cen_y + _depth * sin(ht_state.angle) / ht_state.max_depth]
+            pos[_node] = [cen_x + _depth * _R_ * cos(ht_state.angle) / ht_state.max_depth,
+                          cen_y + _depth * _R_ * sin(ht_state.angle) / ht_state.max_depth]
             ht_state.angle += ht_state.angle_inc
 
         # Interior Node...
@@ -374,8 +397,8 @@ class RTGraphLayoutsMixin(object):
                                                 cen_x, cen_y, _child_count, _leaf_count)
             end_angle = ht_state.angle
             half_angle = (begin_angle + end_angle)/2
-            pos[_node] = [cen_x + _depth * cos(half_angle) / ht_state.max_depth,
-                          cen_y + _depth * sin(half_angle) / ht_state.max_depth]
+            pos[_node] = [cen_x + _depth * _R_ * cos(half_angle) / ht_state.max_depth,
+                          cen_y + _depth * _R_ * sin(half_angle) / ht_state.max_depth]
 
 
     #
