@@ -220,7 +220,7 @@ class RTDataManipMixin(object):
             _substring = _substring.lower()
         for x in _row:
             if _match_case == False:
-                x = x.lower()
+                x = str(x).lower()
             if _substring in x:
                 return True
         return False

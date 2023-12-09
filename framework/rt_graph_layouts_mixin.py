@@ -275,8 +275,11 @@ class RTGraphLayoutsMixin(object):
     #
     def hyperTreeLayout(self,
                         _graph,                # networkx graph
-                        root           = None, # root(s) to use... if not set, will be calculated
+                        roots          = None, # root(s) to use... if not set, will be calculated
                         bounds_percent = 0.1): # for tree map positioning
+        # Make sure root is a list
+        if type(roots) != list:
+            roots = [roots]
 
         # Separate graph into connected components
         _graph = nx.to_undirected(_graph)
@@ -298,7 +301,11 @@ class RTGraphLayoutsMixin(object):
 
             # Determine the root if not set
             _child_count = {}
-            my_root = root
+            my_root = None
+            if roots is not None:
+                for possible_root in roots:
+                    if possible_root in G:
+                        my_root = possible_root
             
             # Find the best root -- with a balanced tree
             # ... run by default since we need all the subtree counts calculated...
