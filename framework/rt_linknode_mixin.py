@@ -1597,7 +1597,8 @@ class RTLinkNodeMixin(object):
                 
             # Coordinate transform lambdas
             self.xT = lambda __x__: self.x_ins + (self.w - 2*self.x_ins) * (__x__ - self.wx0)/(self.wx1-self.wx0)
-            self.yT = lambda __y__: self.y_ins + (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0)
+            self.yT = lambda __y__: (self.h + self.y_ins) - (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0)
+            # self.yT = lambda __y__: self.y_ins + (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0) # Original 2023-12-09
 
             # Start the SVG Frame
             svg = f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
