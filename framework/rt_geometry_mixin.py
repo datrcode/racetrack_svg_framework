@@ -136,29 +136,38 @@ class RTGeometryMixin(object):
     #
     # Create a background lookup table (and the fill table) from a shape file...
     # ... fill table is complicated because line strings don't require fill...
-    # ... utility method... works on two shape files (land & coastlines)...
+    # ... utility method... tested on five shape files (land, coastlines, states, counties, zipcodes)...
+    #
+    # clip_rect = 4-tuple of x0, y0, x1, y1
+    # fill      = hex color string
+    # naming    = naming function for series from geopandas dataframe
     #
     def createBackgroundLookupsFromShapeFile(self, 
                                              shape_file,
                                              clip_rect  = None, 
-                                             fill       = '#000000'):
+                                             fill       = '#000000',
+                                             naming     = None):
         import geopandas as gpd
-        gdf = gpd.read_file(shape_file)
+        gdf = gdf_orig = gpd.read_file(shape_file)
         if clip_rect is not None:
             gdf = gdf.clip_by_rect(clip_rect[0], clip_rect[1], clip_rect[2], clip_rect[3])
         bg_shape_lu, bg_fill_lu = {}, {}
         for i in range(len(gdf)):
+            _series_ = gdf_orig.iloc[i]
             if clip_rect is None:
                 _poly_ = gdf.iloc[i].geometry
             else:
                 _poly_ = gdf.iloc[i]
             d = self.shapelyPolygonToSVGPathDescription(_poly_)
             if d is not None:
-                bg_shape_lu[i] = d
+                _name_ = i
+                if naming is not None: # if naming function, call it with gpd series
+                    _name_ = naming(_series_, i)
+                bg_shape_lu[_name_] = d
                 if type(_poly_) == LineString or type(_poly_) == MultiLineString:
-                    bg_fill_lu[i] = None
+                    bg_fill_lu[_name_] = None
                 else:
-                    bg_fill_lu[i] = fill
+                    bg_fill_lu[_name_] = fill
         return bg_shape_lu, bg_fill_lu
 
     #
