@@ -134,11 +134,42 @@ class RTGeometryMixin(object):
         return False, 0.0, 0.0, 0.0, 0.0
     
     #
+    # Create a background lookup table (and the fill table) from a shape file...
+    # ... fill table is complicated because line strings don't require fill...
+    # ... utility method... works on two shape files (land & coastlines)...
+    #
+    def createBackgroundLookupsFromShapeFile(self, 
+                                             shape_file,
+                                             clip_rect  = None, 
+                                             fill       = '#000000'):
+        import geopandas as gpd
+        gdf = gpd.read_file(shape_file)
+        if clip_rect is not None:
+            gdf = gdf.clip_by_rect(clip_rect[0], clip_rect[1], clip_rect[2], clip_rect[3])
+        bg_shape_lu, bg_fill_lu = {}, {}
+        for i in range(len(gdf)):
+            if clip_rect is None:
+                _poly_ = gdf.iloc[i].geometry
+            else:
+                _poly_ = gdf.iloc[i]
+            d = self.shapelyPolygonToSVGPathDescription(_poly_)
+            if d is not None:
+                bg_shape_lu[i] = d
+                if type(_poly_) == LineString or type(_poly_) == MultiLineString:
+                    bg_fill_lu[i] = None
+                else:
+                    bg_fill_lu[i] = fill
+        return bg_shape_lu, bg_fill_lu
+
+    #
     # Converts a shapely polygon to an SVG path...
     # ... assumes that the ordering (CW, CCW) of both the exterior and interior points is correct...
     # - if there's no shape in _poly, will return None
     #
     def shapelyPolygonToSVGPathDescription(self, _poly):
+        #
+        # MultiPolygon -- just break into individual polygons...
+        #
         if type(_poly) == MultiPolygon:
             path_str = ''
             for _subpoly in _poly.geoms:
@@ -146,12 +177,18 @@ class RTGeometryMixin(object):
                     path_str += ' '
                 path_str += self.shapelyPolygonToSVGPathDescription(_subpoly)
             return path_str
+        #
+        # LineString -- segments
+        #
         elif type(_poly) == LineString:
             coords = _poly.coords
             path_str = f'M {coords[0][0]} {coords[0][1]} '
             for i in range(1,len(coords)):
                 path_str += f'L {coords[i][0]} {coords[i][1]} '
             return path_str
+        #
+        # Multiple LineStrings -- break into individual line strings
+        #
         elif type(_poly) == MultiLineString:
             path_str = ''
             for _subline in _poly.geoms:
@@ -159,6 +196,9 @@ class RTGeometryMixin(object):
                     path_str += ' '
                 path_str += self.shapelyPolygonToSVGPathDescription(_subline)
             return path_str
+        #
+        # Polygon -- base polygon processing
+        #
         elif type(_poly) == Polygon:
             # Draw the exterior shape first
             xx, yy = _poly.exterior.coords.xy
@@ -174,12 +214,15 @@ class RTGeometryMixin(object):
                     for i in range(1,len(xx)):
                         path_str += f' L {xx[i]} {yy[i]}'
             return path_str + ' Z'
+        #
+        # GeometryCollection -- unsure of what this actual is...
+        #
         elif type(_poly) == GeometryCollection:
-            if len(_poly.geoms) > 0:
-                raise Exception('shapelyPolygonToSVGPahtDescription() - geometrycollection not empty')    
+            if len(_poly.geoms) > 0: # Haven't seen this... so unsure of how to process
+                raise Exception('shapelyPolygonToSVGPathDescription() - geometrycollection not empty')    
             return None
         else:
-            raise Exception('shapelyPolygonToSVGPahtDescription() - cannot process type', type(_poly))
+            raise Exception('shapelyPolygonToSVGPathDescription() - cannot process type', type(_poly))
 
     #
     # Determine counterclockwise angle
