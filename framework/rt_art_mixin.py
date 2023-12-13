@@ -162,3 +162,43 @@ class RTArtMixin(object):
                f' <path d="M 60 35 C 50 10 20 10 20 35 L 12 20 L 20 35 L 35 25" stroke="{arrow_fg}" stroke-width="{arrow_stroke_width}" fill="{bg}" />' + \
                f' </svg>'
     
+    #
+    # iconResetView()
+    #
+    def iconResetView(self, x=0, y=0, w=200, h=200, fg='#000000', bg='none', stroke_width=3, x_ins=10, y_ins=10):
+        border_stroke_width = max(stroke_width - 1, 1)
+        return f'<svg x="{x}" y="{y}" width="{w}" height="{h}" viewbox="{-x_ins} {-y_ins} {100+x_ins} {100+y_ins}" xmlns="http://www.w3.org/2000/svg">' + \
+	        f'<path d="M  10   0 L  90   0   C   95    0   100   5   100   10 ' + \
+               f'         L 100  90 C 100  95  95  100   90   100 ' + \
+               f'         L  10 100 C   5 100   0   95    0    90  ' + \
+               f'         L   0  10 C   0   5   5    0   10     0" fill="{bg}" stroke="{fg}" stroke-width="{stroke_width}" /> ' + \
+               f'<path d="M 35 10 L 10 10 L 10 35 M 10 10 L 40 40" stroke="{fg}" stroke-width="{stroke_width+1}" fill="none"/> ' + \
+               f'<path d="M 65 90 L 90 90 L 90 65 M 90 90 L 60 60" stroke="{fg}" stroke-width="{stroke_width+1}" fill="none"/> ' + \
+               f'<path d="M 35 90 L 10 90 L 10 65 M 10 90 L 40 60" stroke="{fg}" stroke-width="{stroke_width+1}" fill="none"/> ' + \
+               f'<path d="M 65 10 L 90 10 L 90 35 M 90 10 L 60 40" stroke="{fg}" stroke-width="{stroke_width+1}" fill="none"/> ' + \
+               f'</svg>'
+    
+    #
+    # iconColorBy()
+    #
+    def iconColorBy(self, x=0, y=0, w=100, h=50, bg='none'):
+        return f'<svg x="{x}" y="{y}" width="{w}" height="{h}" viewbox="30 -5 10 50" xmlns="http://www.w3.org/2000/svg">' + \
+	        f'<path d="M 10 0  L 65 0 C 70 0 75 5 75 10  L 75 25 C 75 30 70 35 65 35  L 10 35 C 5 35 0 30 0 25  L 0 10 C 0 5 5 0 10 0"' + \
+               f' fill="{bg}" stroke="#000000" stroke-width="3" />' + \
+               f'<text x="10" y="28" font-size="28px" stroke="#ff0000" fill="#ff0000">R</text>' + \
+               f'<text x="28" y="28" font-size="28px" stroke="#00a000" fill="#00a000">G</text>' + \
+               f'<text x="48" y="28" font-size="28px" stroke="#0000ff" fill="#0000ff">B</text>' + \
+               f'</svg>'
+    
+    #
+    # iconCountBy()
+    #
+    def iconCountBy(self, x=0, y=0, w=100, h=50, bg='none'):
+        return f'<svg x="{x}" y="{y}" width="{w}" height="{h}" viewbox="30 -5 10 50" xmlns="http://www.w3.org/2000/svg">' + \
+	        f'<path d="M 10 0  L 65 0 C 70 0 75 5 75 10  L 75 25 C 75 30 70 35 65 35  L 10 35 C 5 35 0 30 0 25  L 0 10 C 0 5 5 0 10 0"' + \
+               f' fill="{bg}" stroke="#000000" stroke-width="3" />' + \
+               f'<text x="10" y="28" font-size="28px" stroke="#000000" fill="#202020">1</text>' + \
+               f'<text x="28" y="28" font-size="28px" stroke="#000000" fill="#202020">2</text>' + \
+               f'<text x="48" y="28" font-size="28px" stroke="#000000" fill="#202020">3</text>' + \
+               f'</svg>'
+
