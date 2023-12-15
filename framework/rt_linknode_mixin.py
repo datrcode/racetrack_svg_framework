@@ -1592,7 +1592,7 @@ class RTLinkNodeMixin(object):
             # Determine geometry
             if self.view_window is None:
                 self.__calculateGeometry__()
-                self.view_window = (self.wx0, self.wy0, self.wx1, self.wy1)
+                self.view_window = self.view_window_orig = (self.wx0, self.wy0, self.wx1, self.wy1)
             else:
                 self.wx0, self.wy0, self.wx1, self.wy1 = self.view_window
                 
