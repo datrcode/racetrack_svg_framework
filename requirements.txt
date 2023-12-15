@@ -1,3 +1,4 @@
+jupyter_bokeh
 networkx
 numpy
 pandas

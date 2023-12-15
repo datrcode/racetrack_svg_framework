@@ -599,6 +599,7 @@ class RTLinkNodeMixin(object):
             self.relationships              = kwargs['relationships']
             self.pos                        = kwargs['pos']
             self.view_window                = kwargs['view_window']
+            self.view_window_orig           = kwargs['view_window'] # Orig will be used for user requests to reset the view
             self.use_pos_for_bounds         = kwargs['use_pos_for_bounds']
             self.render_pos_context         = kwargs['render_pos_context']
             self.pos_context_opacity        = kwargs['pos_context_opacity']
@@ -1549,8 +1550,8 @@ class RTLinkNodeMixin(object):
         def applyScrollEvent(self, scroll_amount, coordinate=None):
             scroll_amount = scroll_amount / 1000.0
             if coordinate is not None:
-                coord_wx = self.wx0 + (self.wx1 - self.wx0) * coordinate[0] / self.w
-                coord_wy = self.wy0 + (self.wy1 - self.wy0) * coordinate[1] / self.h
+                coord_wx = self.xT_inv(coordinate[0])
+                coord_wy = self.yT_inv(coordinate[1])
                 coordinate = (coord_wx, coord_wy)
             self.setViewWindow(self.rt_self.viewWindowZoom(self.view_window, scroll_amount, coordinate))
             return True
@@ -1595,9 +1596,13 @@ class RTLinkNodeMixin(object):
             else:
                 self.wx0, self.wy0, self.wx1, self.wy1 = self.view_window
                 
-            # Coordinate transform lambdas
+            # Coordinate transform lambdas (and inverse lambdas)
             self.xT = lambda __x__: self.x_ins + (self.w - 2*self.x_ins) * (__x__ - self.wx0)/(self.wx1-self.wx0)
             self.yT = lambda __y__: (self.h + self.y_ins) - (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0)
+
+            self.xT_inv = lambda __sx__: self.wx0 + (self.wx1 - self.wx0) * (__sx__ - self.x_ins)/(self.w - 2*self.x_ins)
+            self.yT_inv = lambda __sy__: self.wy0 + (self.wy1 - self.wy0) * ((self.h + self.y_ins) - __sy__)/(self.h - 2*self.y_ins)
+
             # self.yT = lambda __y__: self.y_ins + (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0) # Original 2023-12-09
 
             # Start the SVG Frame
