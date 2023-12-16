@@ -78,6 +78,20 @@ class RTComponent(object):
              return False
 
         #
+        # applyMiddleClick()
+        # - return True if the view actually changed (and needs a re-render)
+        #
+        def applyMiddleClick(self, coordinate):
+            return False
+
+        #
+        # applyMiddleDrag()
+        # - return True if the view actually changed (and needs a re-render)
+        #        
+        def applyMiddleDrag(self, coordinate, delta):
+             return False
+
+        #
         # applyViewConfiguration()
         # - apply the view configuration from another RTComponent (of the same type)
         # - return True if the view actually changed (and needs a re-render)

@@ -223,8 +223,9 @@ class RTReactiveHTML(ReactiveHTML):
         super().__init__(**kwargs)
 
         # Watch for callbacks
-        self.param.watch(self.applyDragOp,  'drag_op_finished')
-        self.param.watch(self.applyWheelOp, 'wheel_op_finished')
+        self.param.watch(self.applyDragOp,   'drag_op_finished')
+        self.param.watch(self.applyWheelOp,  'wheel_op_finished')
+        self.param.watch(self.applyMiddleOp, 'middle_op_finished')
 
         # Viz companions for sync
         self.companions = []
@@ -251,6 +252,32 @@ class RTReactiveHTML(ReactiveHTML):
     def unregister_companion_viz(self, viz):
         if viz in self.companions:
             self.companions.remove(viz)
+
+    #
+    # Middle button state & method
+    #
+    x0_middle          = param.Integer(default=0)
+    y0_middle          = param.Integer(default=0)
+    x1_middle          = param.Integer(default=0)
+    y1_middle          = param.Integer(default=0)
+    middle_op_finished = param.Boolean(default=False)
+    async def applyMiddleOp(self,event):
+        self.lock.acquire()
+        try:
+            if self.middle_op_finished:
+                x0, y0, x1, y1 = self.x0_middle, self.y0_middle, self.x1_middle, self.y1_middle
+                dx, dy         = x1 - x0, y1 - y0
+                _comp_ , _key_ , _adj_coordinate_ = self.dfs_layout[self.df_level].identifyComponent((x0,y0))
+                if _comp_ is not None:
+                    if (abs(self.x0_middle - self.x1_middle) <= 1) and (abs(self.y0_middle - self.y1_middle) <= 1):
+                        if _comp_.applyMiddleClick(_adj_coordinate_):
+                            pass
+                    else:
+                        if _comp_.applyMiddleDrag(_adj_coordinate_, (dx,dy)):
+                            pass
+        finally:
+            self.middle_op_finished = False
+            self.lock.release()
 
     #
     # Wheel operation state & method
@@ -413,6 +440,9 @@ class RTReactiveHTML(ReactiveHTML):
                 state.drag_op  = true;
                 state.shiftkey = event.shiftKey;
                 self.myUpdateDragRect();
+            } else if (event.button == 1) {
+                state.x0_middle = state.x1_middle = event.offsetX;
+                state.y0_middle = state.y1_middle = event.offsetY;
             }
         """,
         'myonmouseup':"""
@@ -428,6 +458,10 @@ class RTReactiveHTML(ReactiveHTML):
                 data.drag_y1          = state.y1_drag;
                 data.drag_shiftkey    = state.shiftkey
                 data.drag_op_finished = true;
+            } else if (event.button == 1) {
+                state.x1_middle          = event.offsetX;
+                state.y1_middle          = event.offsetY;
+                state.middle_op_finished = true;                
             }
         """,
         'myonmousewheel':"""
