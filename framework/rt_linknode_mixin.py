@@ -1557,6 +1557,28 @@ class RTLinkNodeMixin(object):
             return True
 
         #
+        # applyMiddleClick()
+        # - reset the view
+        #
+        def applyMiddleClick(self, coordinate):
+            if self.view_window != self.view_window_orig:
+                self.setViewWindow(self.view_window_orig)
+                return True
+            return False
+
+        #
+        # applyMiddleDrag()
+        # - draw the view
+        #        
+        def applyMiddleDrag(self, coordinate, delta):
+            if self.view_window is not None:
+                wx0,wy0,wx1,wy1 = self.xT_inv(coordinate[0]), self.yT_inv(coordinate[1]),self.xT_inv(coordinate[0]+delta[0]), self.yT_inv(coordinate[1]+delta[1])
+                dwx,dwy         = wx1-wx0, wy1-wy0
+                self.setViewWindow((self.view_window[0]+dwx, self.view_window[1]+dwy, self.view_window[2]+dwx, self.view_window[3].dwy))
+                return True
+            return False
+
+        #
         # applyViewConfiguration()
         # - adjust the view window based on the other view window
         # - return True if the view actually changed (and needs a re-render)
