@@ -271,10 +271,10 @@ class RTReactiveHTML(ReactiveHTML):
                 if _comp_ is not None:
                     if (abs(self.x0_middle - self.x1_middle) <= 1) and (abs(self.y0_middle - self.y1_middle) <= 1):
                         if _comp_.applyMiddleClick(_adj_coordinate_):
-                            pass
+                            self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
                     else:
                         if _comp_.applyMiddleDrag(_adj_coordinate_, (dx,dy)):
-                            pass
+                            self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
         finally:
             self.middle_op_finished = False
             self.lock.release()
@@ -417,13 +417,15 @@ class RTReactiveHTML(ReactiveHTML):
     #
     _scripts = {
         'render':"""
-            mod.innerHTML = data.mod_inner;
+            mod.innerHTML  = data.mod_inner;
             state.x0_drag  = state.y0_drag = -10;
             state.x1_drag  = state.y1_drag =  -5;
             state.shiftkey = false;
-            state.drag_op  = false;            
+            state.drag_op  = false;
+            data.middle_op_finished = false;
         """,
         'myonmousemove':"""
+            event.preventDefault();
             if (state.drag_op) {
                 state.x1_drag  = event.offsetX;
                 state.y1_drag  = event.offsetY;
@@ -432,6 +434,7 @@ class RTReactiveHTML(ReactiveHTML):
             }
         """,
         'myonmousedown':"""
+            event.preventDefault();
             if (event.button == 0) {
                 state.x0_drag  = event.offsetX;
                 state.y0_drag  = event.offsetY;
@@ -441,11 +444,12 @@ class RTReactiveHTML(ReactiveHTML):
                 state.shiftkey = event.shiftKey;
                 self.myUpdateDragRect();
             } else if (event.button == 1) {
-                state.x0_middle = state.x1_middle = event.offsetX;
-                state.y0_middle = state.y1_middle = event.offsetY;
+                data.x0_middle = data.x1_middle = event.offsetX;
+                data.y0_middle = data.y1_middle = event.offsetY;
             }
         """,
         'myonmouseup':"""
+            event.preventDefault();
             if (state.drag_op && event.button == 0) {
                 state.x1_drag  = event.offsetX;
                 state.y1_drag  = event.offsetY;
@@ -459,9 +463,9 @@ class RTReactiveHTML(ReactiveHTML):
                 data.drag_shiftkey    = state.shiftkey
                 data.drag_op_finished = true;
             } else if (event.button == 1) {
-                state.x1_middle          = event.offsetX;
-                state.y1_middle          = event.offsetY;
-                state.middle_op_finished = true;                
+                data.x1_middle          = event.offsetX;
+                data.y1_middle          = event.offsetY;
+                data.middle_op_finished = true;                
             }
         """,
         'myonmousewheel':"""
