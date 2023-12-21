@@ -37,6 +37,7 @@ from rt_annotations_mixin       import RTAnnotationsMixin
 from rt_art_mixin               import RTArtMixin
 from rt_boxplot_mixin           import RTBoxplotMixin
 from rt_calendarheatmap_mixin   import RTCalendarHeatmapMixin
+from rt_choroplethmap_mixin     import RTChoroplethMapMixin
 from rt_color_manager           import RTColorManager
 from rt_datamanip_mixin         import RTDataManipMixin
 from rt_geometry_mixin          import RTGeometryMixin
@@ -61,6 +62,7 @@ class RACETrack(RTAnnotationsMixin,
                 RTArtMixin,
                 RTBoxplotMixin,
                 RTCalendarHeatmapMixin,
+                RTChoroplethMapMixin,
                 RTDataManipMixin,
                 RTGeometryMixin,
                 RTGraphLayoutsMixin,
