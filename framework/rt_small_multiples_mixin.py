@@ -163,7 +163,7 @@ class RTSmallMultiplesMixin(object):
         df = self.copyDataFrame(df)
 
         # Check widget ... since there's widget specific processing
-        _implemented_types = ['boxplot', 'calendarHeatmap', 'histogram', 'linkNode', 'periodicBarChart', 'pieChart', 'temporalBarChart', 'wordCloud', 'xy']
+        _implemented_types = ['boxplot', 'calendarHeatmap', 'choroplethMap', 'histogram', 'linkNode', 'periodicBarChart', 'pieChart', 'temporalBarChart', 'wordCloud', 'xy']
         if (sm_type in _implemented_types) == False:
             raise Exception(f'smallMultipes: widget type "{sm_type}" not implemented (initial check)')
         
@@ -319,7 +319,7 @@ class RTSmallMultiplesMixin(object):
             #
             # histogram/periodicBarChart/temporalBarChart/boxplot and y-axis
             #
-            if y_axis_independent == False and (sm_type == 'histogram' or sm_type == 'periodicBarChart' or sm_type == 'temporalBarChart' or sm_type == 'boxplot'):
+            if y_axis_independent == False and (sm_type == 'histogram' or sm_type == 'periodicBarChart' or sm_type == 'temporalBarChart' or sm_type == 'boxplot' or sm_type == 'choroplethMap'):
                 global_min,global_max = None,None
 
                 if max_categories is None:

@@ -635,6 +635,8 @@ class RACETrack(RTAnnotationsMixin,
         elif type(something) == list or type(something) == tuple:
             for x in something:
                 self.__recursiveDecompose__(x, columns_set)
+        elif type(something) == dict:
+            pass # do nothing
         else:
             raise Exception(f'Unknown type ("{type(something)}") for ("{something}") encountered in identifyColumnsFromParameters()')
 
