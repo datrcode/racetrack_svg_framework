@@ -76,13 +76,14 @@ class RTChoroplethMapMixin(object):
                       shape_lu,                               # shape lookup
                       view_window               = None,       # (wx0, wy0, wx1, wy1) // if none, will be derived from the shape lu's parameter
                       bounds_from_all_shapes    = True,       # if false, will only use what's rendered as the calculation (assumes the view_window is None)
+                      bounds_percent            = 0.05,       # inset the view into the view by this percent... so that the shapes aren't right at the edges                       
                       outline_all_shapes        = True,       # if true, renders outlines for all shapes in the lookup
-                      bounds_percent            = 0.05,       # inset the view into the view by this percent... so that the shapes aren't right at the edges 
+                      draw_outlines             = True,       # draw outlines (at all)
                       color_by                  = None,       # NOT USED... Here For Compatibility...
                       count_by                  = None,       # none means just count rows, otherwise, use a field to sum by
                       count_by_set              = False,      # count by summation (by default)... count_by column is checked
                       widget_id                 = None,       # naming the svg elements                 
-                      label_only                = set(),      # label only set
+                      label_only                = None,       # label only set ... "None" means label all
                       global_max                = None,       # max amounts (important for small multiples)
                       global_min                = None,       # min amounts (important for small multiples)                         
                       # ------------------------------------- # background polygons // copied mostly from the xy implementation
@@ -135,15 +136,18 @@ class RTChoroplethMapMixin(object):
             self.view_window_orig           = kwargs['view_window'] # Orig will be used for user requests to reset the view
 
             self.bounds_from_all_shapes     = kwargs['bounds_from_all_shapes']
-            self.outline_all_shapes         = kwargs['outline_all_shapes']
-
             self.bounds_percent             = kwargs['bounds_percent']
-            self.color_by                   = kwargs['color_by']
+
+            self.outline_all_shapes         = kwargs['outline_all_shapes']
+            self.draw_outlines              = kwargs['draw_outlines']
+
+            self.color_by                   = kwargs['color_by']      # Not used?  More for just conformity for other components
             self.count_by                   = kwargs['count_by']
             self.count_by_set               = kwargs['count_by_set']
             self.widget_id                  = kwargs['widget_id']
 
             self.label_only                 = kwargs['label_only']
+
             self.global_max                 = kwargs['global_max']
             self.global_min                 = kwargs['global_min']
 
@@ -153,19 +157,23 @@ class RTChoroplethMapMixin(object):
             self.bg_shape_fill              = kwargs['bg_shape_fill']
             self.bg_shape_stroke_w          = kwargs['bg_shape_stroke_w']
             self.bg_shape_stroke            = kwargs['bg_shape_stroke']       # Copied from xy implementation --^^^
+
             self.sm_type                    = kwargs['sm_type']
             self.sm_w                       = kwargs['sm_w']
             self.sm_h                       = kwargs['sm_h']
             self.sm_params                  = kwargs['sm_params']
             self.sm_x_axis_independent      = kwargs['sm_x_axis_independent']
             self.sm_y_axis_independent      = kwargs['sm_y_axis_independent']
+
             self.track_state                = kwargs['track_state']
+
             self.x_view                     = kwargs['x_view']
             self.y_view                     = kwargs['y_view']
             self.w                          = kwargs['w']
             self.h                          = kwargs['h']
             self.x_ins                      = kwargs['x_ins']
             self.y_ins                      = kwargs['y_ins']
+
             self.txt_h                      = kwargs['txt_h']
             self.draw_labels                = kwargs['draw_labels']
             self.draw_border                = kwargs['draw_border']
@@ -230,15 +238,17 @@ class RTChoroplethMapMixin(object):
         # __renderChoroplethMap__() - render the choropleth map
         #
         def __renderChoroplethMap__(self):
-            _svg_ = ''
+            _svg_, _labels_ = '', ''
 
             # Render all shape outlines
             _label_co_ , _co_ = self.rt_self.co_mgr.getTVColor('label','defaultfg'), self.rt_self.co_mgr.getTVColor('axis','default')
-            if self.outline_all_shapes:
+            if self.draw_outlines and self.outline_all_shapes:
                 to_render = set(self.shape_lu.keys()) - set(self.df[self.shape_field])
                 for k in to_render:
                     _shape_svg_, _label_svg_ = self.__transformWhatever__(k, self.shape_lu[k], _label_co_, 1.0, 'none', 1.0, _co_)
-                    _svg_ += _shape_svg_
+                    _svg_    += _shape_svg_
+                    if self.label_only is None or k in self.label_only:
+                        _labels_ += _label_svg_
 
             # Calculate the intensity
             if   self.rt_self.isPandas(self.df):
@@ -278,10 +288,13 @@ class RTChoroplethMapMixin(object):
             for i in range(len(_)):
                 if _[self.shape_field][i] in self.shape_lu.keys():
                     _intensity_co_ = self.rt_self.co_mgr.spectrum(_['_count_'][i], 0.0, 1.0)
+                    _co_ = 'none' if not self.draw_outlines else _co_
                     _shape_svg_, _label_svg_ = self.__transformWhatever__(_[self.shape_field][i], self.shape_lu[_[self.shape_field][i]], _label_co_, 1.0, _intensity_co_, 1.0, _co_)
-                    _svg_ += _shape_svg_
+                    _svg_    += _shape_svg_
+                    if self.label_only is None or _[self.shape_field][i] in self.label_only:                        
+                        _labels_ += _label_svg_
 
-            return _svg_, _min_, _max_
+            return _svg_, _labels_, _min_, _max_
 
         #
         # __transformWhatever__() - simplification wrapper for deciding string rep or points list...
@@ -426,19 +439,16 @@ class RTChoroplethMapMixin(object):
             background_color = self.rt_self.co_mgr.getTVColor('background','default')
             svg += f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />'
 
-            # Elements to render after nodes (labels, in this case)
-            self.defer_render = []
-
             # Render background shapes, convex hulls, links, and then nodes
-            _svg_, _min_, _max_ = self.__renderChoroplethMap__()
+            _svg_, _labels_, _min_, _max_ = self.__renderChoroplethMap__()
             if just_calc_max:
                 return _min_, _max_
             svg += _svg_
             svg += self.__renderBackgroundShapes__()
 
-            # Defer render
-            for x in self.defer_render:
-                svg += x
+            # Defer label render
+            if self.draw_labels:
+                svg += _labels_
 
             # Draw the border
             if self.draw_border:
