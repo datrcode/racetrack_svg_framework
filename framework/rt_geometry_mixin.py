@@ -138,15 +138,17 @@ class RTGeometryMixin(object):
     # ... fill table is complicated because line strings don't require fill...
     # ... utility method... tested on five shape files (land, coastlines, states, counties, zipcodes)...
     #
-    # clip_rect = 4-tuple of x0, y0, x1, y1
-    # fill      = hex color string
-    # naming    = naming function for series from geopandas dataframe
+    # keep_as_shapely = keep as the shapely polygon
+    # clip_rect       = 4-tuple of x0, y0, x1, y1
+    # fill            = hex color string
+    # naming          = naming function for series from geopandas dataframe
     #
     def createBackgroundLookupsFromShapeFile(self, 
                                              shape_file,
-                                             clip_rect  = None, 
-                                             fill       = '#000000',
-                                             naming     = None):
+                                             keep_as_shapely = True,
+                                             clip_rect       = None, 
+                                             fill            = '#000000',
+                                             naming          = None):
         import geopandas as gpd
         gdf = gdf_orig = gpd.read_file(shape_file)
         if clip_rect is not None:
@@ -158,7 +160,14 @@ class RTGeometryMixin(object):
                 _poly_ = gdf.iloc[i].geometry
             else:
                 _poly_ = gdf.iloc[i]
-            d = self.shapelyPolygonToSVGPathDescription(_poly_)
+            
+            # Probably want to keep it as shapely if transforms are needed
+            if keep_as_shapely:
+                d = _poly_
+            else:
+                d = self.shapelyPolygonToSVGPathDescription(_poly_)
+            
+            # Store it
             if d is not None:
                 _name_ = i
                 if naming is not None: # if naming function, call it with gpd series

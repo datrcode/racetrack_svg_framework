@@ -1503,29 +1503,11 @@ class RTLinkNodeMixin(object):
                 _bg_shape_labels = []
                 for k in self.bg_shape_lu.keys():
                     shape_desc = self.bg_shape_lu[k]
-                    if   type(shape_desc) == str:   # path description
-                        _shape_svg, _label_svg = self.rt_self.__transformPathDescription__(k,
-                                                                                           shape_desc,
-                                                                                           self.xT,
-                                                                                           self.yT,
-                                                                                           self.bg_shape_label_color,
-                                                                                           self.bg_shape_opacity,
-                                                                                           self.bg_shape_fill,
-                                                                                           self.bg_shape_stroke_w,
-                                                                                           self.bg_shape_stroke, self.txt_h)
-                    elif type(shape_desc) == list:  # list of tuple pairs
-                        _shape_svg, _label_svg = self.rt_self.__transformPointsList__(k,
-                                                                                      shape_desc,
-                                                                                      self.xT,
-                                                                                      self.yT,
-                                                                                      self.bg_shape_label_color,
-                                                                                      self.bg_shape_opacity,
-                                                                                      self.bg_shape_fill,
-                                                                                      self.bg_shape_stroke_w,
-                                                                                      self.bg_shape_stroke, self.txt_h)
-                    else:
-                        raise Exception(f'RTLinkNode.renderSVG() - type "{type(shape_desc)}" as background lookup')
-
+                    _shape_svg, _label_svg = self.rt_self.__transformBackgroundShapes__(k,                         shape_desc,
+                                                                                        self.xT,                   self.yT,
+                                                                                        self.bg_shape_label_color, self.bg_shape_opacity,
+                                                                                        self.bg_shape_fill,        self.bg_shape_stroke_w,
+                                                                                        self.bg_shape_stroke,      self.txt_h)
                     _svg_ += _shape_svg
                     _bg_shape_labels.append(_label_svg) # Defer render
 

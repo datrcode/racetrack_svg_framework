@@ -244,7 +244,8 @@ class RTChoroplethMapMixin(object):
             if self.draw_outlines and self.outline_all_shapes:
                 to_render = set(self.shape_lu.keys()) - set(self.df[self.shape_field])
                 for k in to_render:
-                    _shape_svg_, _label_svg_ = self.__transformWhatever__(k, self.shape_lu[k], _label_co_, 1.0, 'none', 1.0, _co_)
+                    _shape_svg_, _label_svg_ = self.rt_self.__transformBackgroundShapes__(k, self.shape_lu[k], self.xT, self.yT, 
+                                                                                          _label_co_, 1.0, 'none', 1.0, _co_, self.txt_h)
                     _svg_    += _shape_svg_
                     if self.label_only is None or k in self.label_only:
                         _labels_ += _label_svg_
@@ -294,7 +295,8 @@ class RTChoroplethMapMixin(object):
                 if _[self.shape_field][i] in self.shape_lu.keys():
                     _intensity_co_ = self.rt_self.co_mgr.spectrum(_['_count_'][i], 0.0, 1.0)
                     _co_ = 'none' if not self.draw_outlines else _co_
-                    _shape_svg_, _label_svg_ = self.__transformWhatever__(_[self.shape_field][i], self.shape_lu[_[self.shape_field][i]], _label_co_, 1.0, _intensity_co_, 1.0, _co_)
+                    _shape_svg_, _label_svg_ = self.rt_self.__transformBackgroundShapes__(_[self.shape_field][i], self.shape_lu[_[self.shape_field][i]], self.xT, self.yT, 
+                                                                                          _label_co_, 1.0, _intensity_co_, 1.0, _co_, self.txt_h)
                     _svg_    += _shape_svg_
                     if self.label_only is None or _[self.shape_field][i] in self.label_only:                        
                         _labels_ += _label_svg_
@@ -302,26 +304,6 @@ class RTChoroplethMapMixin(object):
                         self.geom_to_df[self.shape_lu[_[self.shape_field][i]]] = gb.get_group(_[self.shape_field][i]) if self.rt_self.isPandas(self.df) else gb[_[self.shape_field][i]]
 
             return _svg_, _labels_, _min_, _max_
-
-        #
-        # __transformWhatever__() - simplification wrapper for deciding string rep or points list...
-        #
-        def __transformWhatever__(self, _key_, _desc_, _label_color_, _opacity_, _fill_, _stroke_w_, _stroke_):
-            if type(_desc_) == Polygon:
-                _desc_ = self.rt_self.shapelyPolygonToSVGPathDescription(_desc_)
-
-            if   type(_desc_) == str:   # path description
-                _shape_svg_, _label_svg_ = self.rt_self.__transformPathDescription__(_key_,          _desc_,     self.xT,  self.yT,
-                                                                                   _label_color_,  _opacity_,  _fill_,   _stroke_w_,
-                                                                                   _stroke_,       self.txt_h)
-            elif type(_desc_) == list:  # list of tuple pairs
-                _shape_svg_, _label_svg_ = self.rt_self.__transformPointsList__(_key_,          _desc_,     self.xT,  self.yT,
-                                                                                _label_color_,  _opacity_,  _fill_,   _stroke_w_,
-                                                                                _stroke_,       self.txt_h)
-            else:
-                raise Exception(f'RTChoroplethMap.renderSVG() - type "{type(_desc_)}" unknown')
-            
-            return _shape_svg_, _label_svg_
 
         #
         # __renderBackgroundShapes__() - render background shapes
@@ -334,14 +316,11 @@ class RTChoroplethMapMixin(object):
                 _bg_shape_labels = []
                 for k in self.bg_shape_lu.keys():
                     shape_desc = self.bg_shape_lu[k]
-                    _shape_svg, _label_svg = self.__transformWhatever__(k,
-                                                                        shape_desc,
-                                                                        self.bg_shape_label_color,
-                                                                        self.bg_shape_opacity,
-                                                                        self.bg_shape_fill,
-                                                                        self.bg_shape_stroke_w,
-                                                                        self.bg_shape_stroke)
-
+                    _shape_svg, _label_svg = self.__transformBackgroundShapes__(k,                         shape_desc,
+                                                                                self.xT,                   self.yT,
+                                                                                self.bg_shape_label_color, self.bg_shape_opacity,
+                                                                                self.bg_shape_fill,        self.bg_shape_stroke_w,
+                                                                                self.bg_shape_stroke,      self.txt_h)
                     _svg_ += _shape_svg
                     _bg_shape_labels.append(_label_svg) # Defer render
 

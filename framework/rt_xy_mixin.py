@@ -22,7 +22,7 @@ from pandas.api.types import is_datetime64_any_dtype as is_datetime
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, MultiPolygon, GeometryCollection, LineString, MultiLineString
 
 from math import log10
 
@@ -634,6 +634,53 @@ class RTXYMixin(object):
             label_min, label_max = concatAsStrs(order[0]), concatAsStrs(order[-1])
 
         return df, is_time, label_min, label_max, transFunc, order
+
+    #
+    # __transformBackgroundShapes__() - refactored to split for other methods
+    #
+    def __transformBackgroundShapes__(self, 
+                                      shape_name,
+                                      shape_desc,
+                                      x_trans_norm_func,
+                                      y_trans_norm_func,
+                                      bg_shape_label_color,
+                                      bg_shape_opacity,
+                                      bg_shape_fill,
+                                      bg_shape_stroke_w,
+                                      bg_shape_stroke, 
+                                      txt_h):
+        # Transform to a path description if necessary ... Polygons & MultiPolygons can be handled in the same way
+        if type(shape_desc) == Polygon or type(shape_desc) == MultiPolygon:
+            shape_desc = self.shapelyPolygonToSVGPathDescription(shape_desc)
+
+        # Multiline Strings should have have their fill type set to 'none'
+        if type(shape_desc) == MultiLineString or type(shape_desc) == LineString:
+            shape_desc = self.shapelyPolygonToSVGPathDescription(shape_desc)
+            bg_shape_fill = 'none'
+
+        # Geometry Collections are usually empty... maybe the results of clipping?
+        if type(shape_desc) == GeometryCollection:
+            if len(shape_desc.geoms) > 0: # Haven't seen this... so unsure of how to process
+                raise Exception('RTXYMixin.__transformBackgroundShapes__() - geometrycollection not empty')    
+            return '', ''
+            
+        # Handle intermediate types
+        if   type(shape_desc) == str:   # path description
+            _shape_svg, _label_svg = self.__transformPathDescription__(shape_name,           shape_desc,
+                                                                       x_trans_norm_func,    y_trans_norm_func,
+                                                                       bg_shape_label_color, bg_shape_opacity,
+                                                                       bg_shape_fill,        bg_shape_stroke_w,
+                                                                       bg_shape_stroke,      txt_h)
+        elif type(shape_desc) == list:  # list of tuple pairs
+            _shape_svg, _label_svg = self.__transformPointsList__(shape_name,            shape_desc,
+                                                                  x_trans_norm_func,     y_trans_norm_func,
+                                                                  bg_shape_label_color,  bg_shape_opacity,
+                                                                  bg_shape_fill,         bg_shape_stroke_w,
+                                                                  bg_shape_stroke,       txt_h)
+        else:
+            raise Exception(f'RTXYMixin.__transformBackgroundShapes__() - type "{type(shape_desc)}" as background lookup')
+        
+        return _shape_svg, _label_svg
 
     #
     # For background context, transform an existing path description using the transforms and return as an SVG path.
@@ -1255,29 +1302,11 @@ class RTXYMixin(object):
                 _bg_shape_labels = []
                 for k in self.bg_shape_lu.keys():
                     shape_desc = self.bg_shape_lu[k]
-                    if   type(shape_desc) == str:   # path description
-                        _shape_svg, _label_svg = self.rt_self.__transformPathDescription__(k,
-                                                                                           shape_desc,
-                                                                                           self.x_trans_norm_func,
-                                                                                           self.y_trans_norm_func,
-                                                                                           self.bg_shape_label_color,
-                                                                                           self.bg_shape_opacity,
-                                                                                           self.bg_shape_fill,
-                                                                                           self.bg_shape_stroke_w,
-                                                                                           self.bg_shape_stroke, self.txt_h)
-                    elif type(shape_desc) == list:  # list of tuple pairs
-                        _shape_svg, _label_svg = self.rt_self.__transformPointsList__(k,
-                                                                                      shape_desc,
-                                                                                      self.x_trans_norm_func,
-                                                                                      self.y_trans_norm_func,
-                                                                                      self.bg_shape_label_color,
-                                                                                      self.bg_shape_opacity,
-                                                                                      self.bg_shape_fill,
-                                                                                      self.bg_shape_stroke_w,
-                                                                                      self.bg_shape_stroke, self.txt_h)
-                    else:
-                        raise Exception(f'RTXy.renderSVG() - type "{type(shape_desc)}" as background lookup')
-
+                    _shape_svg, _label_svg = self.rt_self.__transformBackgroundShapes__(k,                         shape_desc,
+                                                                                        self.x_trans_norm_func,    self.y_trans_norm_func,
+                                                                                        self.bg_shape_label_color, self.bg_shape_opacity,
+                                                                                        self.bg_shape_fill,        self.bg_shape_stroke_w,
+                                                                                        self.bg_shape_stroke,      self.txt_h)
                     svg += _shape_svg
                     _bg_shape_labels.append(_label_svg) # Defer render
 
