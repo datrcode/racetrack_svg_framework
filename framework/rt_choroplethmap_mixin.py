@@ -252,18 +252,24 @@ class RTChoroplethMapMixin(object):
                 if self.global_max is not None and self.global_min is not None:
                     _max_ = self.global_max
                     _min_ = self.global_min
+                if _min_ == _max_:
+                    _min_ -= 0.5
+                    _max_ += 0.5
                 _['_count_'] = (_['_count_'] - _min_) / (_max_ - _min_)
             elif self.rt_self.isPolars(self.df):
                 if self.count_by is None:
                     _ = self.df.group_by(self.shape_field).agg(pl.count().alias('_count_'))
                 elif self.count_by_set:
-                    _ = self.df.group_by(self.shape_field).agg(pl.col(self.count_by).nunique().alias('_count_'))
+                    _ = self.df.group_by(self.shape_field).agg(pl.col(self.count_by).n_unique().alias('_count_'))
                 else:
                     _ = self.df.group_by(self.shape_field).agg(pl.col(self.count_by).sum().alias('_count_'))
-                _min_,_max_ = pl.col('_count_').min(),pl.col('_count_').max()
+                _min_,_max_ = _['_count_'].min(), _['_count_'].max()
                 if self.global_max is not None and self.global_min is not None:
                     _max_ = self.global_max
                     _min_ = self.global_min
+                if _min_ == _max_:
+                    _min_ -= 0.5
+                    _max_ += 0.5
                 _ = _.with_columns((pl.col('_count_') - _min_) / (_max_ - _min_))
             else:
                 raise Exception('RTChoroplethMap.__renderChoroplethMap__() - only pandas and polars supported')
