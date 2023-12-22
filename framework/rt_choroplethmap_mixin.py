@@ -73,7 +73,7 @@ class RTChoroplethMapMixin(object):
     def choroplethMap(self,
                       df,                                     # dataframe to render
                       shape_field,                            # dataframe field to use for shape_lu
-                      shape_lu,                               # shape lookup
+                      shape_lu,                               # shape lookup ... should be the value in the shape_field to a shapely Polygon
                       view_window               = None,       # (wx0, wy0, wx1, wy1) // if none, will be derived from the shape lu's parameter
                       bounds_from_all_shapes    = True,       # if false, will only use what's rendered as the calculation (assumes the view_window is None)
                       bounds_percent            = 0.05,       # inset the view into the view by this percent... so that the shapes aren't right at the edges                       
@@ -197,7 +197,6 @@ class RTChoroplethMapMixin(object):
             # Tracking state
             self.geom_to_df  = {}
             self.last_render = None
-            self.node_coords = {}
 
         #
         # __calculateGeometry__() - determine the geometry for the view
@@ -285,6 +284,12 @@ class RTChoroplethMapMixin(object):
                 raise Exception('RTChoroplethMap.__renderChoroplethMap__() - only pandas and polars supported')
 
             # Render the shapes
+            if self.track_state:
+                if self.rt_self.isPandas(self.df):
+                    gb = self.df.groupby(self.shape_field)
+                elif self.rt_self.isPolars(self.df):
+                    gb = self.df.partition_by(self.shape_field, as_dict=True)
+
             for i in range(len(_)):
                 if _[self.shape_field][i] in self.shape_lu.keys():
                     _intensity_co_ = self.rt_self.co_mgr.spectrum(_['_count_'][i], 0.0, 1.0)
@@ -293,6 +298,8 @@ class RTChoroplethMapMixin(object):
                     _svg_    += _shape_svg_
                     if self.label_only is None or _[self.shape_field][i] in self.label_only:                        
                         _labels_ += _label_svg_
+                    if self.track_state:
+                        self.geom_to_df[self.shape_lu[_[self.shape_field][i]]] = gb.get_group(_[self.shape_field][i]) if self.rt_self.isPandas(self.df) else gb[_[self.shape_field][i]]
 
             return _svg_, _labels_, _min_, _max_
 
@@ -463,10 +470,16 @@ class RTChoroplethMapMixin(object):
         # Determine which dataframe geometries overlap with a specific
         #
         def overlappingDataFrames(self, to_intersect):
+            pts_w = []
+            for pt_s in to_intersect.exterior.coords:
+                pt_w = (self.xT_inv(pt_s[0]), self.yT_inv(pt_s[1]))
+                pts_w.append(pt_w)
+            to_intersect = Polygon(pts_w)
+
             _dfs = []
             for _poly in self.geom_to_df.keys():
                 if _poly.intersects(to_intersect):
-                    _dfs.extend(self.geom_to_df[_poly]) # <== SLIGHTLY DIFFERENT THAN ALL OF THE OTHERS...
+                    _dfs.append(self.geom_to_df[_poly]) # <== SLIGHTLY DIFFERENT THAN ALL OF THE OTHERS...
             if len(_dfs) > 0:
                 return self.rt_self.concatDataFrames(_dfs)
             else:
