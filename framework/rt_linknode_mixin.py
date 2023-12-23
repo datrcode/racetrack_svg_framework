@@ -274,15 +274,11 @@ class RTLinkNodeMixin(object):
 
                             # Perform the comparison for the bounds
                             v = pos[node_str]
-                            if v[0] > wx1:
-                                wx1 = v[0]
-                            if v[0] < wx0:
-                                wx0 = v[0]
-                            if v[1] > wy1:
-                                wy1 = v[1]
-                            if v[1] < wy0:
-                                wy0 = v[1]
-                            
+                            wx1 = max(v[0], wx1)
+                            wy1 = max(v[1], wy1)
+                            wx0 = min(v[0], wx0)
+                            wy0 = min(v[1], wy0)
+
                             # Determine the maximum node size
                             if count_by is None:
                                 if max_node_value < len(k_df):
@@ -732,14 +728,10 @@ class RTLinkNodeMixin(object):
             if self.use_pos_for_bounds:
                 for k in self.pos.keys():
                     v = self.pos[k]
-                    if v[0] > self.wx1:
-                        self.wx1 = v[0]
-                    if v[0] < self.wx0:
-                        self.wx0 = v[0]
-                    if v[1] > self.wy1:
-                        self.wy1 = v[1]
-                    if v[1] < self.wy0:
-                        self.wy0 = v[1]
+                    self.wx0 = min(v[0], self.wx0)
+                    self.wy0 = min(v[1], self.wy0)
+                    self.wx1 = max(v[0], self.wx1)
+                    self.wy1 = max(v[1], self.wy1)
                 if self.node_size == 'vary':
                     self.max_node_value,ignore0,ignore1,ignore2,ignore3 = self.rt_self.calculateNodeInformation(self.df, self.relationships, self.pos, self.count_by, self.count_by_set)
             else:
@@ -748,8 +740,9 @@ class RTLinkNodeMixin(object):
             # Make it sane
             if math.isinf(self.wx0):
                 self.wx0 = 0.0
-                self.wy0 = 0.0
                 self.wx1 = 1.0
+            if math.isinf(self.wy0):
+                self.wy0 = 0.0
                 self.wy1 = 1.0
 
             # Make it sane some more
@@ -1601,13 +1594,16 @@ class RTLinkNodeMixin(object):
                 self.wx0, self.wy0, self.wx1, self.wy1 = self.view_window
                 
             # Coordinate transform lambdas (and inverse lambdas)
-            self.xT = lambda __x__: self.x_ins + (self.w - 2*self.x_ins) * (__x__ - self.wx0)/(self.wx1-self.wx0)
-            self.yT = lambda __y__: (self.h + self.y_ins) - (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0)
+            self.xT     = lambda __wx__:          self.w * (__wx__ - self.wx0)/(self.wx1-self.wx0)
+            self.yT     = lambda __wy__: self.h - self.h * (__wy__ - self.wy0)/(self.wy1-self.wy0)
+            self.xT_inv = lambda __sx__: self.wx0 + ((__sx__ * (self.wx1 - self.wx0))/self.w)
+            self.yT_inv = lambda __sy__: self.wy0 + ((self.h - __sy__) * (self.wy1 - self.wy0))/self.h
 
-            self.xT_inv = lambda __sx__: self.wx0 + (self.wx1 - self.wx0) * (__sx__ - self.x_ins)/(self.w - 2*self.x_ins)
-            self.yT_inv = lambda __sy__: self.wy0 + (self.wy1 - self.wy0) * ((self.h + self.y_ins) - __sy__)/(self.h - 2*self.y_ins)
-
-            # self.yT = lambda __y__: self.y_ins + (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0) # Original 2023-12-09
+            # 2023-12-22 19:50
+            #self.xT     = lambda __x__: self.x_ins + (self.w - 2*self.x_ins) * (__x__ - self.wx0)/(self.wx1-self.wx0)
+            #self.yT     = lambda __y__: (self.h + self.y_ins) - (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0)
+            #self.xT_inv = lambda __sx__: self.wx0 + (self.wx1 - self.wx0) * (__sx__ - self.x_ins)/(self.w - 2*self.x_ins)
+            #self.yT_inv = lambda __sy__: self.wy0 + (self.wy1 - self.wy0) * ((self.h + self.y_ins) - __sy__)/(self.h - 2*self.y_ins)
 
             # Start the SVG Frame
             svg = f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
