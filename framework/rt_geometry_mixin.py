@@ -26,6 +26,42 @@ __name__ = 'rt_geometry_mixin'
 #
 class RTGeometryMixin(object):
     #
+    # intersectionPoint() - determine where two lines intersect
+    # - returns None if the lines do not intersect
+    #
+    # From https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines
+    #
+    def intersectionPoint(self, line1, line2):
+        xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+        ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+        def det(a, b):
+            return a[0] * b[1] - a[1] * b[0]
+        div = det(xdiff, ydiff)
+        if abs(div) < 0.0001 or div == 0:
+            return None
+        d = (det(*line1), det(*line2))
+        x = det(d, xdiff) / div
+        y = det(d, ydiff) / div
+        return x, y
+
+    #
+    # lineSegmentIntersectionPoint() - determine where a line intersects a segment
+    # - returns None if the line does not intersect the segment
+    #
+    def lineSegmentIntersectionPoint(self, line, segment):
+        # Would they intersect if they were both lines?
+        results = self.intersectionPoint(line, segment)
+        if results is None:
+            return None
+        # They intersect as lines... are the results on the segment?
+        x,y = results
+        if x < min(segment[0][0], segment[1][0]) or x > max(segment[0][0], segment[1][0]):
+            return None
+        if y < min(segment[0][1], segment[1][1]) or y > max(segment[0][1], segment[1][1]):
+            return None
+        return x,y
+
+    #
     # pointWithinSegment()
     #
     def pointWithinSegment(self, x, y, x0, y0, x1, y1):
