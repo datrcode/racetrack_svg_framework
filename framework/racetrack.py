@@ -205,17 +205,25 @@ class RACETrack(RTAnnotationsMixin,
     def columnsAreTimestamps(self, df, columns, format=None):
         if type(columns) != list:
             columns = [columns]
-        if   self.isPandas(df):
-            for _column_ in columns:
-                df[_column_] = df[_column_].astype('datetime64[ms]')
-        elif self.isPolars(df):
-            for _column_ in columns:
-                _format_ = format
-                if _format_ is None:
-                    _format_ = self.guessTimestampFormat(str(df[0][_column_][0]))
-                df = df.with_columns(pl.col(_column_).str.strptime(pl.Datetime, format=_format_).cast(pl.Datetime))
-        else:
-            raise Exception('columnsAreTimestamps() - not a pandas or polars dataframe')        
+        for _column_ in columns:
+            if   self.isPandas(df):
+                try:
+                    df[_column_] = df[_column_].astype('datetime64[ms]')
+                except:
+                    df[_column_] = df[_column_].apply(lambda x: pd.to_datetime(x, utc=True).tz_convert(None))
+            elif self.isPolars(df):
+                try:
+                    _format_ = format
+                    if _format_ is None:
+                        _format_ = self.guessTimestampFormat(str(df[0][_column_][0]))
+                    df = df.with_columns(pl.col(_column_).str.strptime(pl.Datetime, format=_format_).cast(pl.Datetime))
+                except:
+                    as_series = df[_column_].map_elements(lambda x: pd.to_datetime(x, utc=True).tz_convert(None))
+                    _format_  = self.guessTimestampFormat(str(as_series[0]))
+                    df = df.drop(_column_)
+                    df = df.with_columns(as_series.str.strptime(pl.Datetime, format=_format_).cast(pl.Datetime))
+            else:
+                raise Exception('columnsAreTimestamps() - not a pandas or polars dataframe')
         return df
 
     #
@@ -224,40 +232,50 @@ class RACETrack(RTAnnotationsMixin,
     # ... i hate timestamps
     #
     def guessTimestampFormat(self, sample):
-        if    len(sample) == 26 and ('t' in sample or 'T' in sample):
-            return "%Y-%m-%dT%H:%M:%S%.f"
-        elif  len(sample) == 24 and ('t' in sample or 'T' in sample) and (sample[-1] == 'Z' or sample[-1] == 'z'):
-            return "%Y-%m-%dT%H:%M:%S.%fZ"
-        elif  len(sample) == 23 and ('t' in sample or 'T' in sample):
-            return "%Y-%m-%dT%H:%M:%S.%f"
-        elif  len(sample) == 23 and ' ' in sample:
-            return "%Y-%m-%d %H:%M:%S.%f"
-        elif  len(sample) == 20 and ('t' in sample or 'T' in sample) and (sample[-1] == 'Z' or sample[-1] == 'z'):
-            return "%Y-%m-%dT%H:%M:%SZ"
-        elif  len(sample) == 19 and ' ' in sample:
-            return "%Y-%m-%d %H:%M:%S"        
-        elif  len(sample) == 19 and ('t' in sample or 'T' in sample):
-            return "%Y-%m-%dT%H:%M:%S"
-        elif  len(sample) == 19 and ' ' in sample:
-            return "%Y-%m-%d %H:%M:%S"
-        elif  len(sample) == 17 and ('t' in sample or 'T' in sample) and (sample[-1] == 'Z' or sample[-1] == 'z'): # Does this really occur?
-            return "%Y-%m-%dT%H:%MZ"
-        elif  len(sample) == 16 and ('t' in sample or 'T' in sample):
-            return "%Y-%m-%dT%H:%M"
-        elif  len(sample) == 16 and ' ' in sample:
-            return "%Y-%m-%d %H:%M"
-        elif  len(sample) == 13 and ('t' in sample or 'T' in sample): # Doesn't seem to work in polars... wants both hour and minute
-            return "%Y-%m-%dT%H"
-        elif  len(sample) == 13 and ' ' in sample:  # Doesn't seem to work in polars... wants both hour and minute
-            return "%Y-%m-%d %H"
-        elif  len(sample) == 10:
-            return "%Y-%m-%d"
-        elif  len(sample) == 7:
-            return "%Y-%m"
-        elif  len(sample) == 4:
-            return "%Y"
+        if (sample[-1] == 'z' or sample[-1] == 'Z') and ('t' in sample or 'T' in sample):
+            if    len(sample) >= 22:
+                return "%Y-%m-%dT%H:%M:%S.%fZ"
+            elif  len(sample) == 20:
+                return "%Y-%m-%dT%H:%M:%SZ"
+            elif  len(sample) == 17: # Does this really occur?
+                return "%Y-%m-%dT%H:%MZ"
+            else:
+                raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [1]')
+        elif 't' in sample or 'T' in sample:
+            if    len(sample) >  23:
+                return "%Y-%m-%dT%H:%M:%S.%f"
+            elif  len(sample) == 23:
+                return "%Y-%m-%dT%H:%M:%S.%f"
+            elif  len(sample) == 19:
+                return "%Y-%m-%dT%H:%M:%S"
+            elif  len(sample) == 16:
+                return "%Y-%m-%dT%H:%M"
+            elif  len(sample) == 13: # Doesn't seem to work in polars... wants both hour and minute
+                return "%Y-%m-%dT%H"
+            else:
+                raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [2]')
+        elif ' ' in sample:
+            if    len(sample) >= 20:
+                return "%Y-%m-%d %H:%M:%S.%f"
+            elif  len(sample) == 19:
+                return "%Y-%m-%d %H:%M:%S"        
+            elif  len(sample) == 19:
+                return "%Y-%m-%d %H:%M:%S"
+            elif  len(sample) == 16:
+                return "%Y-%m-%d %H:%M"
+            elif  len(sample) == 13:  # Doesn't seem to work in polars... wants both hour and minute
+                return "%Y-%m-%d %H"
+            else:
+                raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [3]')
         else:
-            raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}"')
+            if    len(sample) == 10:
+                return "%Y-%m-%d"
+            elif  len(sample) == 7:
+                return "%Y-%m"
+            elif  len(sample) == 4:
+                return "%Y"
+            else:
+                raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [4]')
 
 
     #
