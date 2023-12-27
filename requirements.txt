@@ -1,3 +1,4 @@
+geopandas
 jupyter_bokeh
 networkx
 numpy

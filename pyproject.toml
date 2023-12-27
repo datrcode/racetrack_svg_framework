@@ -1,18 +1,18 @@
 [build-system]
 requires = [
+  "geopandas",
+  "jupyter_bokeh",
   "networkx",
-  "nltk",
   "numpy",
   "pandas",
-  "panel ~= 0.14.2",
+  "panel",
+  "pyarrow",
+  "polars",
   "shapely",
-  "spacy",
   "squarify",
   "svglib",
-  "tensorflow",
-  "torch",
-  "transformers",
-  "umap-learn"
+  "umap-learn",
+  "wordcloud"
 ]
 
 # For SpaCy, still need to also download the configuration file:
