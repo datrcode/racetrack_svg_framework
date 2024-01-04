@@ -1,4 +1,4 @@
-# Copyright 2023 David Trimm
+# Copyright 2024 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -967,8 +967,9 @@ class RACETrack(RTAnnotationsMixin,
             color = self.co_mgr.getTVColor('label','defaultfg')
 
         _html_txt = html.escape(txt)
-        if ' ' in _html_txt:
-            _html_txt = _html_txt.replace(' ','&nbsp;')
+        # The following breaks JupyterLab in some configs ... 2024-01-04
+        #if ' ' in _html_txt:
+        #    _html_txt = _html_txt.replace(' ','&nbsp;')
 
         if rotation is not None:
             return f'<text x="{x}" text-anchor="{anchor}" y="{y}" font-family="{font}" fill="{color}" font-size="{txt_h}px"' + \
