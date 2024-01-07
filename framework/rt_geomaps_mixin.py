@@ -47,6 +47,74 @@ class RTGeoMapsMixin(object):
         pts.append([cx-l2, cy+h])
         return pts
 
+    #
+    # __geoMapUSStatesBorderGraph__() - return a lookup for each state and the states that it borders
+    #
+    def __geoMapsUSStatesBorderGraph__(self):
+        lu =   {'ak':set(),
+                'al':set(['ms','tn','ga','fl']),
+                'ar':set(['la','tx','ok','mo','tn','ms']),
+                'az':set(['ca','nv','ut','nm','co']),
+                'ca':set(['or','nv','az']),
+                'ct':set(['ri','ma','ny']),
+                'co':set(['ut','nm','wy','ne','ks','ok','az']),
+                'de':set(['md','pa','nj']),
+                'ga':set(['sc','nc','tn','al','fl']),
+                'fl':set(['al','ga']),
+                'ks':set(['ok','co','ne','mo']),
+                'ky':set(['tn','mo','il','in','oh','wv','va']),
+                'hi':set(),
+                'ia':set(['ne','sd','mn','wi','il','mo']),
+                'id':set(['wa','or','mt','nv','ut','wy']),
+                'il':set(['mo','ia','wi','in','ky','mi']),
+                'in':set(['il','mi','ky','oh']),
+                'la':set(['tx','ar','ms']),
+                'ma':set(['ny','vt','nh','ct','ri']),
+                'md':set(['va','wv','pa','de']),
+                'me':set(['nh']),
+                'mi':set(['in','wi','oh','il','mn']),
+                'mn':set(['nd','sd','ia','wi','mi']),
+                'mo':set(['ok','ks','ne','ia','il','ky','tn','ar']),
+                'ms':set(['la','ar','tn','al']),
+                'mt':set(['id','wy','sd','nd']),
+                'nc':set(['sc','ga','tn','va']),
+                'nd':set(['mt','sd','mn']),
+                'ne':set(['wy','sd','ia','mo','ks','co']),
+                'nh':set(['me','vt','ma']),
+                'nj':set(['pa','de','ny']),
+                'nm':set(['az','co','ok','tx','ut']),
+                'nv':set(['ca','az','ut','id','or']),
+                'ny':set(['pa','nj','ct','ma','vt','ri']),
+                'oh':set(['in','mi','ky','wv','pa']),
+                'ok':set(['nm','tx','ar','mo','ks','co']),
+                'or':set(['wa','id','nv','ca']),
+                'pa':set(['oh','wv','md','de','nj','ny']),
+                'ri':set(['ma','ct','ny']),
+                'sc':set(['ga','nc']),
+                'sd':set(['wy','mt','nd','mn','ia','ne']),
+                'tn':set(['mo','ky','va','ga','al','ms','ar','nc']),
+                'tx':set(['nm','ok','ar','la']),
+                'ut':set(['nv','az','co','wy','id','nm']),
+                'va':set(['wv','md','ky','tn','nc']),
+                'vt':set(['nh','ma','ny']),
+                'wa':set(['or','id']),
+                'wi':set(['mn','ia','il','mi']),
+                'wv':set(['md','pa','oh','ky','va']),
+                'wy':set(['id','mt','ut','co','ne','sd'])}
+        # Internally consistent?
+        for x in lu.keys():
+            for k in lu[x]:
+                if x not in lu[k]:            
+                    print(f'"{x}" not in "{k}"')        
+        # Print out in descending order how many...
+        for x in range(10,-1,-1):
+            matches = set()
+            for k in lu.keys():
+                if len(lu[k]) == x:
+                    matches.add(k)
+            # print(x,sorted(list(matches)))
+        return lu
+
     def __geoMapsUSStates_hex__(self, l=10.0):
         #
         # Started with "standard map" from article:
