@@ -26,8 +26,8 @@ class RTGeoMapsMixin(object):
     # geoMapsUSStates() - returns a 2-digit state lookup for states to their shapely polygon.
     #
     def geoMapsUSStates(self, version='hex'):
-        if version == 'hex':
-            return self.__geoMapsUSStates_hex__()
+        if   version == 'hex':
+            return self.__geoMapsUSStates_hex_v2__()
         else:
             raise Exception(f'RTGeoMaps.geoMapsUSStates() - unknown version "{version}"')
 
@@ -151,3 +151,32 @@ class RTGeoMapsMixin(object):
                     lu[locs[row_i][col_i]] = Polygon(self.__hexagon__(cx, cy, l))
         return lu
 
+    #
+    #
+    #
+    def __geoMapsUSStates_hex_v2__(self, l=10.0):
+        slices = [
+            ['ak','',  'wa','or','nv','ca','',  'hi'],
+            ['',  'mt','id','wy','ut','az'],
+            ['',  '',  'nd','sd','ne','co','nm'],
+            ['',  'mn','ia','mo','ks','ok','tx'],
+            ['',  '',  'wi','il','ar','la','ms'],
+            ['',  'mi','in','ky','tn','al'],
+            ['',  '',  'oh','wv','md','nc','ga'],
+            ['',  'ny','pa','nj','va','sc','fl'],
+            ['',  'vt','ma','ri','de'],
+            ['me','nh','ct','',  '',  'dc']
+        ]
+        l2 = l/2.0
+        a  = pi*60.0/180.0
+        h  = l*sin(a)
+        lu,x,y,states = {}, 0.0, 0.0, set()
+        for col_i in range(len(slices)):
+            cx = x + col_i*1.5*l
+            for row_i in range(len(slices[col_i])):
+                y_off = 0 if (col_i%2) == 0 else h
+                cy = y - y_off - row_i*2*h
+                if slices[col_i][row_i] != '':
+                    lu[slices[col_i][row_i]] = Polygon(self.__hexagon__(cx, cy, l))
+                    states.add(slices[col_i][row_i])
+        return lu
