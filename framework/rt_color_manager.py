@@ -90,6 +90,13 @@ class RTColorManager:
         self.str_to_color_lu['white']  = '#808080'  # Really, just gray... but has to separate from the background
         self.str_to_color_lu['black']  = '#000000' 
 
+        # self.spectrum_colors = ['#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
+        # self.spectrum_colors = ['#ccebc5','#a8ddb5','#7bccc4','#4eb3d3','#2b8cbe','#0868ac','#084081']
+        # ... i really doubt these are equally spaced either in rgb space or in perceptual space :(
+        self.spectrum_colors_orig = ['#a8ddb5','#7bccc4','#0868ac','#084081', '#ffa500', '#ff0000'] # for reset operation
+        self.spectrum_colors      = self.spectrum_colors_orig
+        self.spectrum_colors_bins = None
+
         # ColorBrewer2.org
         # - https://colorbrewer2.org/#
         # - © Cynthia Brewer, Mark Harrower and The Pennsylvania State University
@@ -210,15 +217,37 @@ class RTColorManager:
         _str = '#' + ('0' * (6 - len(as_hex)) + as_hex)
         return _str
 
+    #
+    # spectrumDiscretize() - setup bins across the spectrum.
+    #
+    def spectrumDiscretize(self, bins=10):
+        self.spectrum_colors_bins = bins
 
     #
-    # Based on BrewerColors // more reasonable for interpretation
+    # spectrumReset() - reset the spectrum values & bins
+    #
+    def spectrumReset(self):
+        self.spectrum_colors_bins = None
+        self.spectrum_colors      = self.spectrum_colors_orig
+
+    #
+    # spectrum() - return either continuous values across a spectrum or a binned version of that...
     #
     def spectrum(self, _v, _min, _max, _linear=True):
-        # _co = ['#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
-        # _co = ['#ccebc5','#a8ddb5','#7bccc4','#4eb3d3','#2b8cbe','#0868ac','#084081']
-        _co = ['#a8ddb5','#7bccc4','#0868ac','#084081', '#ffa500', '#ff0000']
+        if self.spectrum_colors_bins is None:
+            return self.__spectrum__(_v, _min, _max, _linear)
+        else:
+            h   = (_v - _min)/(_max - _min) # Only works for linear at this point...
+            bin = int(h * self.spectrum_colors_bins)
+            if int(bin) == self.spectrum_colors_bins: # for cases where h == 1.0
+                bin = bin - 1
+            color_index = float(bin) / (self.spectrum_colors_bins - 1)
+            return self.__spectrum__(color_index)
 
+    #
+    # __spectrum__() - return continuous color value.
+    #
+    def __spectrum__(self, _v, _min=0.0, _max=1.0, _linear=True):
         if _linear:
             h = (_v - _min)/(_max - _min)
         else:
@@ -229,16 +258,16 @@ class RTColorManager:
                 _delta += 1
             h = log10(_norm)/log10(_delta)
 
-        i0 = int(h*(len(_co)-1))
+        i0 = int(h*(len(self.spectrum_colors)-1))
         i1 = i0+1
 
-        if i1 >= len(_co):
+        if i1 >= len(self.spectrum_colors):
             i1 = i0
 
-        (r0,g0,b0) = self.hashColorToRGB(_co[i0])
-        (r1,g1,b1) = self.hashColorToRGB(_co[i1])
+        (r0,g0,b0) = self.hashColorToRGB(self.spectrum_colors[i0])
+        (r1,g1,b1) = self.hashColorToRGB(self.spectrum_colors[i1])
 
-        perc = h*(len(_co)-1) - i0
+        perc = h*(len(self.spectrum_colors)-1) - i0
 
         r = r0 * (1.0 - perc) + r1 * (perc)
         g = g0 * (1.0 - perc) + g1 * (perc)

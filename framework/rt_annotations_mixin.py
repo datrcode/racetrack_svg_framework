@@ -38,9 +38,9 @@ class RTAnnotationsMixin(object):
         self.annotations_ls = []
 
     #
-    # legendForAbridgedSpectrum()
+    # legendForSpectrum()
     #
-    def legendForAbridgedSpectrum(self, _min_=0.0, _max_=1.0, w=256, h=40, txt_h=12, draw_labels=True):
+    def legendForSpectrum(self, _min_=0.0, _max_=1.0, w=256, h=40, txt_h=12, draw_labels=True):
         svg =  f'<svg x="0" y="0" width="{w}" height="{h}">'
         co  =  self.co_mgr.getTVColor('background','default')
         svg += f'<rect x="0" y="0" width="{w}" height="{h}" fill="{co}" />'
