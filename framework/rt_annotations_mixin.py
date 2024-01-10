@@ -38,6 +38,26 @@ class RTAnnotationsMixin(object):
         self.annotations_ls = []
 
     #
+    # legendForAbridgedSpectrum()
+    #
+    def legendForAbridgedSpectrum(self, _min_=0.0, _max_=1.0, w=256, h=40, txt_h=12, draw_labels=True):
+        svg =  f'<svg x="0" y="0" width="{w}" height="{h}">'
+        co  =  self.co_mgr.getTVColor('background','default')
+        svg += f'<rect x="0" y="0" width="{w}" height="{h}" fill="{co}" />'
+        x0, x1 = 3, w-3
+        bar_h  = h - (3+3+3+txt_h) if draw_labels else h - (3+3)
+        for x in range(x0,x1):
+            co = self.co_mgr.spectrum(x, x0, x1) # self.co_mgr.spectrumAbridged(x, x0, x1)
+            svg += f'<line x1="{x}" y1="{3}" x2="{x}" y2="{3+bar_h}" stroke="{co}" stroke-width="1.5" />'
+        if draw_labels:
+            _min_str_ = self.readable(_min_)
+            svg += self.svgText(_min_str_, x0, h-4, txt_h)
+            _max_str_ = self.readable(_max_)
+            svg += self.svgText(_max_str_, x1, h-4, txt_h, anchor='end')
+        svg += '</svg>'
+        return svg
+    
+    #
     # Add an annotation into the application state
     #
     def addAnnotation(self,
@@ -575,7 +595,9 @@ class RTAnnotationsMixin(object):
     # - aim here is for four characters (or less)
     #
     def readable(self, x):
-        if abs(x) < 1000:
+        if abs(x) < 1.0:
+            return f'{x:0.2f}'
+        elif abs(x) < 1000:
             return str(x)
         elif abs(x) < 1000000:
             return f'{x/1000:.1f}k'
@@ -1491,4 +1513,3 @@ class RTAnnotation(object):
 
         else:
             raise Exception(f'RTAnnotation.matches() -- unknown annotation type "{self.annotation_type}"')
-

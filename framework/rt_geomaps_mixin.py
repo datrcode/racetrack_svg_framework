@@ -27,7 +27,7 @@ class RTGeoMapsMixin(object):
     #
     def geoMapsUSStates(self, version='hex'):
         if   version == 'hex':
-            return self.__geoMapsUSStates_hex_v2__()
+            return self.__geoMapsUSStates_hex_v3__()
         else:
             raise Exception(f'RTGeoMaps.geoMapsUSStates() - unknown version "{version}"')
 
@@ -167,6 +167,25 @@ class RTGeoMapsMixin(object):
             ['',  'vt','ma','ri','de'],
             ['me','nh','ct','',  '',  'dc']
         ]
+        return self.__hexEncoder__(slices, l)
+
+    def __geoMapsUSStates_hex_v3__(self, l=10.0):
+        slices = [
+            ['ak','',  'wa','or','nv','ca','',  'hi'],
+            ['',  'mt','id','wy','ut','az'],
+            ['',  '',  'nd','sd','ne','co','nm'],
+            ['',  'mn','ia','mo','ks','ok','tx'],
+            ['',  '',  'wi','il','ar','la','ms'],
+            ['',  'mi','in','ky','tn','al'],
+            ['',  '',  'oh','wv','md','nc','ga'],
+            ['',  'ny','pa','nj','va','sc','fl'],
+            ['',  'vt','ma','ri','de'],
+            ['',  'nh','ct','',  '',  'dc'],
+            ['',  'me']
+        ]
+        return self.__hexEncoder__(slices, l)
+
+    def __hexEncoder__(self, slices, l):
         l2 = l/2.0
         a  = pi*60.0/180.0
         h  = l*sin(a)
