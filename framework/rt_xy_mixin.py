@@ -279,7 +279,7 @@ class RTXYMixin(object):
            color_magnitude   = None,      # Only applies when color_by is None, options: None / 'linear' / 'log' / 'stretch'
            count_by          = None,      # none means just count rows, otherwise, use a field to sum by # Not Implemented
            count_by_set      = False,     # count by summation (by default)... column is checked
-           dot_size          = 'medium',  # Dot size - ['small', 'medium', 'large', 'huge', 'vary', 'hidden'/None]
+           dot_size          = 'medium',  # Dot size - ['tiny', 'small', 'medium', 'large', 'huge', 'vary', 'hidden'/None]
            dot_shape         = 'ellipse', # Dot shape - ['square', 'ellipse', 'triangle, 'utriangle', 'diamond', 'plus', x', 'small_multiple', function_pointer]
            max_dot_size      = 5,         # Max dot size (used when the dot sz varies)
            opacity           = 1.0,       # Opacity of the dots
@@ -1208,6 +1208,8 @@ class RTXYMixin(object):
                     return 3
                 elif _str_ == 'huge':
                     return 8
+                elif _str_ == 'tiny':
+                    return 0.3
                 return -1
             dot_w  = dotSizeNumber(self.dot_size)
             dot2_w = dotSizeNumber(self.dot2_size)
