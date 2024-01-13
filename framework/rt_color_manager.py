@@ -93,7 +93,18 @@ class RTColorManager:
         # self.spectrum_colors = ['#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
         # self.spectrum_colors = ['#ccebc5','#a8ddb5','#7bccc4','#4eb3d3','#2b8cbe','#0868ac','#084081']
         # ... i really doubt these are equally spaced either in rgb space or in perceptual space :(
-        self.spectrum_colors_orig = ['#a8ddb5','#7bccc4','#0868ac','#084081', '#ffa500', '#ff0000'] # for reset operation
+        self.spectrum_palettes    = []
+        self.spectrum_palettes.append(['#a8ddb5','#7bccc4','#0868ac','#084081', '#ffa500', '#ff0000'])
+        self.spectrum_palettes.append(['#ADD8E6','#00008B']) # Light Blue to Dark Blue
+        self.spectrum_palettes.append(['#e8e1db','#a9ac5d','#6d6c3c','#3a3c26','#362323']) # Greens - source:  https://colorpalettes.net/color-palette-4563/
+        self.spectrum_palettes.append(['#e8ede7','#81bece','#378ba4','#036280','#012e4a']) # Blues - source: https://colorpalettes.net/color-palette-4553/
+        self.spectrum_palettes.append(['#d3d9e9','#a6a9c8','#796ea8','#554d74','#31293f']) # Purples - source:  https://colorpalettes.net/color-palette-4469/
+        self.spectrum_palettes.append(['#2a4a8b','#0091b5','#f8d90f','#eeba00','#db5000']) # blue-yellow-red - source:  https://colorpalettes.net/color-palette-3932/
+        self.spectrum_palettes.append(['#fef4c0','#fdb10b','#fe8535','#fd292f','#b20000']) # orange-red - source:  https://colorpalettes.net/color-palette-4547/
+        self.spectrum_palettes.append(['#e2eeec','#cfdbda','#8aaaa5','#cabd9a','#a5956d']) # pastels - source:  https://colorpalettes.net/color-palette-4545/
+        self.spectrum_palettes.append(['#f6e8b8','#eec76f','#d2973e','#eec76f','#f6e8b8']) # pastels - source:  https://colorpalettes.net/color-palette-4514/
+
+        self.spectrum_colors_orig = self.spectrum_palettes[0]
         self.spectrum_colors      = self.spectrum_colors_orig
         self.spectrum_colors_bins = None
 
