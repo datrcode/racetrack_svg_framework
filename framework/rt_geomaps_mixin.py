@@ -28,6 +28,8 @@ class RTGeoMapsMixin(object):
     def geoMapsUSStates(self, version='hex'):
         if   version == 'hex':
             return self.__geoMapsUSStates_hex_v3__()
+        elif version == 'circles':
+            return self.__geoMapsUSStates_circles__()
         else:
             raise Exception(f'RTGeoMaps.geoMapsUSStates() - unknown version "{version}"')
 
@@ -199,3 +201,40 @@ class RTGeoMapsMixin(object):
                     lu[slices[col_i][row_i]] = Polygon(self.__hexagon__(cx, cy, l))
                     states.add(slices[col_i][row_i])
         return lu
+
+    #
+    # __geoMapsUSStates_circles__() - circle version
+    #
+    def __geoMapsUSStates_circles__(self):
+        slices = [
+            ['',   'wa', 'or', 'ca', '',   '',   'ak'],
+            ['',   'id', 'nv', 'ut', 'az', '',   'hi'],
+            ['',   'mt', 'wy', 'co', 'nm'],
+            ['',   'nd', 'sd', 'ne', 'ks', 'ok', 'tx'],
+            ['',   'mn', 'ia', 'mo', 'ar', 'la'],
+            ['',   'wi', 'il', 'in', 'ky', 'ms'],
+            ['',   'mi', 'oh', 'wv', 'tn', 'al'],
+            ['',   '',   'pa', 'va', 'sc', 'ga'],
+            ['',   'ny', 'nj', 'md', 'nc', '',   'fl'],
+            ['vt', 'ma', 'ct', 'de'],
+            ['me', 'nh', 'ri', '',   'dc']
+        ]
+        lu = {}
+        for col_i in range(len(slices)):
+            cx = col_i
+            for row_i in range(len(slices[col_i])):
+                cy = -row_i
+                if slices[col_i][row_i] != '':
+                    lu[slices[col_i][row_i]] = self.__circle__(cx,cy,0.5)
+        return lu
+
+    #
+    # __circle__() - approximates a circle with a polygon
+    #
+    def __circle__(self, cx, cy, r):
+        pts = []
+        for a in range(360, 0, -2):
+            rads = pi * a/180.0
+            pts.append([cx+r*cos(rads),cy+r*sin(rads)])
+        return Polygon(pts)
+
