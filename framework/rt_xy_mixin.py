@@ -1427,45 +1427,53 @@ class RTXYMixin(object):
             svg = ''
             #
             # X Axis
+            # ... don't draw if we are rendering the distribution only (those numbers don't make sense for distributions)
             #
             if self.x_is_time:
                 self.x_label_min,self.x_label_max = self.rt_self.condenseTimeLabels(self.x_label_min,self.x_label_max)
 
-            _x0_lab,     _x1_lab     = self.format(self.x_label_min),                self.format(self.x_label_max)
-            _x0_lab_len, _x1_lab_len = self.rt_self.textLength(_x0_lab, self.txt_h), self.rt_self.textLength(_x1_lab, self.txt_h)
-            x_field_str = '|'.join(self.x_field)
-            x_field_str_len = self.rt_self.textLength(x_field_str, self.txt_h)
+            if self.render_y_distribution is not None and (self.dot_size is None or self.dot_size == 'hidden'):
+                pass
+            else:
+                _x0_lab,     _x1_lab     = self.format(self.x_label_min),                self.format(self.x_label_max)
+                _x0_lab_len, _x1_lab_len = self.rt_self.textLength(_x0_lab, self.txt_h), self.rt_self.textLength(_x1_lab, self.txt_h)
+                x_field_str = '|'.join(self.x_field)
+                x_field_str_len = self.rt_self.textLength(x_field_str, self.txt_h)
 
-            if (_x0_lab_len + _x1_lab_len) < (self.w_usable * 0.8):
-                svg += self.rt_self.svgText(_x0_lab, self.x_left,               self.h-self.y_ins, self.txt_h)
-                svg += self.rt_self.svgText(_x1_lab, self.x_left+self.w_usable, self.h-self.y_ins, self.txt_h, anchor='end')
-                
-                # See if we can fit the x_field string in the middle
-                if (_x0_lab_len + x_field_str_len + _x1_lab_len) < (self.w_usable * 0.8):
+                if (_x0_lab_len + _x1_lab_len) < (self.w_usable * 0.8):
+                    svg += self.rt_self.svgText(_x0_lab, self.x_left,               self.h-self.y_ins, self.txt_h)
+                    svg += self.rt_self.svgText(_x1_lab, self.x_left+self.w_usable, self.h-self.y_ins, self.txt_h, anchor='end')
+                    
+                    # See if we can fit the x_field string in the middle
+                    if (_x0_lab_len + x_field_str_len + _x1_lab_len) < (self.w_usable * 0.8):
+                        svg += self.rt_self.svgText(x_field_str, self.x_left + self.w_usable/2, self.h - self.y_ins, self.txt_h, anchor='middle')
+                elif x_field_str_len < (self.w_usable * 0.8):
                     svg += self.rt_self.svgText(x_field_str, self.x_left + self.w_usable/2, self.h - self.y_ins, self.txt_h, anchor='middle')
-            elif x_field_str_len < (self.w_usable * 0.8):
-                svg += self.rt_self.svgText(x_field_str, self.x_left + self.w_usable/2, self.h - self.y_ins, self.txt_h, anchor='middle')
 
             #
             # Y Axis (Copy of last code block)
+            # ... don't draw if we are rendering the distribution only (those numbers don't make sense for distributions)                    
             #
             if self.y_is_time:
                 self.y_label_min,self.y_label_max = self.rt_self.condenseTimeLabels(self.y_label_min,self.y_label_max)
 
-            _y0_lab,     _y1_lab     = self.format(self.y_label_min),                self.format(self.y_label_max)
-            _y0_lab_len, _y1_lab_len = self.rt_self.textLength(_y0_lab, self.txt_h), self.rt_self.textLength(_y1_lab, self.txt_h)
-            y_field_str = '|'.join(self.y_field)
-            y_field_str_len = self.rt_self.textLength(y_field_str, self.txt_h)
+            if self.render_x_distribution is not None and (self.dot_size is None or self.dot_size == 'hidden'):
+                pass
+            else:
+                _y0_lab,     _y1_lab     = self.format(self.y_label_min),                self.format(self.y_label_max)
+                _y0_lab_len, _y1_lab_len = self.rt_self.textLength(_y0_lab, self.txt_h), self.rt_self.textLength(_y1_lab, self.txt_h)
+                y_field_str = '|'.join(self.y_field)
+                y_field_str_len = self.rt_self.textLength(y_field_str, self.txt_h)
 
-            if (_y0_lab_len + _y1_lab_len) < (self.h_usable * 0.8):
-                svg += self.rt_self.svgText(_y0_lab, self.x_left-4, self.y_ins+self.h_usable, self.txt_h,               rotation=-90)
-                svg += self.rt_self.svgText(_y1_lab, self.x_left-4, self.y_ins,               self.txt_h, anchor='end', rotation=-90)
-                
-                # See if we can fit the x_field string in the middle
-                if (_y0_lab_len + y_field_str_len + _y1_lab_len) < (self.h_usable * 0.8):
-                    svg += self.rt_self.svgText(y_field_str, self.x_left-4, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
-            elif y_field_str_len < (self.h_usable * 0.8):
-                svg +=     self.rt_self.svgText(y_field_str, self.x_left-4, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
+                if (_y0_lab_len + _y1_lab_len) < (self.h_usable * 0.8):
+                    svg += self.rt_self.svgText(_y0_lab, self.x_left-4, self.y_ins+self.h_usable, self.txt_h,               rotation=-90)
+                    svg += self.rt_self.svgText(_y1_lab, self.x_left-4, self.y_ins,               self.txt_h, anchor='end', rotation=-90)
+                    
+                    # See if we can fit the x_field string in the middle
+                    if (_y0_lab_len + y_field_str_len + _y1_lab_len) < (self.h_usable * 0.8):
+                        svg += self.rt_self.svgText(y_field_str, self.x_left-4, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
+                elif y_field_str_len < (self.h_usable * 0.8):
+                    svg +=     self.rt_self.svgText(y_field_str, self.x_left-4, self.y_ins + self.h_usable/2, self.txt_h, anchor='middle', rotation=-90)
 
             #
             # Y2 Axis
