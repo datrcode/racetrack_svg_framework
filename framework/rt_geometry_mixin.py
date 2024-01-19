@@ -400,14 +400,15 @@ class RTGeometryMixin(object):
         return d_str
 
     #
-    # levelSet()
+    # levelSetFast()
     # - raster is a two dimensional structure ... _raster[y][x]
     # - "0" or None means to calculate
     # - "-1" means a wall / immovable object
     # - "> 0" means the class to expand 
+    # - Faster version doesn't correctly model obstacles... slower version is more precise
     #
-    def levelSet(self,
-                 _raster):
+    def levelSetFast(self,
+                     _raster):
         h,w = len(_raster),len(_raster[0])
 
         # Allocate the level set
@@ -464,6 +465,120 @@ class RTGeometryMixin(object):
                             if found_time[yn][xn] is None or found_time[yn][xn] > t:
                                 heapq.heappush(_heap,(t, xn, yn, state[y_origin][x_origin], y_origin, x_origin))
 
+        return state, found_time, origin
+
+
+    #
+    # Implemented from pseudocode on https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+    #
+    def __bresenhamsLow__(self, x0,y0,x1,y1):
+        dx, dy, yi, pts = x1 - x0, y1 - y0, 1, []
+        if dy < 0:
+            yi, dy = -1, -dy
+        D, y = (2*dy)-dx, y0
+        for x in range(x0,x1+1):
+            pts.append((x,y))
+            if D > 0:
+                y += yi
+                D += 2*(dy-dx)
+            else:
+                D += 2*dy
+        return pts
+    #
+    # Implemented from pseudocode on https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+    #
+    def __bresenhamsHigh__(self, x0,y0,x1,y1):
+        dx, dy, xi, pts = x1 - x0, y1 - y0, 1, []
+        if dx < 0:
+            xi, dx = -1, -dx
+        D, x = (2*dx)-dy, x0
+        for y in range(y0,y1+1):
+            pts.append((x,y))
+            if D > 0:
+                x += xi
+                D += 2*(dx-dy)
+            else:
+                D += 2*dx
+        return pts
+
+    #
+    # bresenhams() - returns list of points on the pixelized (discrete) line from (x0,y0) to (x1,y1)
+    # - Implemented from pseudocode on https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+    #
+    def bresenhams(self, x0,y0,x1,y1):
+        if abs(y1-y0) < abs(x1-x0):
+            return self.__bresenhamsLow__(x1,y1,x0,y0)  if (x0 > x1) else self.__bresenhamsLow__(x0,y0,x1,y1)
+        else:
+            return self.__bresenhamsHigh__(x1,y1,x0,y0) if (y0 > y1) else self.__bresenhamsHigh__(x0,y0,x1,y1)
+
+    #
+    # levelSet() - slower version but more precise (takes objects into consideration)
+    # - takes approximately 10x times as long as the fast method... (with small rasters... < 256x256)
+    # - raster is a two dimensional structure ... _raster[y][x]
+    # - "0" or None means to calculate
+    # - "-1" means a wall / immovable object
+    # - "> 0" means the class to expand 
+    #
+    def levelSet(self, _raster):
+        h,w = len(_raster),len(_raster[0])
+
+        # Allocate the level set
+        state      = [[None for x in range(w)] for y in range(h)] # node that found the pixel
+        found_time = [[None for x in range(w)] for y in range(h)] # when node was found
+        origin     = [[None for x in range(w)] for y in range(h)] # when node was found
+
+        # Distance lambda function
+        dist = lambda _x0,_y0,_x1,_y1: sqrt((_x0-_x1)*(_x0-_x1)+(_y0-_y1)*(_y0-_y1))
+
+        # Copy the _raster 
+        for x in range(0,len(_raster[0])):
+            for y in range(0,len(_raster)):
+                if _raster[y][x] is not None and _raster[y][x] != 0:
+                    state[y][x]      = _raster[y][x]  # class of the find
+                    found_time[y][x] = 0              # what time it was found
+                    origin[y][x]     = (y,x)          # origin of the finder
+
+        # Initialize the heap
+        _heap = []
+        for x in range(0,len(_raster[0])):
+            for y in range(0,len(_raster)):
+                if state[y][x] is not None and state[y][x] > 0: # Only expand non-walls and set indices...
+                    for dx in range(-1,2):
+                        for dy in range(-1,2):
+                            if dx == 0 and dy == 0:
+                                continue
+                            xn,yn = x+dx,y+dy
+                            if xn >= 0 and yn >= 0 and xn < w and yn < h:
+                                if state[yn][xn] is None or state[yn][x] == 0:
+                                    t = dist(x, y, xn, yn)
+                                    heapq.heappush(_heap,(t, xn, yn, state[y][x], origin[y][x][0], origin[y][x][1]))
+
+        # Go through the heap
+        while len(_heap) > 0:
+            t,xi,yi,_class,y_origin,x_origin = heapq.heappop(_heap)
+            t = dist(xi,yi,x_origin,y_origin) + found_time[y_origin][x_origin]
+            if state[yi][xi] is not None and state[yi][xi] < 0:           # Check for a wall
+                continue
+            if found_time[yi][xi] is None or found_time[yi][xi] > t:      # Deterimine if we should overwrite the state
+                state [yi][xi]     = _class
+                found_time[yi][xi] = t
+                origin[yi][xi]      = (y_origin,x_origin)
+                for dx in range(-1,2):                                    # Add the neighbors to the priority queue
+                    for dy in range(-1,2):
+                        if dx == 0 and dy == 0:
+                            continue
+                        xn, yn = xi + dx, yi + dy
+                        # Within bounds?
+                        if xn >= 0 and yn >= 0 and xn < w and yn < h:
+                            t = found_time[yi][xi] + dist(xi, yi, xn, yn)
+                            # Adjust the origin if we can't see the origin from the new point...
+                            x_origin_adj, y_origin_adj = x_origin, y_origin
+                            path = self.bresenhams(xn,yn,x_origin,y_origin)
+                            for pt in path:
+                                if state[pt[1]][pt[0]] is not None and state[pt[1]][pt[0]] < 0:
+                                    x_origin_adj, y_origin_adj = xi, yi
+                            if found_time[yn][xn] is None or found_time[yn][xn] > t:
+                                heapq.heappush(_heap,(t, xn, yn, state[y_origin][x_origin], y_origin_adj, x_origin_adj))
         return state, found_time, origin
 
     #
