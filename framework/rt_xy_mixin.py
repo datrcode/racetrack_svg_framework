@@ -37,6 +37,53 @@ __name__ = 'rt_xy_mixin'
 #
 class RTXYMixin(object):
     #
+    # __distributionSingle__() - single variable distribution
+    #
+    def __distributionSingle__(self, df, field, k='a', bins=40):
+        counts, _ranges_ = np.histogram(df[field], bins=bins)
+        xs, counts_norm, splits = [], [], []
+        _counts_max_ = max(counts)
+        r0, r1 = _ranges_[0], _ranges_[-1]
+        for i in range(len(_ranges_)-1):
+            x = r0 + ((r1 - r0) * i) / (len(_ranges_)-2)
+            xs.append(x)
+            splits.append(k)
+            counts_norm.append(counts[i]/_counts_max_)
+        return counts, splits, xs, counts_norm
+
+    #
+    # __distributionSplit__() - multiple variable distribution
+    #
+    def __distributionSplit__(self, df, field, split_by=None, bins=40):
+        counts, splits, xs, counts_norm = [], [], [], []
+        gb = df.groupby(split_by)
+        for k, k_df in gb:
+            _counts_, _splits_, _xs_, _counts_norm_ = self.__distributionSingle__(k_df, field, k, bins)
+            counts.extend(_counts_)
+            splits.extend(_splits_)
+            xs.extend(_xs_)
+            counts_norm.extend(_counts_norm_)
+        return counts, splits, xs, counts_norm
+
+    #
+    # distroXY() - create a distribution to deliver to the xy component.
+    #
+    def distroXY(self, df, field, split_by=None, bins=20, use_norm=False, **params):
+        if split_by is not None:
+            counts, splits, xs, counts_norm = self.__distributionSplit__(df, field, split_by, bins)
+        else:
+            counts, splits, xs, counts_norm = self.__distributionSingle__(df, field, bins=bins)
+                
+        _df_ = pd.DataFrame({'x':xs,'split':splits,'count':counts, 'count_norm':counts_norm})
+        params['df']                 = _df_
+        params['x_field']            = 'x'    
+        params['y_field']            = 'count_norm' if use_norm else 'count'
+        params['line_groupby_field'] = 'split'
+        params['color_by']           = 'split'
+        params['dot_size']           = None
+        return params
+
+    #
     # Draw the background temporal context for the x-axis.
     # ... attempted rewrite... doesn't work as well as the original...
     #
