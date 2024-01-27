@@ -38,6 +38,61 @@ class RTAnnotationsMixin(object):
         self.annotations_ls = []
 
     #
+    # tag() - tag a subset dataframe.
+    # - simple tags ... just a word ... no bars (|) or equal (=) signs
+    # - type-value tags ... word=value ... no bars (|) or equal (=) signs
+    # - op = 'add', 'set'
+    # - df_sub should be a subset of the df ... no idea what happens if it isn't
+    #
+    def tag(self, df, df_sub, tag, op='add', field='__tag__'):
+        if op != 'add' and op != 'set':
+            raise Exception('tag() - only operations supported are "set" and "add" (default)')
+        if self.isPandas(df):
+            return self.__tag_pandas__(df, df_sub, tag, op, field)
+        elif self.isPolars(df):
+            return self.__tag_polars__(df, df_sub, tag, op, field)
+        else:
+            raise Exception('tag() - only pandas and polars implemented')
+
+    # pandas version
+    def __tag_pandas__(self, df, df_sub, tag, op='add', field='__tag__'):
+        if op == 'set' or field not in df.columns:
+            if field not in df.columns:
+                df[field] = ''
+            df.loc[df.index.isin(df_sub.index), field] = tag
+        else: # add
+            df.update(df.loc[df.index.isin(df_sub.index), field].apply(lambda x: self.__addToTag__(x, tag)))
+        return df
+
+    # polar version
+    def __tag_polars__(self, df, df_sub, tag, op='add', field='__tag__'):
+        return df
+
+    # mechanics to add to a tag
+    def __addToTag__(self, orig, to_add):
+        if orig is None:
+            return to_add
+        else:
+            orig, to_add = str(orig), str(to_add)
+            _set_ = set(orig.split('|'))
+            _set_.add(to_add)
+            if '=' in to_add: # may need to dedupe type-value
+                _tv_      = to_add.split('=')                 # split type value
+                _type_    = _tv_[0]                           # pull out type
+                _value_   = _tv_[1] if len(_tv_) == 2 else '' # pull out value
+                _new_set_ = set()
+                for x in _set_:
+                    if '=' in x and x.split('=')[0] == _type_:
+                        _new_set_.add(to_add)
+                    else:
+                        _new_set_.add(x)
+                _set_ = _new_set_
+            _joined_ = '|'.join(sorted(list(_set_)))
+            if len(_joined_) > 0 and _joined_[0] == '|':
+                _joined_ = _joined_[1:]
+            return _joined_
+
+    #
     # legendForSpectrum()
     #
     def legendForSpectrum(self, _min_=0.0, _max_=1.0, w=256, h=40, txt_h=12, draw_labels=True):
