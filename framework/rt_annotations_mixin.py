@@ -1,4 +1,4 @@
-# Copyright 2023 David Trimm
+# Copyright 2024 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 
 import re
@@ -44,6 +45,11 @@ class RTAnnotationsMixin(object):
     # - op = 'add', 'set'
     # - df_sub should be a subset of the df ... no idea what happens if it isn't
     #
+    # NOTE:  THE POLARS AND PANDAS VERSION DIFFER IN WHAT DATAFRAME IS ACTUALLY
+    # MODIFIED ... PANDAS VERSION MODIFIES IN_PLACE... POLARS DOESN"T AFFECT THE
+    # IN_PLACE VERSION ... AS LONG AS THE CONVENTION IS "df = rt.tag()" THEN ITS
+    # OKAY ... I'M SURE THIS IS GOING TO MESS SOMETHING UP DOWNSTREAM...
+    #
     def tag(self, df, df_sub, tag, op='add', field='__tag__'):
         if op != 'add' and op != 'set':
             raise Exception('tag() - only operations supported are "set" and "add" (default)')
@@ -55,7 +61,7 @@ class RTAnnotationsMixin(object):
             raise Exception('tag() - only pandas and polars implemented')
 
     # pandas version
-    def __tag_pandas__(self, df, df_sub, tag, op='add', field='__tag__'):
+    def __tag_pandas__(self, df, df_sub, tag, op, field):
         if op == 'set' or field not in df.columns:
             if field not in df.columns:
                 df[field] = ''
@@ -65,7 +71,17 @@ class RTAnnotationsMixin(object):
         return df
 
     # polar version
-    def __tag_polars__(self, df, df_sub, tag, op='add', field='__tag__'):
+    def __tag_polars__(self, df, df_sub, tag, op, field):
+        ee_but_tag = list(set(df.columns) - set([field]))
+        if op == 'set' or field not in df.columns:
+            if field not in df.columns:
+                df = df.with_columns(pl.lit('').alias(field))
+            df_sub = df_sub.with_columns(pl.lit(tag).alias(field))
+            df = df.update(df_sub, on=ee_but_tag)
+        else:
+            _fn_ = lambda x: self.__addToTag__(x, tag)
+            df_sub = df_sub.with_columns(pl.col(field).map_elements(_fn_))
+            df = df.update(df_sub, on=ee_but_tag)
         return df
 
     # mechanics to add to a tag
