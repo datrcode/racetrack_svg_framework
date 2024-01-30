@@ -1,4 +1,4 @@
-# Copyright 2022 David Trimm
+# Copyright 2024 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1321,30 +1321,31 @@ class RTXYMixin(object):
                     self.df2 = self.df2.with_columns([pl.col(self.y2_axis_col+'_px').cast(pl.Int32)])
 
             # Create the SVG ... render the background
-            svg = f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
+            svg_strs = []
+            svg_strs.append(f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">')
             if self.background_override is None:
                 background_color = self.rt_self.co_mgr.getTVColor('background','default')
             else:
                 background_color = self.background_override                
-            svg += f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" fill-opacity="{self.background_opacity}" stroke="{background_color}" stroke-opacity="{self.background_opacity}" />'
+            svg_strs.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" fill-opacity="{self.background_opacity}" stroke="{background_color}" stroke-opacity="{self.background_opacity}" />')
 
             if self.plot_background_override is not None:
                 _co = self.plot_background_override
-                svg += f'<rect x="{self.x_left}" y="{self.y_ins}" width="{self.w_usable}" height="{self.h_usable+1}" fill="{_co}" stroke="{_co}" />'
+                svg_strs.append(f'<rect x="{self.x_left}" y="{self.y_ins}" width="{self.w_usable}" height="{self.h_usable+1}" fill="{_co}" stroke="{_co}" />')
 
             # Draw the temporal context
             if self.x_is_time and self.draw_context:
                 if self.x_label_min is not None and self.x_label_max is not None:
                     _ts_min,_ts_max = pd.to_datetime(self.x_label_min),pd.to_datetime(self.x_label_max)
-                    svg += self.rt_self.drawXYTemporalContext(self.x_left, self.y_ins, self.w_usable, self.h_usable, self.txt_h, _ts_min,            _ts_max,            self.draw_labels)
+                    svg_strs.append(self.rt_self.drawXYTemporalContext(self.x_left, self.y_ins, self.w_usable, self.h_usable, self.txt_h, _ts_min,            _ts_max,            self.draw_labels))
                 else:
-                    svg += self.rt_self.drawXYTemporalContext(self.x_left, self.y_ins, self.w_usable, self.h_usable, self.txt_h, self.timestamp_min, self.timestamp_max, self.draw_labels)
+                    svg_strs.append(self.rt_self.drawXYTemporalContext(self.x_left, self.y_ins, self.w_usable, self.h_usable, self.txt_h, self.timestamp_min, self.timestamp_max, self.draw_labels))
 
             # Draw grid lines (if enabled)
             if self.draw_x_gridlines and self.x_field_is_scalar:
-                svg += self.__drawGridlines__(True,  self.x_label_min, self.x_label_max, self.x_trans_norm_func, self.w_usable, self.y_ins,  self.y_ins  + self.h_usable)
+                svg_strs.append(self.__drawGridlines__(True,  self.x_label_min, self.x_label_max, self.x_trans_norm_func, self.w_usable, self.y_ins,  self.y_ins  + self.h_usable))
             if self.draw_y_gridlines and self.y_field_is_scalar:
-                svg += self.__drawGridlines__(False, self.y_label_min, self.y_label_max, self.y_trans_norm_func, self.h_usable, self.x_left, self.x_left + self.w_usable)
+                svg_strs.append(self.__drawGridlines__(False, self.y_label_min, self.y_label_max, self.y_trans_norm_func, self.h_usable, self.x_left, self.x_left + self.w_usable))
                 
             # Draw the background shapes
             if self.bg_shape_lu is not None and self.x_trans_func is not None and self.y_trans_func is not None:
@@ -1356,34 +1357,34 @@ class RTXYMixin(object):
                                                                                         self.bg_shape_label_color, self.bg_shape_opacity,
                                                                                         self.bg_shape_fill,        self.bg_shape_stroke_w,
                                                                                         self.bg_shape_stroke,      self.txt_h)
-                    svg += _shape_svg
+                    svg_strs.append(_shape_svg)
                     _bg_shape_labels.append(_label_svg) # Defer render
 
                 # Render the labels
                 for _label_svg in _bg_shape_labels:
-                    svg += _label_svg
+                    svg_strs.append(_label_svg)
 
             # Draw the distributions (if selected)
             if self.render_x_distribution is not None:
-                svg += self.__renderBackgroundDistribution__(True,  self.x_left, self.y_bottom, self.x_left + self.w_usable, self.y_bottom, self.x_left, self.y_ins)
+                svg_strs.append(self.__renderBackgroundDistribution__(True,  self.x_left, self.y_bottom, self.x_left + self.w_usable, self.y_bottom, self.x_left, self.y_ins))
             if self.render_y_distribution is not None:
-                svg += self.__renderBackgroundDistribution__(False, self.x_left, self.y_bottom, self.x_left + self.w_usable, self.y_bottom, self.x_left, self.y_ins)
+                svg_strs.append(self.__renderBackgroundDistribution__(False, self.x_left, self.y_bottom, self.x_left + self.w_usable, self.y_bottom, self.x_left, self.y_ins))
 
             # Axis
             axis_co = self.rt_self.co_mgr.getTVColor('axis',  'default')
-            svg += f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left}"                 y2="{self.y_ins}"      stroke="{axis_co}" stroke-width=".6" />'
-            svg += f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left + self.w_usable}" y2="{self.y_bottom}"   stroke="{axis_co}" stroke-width=".6" />'
+            svg_strs.append(f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left}"                 y2="{self.y_ins}"      stroke="{axis_co}" stroke-width=".6" />')
+            svg_strs.append(f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left + self.w_usable}" y2="{self.y_bottom}"   stroke="{axis_co}" stroke-width=".6" />')
                 
             # Handle the line option... this needs to be rendered before the dots so that the lines are behind the dots
             # ... first version handles vector data...
             if self.line_groupby_field is not None and type(self.line_groupby_field) == list:
-                svg += self.__rendersvg_line_groupby_timestamped__()
+                svg_strs.append(self.__rendersvg_line_groupby_timestamped__())
             # ... second version handles the normal use cases...
             elif self.line_groupby_field:
-                svg += self.__rendersvg_line_groupby__()
+                svg_strs.append(self.__rendersvg_line_groupby__())
             # Handle the line 2 option // like the first one... but some additional options, reassignments
             if self.line2_groupby_field:
-                svg += self.__rendersvg_line2_groupby__()
+                svg_strs.append(self.__rendersvg_line2_groupby__())
 
             #
             # Dot Render Loops
@@ -1412,35 +1413,35 @@ class RTXYMixin(object):
                                                           self.sm_type, self.sm_params, self.sm_x_axis_independent, self.sm_y_axis_independent,
                                                           self.sm_w, self.sm_h)
                 for node_str in sm_lu.keys():
-                    svg += sm_lu[node_str]
+                    svg_strs.append(sm_lu[node_str])
 
             # Dots / Primary Axis
             elif dot_w is not None and dot_w != 0:
                 if self.rt_self.isPandas(self.df):
-                    svg += self.__rendersvg_dots_pandas__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w)
+                    svg_strs.append(self.__rendersvg_dots_pandas__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w))
                 elif self.rt_self.isPolars(self.df):
-                    svg += self.__rendersvg_dots_polars__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w)
+                    svg_strs.append(self.__rendersvg_dots_polars__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w))
 
             # Dots / Secondary Axis
             if dot2_w is not None and self.df2 is not None and dot2_w != 0:
                 _local_color_by = self.line2_groupby_color if self.line2_groupby_color is not None else self.color_by
                 if self.rt_self.isPandas(self.df):
-                    svg += self.__rendersvg_dots_pandas__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w)
+                    svg_strs.append(self.__rendersvg_dots_pandas__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w))
                 elif self.rt_self.isPolars(self.df):
-                    svg += self.__rendersvg_dots_polars__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w)
+                    svg_strs.append(self.__rendersvg_dots_polars__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w))
 
             # Draw labels
             if self.draw_labels:
-                svg += self.__rendersvg_drawlabels__()
+                svg_strs.append(self.__rendersvg_drawlabels__())
                         
             # Draw the border
             if self.draw_border:
                 border_color = self.rt_self.co_mgr.getTVColor('border','default')
-                svg += f'<rect width="{self.w-1}" height="{self.h}" x="0" y="0" fill-opacity="0.0" fill="none" stroke="{border_color}" />'
+                svg_strs.append(f'<rect width="{self.w-1}" height="{self.h}" x="0" y="0" fill-opacity="0.0" fill="none" stroke="{border_color}" />')
             
-            svg += '</svg>'
-            self.last_render = svg
-            return svg
+            svg_strs.append('</svg>')
+            self.last_render = ''.join(svg_strs)
+            return self.last_render
         
         #
         # Determine which dataframe geometries overlap with a specific
@@ -1941,8 +1942,8 @@ class RTXYMixin(object):
         # __rendersvg_dots_polars__() - render dots for polars
         #
         def __rendersvg_dots_polars__(self, _df, _x_axis_col, _y_axis_col, _local_color_by, _local_dot_w):
-            svg  = ''
-            proc = []
+            svg_strs = []
+            proc     = []
 
             # Count By Calc
             if _local_dot_w < 0 or self.vary_opacity or self.color_magnitude is not None:
@@ -2014,7 +2015,7 @@ class RTXYMixin(object):
                     if callable(self.dot_shape):
                         k_df = pb[(x,y)]
                         _my_dot_shape = self.dot_shape(k_df, (x,y), x, y, _local_dot_w, color, self.opacity)
-                    svg += self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity)
+                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity))
                 else: # Complex Render
                     my_count = gb['__countby__'][_index_]
                     
@@ -2033,7 +2034,7 @@ class RTXYMixin(object):
                         k_df = pb[(x,y)]
                         _my_dot_shape = self.dot_shape(k_df, (x,y), x, y, var_w, color, var_o)
 
-                    svg += self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o)
+                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o))
 
                 # Track state (if requested)
                 if self.track_state:
@@ -2042,13 +2043,13 @@ class RTXYMixin(object):
                                      [x+_local_dot_w,y+_local_dot_w],[x+_local_dot_w,y-_local_dot_w]])
                     self.geom_to_df[_poly] = k_df
 
-            return svg
+            return ''.join(svg_strs)
 
         #
         # __rendersvg_dots_pandas__(): render the dots
         #
         def __rendersvg_dots_pandas__(self, _df,_x_axis_col,_y_axis_col,_local_color_by,_local_dot_w):
-            svg = ''
+            svg_strs = []
             # Group by x,y for the render
             gb = _df.groupby([_x_axis_col+"_px",_y_axis_col+"_px"])
 
@@ -2136,7 +2137,7 @@ class RTXYMixin(object):
                     _my_dot_shape = self.dot_shape
                     if callable(self.dot_shape):
                         _my_dot_shape = self.dot_shape(k_df, k, x, y, _local_dot_w, color, self.opacity)
-                    svg += self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity)
+                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity))
 
                     # Track state (if requested)
                     if self.track_state:
@@ -2172,7 +2173,7 @@ class RTXYMixin(object):
                     if callable(self.dot_shape):
                         _my_dot_shape = self.dot_shape(k_df, k, x, y, var_w, color, var_o)
 
-                    svg += self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o)
+                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o))
 
                     # Track state (if requested)
                     if self.track_state:
@@ -2182,7 +2183,7 @@ class RTXYMixin(object):
                                          [x+var_w,y-var_w]])
                         self.geom_to_df[_poly] = k_df
 
-            return svg
+            return ''.join(svg_strs)
 
     #
     # Condense a Time Label Down To The Minimum...
