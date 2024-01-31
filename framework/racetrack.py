@@ -871,14 +871,14 @@ class RACETrack(RTAnnotationsMixin,
                                bar_len,             # total bar length -- for vertical, this is the height
                                bar_sz,              # size of bar -- for vertical, this is the width
                                horz):               # true for horizontal bars (histogram), false for vertical bars
-        svg = ''
+        svg = []
         if bar_len > 0:
             _co = self.co_mgr.getTVColor('data','default')
             # Default bar w/out color
             if horz:
-                svg += f'<rect x="{x}" y="{y}" width="{bar_len}" height="{bar_sz}" fill="{_co}" />'
+                svg.append(f'<rect x="{x}" y="{y}" width="{bar_len}" height="{bar_sz}" fill="{_co}" />')
             else:
-                svg += f'<rect x="{x}" y="{y-bar_len}" width="{bar_sz}" height="{bar_len}" fill="{_co}" />'
+                svg.append(f'<rect x="{x}" y="{y-bar_len}" width="{bar_sz}" height="{bar_len}" fill="{_co}" />')
             # Colorize it
             if color_by is not None:
                 quantities   = self.colorRenderOrder(df, color_by, count_by, count_by_set)
@@ -892,12 +892,12 @@ class RACETrack(RTAnnotationsMixin,
                     if l >= 1.0:
                         _co = self.co_mgr.getColor(cb_bin)
                         if horz:
-                            svg += f'<rect x="{d}" y="{y}" width="{l}" height="{bar_sz}" fill="{_co}" />'
+                            svg.append(f'<rect x="{d}" y="{y}" width="{l}" height="{bar_sz}" fill="{_co}" />')
                             d += l
                         else:
-                            svg += f'<rect x="{x}" y="{d-l}" width="{bar_sz}" height="{l}" fill="{_co}" />'
+                            svg.append(f'<rect x="{x}" y="{d-l}" width="{bar_sz}" height="{l}" fill="{_co}" />')
                             d -= l
-        return svg
+        return ''.join(svg)
 
     def __colorizeBar_polars__(self,
                                df,                  # dataframe
@@ -910,14 +910,14 @@ class RACETrack(RTAnnotationsMixin,
                                bar_len,             # total bar length -- for vertical, this is the height
                                bar_sz,              # size of bar -- for vertical, this is the width
                                horz):               # true for horizontal bars (histogram), false for vertical bars
-        svg = ''
+        svg = []
         if bar_len > 0:
             _co = self.co_mgr.getTVColor('data','default')
             # Default bar w/out color
             if horz:
-                svg += f'<rect x="{x}" y="{y}" width="{bar_len}" height="{bar_sz}" fill="{_co}" />'
+                svg.append(f'<rect x="{x}" y="{y}" width="{bar_len}" height="{bar_sz}" fill="{_co}" />')
             else:
-                svg += f'<rect x="{x}" y="{y-bar_len}" width="{bar_sz}" height="{bar_len}" fill="{_co}" />'
+                svg.append(f'<rect x="{x}" y="{y-bar_len}" width="{bar_sz}" height="{bar_len}" fill="{_co}" />')
             # Colorize it
             if color_by is not None:
                 quantities   = self.colorRenderOrder(df, color_by, count_by, count_by_set)
@@ -931,12 +931,12 @@ class RACETrack(RTAnnotationsMixin,
                     if l >= 1.0:
                         _co = self.co_mgr.getColor(cb_bin)
                         if horz:
-                            svg += f'<rect x="{d}" y="{y}" width="{l}" height="{bar_sz}" fill="{_co}" />'
+                            svg.append(f'<rect x="{d}" y="{y}" width="{l}" height="{bar_sz}" fill="{_co}" />')
                             d += l
                         else:
-                            svg += f'<rect x="{x}" y="{d-l}" width="{bar_sz}" height="{l}" fill="{_co}" />'
+                            svg.append(f'<rect x="{x}" y="{d-l}" width="{bar_sz}" height="{l}" fill="{_co}" />')
                             d -= l
-        return svg
+        return ''.join(svg)
 
     #
     # From https://www.geeksforgeeks.org/python-intersection-two-lists/
