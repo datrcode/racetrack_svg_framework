@@ -19,6 +19,8 @@ import numpy as np
 import random
 import heapq
 
+from math import pi, sin, cos
+
 from shapely.geometry import Polygon
 
 from rt_component import RTComponent
@@ -30,7 +32,7 @@ __name__ = 'rt_chord_diagram_mixin'
 #
 class RTChordDiagramMixin(object):
     #
-    # dendogramOrdering() - create an order of the fm/to nodes based on hierarchical clustering
+    # dendrogramOrdering() - create an order of the fm/to nodes based on hierarchical clustering
     #
     def dendrogramOrdering(self, df, fm, to, count_by, count_by_set, _connector_ = ' <-|-> ', _sep_ = '|||'):
         # concats two strings in alphabetical order
@@ -106,15 +108,15 @@ class RTChordDiagramMixin(object):
                 _graph_.pop(_to_)
 
         # walk a tree in leaf order
-        def leafWalk(t, n=None, _sep_='|||'):
+        def leafWalk(t, n=None):
             if n is None:
                 for x in t.keys():
                     n = x if (n is None) or (len(x) > len(n)) else n # root will be longest string
             if _sep_ not in n or n not in t.keys():
                 return [n]
             else:
-                l = leafWalk(t, t[n][0], _sep_)
-                r = leafWalk(t, t[n][1], _sep_)
+                l = leafWalk(t, t[n][0])
+                r = leafWalk(t, t[n][1])
                 if l is None and r is None:
                     return []
                 elif l is None:
@@ -249,14 +251,74 @@ class RTChordDiagramMixin(object):
         def renderSVG(self, just_calc_max=False):
             if self.track_state:
                 self.geom_to_df = {}
-            svg = []
+
+            # Determine the node order
+            self.fm    = self.relationships[0][0]
+            self.to    = self.relationships[0][1]
+            self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
+            print(self.order)
+
+            # Determine the node volumes
+            if   self.count_by is None:
+                df_fm      = self.df.groupby(self.fm).size().reset_index().rename({self.fm:'__node__',0:'__fm_count__'},axis=1)
+                df_to      = self.df.groupby(self.to).size().reset_index().rename({self.to:'__node__',0:'__to_count__'},axis=1)
+            elif self.count_by_set:
+                df_fm      = self.df.groupby(self.fm)[self.count_by].nunique().reset_index().rename({self.fm:'__node__',self.count_by:'__fm_count__'},axis=1)
+                df_to      = self.df.groupby(self.to)[self.count_by].nunique().reset_index().rename({self.to:'__node__',self.count_by:'__to_count__'},axis=1)
+            else:
+                df_fm      = self.df.groupby(self.fm)[self.count_by].sum().reset_index().rename({self.fm:'__node__',self.count_by:'__fm_count__'},axis=1)
+                df_to      = self.df.groupby(self.to)[self.count_by].sum().reset_index().rename({self.to:'__node__',self.count_by:'__to_count__'},axis=1)
+            df_counter = df_fm.set_index('__node__').join(df_to.set_index('__node__')).reset_index()
+            df_counter['__count__'] = df_counter['__fm_count__'] + df_counter['__to_count__']
+            counter_lu = {}
+            for row_i, row in df_counter.iterrows():
+                counter_lu[row['__node__']] = row['__count__']
+            counter_sum = df_counter['__count__'].sum()
+
+            # Determine the geometry
+            self.cx, self.cy = self.w/2, self.h/2
+            self.rx, self.ry = (self.w - 2 * self.x_ins)/2, (self.h - 2 * self.y_ins)/2
+            self.r           = self.rx if (self.rx < self.ry) else self.ry
+            self.circ        = 2.0 * pi * self.r
+            gap_pixels       = len(self.order) * self.node_gap
+            if gap_pixels > 0.2 * self.circ:
+                self.node_gap_adj = (0.2*self.circ)/len(self.order)
+            else:
+                self.node_gap_adj = self.node_gap
+            self.node_gap_degs = 360.0 * (self.node_gap_adj / self.circ)
+            left_over_degs  = 360.0 - self.node_gap_degs * len(self.order)
+            self.node_to_arc   = {}
+            a = 0.0
+            for node in self.order:
+                counter_perc  = counter_lu[node] / counter_sum
+                node_degrees  = counter_perc * left_over_degs
+                self.node_to_arc[node] = (a, a+node_degrees)
+                a += node_degrees + self.node_gap_degs
+
             # Start the SVG Frame
+            svg = []
             svg.append(f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">')
-            background_color = self.rt_self.co_mgr.getTVColor('background','default')
+            background_color, axis_color = self.rt_self.co_mgr.getTVColor('background','default'), self.rt_self.co_mgr.getTVColor('axis','default')
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
+            svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="{self.r}" fill="{background_color}" stroke-width="0.5" stroke="{axis_color}" />')
 
-
-
+            # Draw the nodes
+            _color_ = self.rt_self.co_mgr.getTVColor('data','default')
+            for node in self.node_to_arc.keys():
+                a0, a1 = self.node_to_arc[node]
+                x0_out,  y0_out  = self.cx + self.r                 * cos(pi*a0/180.0), self.cy + self.r                 * sin(pi*a0/180.0)                
+                x0_in,   y0_in   = self.cx + (self.r - self.node_h) * cos(pi*a0/180.0), self.cy + (self.r - self.node_h) * sin(pi*a0/180.0)
+                x1_out,  y1_out  = self.cx + self.r                 * cos(pi*a1/180.0), self.cy + self.r                 * sin(pi*a1/180.0)                
+                x1_in,   y1_in   = self.cx + (self.r - self.node_h) * cos(pi*a1/180.0), self.cy + (self.r - self.node_h) * sin(pi*a1/180.0)
+                large_arc = 0 if (a1-a0) <= 180.0 else 1
+                _path_ = f'M {x0_out} {y0_out} A {self.r} {self.r} 0 {large_arc} 1 {x1_out} {y1_out} L {x1_in} {y1_in} ' + \
+                                            f' A {self.r-self.node_h} {self.r-self.node_h} 0 {large_arc} 0 {x0_in}  {y0_in}  Z'
+                svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_color_}" fill="#ff0000" />')
+                
+            # Draw the border
+            if self.draw_border:
+                border_color = self.rt_self.co_mgr.getTVColor('border','default')
+                svg.append(f'<rect width="{self.w-1}" height="{self.h}" x="0" y="0" fill-opacity="0.0" fill="none" stroke="{border_color}" />')
 
             svg.append('</svg>')
             self.last_render = ''.join(svg)
