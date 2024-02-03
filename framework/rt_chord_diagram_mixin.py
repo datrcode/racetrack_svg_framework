@@ -350,38 +350,92 @@ class RTChordDiagramMixin(object):
                 for k in range(len(self.order)):
                     dest = self.order[j]
                     if node in fmto_lu.keys() and dest in fmto_lu[node].keys():
-                        b_inc = node_degrees + fmto_lu[node][dest]/counter_lu[node]
-                        self.node_dir_arc[node][node] = {}
+                        b_inc = node_degrees*fmto_lu[node][dest]/counter_lu[node]
+                        if node not in self.node_dir_arc[node].keys():
+                            self.node_dir_arc[node][node] = {}
                         self.node_dir_arc[node][node][dest] = (b, b+b_inc)
                         b += b_inc
                     if node in tofm_lu.keys() and dest in tofm_lu[node].keys():
-                        b_inc = node_degrees + tofm_lu[node][dest]/counter_lu[node]
-                        self.node_dir_arc[node][dest] = {}
+                        b_inc = node_degrees*tofm_lu[node][dest]/counter_lu[node]
+                        if dest not in self.node_dir_arc[node].keys():
+                            self.node_dir_arc[node][dest] = {}
                         self.node_dir_arc[node][dest][node] = (b, b+b_inc)
                         b += b_inc
+                    j = j - 1
 
                 a += node_degrees + self.node_gap_degs
+
+            _debug_ = '''
+            print('\n\nfmto\n')
+            print(fmto_lu)
+            print('\n\ntofm\n')
+            print(tofm_lu)
+            print('--------------')
+            print('node_dir_arc')
+            print('--------------')
+            print(self.node_dir_arc)
+            '''
 
             # Start the SVG Frame
             svg = []
             svg.append(f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">')
             background_color, axis_color = self.rt_self.co_mgr.getTVColor('background','default'), self.rt_self.co_mgr.getTVColor('axis','default')
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
-            svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="{self.r}" fill="{background_color}" stroke-width="0.5" stroke="{axis_color}" />')
+            # svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="{self.r}" fill="{background_color}" stroke-width="0.5" stroke="{axis_color}" />')
 
+            xTo = lambda a: self.cx + self.r                 * cos(pi*a/180.0)
+            xTi = lambda a: self.cx + (self.r - self.node_h) * cos(pi*a/180.0)
+            yTo = lambda a: self.cx + self.r                 * sin(pi*a/180.0)
+            yTi = lambda a: self.cx + (self.r - self.node_h) * sin(pi*a/180.0)
+            xTc = lambda a: self.cx + 20                     * cos(pi*a/180.0)
+            yTc = lambda a: self.cx + 20                     * sin(pi*a/180.0)
+            
             # Draw the nodes
             _color_ = self.rt_self.co_mgr.getTVColor('data','default')
             for node in self.node_to_arc.keys():
                 a0, a1 = self.node_to_arc[node]
-                x0_out,  y0_out  = self.cx + self.r                 * cos(pi*a0/180.0), self.cy + self.r                 * sin(pi*a0/180.0)                
-                x0_in,   y0_in   = self.cx + (self.r - self.node_h) * cos(pi*a0/180.0), self.cy + (self.r - self.node_h) * sin(pi*a0/180.0)
-                x1_out,  y1_out  = self.cx + self.r                 * cos(pi*a1/180.0), self.cy + self.r                 * sin(pi*a1/180.0)                
-                x1_in,   y1_in   = self.cx + (self.r - self.node_h) * cos(pi*a1/180.0), self.cy + (self.r - self.node_h) * sin(pi*a1/180.0)
+                x0_out,  y0_out  = xTo(a0), yTo(a0)
+                x0_in,   y0_in   = xTi(a0), yTi(a0)
+                x1_out,  y1_out  = xTo(a1), yTo(a1)
+                x1_in,   y1_in   = xTi(a1), yTi(a1)
                 large_arc = 0 if (a1-a0) <= 180.0 else 1
                 _path_ = f'M {x0_out} {y0_out} A {self.r} {self.r} 0 {large_arc} 1 {x1_out} {y1_out} L {x1_in} {y1_in} ' + \
                                             f' A {self.r-self.node_h} {self.r-self.node_h} 0 {large_arc} 0 {x0_in}  {y0_in}  Z'
                 svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_color_}" fill="#ff0000" />')
-                
+
+            # Draw the edges from this node to the nbors
+                for node in self.node_dir_arc.keys():
+                    for _fm_ in self.node_dir_arc[node].keys():
+                        for _to_ in self.node_dir_arc[node][_fm_].keys():
+                            a0, a1 = self.node_dir_arc[node][_fm_][_to_]
+                            nbor = _fm_ if node != _fm_ else _to_
+                            b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
+                            #svg.append(f'<line x1="{xTi(a0)}" y1="{yTi(a0)}" x2="{xTi(b1)}" y2="{yTi(b1)}" stroke="{_color_}" stroke-width="0.1" />')
+                            #svg.append(f'<line x1="{xTi(a1)}" y1="{yTi(a1)}" x2="{xTi(b0)}" y2="{yTi(b0)}" stroke="{_color_}" stroke-width="0.1" />')
+
+                            xa0, ya0, xa1, ya1 = xTi(a0), yTi(a0), xTi(b1), yTi(b1)
+                            xb0, yb0, xb1, yb1 = xTi(a1), yTi(a1), xTi(b1), yTi(b1)
+
+                            #_path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1}'
+                            #svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_color_}" fill="none" />')
+                            #_path_ = f'M {xb0} {yb0} C {self.cx} {self.cy} {self.cx} {self.cy} {xb1} {yb1}'
+                            #svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_color_}" fill="none" />')
+
+                            _color_ = self.rt_self.co_mgr.getColor(str(_fm_) + ':' + str(_to_))
+                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
+                                     f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                            svg.append(f'<path d="{_path_}" stroke="none" fill="{_color_}" opacity="0.1" />')
+
+
+
+
+
+
+
+
+
             # Draw the border
             if self.draw_border:
                 border_color = self.rt_self.co_mgr.getTVColor('border','default')
