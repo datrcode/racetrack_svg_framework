@@ -162,7 +162,7 @@ class RTChordDiagramMixin(object):
                      node_h              = 10,       # height of node from circle edge
                      node_gap            = 5,        # node gap in pixels (gap between the arcs)
                      link_color          = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
-                     link_opacity        = '1.0',    # link opacity
+                     link_opacity        = 0.2,      # link opacity
                      label_only          = set(),    # label only set
                      bidirectional       = False,    # initial version will not be bidirectionaly
                      # ----------------------------- # visualization geometry / etc.
@@ -365,17 +365,6 @@ class RTChordDiagramMixin(object):
 
                 a += node_degrees + self.node_gap_degs
 
-            _debug_ = '''
-            print('\n\nfmto\n')
-            print(fmto_lu)
-            print('\n\ntofm\n')
-            print(tofm_lu)
-            print('--------------')
-            print('node_dir_arc')
-            print('--------------')
-            print(self.node_dir_arc)
-            '''
-
             # Start the SVG Frame
             svg = []
             svg.append(f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">')
@@ -389,7 +378,9 @@ class RTChordDiagramMixin(object):
             yTi = lambda a: self.cx + (self.r - self.node_h) * sin(pi*a/180.0)
             xTc = lambda a: self.cx + 20                     * cos(pi*a/180.0)
             yTc = lambda a: self.cx + 20                     * sin(pi*a/180.0)
-            
+            xTarrow = lambda a: self.cx + (self.r - 2*self.node_h) * cos(pi*a/180.0)
+            yTarrow = lambda a: self.cx + (self.r - 2*self.node_h) * sin(pi*a/180.0)
+
             # Draw the nodes
             _color_ = self.rt_self.co_mgr.getTVColor('data','default')
             for node in self.node_to_arc.keys():
@@ -406,15 +397,21 @@ class RTChordDiagramMixin(object):
             # Draw the edges from this node to the nbors
                 for node in self.node_dir_arc.keys():
                     for _fm_ in self.node_dir_arc[node].keys():
+                        if node != _fm_:
+                            continue
                         for _to_ in self.node_dir_arc[node][_fm_].keys():
                             a0, a1 = self.node_dir_arc[node][_fm_][_to_]
                             nbor = _fm_ if node != _fm_ else _to_
                             b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
+                            b_avg  = (b0+b1)/2
                             #svg.append(f'<line x1="{xTi(a0)}" y1="{yTi(a0)}" x2="{xTi(b1)}" y2="{yTi(b1)}" stroke="{_color_}" stroke-width="0.1" />')
                             #svg.append(f'<line x1="{xTi(a1)}" y1="{yTi(a1)}" x2="{xTi(b0)}" y2="{yTi(b0)}" stroke="{_color_}" stroke-width="0.1" />')
 
-                            xa0, ya0, xa1, ya1 = xTi(a0), yTi(a0), xTi(b1), yTi(b1)
-                            xb0, yb0, xb1, yb1 = xTi(a1), yTi(a1), xTi(b1), yTi(b1)
+                            xa0, ya0, xa1, ya1  = xTi(a0), yTi(a0), xTi(b1), yTi(b1)
+                            xb0, yb0, xb1, yb1  = xTi(a1), yTi(a1), xTi(b1), yTi(b1)
+                            xarrow0, yarrow0    = xTarrow(b0), yTarrow(b0)
+                            xarrow_pt,yarrow_pt = xTi(b_avg),  yTi(b_avg)
+                            xarrow1, yarrow1    = xTarrow(b1), yTarrow(b1) 
 
                             #_path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1}'
                             #svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_color_}" fill="none" />')
@@ -422,19 +419,27 @@ class RTChordDiagramMixin(object):
                             #svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_color_}" fill="none" />')
 
                             _color_ = self.rt_self.co_mgr.getColor(str(_fm_) + ':' + str(_to_))
-                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1} ' + \
-                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
+                            
+                            # No Arrow
+                            #_path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1} ' + \
+                            #         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
+                            #         f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                            #         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+
+                            # Sharp Arrow
+                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
+                                     f'L {xarrow_pt} {yarrow_pt} L {xarrow0} {yarrow0} ' + \
                                      f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
                                      f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
-                            svg.append(f'<path d="{_path_}" stroke="none" fill="{_color_}" opacity="0.1" />')
-
-
-
-
-
-
-
-
+                            
+                            # Smooth Arrow
+                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
+                                     f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow_pt} {yarrow_pt} ' + \
+                                     f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow0} {yarrow0} ' + \
+                                     f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                            
+                            svg.append(f'<path d="{_path_}" stroke="none" fill="{_color_}" opacity="{self.link_opacity}" />')
 
             # Draw the border
             if self.draw_border:
