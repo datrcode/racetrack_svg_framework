@@ -107,6 +107,16 @@ class RTChordDiagramMixin(object):
                     _graph_[x].pop(_to_)
                 _graph_.pop(_to_)
 
+        # ensure that there's a root node...
+        if len(_graph_.keys()) > 1:
+            _root_parts_ = []
+            for x in _graph_.keys():
+                _root_parts_.extend(breakdownMerge(x))
+            _root_ = _sep_.join(sorted(_root_parts_))
+            _tree_[_root_] = []
+            for x in _graph_.keys():
+                _tree_[_root_].append(x)
+
         # walk a tree in leaf order
         def leafWalk(t, n=None):
             if n is None:
@@ -229,6 +239,26 @@ class RTChordDiagramMixin(object):
                             if rt_self.isTField(_tup_part) and rt_self.tFieldApplicableField(_tup_part) in self.df.columns:
                                 self.df,_throwaway = rt_self.applyTransform(self.df, _tup_part)
 
+            # If either from or to are lists, concat them together...
+            def catFields(x, flds):
+                s = str(x[flds[0]])
+                for i in range(1,len(flds)):
+                    s += '|' + str(x[flds[i]])
+                return s
+
+            _fm_ = self.relationships[0][0]
+            if type(_fm_) == list or type(_fm_) == tuple:
+                self.df['__fmcat__'] = self.df.apply(lambda x: catFields(x, _fm_), axis=1)
+                _fm_ = '__fmcat__'
+            _to_ = self.relationships[0][1]
+            if type(_to_) == list or type(_to_) == tuple:
+                self.df['__tocat__'] = self.df.apply(lambda x: catFields(x, _to_), axis=1)
+                _to_ = '__tocat__'
+            self.relationships = [(_fm_,_to_)]
+
+            # Get rid of self references
+            self.df = self.df[self.df[_fm_] != self.df[_to_]]
+
             # Check the count_by column
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
@@ -256,30 +286,48 @@ class RTChordDiagramMixin(object):
             self.fm    = self.relationships[0][0]
             self.to    = self.relationships[0][1]
             self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
-            print(self.order)
 
             # Determine the node volumes
             if   self.count_by is None:
                 df_fm      = self.df.groupby(self.fm).size().reset_index().rename({self.fm:'__node__',0:'__fm_count__'},axis=1)
                 df_to      = self.df.groupby(self.to).size().reset_index().rename({self.to:'__node__',0:'__to_count__'},axis=1)
+                df_fm_to   = self.df.groupby([self.fm,self.to]).size().reset_index()\
+                                    .rename({0:'__count__', self.fm:'__fm__', self.to:'__to__'}, axis=1)
             elif self.count_by_set:
                 df_fm      = self.df.groupby(self.fm)[self.count_by].nunique().reset_index().rename({self.fm:'__node__',self.count_by:'__fm_count__'},axis=1)
                 df_to      = self.df.groupby(self.to)[self.count_by].nunique().reset_index().rename({self.to:'__node__',self.count_by:'__to_count__'},axis=1)
+                df_fm_to   = self.df.groupby([self.fm,self.to])[self.count_by].nunique().reset_index()\
+                                    .rename({self.count_by:'__count__', self.fm:'__fm__', self.to:'__to__'}, axis=1)
             else:
                 df_fm      = self.df.groupby(self.fm)[self.count_by].sum().reset_index().rename({self.fm:'__node__',self.count_by:'__fm_count__'},axis=1)
                 df_to      = self.df.groupby(self.to)[self.count_by].sum().reset_index().rename({self.to:'__node__',self.count_by:'__to_count__'},axis=1)
-            df_counter = df_fm.set_index('__node__').join(df_to.set_index('__node__')).reset_index()
+                df_fm_to   = self.df.groupby([self.fm,self.to])[self.count_by].sum().reset_index()\
+                                    .rename({self.count_by:'__count__', self.fm:'__fm__', self.to:'__to__'}, axis=1)
+            df_counter = df_fm.set_index('__node__').join(df_to.set_index('__node__'), how='outer').reset_index().fillna(0.0)
             df_counter['__count__'] = df_counter['__fm_count__'] + df_counter['__to_count__']
-            counter_lu = {}
+            counter_lu      = {}
             for row_i, row in df_counter.iterrows():
                 counter_lu[row['__node__']] = row['__count__']
             counter_sum = df_counter['__count__'].sum()
+
+            fmto_lu, tofm_lu = {}, {}
+            for row_i, row in df_fm_to.iterrows():
+                _fm_ = row['__fm__']
+                _to_ = row['__to__']
+                if _fm_ not in fmto_lu.keys():
+                    fmto_lu[_fm_] = {}
+                fmto_lu[_fm_][_to_] = row['__count__']
+                if _to_ not in tofm_lu.keys():
+                    tofm_lu[_to_] = {}
+                tofm_lu[_to_][_fm_] = row['__count__']
 
             # Determine the geometry
             self.cx, self.cy = self.w/2, self.h/2
             self.rx, self.ry = (self.w - 2 * self.x_ins)/2, (self.h - 2 * self.y_ins)/2
             self.r           = self.rx if (self.rx < self.ry) else self.ry
             self.circ        = 2.0 * pi * self.r
+
+            # Gap pixels adjustment
             gap_pixels       = len(self.order) * self.node_gap
             if gap_pixels > 0.2 * self.circ:
                 self.node_gap_adj = (0.2*self.circ)/len(self.order)
@@ -287,12 +335,31 @@ class RTChordDiagramMixin(object):
                 self.node_gap_adj = self.node_gap
             self.node_gap_degs = 360.0 * (self.node_gap_adj / self.circ)
             left_over_degs  = 360.0 - self.node_gap_degs * len(self.order)
-            self.node_to_arc   = {}
+
+            # Node to arc calculation
+            self.node_to_arc, self.node_dir_arc = {}, {}
             a = 0.0
-            for node in self.order:
+            for i in range(len(self.order)):
+                node = self.order[i]
                 counter_perc  = counter_lu[node] / counter_sum
                 node_degrees  = counter_perc * left_over_degs
-                self.node_to_arc[node] = (a, a+node_degrees)
+                self.node_to_arc[node]  = (a, a+node_degrees)
+                self.node_dir_arc[node] = {}
+
+                b, j = a, i - 1
+                for k in range(len(self.order)):
+                    dest = self.order[j]
+                    if node in fmto_lu.keys() and dest in fmto_lu[node].keys():
+                        b_inc = node_degrees + fmto_lu[node][dest]/counter_lu[node]
+                        self.node_dir_arc[node][node] = {}
+                        self.node_dir_arc[node][node][dest] = (b, b+b_inc)
+                        b += b_inc
+                    if node in tofm_lu.keys() and dest in tofm_lu[node].keys():
+                        b_inc = node_degrees + tofm_lu[node][dest]/counter_lu[node]
+                        self.node_dir_arc[node][dest] = {}
+                        self.node_dir_arc[node][dest][node] = (b, b+b_inc)
+                        b += b_inc
+
                 a += node_degrees + self.node_gap_degs
 
             # Start the SVG Frame
