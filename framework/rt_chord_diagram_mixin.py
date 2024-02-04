@@ -150,21 +150,20 @@ class RTChordDiagramMixin(object):
                      df,                             # dataframe to render
                      relationships,                  # same convention as linknode [('fm','to')]
                      # ----------------------------- # everything else is a default...
-                     color_by            = None,     # just the default color or a string for a field
+                     color_by            = None,     # none (default) or field name (note that node_color or link_color needs to be 'vary')
                      count_by            = None,     # none means just count rows, otherwise, use a field to sum by
                      count_by_set        = False,    # count by summation (by default)... count_by column is checked
                      widget_id           = None,     # naming the svg elements                 
                      # ----------------------------- # chord diagram visualization
-                     node_color          = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
-                                                     # ... or a dictionary of the node string to either a string to color hash or a "#xxxxxx"
+                     node_color          = None,     # none means color by node name, 'vary' by color_by, or specific color "#xxxxxx"
                      node_labels         = None,     # Dictionary of node string to array of strings for additional labeling options
                      node_labels_only    = False,    # Only label based on the node_labels dictionary
                      node_h              = 10,       # height of node from circle edge
                      node_gap            = 5,        # node gap in pixels (gap between the arcs)
-                     link_color          = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
+                     link_color          = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
                      link_opacity        = 0.2,      # link opacity
+                     link_arrow          = 'suble',  # None, 'subtle', or 'sharp'
                      label_only          = set(),    # label only set
-                     bidirectional       = False,    # initial version will not be bidirectionaly
                      # ----------------------------- # visualization geometry / etc.
                      track_state         = False,    # track state for interactive filtering
                      x_view              = 0,        # x offset for the view
@@ -192,23 +191,23 @@ class RTChordDiagramMixin(object):
                      **kwargs):
             self.parms            = locals().copy()
             self.rt_self          = rt_self
-            self.df               = rt_self.copyDataFrame(kwargs['df'])
-            self.relationships    = kwargs['relationships']
-            self.color_by         = kwargs['color_by']
-            self.count_by         = kwargs['count_by']
-            self.count_by_set     = kwargs['count_by_set']
+            self.df               = rt_self.copyDataFrame(kwargs['df']) # still needs polars!
+            self.relationships    = kwargs['relationships']             # done!
+            self.color_by         = kwargs['color_by']                  # done! (nothing to handle)
+            self.count_by         = kwargs['count_by']                  # done!
+            self.count_by_set     = kwargs['count_by_set']              # done!
             self.widget_id        = kwargs['widget_id']
             if self.widget_id is None:
                 self.widget_id = 'chorddiagram_' + str(random.randint(0,65535))          
             self.node_color       = kwargs['node_color']
             self.node_labels      = kwargs['node_labels']
             self.node_labels_only = kwargs['node_labels_only']
-            self.node_h           = kwargs['node_h']
-            self.node_gap         = kwargs['node_gap']
+            self.node_h           = kwargs['node_h']                    # done!
+            self.node_gap         = kwargs['node_gap']                  # done!
             self.link_color       = kwargs['link_color']
-            self.link_opacity     = kwargs['link_opacity']
+            self.link_opacity     = kwargs['link_opacity']              # done!
+            self.link_arrow       = kwargs['link_arrow']                # done!
             self.label_only       = kwargs['label_only']
-            self.bidirectional    = kwargs['bidirectional']
             self.track_state      = kwargs['track_state']
             self.x_view           = kwargs['x_view']
             self.y_view           = kwargs['y_view']
@@ -218,7 +217,7 @@ class RTChordDiagramMixin(object):
             self.y_ins            = kwargs['y_ins']
             self.txt_h            = kwargs['txt_h']
             self.draw_labels      = kwargs['draw_labels']
-            self.draw_border      = kwargs['draw_border']
+            self.draw_border      = kwargs['draw_border']               # done!
 
             # Apply count-by transforms
             if self.count_by is not None and rt_self.isTField(self.count_by):
@@ -370,7 +369,6 @@ class RTChordDiagramMixin(object):
             svg.append(f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">')
             background_color, axis_color = self.rt_self.co_mgr.getTVColor('background','default'), self.rt_self.co_mgr.getTVColor('axis','default')
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
-            # svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="{self.r}" fill="{background_color}" stroke-width="0.5" stroke="{axis_color}" />')
 
             xTo = lambda a: self.cx + self.r                 * cos(pi*a/180.0)
             xTi = lambda a: self.cx + (self.r - self.node_h) * cos(pi*a/180.0)
@@ -392,7 +390,14 @@ class RTChordDiagramMixin(object):
                 large_arc = 0 if (a1-a0) <= 180.0 else 1
                 _path_ = f'M {x0_out} {y0_out} A {self.r} {self.r} 0 {large_arc} 1 {x1_out} {y1_out} L {x1_in} {y1_in} ' + \
                                             f' A {self.r-self.node_h} {self.r-self.node_h} 0 {large_arc} 0 {x0_in}  {y0_in}  Z'
-                svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_color_}" fill="#ff0000" />')
+                if   self.node_color is None:
+                    _node_color_ = self.rt_self.co_mgr.getColor(str(node))
+                elif type(self.node_color) == str and len(self.node_color) == 7 and self.node_color.startswith('#'):
+                    _node_color_ = self.node_color
+                elif self.node_color == 'vary':
+                    _node_color_ = '#ff0000'
+                    raise Exception('node_color == "vary" is not implemented')
+                svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
 
             # Draw the edges from this node to the nbors
                 for node in self.node_dir_arc.keys():
@@ -404,42 +409,39 @@ class RTChordDiagramMixin(object):
                             nbor = _fm_ if node != _fm_ else _to_
                             b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
                             b_avg  = (b0+b1)/2
-                            #svg.append(f'<line x1="{xTi(a0)}" y1="{yTi(a0)}" x2="{xTi(b1)}" y2="{yTi(b1)}" stroke="{_color_}" stroke-width="0.1" />')
-                            #svg.append(f'<line x1="{xTi(a1)}" y1="{yTi(a1)}" x2="{xTi(b0)}" y2="{yTi(b0)}" stroke="{_color_}" stroke-width="0.1" />')
 
                             xa0, ya0, xa1, ya1  = xTi(a0), yTi(a0), xTi(b1), yTi(b1)
-                            xb0, yb0, xb1, yb1  = xTi(a1), yTi(a1), xTi(b1), yTi(b1)
+                            xb0, yb0, xb1, yb1  = xTi(a1), yTi(a1), xTi(b0), yTi(b0)
                             xarrow0, yarrow0    = xTarrow(b0), yTarrow(b0)
                             xarrow_pt,yarrow_pt = xTi(b_avg),  yTi(b_avg)
                             xarrow1, yarrow1    = xTarrow(b1), yTarrow(b1) 
-
-                            #_path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1}'
-                            #svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_color_}" fill="none" />')
-                            #_path_ = f'M {xb0} {yb0} C {self.cx} {self.cy} {self.cx} {self.cy} {xb1} {yb1}'
-                            #svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_color_}" fill="none" />')
-
-                            _color_ = self.rt_self.co_mgr.getColor(str(_fm_) + ':' + str(_to_))
                             
-                            # No Arrow
-                            #_path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1} ' + \
-                            #         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
-                            #         f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
-                            #         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                            if self.link_arrow is None:
+                                _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1} ' + \
+                                         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
+                                         f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                            elif self.link_arrow == 'sharp':
+                                _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
+                                         f'L {xarrow_pt} {yarrow_pt} L {xarrow0} {yarrow0} ' + \
+                                         f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                            else: # 'subtle'
+                                _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
+                                         f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow_pt} {yarrow_pt} ' + \
+                                         f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow0} {yarrow0} ' + \
+                                         f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                            
+                            if self.link_color is None:
+                                _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
+                            elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                                _link_color_ = self.link_color
+                            else: # 'vary'
+                                _link_color_ = '#ff0000'
+                                raise Exception('link_color == "vary" is not implemented')
 
-                            # Sharp Arrow
-                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
-                                     f'L {xarrow_pt} {yarrow_pt} L {xarrow0} {yarrow0} ' + \
-                                     f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
-                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
-                            
-                            # Smooth Arrow
-                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
-                                     f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow_pt} {yarrow_pt} ' + \
-                                     f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow0} {yarrow0} ' + \
-                                     f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
-                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
-                            
-                            svg.append(f'<path d="{_path_}" stroke="none" fill="{_color_}" opacity="{self.link_opacity}" />')
+                            svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
 
             # Draw the border
             if self.draw_border:
