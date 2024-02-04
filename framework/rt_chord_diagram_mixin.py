@@ -124,6 +124,13 @@ class RTChordDiagramMixin(object):
                     n = x if (n is None) or (len(x) > len(n)) else n # root will be longest string
             if _sep_ not in n or n not in t.keys():
                 return [n]
+            elif len(t[n]) > 2:
+                _extended_ = []
+                for i in range(len(t[n])):
+                    lw = leafWalk(t, t[n][i])
+                    if lw is not None:
+                        _extended_.extend(lw)
+                return _extended_
             else:
                 l = leafWalk(t, t[n][0])
                 r = leafWalk(t, t[n][1])
@@ -196,7 +203,7 @@ class RTChordDiagramMixin(object):
             self.color_by         = kwargs['color_by']                  # done! (nothing to handle)
             self.count_by         = kwargs['count_by']                  # done!
             self.count_by_set     = kwargs['count_by_set']              # done!
-            self.widget_id        = kwargs['widget_id']
+            self.widget_id        = kwargs['widget_id']                 # done!
             if self.widget_id is None:
                 self.widget_id = 'chorddiagram_' + str(random.randint(0,65535))          
             self.node_color       = kwargs['node_color']
@@ -209,12 +216,12 @@ class RTChordDiagramMixin(object):
             self.link_arrow       = kwargs['link_arrow']                # done!
             self.label_only       = kwargs['label_only']
             self.track_state      = kwargs['track_state']
-            self.x_view           = kwargs['x_view']
-            self.y_view           = kwargs['y_view']
-            self.w                = kwargs['w']
-            self.h                = kwargs['h']
-            self.x_ins            = kwargs['x_ins']
-            self.y_ins            = kwargs['y_ins']
+            self.x_view           = kwargs['x_view']                    # n/a
+            self.y_view           = kwargs['y_view']                    # n/a
+            self.w                = kwargs['w']                         # n/a
+            self.h                = kwargs['h']                         # n/a
+            self.x_ins            = kwargs['x_ins']                     # n/a
+            self.y_ins            = kwargs['y_ins']                     # n/a
             self.txt_h            = kwargs['txt_h']
             self.draw_labels      = kwargs['draw_labels']
             self.draw_border      = kwargs['draw_border']               # done!
@@ -342,7 +349,37 @@ class RTChordDiagramMixin(object):
                         if _fm_ not in fmto_color_lu.keys():
                             fmto_color_lu[_fm_] = {}
                         fmto_color_lu[_fm_][_to_] = _color_
-            return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu
+
+            # Node Color Lookup
+            node_color_lu = {}
+            if self.node_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
+                if self.color_by == self.fm or self.color_by == self.to:
+                    for k,k_df in self.df.groupby([self.fm, self.to]):
+                        _fm_, _to_ = k
+                        if _fm_ not in fmto_color_lu.keys():
+                            fmto_color_lu[_fm_] = {}
+                        node_color_lu[_fm_][_to_] = self.rt_self.co_mgr.getColor(_fm_) if self.color_by == self.fm else self.rt_self.co_mgr.getColor(_to_)
+                else:
+                    df_fm       = self.df.groupby(self.fm)[self.color_by].nunique().reset_index().rename({self.color_by:'__nuniqs__'},axis=1)
+                    df_fm_first = self.df.groupby(self.fm)[self.color_by].first()
+                    df_to       = self.df.groupby(self.to)[self.color_by].nunique().reset_index().rename({self.color_by:'__nuniqs__'},axis=1)
+                    df_to_first = self.df.groupby(self.to)[self.color_by].first()
+                    for row_i, row in df_fm.iterrows():
+                        node, _uniqs_ = row[self.fm], row['__nuniqs__']
+                        _color_ = self.rt_self.co_mgr.getColor(df_fm_first.loc[node]) if (_uniqs_ == 1) else \
+                                  self.rt_self.co_mgr.getTVColor('data','default')
+                        node_color_lu[node] = _color_
+                    for row_i, row in df_to.iterrows():
+                        node, _uniqs_ = row[self.to], row['__nuniqs__']
+                        _color_ = self.rt_self.co_mgr.getColor(df_to_first.loc[node]) if (_uniqs_ == 1) else \
+                                  self.rt_self.co_mgr.getTVColor('data','default')
+                        if node in node_color_lu.keys():
+                            if node_color_lu[node] != _color_:
+                                node_color_lu[node] = self.rt_self.co_mgr.getTVColor('data','default')
+                        else:
+                            node_color_lu[node] = _color_
+
+            return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu
 
         #
         # renderSVG() - render as SVG
@@ -355,7 +392,7 @@ class RTChordDiagramMixin(object):
             self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
 
             # Counting calcs
-            counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu = self.__countingCalc__()
+            counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu = self.__countingCalc__()
 
             # Determine the geometry
             self.cx, self.cy = self.w/2, self.h/2
@@ -432,8 +469,7 @@ class RTChordDiagramMixin(object):
                 elif type(self.node_color) == str and len(self.node_color) == 7 and self.node_color.startswith('#'):
                     _node_color_ = self.node_color
                 elif self.node_color == 'vary':
-                    _node_color_ = '#ff0000'
-                    raise Exception('node_color == "vary" is not implemented')
+                    _node_color_ = node_color_lu[node]
                 svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
 
             # Draw the edges from this node to the nbors
