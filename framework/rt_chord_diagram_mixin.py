@@ -168,7 +168,7 @@ class RTChordDiagramMixin(object):
                      node_h              = 10,       # height of node from circle edge
                      node_gap            = 5,        # node gap in pixels (gap between the arcs)
                      link_color          = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
-                     link_opacity        = 0.2,      # link opacity
+                     link_opacity        = 0.1,      # link opacity
                      link_arrow          = 'suble',  # None, 'subtle', or 'sharp'
                      label_only          = set(),    # label only set
                      # ----------------------------- # visualization geometry / etc.
@@ -206,7 +206,7 @@ class RTChordDiagramMixin(object):
             self.widget_id        = kwargs['widget_id']                 # done!
             if self.widget_id is None:
                 self.widget_id = 'chorddiagram_' + str(random.randint(0,65535))          
-            self.node_color       = kwargs['node_color']
+            self.node_color       = kwargs['node_color']                # done! (maybe :( )
             self.node_labels      = kwargs['node_labels']
             self.node_labels_only = kwargs['node_labels_only']
             self.node_h           = kwargs['node_h']                    # done!
@@ -356,9 +356,8 @@ class RTChordDiagramMixin(object):
                 if self.color_by == self.fm or self.color_by == self.to:
                     for k,k_df in self.df.groupby([self.fm, self.to]):
                         _fm_, _to_ = k
-                        if _fm_ not in fmto_color_lu.keys():
-                            fmto_color_lu[_fm_] = {}
-                        node_color_lu[_fm_][_to_] = self.rt_self.co_mgr.getColor(_fm_) if self.color_by == self.fm else self.rt_self.co_mgr.getColor(_to_)
+                        node_color_lu[_fm_] = self.rt_self.co_mgr.getColor(_fm_)
+                        node_color_lu[_to_] = self.rt_self.co_mgr.getColor(_to_)
                 else:
                     df_fm       = self.df.groupby(self.fm)[self.color_by].nunique().reset_index().rename({self.color_by:'__nuniqs__'},axis=1)
                     df_fm_first = self.df.groupby(self.fm)[self.color_by].first()
@@ -464,15 +463,15 @@ class RTChordDiagramMixin(object):
                 large_arc = 0 if (a1-a0) <= 180.0 else 1
                 _path_ = f'M {x0_out} {y0_out} A {self.r} {self.r} 0 {large_arc} 1 {x1_out} {y1_out} L {x1_in} {y1_in} ' + \
                                             f' A {self.r-self.node_h} {self.r-self.node_h} 0 {large_arc} 0 {x0_in}  {y0_in}  Z'
-                if   self.node_color is None:
-                    _node_color_ = self.rt_self.co_mgr.getColor(str(node))
-                elif type(self.node_color) == str and len(self.node_color) == 7 and self.node_color.startswith('#'):
+                if   type(self.node_color) == str and len(self.node_color) == 7 and self.node_color.startswith('#'):
                     _node_color_ = self.node_color
-                elif self.node_color == 'vary':
+                elif self.color_by is not None and self.node_color == 'vary':
                     _node_color_ = node_color_lu[node]
+                else:
+                    _node_color_ = self.rt_self.co_mgr.getColor(str(node))
                 svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
 
-            # Draw the edges from this node to the nbors
+                # Draw the edges from this node to the nbors
                 for node in self.node_dir_arc.keys():
                     for _fm_ in self.node_dir_arc[node].keys():
                         if node != _fm_:
@@ -506,7 +505,7 @@ class RTChordDiagramMixin(object):
                                          f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
                                          f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
                             
-                            if self.link_color is None:
+                            if self.link_color is None or self.color_by is None:
                                 _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
                             elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
                                 _link_color_ = self.link_color
