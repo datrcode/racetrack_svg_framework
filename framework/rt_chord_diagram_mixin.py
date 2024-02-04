@@ -204,7 +204,7 @@ class RTChordDiagramMixin(object):
             self.node_labels_only = kwargs['node_labels_only']
             self.node_h           = kwargs['node_h']                    # done!
             self.node_gap         = kwargs['node_gap']                  # done!
-            self.link_color       = kwargs['link_color']
+            self.link_color       = kwargs['link_color']                # done!
             self.link_opacity     = kwargs['link_opacity']              # done!
             self.link_arrow       = kwargs['link_arrow']                # done!
             self.label_only       = kwargs['label_only']
@@ -254,6 +254,7 @@ class RTChordDiagramMixin(object):
                 self.df['__tocat__'] = self.df.apply(lambda x: catFields(x, _to_), axis=1)
                 _to_ = '__tocat__'
             self.relationships = [(_fm_,_to_)]
+            self.fm, self.to = _fm_, _to_
 
             # Get rid of self references
             self.df = self.df[self.df[_fm_] != self.df[_to_]]
@@ -275,18 +276,17 @@ class RTChordDiagramMixin(object):
             return self.last_render
 
         #
-        # renderSVG() - render as SVG
+        # __countingCalc__() - dataframe independent counting method
         #
-        def renderSVG(self, just_calc_max=False):
-            if self.track_state:
-                self.geom_to_df = {}
+        def __countingCalc__(self):
+            if self.rt_self.isPandas(self.df):
+                return self.__countingCalc_pandas__()
+            else:
+                raise Exception('RTChordDiagram.__countingCalc__() - only pandas supported')
 
-            # Determine the node order
-            self.fm    = self.relationships[0][0]
-            self.to    = self.relationships[0][1]
-            self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
-
-            # Determine the node volumes
+        # __countingCalc_pandas__() - pandas verison of counting method
+        def __countingCalc_pandas__(self):            
+            # Counting methodologies
             if   self.count_by is None:
                 df_fm      = self.df.groupby(self.fm).size().reset_index().rename({self.fm:'__node__',0:'__fm_count__'},axis=1)
                 df_to      = self.df.groupby(self.to).size().reset_index().rename({self.to:'__node__',0:'__to_count__'},axis=1)
@@ -304,11 +304,14 @@ class RTChordDiagramMixin(object):
                                     .rename({self.count_by:'__count__', self.fm:'__fm__', self.to:'__to__'}, axis=1)
             df_counter = df_fm.set_index('__node__').join(df_to.set_index('__node__'), how='outer').reset_index().fillna(0.0)
             df_counter['__count__'] = df_counter['__fm_count__'] + df_counter['__to_count__']
+
+            # Transposition into a dictionary
             counter_lu      = {}
             for row_i, row in df_counter.iterrows():
                 counter_lu[row['__node__']] = row['__count__']
             counter_sum = df_counter['__count__'].sum()
 
+            # From-To and To-From lookup
             fmto_lu, tofm_lu = {}, {}
             for row_i, row in df_fm_to.iterrows():
                 _fm_ = row['__fm__']
@@ -319,6 +322,40 @@ class RTChordDiagramMixin(object):
                 if _to_ not in tofm_lu.keys():
                     tofm_lu[_to_] = {}
                 tofm_lu[_to_][_fm_] = row['__count__']
+
+            # From-To Color Lookup
+            fmto_color_lu = {}
+            if self.link_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
+                if   self.color_by == self.fm or self.color_by == self.to:
+                    for k,k_df in self.df.groupby([self.fm, self.to]):
+                        _fm_, _to_ = k
+                        if _fm_ not in fmto_color_lu.keys():
+                            fmto_color_lu[_fm_] = {}
+                        fmto_color_lu[_fm_][_to_] = self.rt_self.co_mgr.getColor(_fm_) if self.color_by == self.fm else self.rt_self.co_mgr.getColor(_to_)
+                else:
+                    df_color       = self.df.groupby([self.fm,self.to])[self.color_by].nunique().reset_index().rename({self.color_by:'__nuniqs__'},axis=1)
+                    df_color_first = self.df.groupby([self.fm,self.to])[self.color_by].first()
+                    for row_i, row in df_color.iterrows():
+                        _fm_, _to_, _uniqs_ = row[self.fm], row[self.to], row['__nuniqs__']
+                        _color_ = self.rt_self.co_mgr.getColor(df_color_first.loc[_fm_,_to_]) if (_uniqs_ == 1) else \
+                                  self.rt_self.co_mgr.getTVColor('data','default')
+                        if _fm_ not in fmto_color_lu.keys():
+                            fmto_color_lu[_fm_] = {}
+                        fmto_color_lu[_fm_][_to_] = _color_
+            return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu
+
+        #
+        # renderSVG() - render as SVG
+        #
+        def renderSVG(self, just_calc_max=False):
+            if self.track_state:
+                self.geom_to_df = {}
+
+            # Determine the node order
+            self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
+
+            # Counting calcs
+            counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu = self.__countingCalc__()
 
             # Determine the geometry
             self.cx, self.cy = self.w/2, self.h/2
@@ -414,7 +451,7 @@ class RTChordDiagramMixin(object):
                             xb0, yb0, xb1, yb1  = xTi(a1), yTi(a1), xTi(b0), yTi(b0)
                             xarrow0, yarrow0    = xTarrow(b0), yTarrow(b0)
                             xarrow_pt,yarrow_pt = xTi(b_avg),  yTi(b_avg)
-                            xarrow1, yarrow1    = xTarrow(b1), yTarrow(b1) 
+                            xarrow1, yarrow1    = xTarrow(b1), yTarrow(b1)
                             
                             if self.link_arrow is None:
                                 _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1} ' + \
@@ -438,8 +475,7 @@ class RTChordDiagramMixin(object):
                             elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
                                 _link_color_ = self.link_color
                             else: # 'vary'
-                                _link_color_ = '#ff0000'
-                                raise Exception('link_color == "vary" is not implemented')
+                                _link_color_ = fmto_color_lu[_fm_][_to_]
 
                             svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
 
@@ -450,4 +486,4 @@ class RTChordDiagramMixin(object):
 
             svg.append('</svg>')
             self.last_render = ''.join(svg)
-            return self.last_render
+            return self.last_render#
