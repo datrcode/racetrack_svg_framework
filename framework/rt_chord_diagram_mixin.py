@@ -161,16 +161,20 @@ class RTChordDiagramMixin(object):
                      count_by            = None,     # none means just count rows, otherwise, use a field to sum by
                      count_by_set        = False,    # count by summation (by default)... count_by column is checked
                      widget_id           = None,     # naming the svg elements                 
-                     # ----------------------------- # chord diagram visualization
+                     # ----------------------------- # node options
                      node_color          = None,     # none means color by node name, 'vary' by color_by, or specific color "#xxxxxx"
                      node_labels         = None,     # Dictionary of node string to array of strings for additional labeling options
                      node_labels_only    = False,    # Only label based on the node_labels dictionary
                      node_h              = 10,       # height of node from circle edge
                      node_gap            = 5,        # node gap in pixels (gap between the arcs)
+                     order               = None,     # override calculated ordering...
+                     # ----------------------------- # link options
                      link_color          = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
                      link_opacity        = 0.1,      # link opacity
                      link_arrow          = 'suble',  # None, 'subtle', or 'sharp'
                      label_only          = set(),    # label only set
+                     # ----------------------------- # small multiples config
+                     structure_template  = None,     # existing RTChordDiagram()
                      # ----------------------------- # visualization geometry / etc.
                      track_state         = False,    # track state for interactive filtering
                      x_view              = 0,        # x offset for the view
@@ -206,11 +210,12 @@ class RTChordDiagramMixin(object):
             self.widget_id        = kwargs['widget_id']                 # done!
             if self.widget_id is None:
                 self.widget_id = 'chorddiagram_' + str(random.randint(0,65535))          
-            self.node_color       = kwargs['node_color']                # done! (maybe :( )
+            self.node_color       = kwargs['node_color']                # done! (maybe)
             self.node_labels      = kwargs['node_labels']
             self.node_labels_only = kwargs['node_labels_only']
             self.node_h           = kwargs['node_h']                    # done!
             self.node_gap         = kwargs['node_gap']                  # done!
+            self.order            = kwargs['order']                     # done!
             self.link_color       = kwargs['link_color']                # done!
             self.link_opacity     = kwargs['link_opacity']              # done!
             self.link_arrow       = kwargs['link_arrow']                # done!
@@ -274,6 +279,41 @@ class RTChordDiagramMixin(object):
             self.geom_to_df  = {}
             self.last_render = None
 
+            # Geometric construction... these members map the nodes into the circle...
+            # ... manipulating these prior to render is how small multiples needs to work
+            self.node_to_arc     = None
+            self.node_dir_arc    = None
+            self.node_to_arc_ct  = None
+            self.node_dir_arc_ct = None
+            if kwargs['structure_template'] is not None:
+                other = kwargs['structure_template']
+                # Force render if necessary... ### COPY OF APPLYVIEWCONFIGUATION() BELOW
+                if other.node_to_arc is None:
+                    other._repr_svg_()
+                self.order           = other.order
+                self.node_to_arc     = other.node_to_arc
+                self.node_dir_arc    = other.node_dir_arc
+                self.node_to_arc_ct  = other.node_to_arc_ct
+                self.node_dir_arc_ct = other.node_dir_arc_ct
+
+
+        #
+        # applyViewConfiguration()
+        # - apply the view configuration from another RTComponent (of the same type)
+        # - return True if the view actually changed (and needs a re-render)
+        # - COPIED INTO THE CONSTRUCTOR -- MAKE SURE TO MIRROR CHANGES
+        #
+        def applyViewConfiguration(self, other):
+            # Force render if necessary...
+            if other.node_to_arc is None:
+                other._repr_svg_()
+            self.order           = other.order
+            self.node_to_arc     = other.node_to_arc
+            self.node_dir_arc    = other.node_dir_arc
+            self.node_to_arc_ct  = other.node_to_arc_ct
+            self.node_dir_arc_ct = other.node_dir_arc_ct
+            return True
+        
         #
         # SVG Representation Renderer
         #
@@ -388,7 +428,8 @@ class RTChordDiagramMixin(object):
                 self.geom_to_df = {}
 
             # Determine the node order
-            self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
+            if self.order is None:
+                self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
 
             # Counting calcs
             counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu = self.__countingCalc__()
@@ -409,33 +450,60 @@ class RTChordDiagramMixin(object):
             left_over_degs  = 360.0 - self.node_gap_degs * len(self.order)
 
             # Node to arc calculation
-            self.node_to_arc, self.node_dir_arc = {}, {}
-            a = 0.0
-            for i in range(len(self.order)):
-                node = self.order[i]
-                counter_perc  = counter_lu[node] / counter_sum
-                node_degrees  = counter_perc * left_over_degs
-                self.node_to_arc[node]  = (a, a+node_degrees)
-                self.node_dir_arc[node] = {}
+            local_dir_arc_ct = None
+            if self.node_to_arc is None or self.node_dir_arc is None or self.node_to_arc_ct is None or self.node_dir_arc_ct is None:
+                self.node_to_arc,    self.node_dir_arc    = {}, {}
+                self.node_to_arc_ct, self.node_dir_arc_ct = {}, {} # counts for the info... for small multiples
+                a = 0.0
+                for i in range(len(self.order)):
+                    node = self.order[i]
+                    counter_perc  = counter_lu[node] / counter_sum
+                    node_degrees  = counter_perc * left_over_degs
+                    self.node_to_arc    [node] = (a, a+node_degrees)
+                    self.node_to_arc_ct [node] = counter_lu[node]
+                    self.node_dir_arc   [node] = {}
+                    self.node_dir_arc_ct[node] = {}
 
-                b, j = a, i - 1
-                for k in range(len(self.order)):
-                    dest = self.order[j]
-                    if node in fmto_lu.keys() and dest in fmto_lu[node].keys():
-                        b_inc = node_degrees*fmto_lu[node][dest]/counter_lu[node]
-                        if node not in self.node_dir_arc[node].keys():
-                            self.node_dir_arc[node][node] = {}
-                        self.node_dir_arc[node][node][dest] = (b, b+b_inc)
-                        b += b_inc
-                    if node in tofm_lu.keys() and dest in tofm_lu[node].keys():
-                        b_inc = node_degrees*tofm_lu[node][dest]/counter_lu[node]
-                        if dest not in self.node_dir_arc[node].keys():
-                            self.node_dir_arc[node][dest] = {}
-                        self.node_dir_arc[node][dest][node] = (b, b+b_inc)
-                        b += b_inc
-                    j = j - 1
-
-                a += node_degrees + self.node_gap_degs
+                    b, j = a, i - 1
+                    for k in range(len(self.order)):
+                        dest = self.order[j]
+                        if node in fmto_lu.keys() and dest in fmto_lu[node].keys():
+                            b_inc = node_degrees*fmto_lu[node][dest]/counter_lu[node]
+                            if node not in self.node_dir_arc[node].keys():
+                                self.node_dir_arc   [node][node] = {}
+                                self.node_dir_arc_ct[node][node] = {}
+                            self.node_dir_arc   [node][node][dest] = (b, b+b_inc)
+                            self.node_dir_arc_ct[node][node][dest] = fmto_lu[node][dest]
+                            b += b_inc
+                        if node in tofm_lu.keys() and dest in tofm_lu[node].keys():
+                            b_inc = node_degrees*tofm_lu[node][dest]/counter_lu[node]
+                            if dest not in self.node_dir_arc[node].keys():
+                                self.node_dir_arc   [node][dest] = {}
+                                self.node_dir_arc_ct[node][dest] = {}
+                            self.node_dir_arc   [node][dest][node] = (b, b+b_inc)
+                            self.node_dir_arc_ct[node][dest][node] = tofm_lu[node][dest]
+                            b += b_inc
+                        j = j - 1
+                    a += node_degrees + self.node_gap_degs
+                struct_matches_render = True   # to faciliate faster rendering
+            else:
+                local_dir_arc_ct = {}
+                for i in range(len(self.order)):
+                    node = self.order[i]
+                    local_dir_arc_ct[node] = {}
+                    j = i-1
+                    for k in range(len(self.order)):
+                        dest = self.order[j]
+                        if node in fmto_lu.keys() and dest in fmto_lu[node].keys():
+                            if node not in local_dir_arc_ct[node].keys():
+                                local_dir_arc_ct[node][node] = {}
+                            local_dir_arc_ct[node][node][dest] = fmto_lu[node][dest]
+                        if node in tofm_lu.keys() and dest in tofm_lu[node].keys():
+                            if dest not in local_dir_arc_ct[node].keys():
+                                local_dir_arc_ct[node][dest] = {}
+                            local_dir_arc_ct[node][dest][node] = tofm_lu[node][dest]
+                        j = j - 1
+                struct_matches_render = False  # adjusts rendering based on another diagrams structure
 
             # Start the SVG Frame
             svg = []
@@ -477,10 +545,18 @@ class RTChordDiagramMixin(object):
                         if node != _fm_:
                             continue
                         for _to_ in self.node_dir_arc[node][_fm_].keys():
-                            a0, a1 = self.node_dir_arc[node][_fm_][_to_]
                             nbor = _fm_ if node != _fm_ else _to_
+                            a0, a1 = self.node_dir_arc[node][_fm_][_to_]                            
                             b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
-                            b_avg  = (b0+b1)/2
+                            if struct_matches_render == False:
+                                if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
+                                    continue
+                                if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
+                                    perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                    a1   = a0 + perc * (a1 - a0)
+                                    b1   = b0 + perc * (b1 - b0)
+
+                            b_avg  = (b0+b1)/2 # for arrow points
 
                             xa0, ya0, xa1, ya1  = xTi(a0), yTi(a0), xTi(b1), yTi(b1)
                             xb0, yb0, xb1, yb1  = xTi(a1), yTi(a1), xTi(b0), yTi(b0)
