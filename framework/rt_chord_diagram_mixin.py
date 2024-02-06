@@ -31,28 +31,26 @@ __name__ = 'rt_chord_diagram_mixin'
 # Chord Diagram Mixin
 #
 class RTChordDiagramMixin(object):
-    #
-    # dendrogramOrdering() - create an order of the fm/to nodes based on hierarchical clustering
-    #
-    def dendrogramOrdering(self, df, fm, to, count_by, count_by_set, _connector_ = ' <-|-> ', _sep_ = '|||'):
-        # concats two strings in alphabetical order
-        def fromToString(x):
-            _fm_, _to_ = str(x[fm]), str(x[to])
-            return (_fm_+_connector_+_to_) if (_fm_<_to_) else (_to_+_connector_+_fm_)
-        # separates the concatenated string back into it's two parts
-        def fromToStringParts(x):
-            i = x.index(_connector_)
-            return x[:i],x[i+len(_connector_):]
-        # merges names (which themselves can be merged names)
-        def mergedName(a, b):
-            return _sep_.join(sorted(list(set(a.split(_sep_))|set(b.split(_sep_)))))
-        # separates merged names back into parts
-        def breakdownMerge(a):
-            return a.split(_sep_)
-        
-        # perform the dataframe summation
+    # concats two strings in alphabetical order
+    def __den_fromToString__(self, x, fm, to, _connector_ = ' <-|-> '):
+        _fm_, _to_ = str(x[fm]), str(x[to])
+        return (_fm_+_connector_+_to_) if (_fm_<_to_) else (_to_+_connector_+_fm_)
+    # separates the concatenated string back into it's two parts
+    def __den_fromToStringParts__(self, x, _connector_ = ' <-|-> '):
+        i = x.index(_connector_)
+        return x[:i],x[i+len(_connector_):]
+    # merges names (which themselves can be merged names)
+    def __den_mergedName__(self, a, b, _sep_ = '|||'):
+        return _sep_.join(sorted(list(set(a.split(_sep_))|set(b.split(_sep_)))))
+    # separates merged names back into parts
+    def __den_breakdownMerge__(self, a, _sep_ = '|||'):
+        return a.split(_sep_)
+
+    # __dendrogramHelper_pandas__()
+    def __dendrogramHelper_pandas__(self, df, fm, to, count_by, count_by_set):
+        # concats two strings in alphabetical order        
         df = self.copyDataFrame(df)
-        df['__fmto__'] = df.apply(lambda x: fromToString(x), axis=1)
+        df['__fmto__'] = df.apply(lambda x: self.__den_fromToString__(x, fm, to), axis=1)
         if count_by is None:
             df_den   = df.groupby('__fmto__').size().reset_index().rename({0:'__countby__'},axis=1)
             count_by = '__countby__'
@@ -65,7 +63,7 @@ class RTChordDiagramMixin(object):
         _heap_ , _graph_ = [] , {}
         for r_i,r in df_den.iterrows():
             heapq.heappush(_heap_,(-r[count_by], r['__fmto__']))
-            x, y = fromToStringParts(r['__fmto__'])
+            x, y = self.__den_fromToStringParts__(r['__fmto__'])
             if x != y:
                 if x not in _graph_.keys():
                     _graph_[x] = {}
@@ -74,15 +72,53 @@ class RTChordDiagramMixin(object):
                     _graph_[y] = {}
                 _graph_[y][x] = -r[count_by]
 
+        return _heap_, _graph_
+
+    # __dendrogramHelper_polars__()
+    def __dendrogramHelper_polars__(self, df, fm, to, count_by, count_by_set):
+        # concats two strings together in alphabetical order
+        df = self.copyDataFrame(df)
+        __lambda__ = lambda x: self.__den_fromToString__(x, fm, to)
+        df = df.with_columns(pl.struct([fm,to]).map_elements(__lambda__).alias('__fmto__'))
+        df_den = self.polarsCounter(df, '__fmto__', count_by, count_by_set)
+
+        # create the initial graph and heap
+        count_by_col , fmto_col = df_den['__count__'], df_den['__fmto__']
+        _heap_ , _graph_ = [] , {}
+        for i in range(len(df_den)):
+            heapq.heappush(_heap_,(-count_by_col[i], fmto_col[i]))
+            x, y = self.__den_fromToStringParts__(fmto_col[i])
+            if x != y:
+                if x not in _graph_.keys():
+                    _graph_[x] = {}
+                _graph_[x][y] = -count_by_col[i]
+                if y not in _graph_.keys():
+                    _graph_[y] = {}
+                _graph_[y][x] = -count_by_col[i]
+
+        return _heap_, _graph_
+
+    #
+    # dendrogramOrdering() - create an order of the fm/to nodes based on hierarchical clustering
+    #
+    def dendrogramOrdering(self, df, fm, to, count_by, count_by_set, _sep_ = '|||'):        
+        # perform the dataframe summation
+        if   self.isPandas(df):
+            _heap_, _graph_ = self.__dendrogramHelper_pandas__(df, fm, to, count_by, count_by_set)
+        elif self.isPolars(df):
+            _heap_, _graph_ = self.__dendrogramHelper_polars__(df, fm, to, count_by, count_by_set)
+        else:
+            raise Exception('dendrogramOrdering() - only handles pandas or polars')
+
         # iteratively merge the closest nodes together
         _tree_ = {}
         _merged_already_ = set()
         while len(_heap_) > 0:
             _strength_, _fmto_ = heapq.heappop(_heap_)
-            _fm_, _to_ = fromToStringParts(_fmto_)
+            _fm_, _to_ = self.__den_fromToStringParts__(_fmto_)
             if _fm_ != _to_ and _fm_ not in _merged_already_ and _to_ not in _merged_already_:
                 _merged_already_.add(_fm_), _merged_already_.add(_to_)
-                _new_ = mergedName(_fm_, _to_)
+                _new_ = self.__den_mergedName__(_fm_, _to_)
                 _tree_[_new_] = (_fm_, _to_)
                 _graph_[_new_] = {}
                 # Rewire for _fm_
@@ -111,7 +147,7 @@ class RTChordDiagramMixin(object):
         if len(_graph_.keys()) > 1:
             _root_parts_ = []
             for x in _graph_.keys():
-                _root_parts_.extend(breakdownMerge(x))
+                _root_parts_.extend(self.__den_breakdownMerge__(x))
             _root_ = _sep_.join(sorted(_root_parts_))
             _tree_[_root_] = []
             for x in _graph_.keys():
@@ -259,17 +295,46 @@ class RTChordDiagramMixin(object):
 
             _fm_ = self.relationships[0][0]
             if type(_fm_) == list or type(_fm_) == tuple:
-                self.df['__fmcat__'] = self.df.apply(lambda x: catFields(x, _fm_), axis=1)
+                if self.rt_self.isPandas(self.df):
+                    self.df['__fmcat__'] = self.df.apply(lambda x: catFields(x, _fm_), axis=1)
+                elif self.rt_self.isPolars(self.df):
+                    to_concat_new, str_casts = [], []
+                    for x in _fm_:
+                        if self.df[x].dtype != pl.String:
+                            str_casts.append(pl.col(x).cast(str).alias('__' + x + '_as_str__'))
+                            to_concat_new.append(pl.col('__' + x + '_as_str__'))
+                        else:
+                            to_concat_new.append(pl.col(x))
+                    self.df = self.df.with_columns(*str_casts).with_columns(pl.concat_str(to_concat_new, separator='|').alias('__fmcat__'))
+                else:
+                    raise Exception('RTChordDiagram() - only pandas and polars supported [1]')
                 _fm_ = '__fmcat__'
             _to_ = self.relationships[0][1]
             if type(_to_) == list or type(_to_) == tuple:
-                self.df['__tocat__'] = self.df.apply(lambda x: catFields(x, _to_), axis=1)
+                if self.rt_self.isPandas(self.df):
+                    self.df['__tocat__'] = self.df.apply(lambda x: catFields(x, _to_), axis=1)
+                elif self.rt_self.isPolars(self.df):
+                    to_concat_new, str_casts = [], []
+                    for x in _to_:
+                        if self.df[x].dtype != pl.String:
+                            str_casts.append(pl.col(x).cast(str).alias('__' + x + '_as_str__'))
+                            to_concat_new.append(pl.col('__' + x + '_as_str__'))
+                        else:
+                            to_concat_new.append(pl.col(x))
+                    self.df = self.df.with_columns(*str_casts).with_columns(pl.concat_str(to_concat_new, separator='|').alias('__tocat__'))
+                else:
+                    raise Exception('RTChordDiagram() - only pandas and polars supported [2]')
                 _to_ = '__tocat__'
             self.relationships = [(_fm_,_to_)]
             self.fm, self.to = _fm_, _to_
 
             # Get rid of self references
-            self.df = self.df[self.df[_fm_] != self.df[_to_]]
+            if   self.rt_self.isPandas(self.df):
+                self.df = self.df[self.df[_fm_] != self.df[_to_]]
+            elif self.rt_self.isPolars(self.df):
+                self.df = self.df.filter(pl.col(self.fm) != pl.col(self.to))
+            else:
+                raise Exception('RTChordDiagram() - only pandas and polars supported [3]')
 
             # Check the count_by column
             if self.count_by_set == False:
@@ -328,8 +393,85 @@ class RTChordDiagramMixin(object):
         def __countingCalc__(self):
             if self.rt_self.isPandas(self.df):
                 return self.__countingCalc_pandas__()
+            elif self.rt_self.isPolars(self.df):
+                return self.__countingCalc_polars__()
             else:
-                raise Exception('RTChordDiagram.__countingCalc__() - only pandas supported')
+                raise Exception('RTChordDiagram.__countingCalc__() - only pandas and polars supported')
+
+        # __countingCalc_polars__() - polars verison of counting method
+        def __countingCalc_polars__(self):
+            # Counting methodologies
+            df_fm = self.rt_self.polarsCounter(self.df, self.fm, count_by=self.count_by, count_by_set=self.count_by_set).rename({'__count__':'__fmcount__', self.fm:'__node__'})
+            df_to = self.rt_self.polarsCounter(self.df, self.to, count_by=self.count_by, count_by_set=self.count_by_set).rename({'__count__':'__tocount__', self.to:'__node__'})
+            df_counter = df_fm.join(df_to, on='__node__', how='outer_coalesce').fill_null(0).with_columns((pl.col('__fmcount__') + pl.col('__tocount__')).alias('__count__'))
+
+            # Transposition into a dictionary
+            counter_lu = {}
+            for i in range(len(df_counter)):
+                counter_lu[df_counter['__node__'][i]] = df_counter['__count__'][i] 
+            counter_sum = df_counter['__count__'].sum()
+
+            # From-To and To-From Lookup
+            fmto_lu, tofm_lu = {}, {}
+            df_fm_to = self.rt_self.polarsCounter(self.df, [self.fm, self.to], count_by=self.count_by, count_by_set=self.count_by_set)
+            for i in range(len(df_fm_to)):
+                _fm_, _to_, __count__ = df_fm_to[self.fm][i], df_fm_to[self.to][i], df_fm_to['__count__'][i]
+                if _fm_ not in fmto_lu.keys():
+                    fmto_lu[_fm_] = {}
+                fmto_lu[_fm_][_to_] = __count__
+                if _to_ not in tofm_lu.keys():
+                    tofm_lu[_to_] = {}
+                tofm_lu[_to_][_fm_] = __count__
+
+            # From-To Color Lookup
+            fmto_color_lu = {}
+            if self.link_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
+                if   self.color_by == self.fm or self.color_by == self.to:
+                    for k, k_df in self.df.group_by([self.fm, self.to]):
+                        _fm_, _to_ = k
+                        if _fm_ not in fmto_color_lu.keys():
+                            fmto_color_lu[_fm_] = {}
+                        fmto_color_lu[_fm_][_to_] = self.rt_self.co_mgr.getColor(_fm_) if self.color_by == self.fm else self.rt_self.co_mgr.getColor(_to_)
+                else:
+                    df_color       = self.df.drop(set(self.df.columns)-set([self.fm,self.to,self.color_by])).group_by([self.fm,self.to]).n_unique().rename({self.color_by:'__nuniqs__'}).sort([self.fm,self.to])
+                    df_color_first = self.df.drop(set(self.df.columns)-set([self.fm,self.to,self.color_by])).group_by([self.fm,self.to]).first().sort([self.fm,self.to])
+                    for i in range(len(df_color)):
+                        _fm_, _to_, _uniqs_ = df_color[self.fm][i], df_color[self.to][i], df_color['__nuniqs__'][i]
+                        _color_ = self.rt_self.co_mgr.getColor(df_color_first[self.color_by][i]) if (_uniqs_ == 1) else \
+                                  self.rt_self.co_mgr.getTVColor('data','default')
+                        if _fm_ not in fmto_color_lu.keys():
+                            fmto_color_lu[_fm_] = {}
+                        fmto_color_lu[_fm_][_to_] = _color_
+
+            # Node Color Lookup
+            node_color_lu = {}
+            if self.node_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
+                if self.color_by == self.fm or self.color_by == self.to:
+                    for k, k_df in self.df.group_by([self.fm, self.to]):
+                        _fm_, _to_ = k
+                        node_color_lu[_fm_] = self.rt_self.co_mgr.getColor(_fm_)
+                        node_color_lu[_to_] = self.rt_self.co_mgr.getColor(_to_)
+                else:
+                    df_fm       = self.df.drop(set(self.df.columns)-set([self.fm,self.color_by])).group_by(self.fm).n_unique().rename({self.color_by:'__nuniqs__'}).sort(self.fm)
+                    df_fm_first = self.df.drop(set(self.df.columns)-set([self.fm,self.color_by])).group_by(self.fm).first().sort(self.fm)
+                    df_to       = self.df.drop(set(self.df.columns)-set([self.to,self.color_by])).group_by(self.to).n_unique().rename({self.color_by:'__nuniqs__'}).sort(self.to)
+                    df_to_first = self.df.drop(set(self.df.columns)-set([self.to,self.color_by])).group_by(self.to).first().sort(self.to)
+                    for i in range(len(df_fm)):
+                        node, _uniqs_ = df_fm[self.fm][i], df_fm['__nuniqs__'][i]
+                        _color_ = self.rt_self.co_mgr.getColor(df_fm_first[self.color_by][i]) if (_uniqs_ == 1) else \
+                                  self.rt_self.co_mgr.getTVColor('data','default')
+                        node_color_lu[node] = _color_
+                    for i in range(len(df_to)):
+                        node, _uniqs_ = df_to[self.to][i], df_to['__nuniqs__'][i]
+                        _color_ = self.rt_self.co_mgr.getColor(df_to_first[self.color_by][i]) if (_uniqs_ == 1) else \
+                                  self.rt_self.co_mgr.getTVColor('data','default')
+                        if node in node_color_lu.keys():
+                            if node_color_lu[node] != _color_:
+                                node_color_lu[node] = self.rt_self.co_mgr.getTVColor('data','default')
+                        else:
+                            node_color_lu[node] = _color_
+
+            return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu
 
         # __countingCalc_pandas__() - pandas verison of counting method
         def __countingCalc_pandas__(self):            
@@ -598,3 +740,4 @@ class RTChordDiagramMixin(object):
             svg.append('</svg>')
             self.last_render = ''.join(svg)
             return self.last_render#
+        
