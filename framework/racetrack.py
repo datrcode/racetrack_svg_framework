@@ -119,6 +119,8 @@ class RACETrack(RTAnnotationsMixin,
         # Used for reflections
         self.widgets           = ['boxplot',
                                   'calendarHeatmap',
+                                  'chordDiagram',
+                                  'choroplethMap',
                                   'histogram',
                                   'linkNode',
                                   'panelControl',       # Control Panel for Panel Impl

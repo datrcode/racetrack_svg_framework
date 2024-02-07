@@ -163,7 +163,8 @@ class RTSmallMultiplesMixin(object):
         df = self.copyDataFrame(df)
 
         # Check widget ... since there's widget specific processing
-        _implemented_types = ['boxplot', 'calendarHeatmap', 'choroplethMap', 'histogram', 'linkNode', 'periodicBarChart', 'pieChart', 'temporalBarChart', 'wordCloud', 'xy']
+        _implemented_types = ['boxplot', 'calendarHeatmap', 'chordDiagram', 'choroplethMap', 'histogram', 'linkNode', 
+                              'periodicBarChart', 'pieChart', 'temporalBarChart', 'wordCloud', 'xy']
         if (sm_type in _implemented_types) == False:
             raise Exception(f'smallMultipes: widget type "{sm_type}" not implemented (initial check)')
         
@@ -316,6 +317,12 @@ class RTSmallMultiplesMixin(object):
             if sm_type == 'linkNode' and x_axis_independent == False:
                 most_params['use_pos_for_bounds'] = True
             
+            #
+            # chordDiagram
+            #
+            if sm_type == 'chordDiagram' and x_axis_independent == False:
+                most_params['structure_template'] = self.chordDiagram(df, sm_params['relationships'])
+
             #
             # histogram/periodicBarChart/temporalBarChart/boxplot and y-axis
             #

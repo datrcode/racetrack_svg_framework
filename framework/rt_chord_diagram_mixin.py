@@ -183,11 +183,41 @@ class RTChordDiagramMixin(object):
         
         return leafWalk(_tree_)
 
+    #
+    # chordDiagramPreferredDimensions()
+    # - Return the preferred size
+    #
+    def chordDiagramPreferredDimensions(self, **kwargs):
+        return (256,256)
 
     #
-    # linkNode
+    # chordDiagramMinimumDimensions()
+    # - Return the minimum size
     #
-    # Make the SVG for a link node from a set of dataframes
+    def chordDiagramMinimumDimensions(self, **kwargs):
+        return (128,128)
+
+    #
+    # chordDiagramSmallMultipleDimensions()
+    # - Return the minimum size
+    #
+    def chordDiagramSmallMultipleDimensions(self, **kwargs):
+        return (128,128)
+
+    #
+    # Identify the required fields in the dataframe from chord diagram parameters
+    #
+    def chordDiagramRequiredFields(self, **kwargs):
+        columns_set = set()
+        self.identifyColumnsFromParameters('relationships', kwargs, columns_set)
+        self.identifyColumnsFromParameters('color_by',      kwargs, columns_set)
+        self.identifyColumnsFromParameters('count_by',      kwargs, columns_set)
+        return columns_set
+
+    #
+    # chordDiagram()
+    #
+    # Make the SVG for a chord diagram.
     #    
     def chordDiagram(self,
                      df,                             # dataframe to render
@@ -577,9 +607,9 @@ class RTChordDiagramMixin(object):
             counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu = self.__countingCalc__()
 
             # Determine the geometry
-            self.cx, self.cy = self.w/2, self.h/2
             self.rx, self.ry = (self.w - 2 * self.x_ins)/2, (self.h - 2 * self.y_ins)/2
             self.r           = self.rx if (self.rx < self.ry) else self.ry
+            self.cx, self.cy = self.x_ins + self.r, self.y_ins + self.r
             self.circ        = 2.0 * pi * self.r
 
             # Gap pixels adjustment
