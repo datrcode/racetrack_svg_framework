@@ -313,7 +313,13 @@ class RTHistogramMixin(object):
                         bin_text = str(order.index[i])
                     else:
                         bin_text = ' | '.join([str(x) for x in order.index[i]])
-                    k_df = gb.get_group(order.index[i])
+
+                    _tuple_ = order.index[i]
+                    if type(_tuple_) != tuple:
+                        _tuple_ = (_tuple_, )
+                    k_df = gb.get_group(_tuple_)
+
+                    # k_df = gb.get_group(order.index[i]) # 2024-02-07 -- changed due to pandas warning...
                 elif self.rt_self.isPolars(self.df):
                     px = max_bar_w * order['__count__'][i] / max_group_by
                     _list_ = []
@@ -321,10 +327,14 @@ class RTHistogramMixin(object):
                         _list_.append(order[_bin_][i])
                     _tuple_ = tuple(_list_)
                     bin_text = ' | '.join([str(x) for x in _tuple_])
-                    if len(_tuple_) == 1:
-                        k_df = gb[_tuple_[0]]
-                    else:
-                        k_df = gb[_tuple_]
+                    k_df = gb[_tuple_]
+
+                    # 2024-02-07 -- believe polars changed this behavior...
+                    #
+                    #if len(_tuple_) == 1:
+                    #    k_df = gb[_tuple_[0]]
+                    #else:
+                    #    k_df = gb[_tuple_]
 
                 # Make a safe id to reference this element later
                 element_id = self.widget_id + "_" + self.rt_self.encSVGID(bin_text)

@@ -335,12 +335,15 @@ class RTSmallMultiplesMixin(object):
                 for cat_i in range(0,max_categories):
                     if   self.isPandas(df):
                         key    = cat_order.index[cat_i]
+                        if type(key) != tuple:
+                            key = (key,)
                         key_df = cat_gb.get_group(key)
                     elif self.isPolars(df):
                         key    = cat_order[category_by][cat_i].rows()[0]
                         # Fix for the polars-version... for some reason, sometimes it's get tupled...
-                        if type(key) == tuple and len(key) == 1:
-                            key = key[0]
+                        # - 2024-02-07 -- think a polars update changed this...
+                        #if type(key) == tuple and len(key) == 1:
+                        #    key = key[0]
                         key_df = cat_gb[key]
                     my_params = most_params.copy()
                     my_params['df'] = key_df
@@ -658,10 +661,17 @@ class RTSmallMultiplesMixin(object):
                     key_str = str(key)
 
                 # Fix for the polars-version... for some reason, sometimes it's get tupled...
-                if type(key) == tuple and len(key) == 1:
-                    key = key[0]
+                # ... 2024-02-07 -- commented this out because the polars update (assumption) fixes how this is supposed to work...
+                #if type(key) == tuple and len(key) == 1:
+                #    key = key[0]
 
-                key_df = cat_gb.get_group(key) if self.isPandas(df) else cat_gb[key] if self.isPolars(df) else None
+                if   self.isPandas(df):
+                    _tuple_ = key
+                    if type(_tuple_) != tuple:
+                        _tuple_ = (_tuple_, )
+                    key_df = cat_gb.get_group(_tuple_)
+                elif self.isPolars(df):
+                    key_df = cat_gb[key]
 
                 # Calculate placement
                 xi_sm  = tile_i%sm_columns                            # index position

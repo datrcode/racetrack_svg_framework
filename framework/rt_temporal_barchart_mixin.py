@@ -45,12 +45,12 @@ class RTTemporalBarChartMixin(object):
                  ('MS',     '%Y-%m',             'Months',     '1mo'),
                  ('1W',     '%Y-%m-%d',          'Weeks',      '1w'),
                  ('D',      '%Y-%m-%d',          'Days',       '1d'),
-                 ('4H',     '%Y-%m-%d %H',       '4 Hours',    '4h'),
-                 ('H',      '%Y-%m-%d %H',       'Hours',      '1h'),
-                 ('15MIN',  '%Y-%m-%d %H:%M',    '15 Mins',    '15m'),
-                 ('10MIN',  '%Y-%m-%d %H:%M',    '10 Mins',    '10m'),
-                 ('5MIN',   '%Y-%m-%d %H:%M',    '5 Mins',     '5m'),
-                 ('1MIN',   '%Y-%m-%d %H:%M',    'Minutes',    '1m'),
+                 ('4h',     '%Y-%m-%d %H',       '4 Hours',    '4h'),
+                 ('h',      '%Y-%m-%d %H',       'Hours',      '1h'),
+                 ('15min',  '%Y-%m-%d %H:%M',    '15 Mins',    '15m'),
+                 ('10min',  '%Y-%m-%d %H:%M',    '10 Mins',    '10m'),
+                 ('5min',   '%Y-%m-%d %H:%M',    '5 Mins',     '5m'),
+                 ('1min',   '%Y-%m-%d %H:%M',    'Minutes',    '1m'),
                  ('15S',    '%Y-%m-%d %H:%M:%S', '15 Secs',    '15s'),
                  ('S',      '%Y-%m-%d %H:%M:%S', 'Seconds',    '1s')]
 
@@ -142,13 +142,13 @@ class RTTemporalBarChartMixin(object):
         elif granularity == 'M':      # Minutes
             return time_rez in [                                                                                        '15S','S']
         elif granularity == 'H':      # Hour
-            return time_rez in [                                                        '15MIN','10MIN','5MIN','1MIN',  '15S','S']
+            return time_rez in [                                                        '15min','10min','5min','1min',  '15S','S']
         elif granularity == 'd':      # Days
-            return time_rez in [                                             '4H','H',  '15MIN','10MIN','5MIN','1MIN',  '15S','S']
+            return time_rez in [                                             '4h','h',  '15min','10min','5min','1min',  '15S','S']
         elif granularity == 'm':      # Months
-            return time_rez in [                                  '1W','D',  '4H','H',  '15MIN','10MIN','5MIN','1MIN',  '15S','S']
+            return time_rez in [                                  '1W','D',  '4h','h',  '15min','10min','5min','1min',  '15S','S']
         else:                         # Years
-            return time_rez in [                      'QS','MS',  '1W','D',  '4H','H',  '15MIN','10MIN','5MIN','1MIN',  '15S','S']
+            return time_rez in [                      'QS','MS',  '1W','D',  '4h','h',  '15min','10min','5min','1min',  '15S','S']
 
     #
     # Render context information for the specified time_rez
@@ -168,12 +168,12 @@ class RTTemporalBarChartMixin(object):
                   'MS':       ('%Y',       lambda x: x.year,   1,   0, 12, True, lambda x: x.month,  1),
                   '1W':       ('%m/%d',    lambda x: x.week,   4,   0, 4,  False),
                   'D':        ('%m/%d',    lambda x: x.day,    40,  1, 15, False), # INCLUDES KLUGE BELOW
-                  '4H':       ('%m/%d',    lambda x: x.day,    2,   0, 6,  True, lambda x: x.hour,   0),
-                  'H':        ('%H:00',    lambda x: x.hour,   12,  0, 6,  False),
-                  '15MIN':    ('%H',       lambda x: x.hour,   2,   0, 2,  True, lambda x: x.minute, 0),
-                  '10MIN':    ('%H:%M',    lambda x: x.hour,   2,   0, 2,  True, lambda x: x.minute, 0),
-                  '5MIN':     ('%H:%M',    lambda x: x.minute, 15,  0, 5,  False),
-                  '1MIN':     ('%H:%M',    lambda x: x.minute, 10,  0, 5,  False),
+                  '4h':       ('%m/%d',    lambda x: x.day,    2,   0, 6,  True, lambda x: x.hour,   0),
+                  'h':        ('%H:00',    lambda x: x.hour,   12,  0, 6,  False),
+                  '15min':    ('%H',       lambda x: x.hour,   2,   0, 2,  True, lambda x: x.minute, 0),
+                  '10min':    ('%H:%M',    lambda x: x.hour,   2,   0, 2,  True, lambda x: x.minute, 0),
+                  '5min':     ('%H:%M',    lambda x: x.minute, 15,  0, 5,  False),
+                  '1min':     ('%H:%M',    lambda x: x.minute, 10,  0, 5,  False),
                   '15S':      ('%H:%M:%S', lambda x: x.minute, 10,  0, 20, True, lambda x: x.second, 0),
                   'S':        ('%H:%M:%S', lambda x: x.minute, 1,   0, 30, True, lambda x: x.second, 0) }
 
@@ -549,10 +549,10 @@ class RTTemporalBarChartMixin(object):
             for i in range(0,len(self.rt_self.time_rezes)):
                 # Disable some resolutions... if ignore unintuitive is set...
                 if self.ignore_unintuitive and (self.rt_self.time_rezes[i] == '1W'    or \
-                                                self.rt_self.time_rezes[i] == '4H'    or \
-                                                self.rt_self.time_rezes[i] == '15MIN' or \
-                                                self.rt_self.time_rezes[i] == '10MIN' or \
-                                                self.rt_self.time_rezes[i] == '5MIN'):
+                                                self.rt_self.time_rezes[i] == '4h'    or \
+                                                self.rt_self.time_rezes[i] == '15min' or \
+                                                self.rt_self.time_rezes[i] == '10min' or \
+                                                self.rt_self.time_rezes[i] == '5min'):
                     continue
 
                 bins  = len(tmp_df.groupby(pd.Grouper(key='timefield',freq=self.rt_self.time_rezes[i])))
@@ -591,10 +591,10 @@ class RTTemporalBarChartMixin(object):
             for i in range(0,len(self.rt_self.time_rezes)):
                 # Disable some resolutions... if ignore unintuitive is set...
                 if self.ignore_unintuitive and (self.rt_self.time_rezes[i] == '1W'    or \
-                                                self.rt_self.time_rezes[i] == '4H'    or \
-                                                self.rt_self.time_rezes[i] == '15MIN' or \
-                                                self.rt_self.time_rezes[i] == '10MIN' or \
-                                                self.rt_self.time_rezes[i] == '5MIN'):
+                                                self.rt_self.time_rezes[i] == '4h'    or \
+                                                self.rt_self.time_rezes[i] == '15min' or \
+                                                self.rt_self.time_rezes[i] == '10min' or \
+                                                self.rt_self.time_rezes[i] == '5min'):
                     continue
 
                 # Get the actual group_by_dynamic mins/maxes # only really a problem for the weeks setting...
@@ -1136,10 +1136,10 @@ class RTTemporalBarChartMixin(object):
             for i in range(0,len(self.rt_self.time_rezes)):
                 # Disable some resolutions... if ignore unintuitive is set...
                 if self.ignore_unintuitive and (self.rt_self.time_rezes[i] == '1W'    or \
-                                                self.rt_self.time_rezes[i] == '4H'    or \
-                                                self.rt_self.time_rezes[i] == '15MIN' or \
-                                                self.rt_self.time_rezes[i] == '10MIN' or \
-                                                self.rt_self.time_rezes[i] == '5MIN'):
+                                                self.rt_self.time_rezes[i] == '4h'    or \
+                                                self.rt_self.time_rezes[i] == '15min' or \
+                                                self.rt_self.time_rezes[i] == '10min' or \
+                                                self.rt_self.time_rezes[i] == '5min'):
                     continue
 
                 bins  = len(tmp_df.groupby(pd.Grouper(key='timefield',freq=self.rt_self.time_rezes[i])))
