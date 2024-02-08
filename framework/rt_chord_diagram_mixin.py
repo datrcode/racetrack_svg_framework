@@ -501,26 +501,27 @@ class RTChordDiagramMixin(object):
                         else:
                             node_color_lu[node] = _color_
 
-            return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu
+            # If stateful tracking, partition the dataframe by fm/to
+            _partition_by_ = self.df.partition_by([self.fm,self.to], as_dict=True) if self.track_state else None
+
+            return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu, _partition_by_
 
         # __countingCalc_pandas__() - pandas verison of counting method
         def __countingCalc_pandas__(self):            
             # Counting methodologies
+            df_fm_to_gb = self.df.groupby([self.fm,self.to])
             if   self.count_by is None:
                 df_fm      = self.df.groupby(self.fm).size().reset_index().rename({self.fm:'__node__',0:'__fm_count__'},axis=1)
                 df_to      = self.df.groupby(self.to).size().reset_index().rename({self.to:'__node__',0:'__to_count__'},axis=1)
-                df_fm_to   = self.df.groupby([self.fm,self.to]).size().reset_index()\
-                                    .rename({0:'__count__', self.fm:'__fm__', self.to:'__to__'}, axis=1)
+                df_fm_to   = df_fm_to_gb.size().reset_index().rename({0:'__count__', self.fm:'__fm__', self.to:'__to__'}, axis=1)
             elif self.count_by_set:
                 df_fm      = self.df.groupby(self.fm)[self.count_by].nunique().reset_index().rename({self.fm:'__node__',self.count_by:'__fm_count__'},axis=1)
                 df_to      = self.df.groupby(self.to)[self.count_by].nunique().reset_index().rename({self.to:'__node__',self.count_by:'__to_count__'},axis=1)
-                df_fm_to   = self.df.groupby([self.fm,self.to])[self.count_by].nunique().reset_index()\
-                                    .rename({self.count_by:'__count__', self.fm:'__fm__', self.to:'__to__'}, axis=1)
+                df_fm_to   = df_fm_to_gb[self.count_by].nunique().reset_index().rename({self.count_by:'__count__', self.fm:'__fm__', self.to:'__to__'}, axis=1)
             else:
                 df_fm      = self.df.groupby(self.fm)[self.count_by].sum().reset_index().rename({self.fm:'__node__',self.count_by:'__fm_count__'},axis=1)
                 df_to      = self.df.groupby(self.to)[self.count_by].sum().reset_index().rename({self.to:'__node__',self.count_by:'__to_count__'},axis=1)
-                df_fm_to   = self.df.groupby([self.fm,self.to])[self.count_by].sum().reset_index()\
-                                    .rename({self.count_by:'__count__', self.fm:'__fm__', self.to:'__to__'}, axis=1)
+                df_fm_to   = df_fm_to_gb[self.count_by].sum().reset_index().rename({self.count_by:'__count__', self.fm:'__fm__', self.to:'__to__'}, axis=1)
             df_counter = df_fm.set_index('__node__').join(df_to.set_index('__node__'), how='outer').reset_index().fillna(0.0)
             df_counter['__count__'] = df_counter['__fm_count__'] + df_counter['__to_count__']
 
@@ -546,7 +547,7 @@ class RTChordDiagramMixin(object):
             fmto_color_lu = {}
             if self.link_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
                 if   self.color_by == self.fm or self.color_by == self.to:
-                    for k,k_df in self.df.groupby([self.fm, self.to]):
+                    for k,k_df in df_fm_to_gb:
                         _fm_, _to_ = k
                         if _fm_ not in fmto_color_lu.keys():
                             fmto_color_lu[_fm_] = {}
@@ -566,7 +567,7 @@ class RTChordDiagramMixin(object):
             node_color_lu = {}
             if self.node_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
                 if self.color_by == self.fm or self.color_by == self.to:
-                    for k,k_df in self.df.groupby([self.fm, self.to]):
+                    for k,k_df in df_fm_to_gb:
                         _fm_, _to_ = k
                         node_color_lu[_fm_] = self.rt_self.co_mgr.getColor(_fm_)
                         node_color_lu[_to_] = self.rt_self.co_mgr.getColor(_to_)
@@ -590,7 +591,7 @@ class RTChordDiagramMixin(object):
                         else:
                             node_color_lu[node] = _color_
 
-            return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu
+            return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu, df_fm_to_gb
 
         #
         # renderSVG() - render as SVG
@@ -604,12 +605,12 @@ class RTChordDiagramMixin(object):
                 self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
 
             # Counting calcs
-            counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu = self.__countingCalc__()
+            counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu, df_lu = self.__countingCalc__()
 
             # Determine the geometry
             self.rx, self.ry = (self.w - 2 * self.x_ins)/2, (self.h - 2 * self.y_ins)/2
             self.r           = self.rx if (self.rx < self.ry) else self.ry
-            self.cx, self.cy = self.x_ins + self.r, self.y_ins + self.r
+            self.cx, self.cy = self.w/2, self.h/2
             self.circ        = 2.0 * pi * self.r
 
             # Gap pixels adjustment
@@ -683,14 +684,14 @@ class RTChordDiagramMixin(object):
             background_color, axis_color = self.rt_self.co_mgr.getTVColor('background','default'), self.rt_self.co_mgr.getTVColor('axis','default')
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
 
-            xTo = lambda a: self.cx + self.r                 * cos(pi*a/180.0)
-            xTi = lambda a: self.cx + (self.r - self.node_h) * cos(pi*a/180.0)
-            yTo = lambda a: self.cx + self.r                 * sin(pi*a/180.0)
-            yTi = lambda a: self.cx + (self.r - self.node_h) * sin(pi*a/180.0)
-            xTc = lambda a: self.cx + 20                     * cos(pi*a/180.0)
-            yTc = lambda a: self.cx + 20                     * sin(pi*a/180.0)
+            xTo = lambda a: self.cx + self.r                 * cos(pi*a/180.0) # Outer Circle - x transform
+            xTi = lambda a: self.cx + (self.r - self.node_h) * cos(pi*a/180.0) # Inner Circle - x transform
+            yTo = lambda a: self.cy + self.r                 * sin(pi*a/180.0) # Outer Circle - y transform
+            yTi = lambda a: self.cy + (self.r - self.node_h) * sin(pi*a/180.0) # Inner Circle - y transform
+            xTc = lambda a: self.cx + 20                     * cos(pi*a/180.0) # 20 pixels from center
+            yTc = lambda a: self.cy + 20                     * sin(pi*a/180.0) # 20 pixels from center
             xTarrow = lambda a: self.cx + (self.r - 2*self.node_h) * cos(pi*a/180.0)
-            yTarrow = lambda a: self.cx + (self.r - 2*self.node_h) * sin(pi*a/180.0)
+            yTarrow = lambda a: self.cy + (self.r - 2*self.node_h) * sin(pi*a/180.0)
 
             # Draw the nodes
             _color_ = self.rt_self.co_mgr.getTVColor('data','default')
