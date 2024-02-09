@@ -315,8 +315,8 @@ class RTHistogramMixin(object):
                         bin_text = ' | '.join([str(x) for x in order.index[i]])
 
                     _tuple_ = order.index[i]
-                    #if type(_tuple_) != tuple:
-                    #    _tuple_ = (_tuple_, )
+                    if type(_tuple_) != tuple:
+                        _tuple_ = (_tuple_, )
                     k_df = gb.get_group(_tuple_)
 
                     # k_df = gb.get_group(order.index[i]) # 2024-02-07 -- changed due to pandas warning...
