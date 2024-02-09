@@ -256,6 +256,31 @@ class RTChordDiagramMixin(object):
         _params_.pop('self')
         return self.RTChordDiagram(self, **_params_)
 
+
+    #
+    # createConcatColumn() - concatenate multiple columns together into a single column
+    #
+    def createConcatColumn(self, df, columns, new_column):
+        def catFields(x, flds):
+            s = str(x[flds[0]])
+            for i in range(1,len(flds)):
+                s += '|' + str(x[flds[i]])
+            return s
+        if self.isPandas(df):
+            df[new_column] = df.apply(lambda x: catFields(x, columns), axis=1)
+        elif self.isPolars(df):
+            to_concat_new, str_casts = [], []
+            for x in columns:
+                if df[x].dtype != pl.String:
+                    str_casts.append(pl.col(x).cast(str).alias('__' + x + '_as_str__'))
+                    to_concat_new.append(pl.col('__' + x + '_as_str__'))
+                else:
+                    to_concat_new.append(pl.col(x))
+            df = df.with_columns(*str_casts).with_columns(pl.concat_str(to_concat_new, separator='|').alias(new_column))
+        else:
+            raise Exception('createConcatColumn() - only pandas and polars supported')
+        return df
+    
     #
     # RTChordDiagram Class
     #
@@ -317,44 +342,16 @@ class RTChordDiagramMixin(object):
                                 self.df,_throwaway = rt_self.applyTransform(self.df, _tup_part)
 
             # If either from or to are lists, concat them together...
-            def catFields(x, flds):
-                s = str(x[flds[0]])
-                for i in range(1,len(flds)):
-                    s += '|' + str(x[flds[i]])
-                return s
-
             _fm_ = self.relationships[0][0]
             if type(_fm_) == list or type(_fm_) == tuple:
-                if self.rt_self.isPandas(self.df):
-                    self.df['__fmcat__'] = self.df.apply(lambda x: catFields(x, _fm_), axis=1)
-                elif self.rt_self.isPolars(self.df):
-                    to_concat_new, str_casts = [], []
-                    for x in _fm_:
-                        if self.df[x].dtype != pl.String:
-                            str_casts.append(pl.col(x).cast(str).alias('__' + x + '_as_str__'))
-                            to_concat_new.append(pl.col('__' + x + '_as_str__'))
-                        else:
-                            to_concat_new.append(pl.col(x))
-                    self.df = self.df.with_columns(*str_casts).with_columns(pl.concat_str(to_concat_new, separator='|').alias('__fmcat__'))
-                else:
-                    raise Exception('RTChordDiagram() - only pandas and polars supported [1]')
-                _fm_ = '__fmcat__'
+                new_fm = '__fmcat__'
+                self.df = self.rt_self.createConcatColumn(self.df, _fm_, new_fm)
+                _fm_ = new_fm
             _to_ = self.relationships[0][1]
             if type(_to_) == list or type(_to_) == tuple:
-                if self.rt_self.isPandas(self.df):
-                    self.df['__tocat__'] = self.df.apply(lambda x: catFields(x, _to_), axis=1)
-                elif self.rt_self.isPolars(self.df):
-                    to_concat_new, str_casts = [], []
-                    for x in _to_:
-                        if self.df[x].dtype != pl.String:
-                            str_casts.append(pl.col(x).cast(str).alias('__' + x + '_as_str__'))
-                            to_concat_new.append(pl.col('__' + x + '_as_str__'))
-                        else:
-                            to_concat_new.append(pl.col(x))
-                    self.df = self.df.with_columns(*str_casts).with_columns(pl.concat_str(to_concat_new, separator='|').alias('__tocat__'))
-                else:
-                    raise Exception('RTChordDiagram() - only pandas and polars supported [2]')
-                _to_ = '__tocat__'
+                new_to = '__tocat__'
+                self.df = self.rt_self.createConcatColumn(self.df, _to_, new_to)
+                _to_ = new_to
             self.relationships = [(_fm_,_to_)]
             self.fm, self.to = _fm_, _to_
 
