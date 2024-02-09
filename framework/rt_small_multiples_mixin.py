@@ -335,8 +335,8 @@ class RTSmallMultiplesMixin(object):
                 for cat_i in range(0,max_categories):
                     if   self.isPandas(df):
                         key    = cat_order.index[cat_i]
-                        if type(key) != tuple:
-                            key = (key,)
+                        #if type(key) != tuple:
+                        #    key = (key,)
                         key_df = cat_gb.get_group(key)
                     elif self.isPolars(df):
                         key    = cat_order[category_by][cat_i].rows()[0]
@@ -667,8 +667,8 @@ class RTSmallMultiplesMixin(object):
 
                 if   self.isPandas(df):
                     _tuple_ = key
-                    if type(_tuple_) != tuple:
-                        _tuple_ = (_tuple_, )
+                    #if type(_tuple_) != tuple:
+                    #    _tuple_ = (_tuple_, )
                     key_df = cat_gb.get_group(_tuple_)
                 elif self.isPolars(df):
                     key_df = cat_gb[key]
