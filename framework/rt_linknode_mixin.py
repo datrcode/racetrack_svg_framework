@@ -592,7 +592,7 @@ class RTLinkNodeMixin(object):
                      **kwargs):
             self.parms                      = locals().copy()
             self.rt_self                    = rt_self
-            self.relationships              = kwargs['relationships']
+            self.relationships_orig         = kwargs['relationships']
             self.pos                        = kwargs['pos']
             self.view_window                = kwargs['view_window']
             self.view_window_orig           = kwargs['view_window'] # Orig will be used for user requests to reset the view
@@ -684,7 +684,7 @@ class RTLinkNodeMixin(object):
 
             # Apply node field transforms across all of the dataframes
             for _df in self.df:
-                for _edge in self.relationships:
+                for _edge in self.relationships_orig:
                     for _node in _edge:
                         if type(_node) == str:
                             if rt_self.isTField(_node) and rt_self.tFieldApplicableField(_node) in _df.columns:
@@ -693,6 +693,43 @@ class RTLinkNodeMixin(object):
                             for _tup_part in _node:
                                 if rt_self.isTField(_tup_part) and rt_self.tFieldApplicableField(_tup_part) in _df.columns:
                                     _df,_throwaway = rt_self.applyTransform(_df, _tup_part)
+
+            # vvv
+            # vvv -- REMOVABLE (UNTIL WE MODIFIED THE REST OF THE CODE BASE)
+            # vvv
+            # Determine if all columns are in the df
+            def allColumnsInDF(_df_, _cols_):
+                for x in _cols_:
+                    if x not in _df_.columns:
+                        return False
+                return True
+
+            # Create concatenated fields for the tuple nodes
+            self.relationships, i = [], 0
+            for _edge_ in self.relationships_orig:
+                _fm_ = _edge_[0]
+                _to_ = _edge_[1]
+                if type(_fm_) == tuple or type(_to_) == tuple:
+                    new_fm, new_to = _fm_, _to_
+                    new_dfs = []
+                    for _df_ in self.df:
+                        if type(_fm_) == tuple and allColumnsInDF(_df_, _fm_):
+                            new_fm = f'__fm{i}__'
+                            _df_ = self.rt_self.createConcatColumn(_df_, _fm_, new_fm)
+
+                        if type(_to_) == tuple and allColumnsInDF(_df_, _fm_):
+                            new_to = f'__to{i}__'
+                            _df_ = self.rt_self.createConcatColumn(_df_, _to_, new_to)
+
+                        new_dfs.append(_df_)
+                    self.relationships.append((new_fm, new_to))
+                    self.df = new_dfs
+                else:
+                    self.relationships.append((_fm_, _to_))
+                i += 1
+            # ^^^
+            # ^^^ -- REMOVABLE (UNTIL WE MODIFY THE REST OF THE CODE BASE)
+            # ^^^
 
             # Check the node information... make sure the parameters are set
             if self.sm_type is not None and self.sm_mode == 'node':
