@@ -1469,7 +1469,7 @@ class RTLinkNodeMixin(object):
                                         k_str = node_str
 
                                         # Check for if the conditions are met to render the label
-                                        if self.draw_labels and ((len(self.label_only) == 0) or (k_str in self.label_only)):
+                                        if self.draw_labels and self.node_shape != 'small_multiple' and ((len(self.label_only) == 0) or (k_str in self.label_only)):
                                             if len(k_str) > 16:
                                                 k_str = k_str[:16] + '...'
 
@@ -1525,13 +1525,15 @@ class RTLinkNodeMixin(object):
                     for k in node_to_xy.keys():
                         if k not in sm_lu.keys():
                             node_str = self.rt_self.nodeStringAndFillPos(k)
-                            if len(node_str) > 16:
-                                node_str = node_str[:16] + '...'
-                            if k not in node_to_xy.keys(): # polars hack 2023-02-09
-                                k = k[0]
-                            x, y = node_to_xy[k]
-                            svg_text = self.rt_self.svgText(node_str, x, y+self.txt_h/2, self.txt_h, anchor='middle')
-                            self.defer_render.append(svg_text)
+                            if node_str not in node_already_rendered:
+                                node_already_rendered.add(node_str)
+                                if len(node_str) > 16:
+                                    node_str = node_str[:16] + '...'
+                                if k not in node_to_xy.keys(): # polars hack 2023-02-09
+                                    k = k[0]
+                                x, y = node_to_xy[k]
+                                svg_text = self.rt_self.svgText(node_str, x, y+self.txt_h/2, self.txt_h, anchor='middle')
+                                self.defer_render.append(svg_text)
             return svg
 
         #
