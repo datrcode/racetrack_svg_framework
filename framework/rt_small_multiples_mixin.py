@@ -1125,7 +1125,17 @@ class RTSmallMultiplesMixin(object):
         updated_category_to_sm = {}
         for k in my_category_to_sm:
             k_svg = my_category_to_sm[k]._repr_svg_()
-            updated_category_to_sm[k] = self.__overwriteSVGOriginPosition__(k_svg, str_to_xy.get(k), sm_w, sm_h)
+            if k in str_to_xy.keys():
+                _coords_ = str_to_xy[k]
+            elif k[0] in str_to_xy.keys():  # This solves a polars problem about how keys are returned 2024-02-09
+                _coords_ = str_to_xy[k[0]]
+            else:
+                print('createSmallMultiples() exception...')
+                print('key',            k)
+                print('category_to_sm', my_category_to_sm)
+                print('str_to_xy',      str_to_xy)
+
+            updated_category_to_sm[k] = self.__overwriteSVGOriginPosition__(k_svg, _coords_, sm_w, sm_h)
 
         return updated_category_to_sm
 
