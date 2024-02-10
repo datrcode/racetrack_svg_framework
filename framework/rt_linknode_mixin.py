@@ -1501,7 +1501,13 @@ class RTLinkNodeMixin(object):
                                                           self.sm_w, self.sm_h)
                                                 
                 for k in sm_lu.keys():
-                    svg += sm_lu[k]
+                    _small_multiple_svg_ = sm_lu[k]
+                    if self.node_opacity != 1.0:
+                        _svg_index_ = _small_multiple_svg_.index('<svg')
+                        _small_multiple_svg_ = _small_multiple_svg_[:(_svg_index_+4)] + \
+                                               f' opacity="{self.node_opacity}" '     + \
+                                               _small_multiple_svg_[(_svg_index_+4):]
+                    svg += _small_multiple_svg_
 
                     # Copy of the draw labels portion a few lines up...
                     if self.draw_labels:
