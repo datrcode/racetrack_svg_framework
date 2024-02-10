@@ -1372,8 +1372,10 @@ class RTXYMixin(object):
 
             # Axis
             axis_co = self.rt_self.co_mgr.getTVColor('axis',  'default')
-            svg_strs.append(f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left}"                 y2="{self.y_ins}"      stroke="{axis_co}" stroke-width=".6" />')
-            svg_strs.append(f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left + self.w_usable}" y2="{self.y_bottom}"   stroke="{axis_co}" stroke-width=".6" />')
+            #svg_strs.append(f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left}"                 y2="{self.y_ins}"      stroke="{axis_co}" stroke-width=".6" />')
+            #svg_strs.append(f'<line x1="{self.x_left}" y1="{self.y_bottom}" x2="{self.x_left + self.w_usable}" y2="{self.y_bottom}"   stroke="{axis_co}" stroke-width=".6" />')
+            axis_path = f'M {self.x_left} {self.y_bottom} L {self.x_left} {self.y_ins} L {self.x_left + self.w_usable} {self.y_ins} L {self.x_left + self.w_usable} {self.y_bottom} Z'
+            svg_strs.append(f'<path d="{axis_path}" stroke="{axis_co}" stroke-width=".4" fill="none" />')
                 
             # Handle the line option... this needs to be rendered before the dots so that the lines are behind the dots
             # ... first version handles vector data...
