@@ -187,7 +187,7 @@ class RTLinkNodeMixin(object):
     # nodeStringAndFillPos()
     # - create a node string... complicated due to possible occurence of ints...
     #
-    def nodeStringAndFillPos(self, k, pos):
+    def nodeStringAndFillPos(self, k, pos=None):
         # Figure out the actual string (or integer)
         if type(k) == tuple or type(k) == list:
             if len(k) == 1:
@@ -198,18 +198,20 @@ class RTLinkNodeMixin(object):
                     node_str = node_str + '|' + str(k[i])
         else:
             node_str = k
+
         # Get or make the node's position
-        if type(node_str) == str:
-            if node_str not in pos.keys():
-                pos[node_str] = [random.random(),random.random()]
-        else:
-            if node_str in pos.keys():
-                pos[str(node_str)] = pos[node_str]
-                node_str = str(node_str)
-            else:
-                node_str = str(node_str)
+        if pos is not None:
+            if type(node_str) == str:
                 if node_str not in pos.keys():
                     pos[node_str] = [random.random(),random.random()]
+            else:
+                if node_str in pos.keys():
+                    pos[str(node_str)] = pos[node_str]
+                    node_str = str(node_str)
+                else:
+                    node_str = str(node_str)
+                    if node_str not in pos.keys():
+                        pos[node_str] = [random.random(),random.random()]
         return node_str
 
     #
@@ -1350,11 +1352,11 @@ class RTLinkNodeMixin(object):
                                     self.node_coords[node_str] = (x,y)
 
                                     if self.node_shape == 'small_multiple':
-                                        if node_str not in node_to_dfs.keys():
-                                            node_to_dfs[node_str] = []
+                                        if k not in node_to_dfs.keys():
+                                            node_to_dfs[k] = []
 
-                                        node_to_dfs[node_str].append(k_df)
-                                        node_to_xy[node_str] = (x,y)
+                                        node_to_dfs[k].append(k_df)
+                                        node_to_xy[k] = (x,y)
 
                                         if self.track_state:
                                             _poly = Polygon([[x-self.sm_w/2,y-self.sm_h/2],
@@ -1498,26 +1500,30 @@ class RTLinkNodeMixin(object):
                                                           self.sm_type, self.sm_params, self.sm_x_axis_independent, self.sm_y_axis_independent,
                                                           self.sm_w, self.sm_h)
                                                 
-                for node_str in sm_lu.keys():
-                    svg += sm_lu[node_str]
+                for k in sm_lu.keys():
+                    svg += sm_lu[k]
 
                     # Copy of the draw labels portion a few lines up...
                     if self.draw_labels:
+                        node_str = self.rt_self.nodeStringAndFillPos(k)
                         if len(node_str) > 16:
                             node_str = node_str[:16] + '...'
-                        x = node_to_xy[node_str][0]
-                        y = node_to_xy[node_str][1]
+                        if k not in node_to_xy.keys(): # polars hack 2023-02-09
+                            k = k[0]
+                        x, y = node_to_xy[k]
                         svg_text = self.rt_self.svgText(node_str, x, y+self.sm_h/2+self.txt_h, self.txt_h, anchor='middle')
                         self.defer_render.append(svg_text)
 
                 # Possible that some nodes may not have been rendered due to the nature of the multi-dataframe structure
                 if self.draw_labels:
-                    for node_str in node_to_xy.keys():
-                        if node_str not in sm_lu.keys():
+                    for k in node_to_xy.keys():
+                        if k not in sm_lu.keys():
+                            node_str = self.rt_self.nodeStringAndFillPos(k)
                             if len(node_str) > 16:
                                 node_str = node_str[:16] + '...'
-                            x = node_to_xy[node_str][0]
-                            y = node_to_xy[node_str][1]
+                            if k not in node_to_xy.keys(): # polars hack 2023-02-09
+                                k = k[0]
+                            x, y = node_to_xy[k]
                             svg_text = self.rt_self.svgText(node_str, x, y+self.txt_h/2, self.txt_h, anchor='middle')
                             self.defer_render.append(svg_text)
             return svg
