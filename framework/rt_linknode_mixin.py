@@ -34,6 +34,18 @@ __name__ = 'rt_linknode_mixin'
 #
 class RTLinkNodeMixin(object):
     #
+    # concatDisparateDataFrames() - concatenate disparate dataframes together into a single dataframe.
+    # - replaces the multiple dataframes used before...
+    #
+    def concatDisparateDataFrames(self, dfs):
+        if   self.isPandas(dfs[0]):
+            return pd.concat(dfs)
+        elif self.isPolars(dfs[0]):
+            return pl.concat(dfs, how='diagonal')
+        else:
+            raise Exception('concatDisparateDataFrame() - only supports pandas and polars')
+
+    #
     # viewWindowCenter()
     # - return the center coordinate of a view window
     #
@@ -252,47 +264,44 @@ class RTLinkNodeMixin(object):
                 else:
                     flds = to_flds
 
-                # Iterate over the dfs
-                for _df in df:
+                # if the df has all of the columns
+                if len(set(df.columns) & set(flds)) == len(set(flds)):
 
-                    # if the _df has all of the columns
-                    if len(set(_df.columns) & set(flds)) == len(set(flds)):
+                    # create the edge table
+                    if len(flds) == 1:
+                        if self.isPandas(df):
+                            gb = df.groupby(flds[0])
+                        elif self.isPolars(df):
+                            gb = df.group_by(flds[0])
+                    else:
+                        if self.isPandas(df):
+                            gb = df.groupby(flds)
+                        elif self.isPolars(df):
+                            gb = df.group_by(flds)
 
-                        # create the edge table
-                        if len(flds) == 1:
-                            if self.isPandas(_df):
-                                gb = _df.groupby(flds[0])
-                            elif self.isPolars(_df):
-                                gb = _df.group_by(flds[0])
-                        else:
-                            if self.isPandas(_df):
-                                gb = _df.groupby(flds)
-                            elif self.isPolars(_df):
-                                gb = _df.group_by(flds)
+                    # iterate over the edges
+                    for k,k_df in gb:
+                        node_str = self.nodeStringAndFillPos(k, pos)
 
-                        # iterate over the edges
-                        for k,k_df in gb:
-                            node_str = self.nodeStringAndFillPos(k, pos)
+                        # Perform the comparison for the bounds
+                        v = pos[node_str]
+                        wx1 = max(v[0], wx1)
+                        wy1 = max(v[1], wy1)
+                        wx0 = min(v[0], wx0)
+                        wy0 = min(v[1], wy0)
 
-                            # Perform the comparison for the bounds
-                            v = pos[node_str]
-                            wx1 = max(v[0], wx1)
-                            wy1 = max(v[1], wy1)
-                            wx0 = min(v[0], wx0)
-                            wy0 = min(v[1], wy0)
-
-                            # Determine the maximum node size
-                            if count_by is None:
-                                if max_node_value < len(k_df):
-                                    max_node_value = len(k_df)
-                            elif count_by in _df.columns and count_by_set:
-                                set_size = len(k_df[count_by])
-                                if max_node_value < set_size:
-                                    max_node_value = set_size
-                            elif count_by in _df.columns:
-                                summation = k_df[count_by].sum()
-                                if max_node_value < summation:
-                                    max_node_value = summation
+                        # Determine the maximum node size
+                        if count_by is None:
+                            if max_node_value < len(k_df):
+                                max_node_value = len(k_df)
+                        elif count_by in df.columns and count_by_set:
+                            set_size = len(k_df[count_by])
+                            if max_node_value < set_size:
+                                max_node_value = set_size
+                        elif count_by in df.columns:
+                            summation = k_df[count_by].sum()
+                            if max_node_value < summation:
+                                max_node_value = summation
 
         # Make sure the max node value is not zero
         if max_node_value == 0:
@@ -455,16 +464,12 @@ class RTLinkNodeMixin(object):
     #
     def __minAndMaxLinkSize__(self, df, relationships, count_by=None):
         _min_,_max_ = None,None
-        # Make the df into a list
-        if type(df) != list:
-            df = [df]
         # Check the count_by column across all the df's...  if any of them
         # don't work.. then it's count_by_set
         count_by_set = False
         if count_by is not None:
-            for _df in df:
-                if self.fieldIsArithmetic(_df, count_by) == False:
-                    count_by_set = True
+            if self.fieldIsArithmetic(df, count_by) == False:
+                count_by_set = True
         # Iterate over the relationships
         for rel_tuple in relationships:
             # Flatten out into the groupby array, the fm_flds array, and the to_flds array            
@@ -475,28 +480,26 @@ class RTLinkNodeMixin(object):
             to_flds = flattenTuple(rel_tuple[1])                
             if type(to_flds) != list:
                 to_flds = [to_flds]
-            # Iterate over the dfs
-            for _df in df:
-                # if the _df has all of the columns
-                if len(set(_df.columns) & set(flat)) == len(set(flat)):
-                    if self.isPandas(_df):
-                        gb = _df.groupby(flat)
-                        if count_by is None: 
-                            gb_sz = gb.size()
-                        elif count_by_set:
-                            gb_sz = gb[count_by].nunique()
-                        else:
-                            gb_sz = gb[count_by].sum()
-                        for i in range(0,len(gb)):
-                            _weight_ = gb_sz.iloc[i]
-                            _min_ = _weight_ if _min_ is None else min(_min_, _weight_)
-                            _max_ = _weight_ if _max_ is None else max(_max_, _weight_)
-                    elif self.isPolars(_df):
-                        counter = self.polarsCounter(_df, flat, count_by, count_by_set)
-                        _min_ = counter['__count__'].min()
-                        _max_ = counter['__count__'].max()
+            # if the df has all of the columns
+            if len(set(df.columns) & set(flat)) == len(set(flat)):
+                if self.isPandas(df):
+                    gb = df.groupby(flat)
+                    if count_by is None: 
+                        gb_sz = gb.size()
+                    elif count_by_set:
+                        gb_sz = gb[count_by].nunique()
                     else:
-                        raise Exception('RTLinkNode.minAndMaxLinkSize() - only pandas and polars supported')
+                        gb_sz = gb[count_by].sum()
+                    for i in range(0,len(gb)):
+                        _weight_ = gb_sz.iloc[i]
+                        _min_ = _weight_ if _min_ is None else min(_min_, _weight_)
+                        _max_ = _weight_ if _max_ is None else max(_max_, _weight_)
+                elif self.isPolars(df):
+                    counter = self.polarsCounter(df, flat, count_by, count_by_set)
+                    _min_ = counter['__count__'].min()
+                    _max_ = counter['__count__'].max()
+                else:
+                    raise Exception('RTLinkNode.minAndMaxLinkSize() - only pandas and polars supported')
         if _min_ == _max_:
             _max_ = _min_ + 1
         return _min_,_max_
@@ -507,20 +510,15 @@ class RTLinkNodeMixin(object):
     # Use the same construction technique as linkNode but make a networkx graph instead.
     #    
     def createNetworkXGraph(self,
-                            df,              # dataframe(s) to render ... unlike other parts, this can be more than one...
+                            df,              # dataframe for graph creation
                             relationships,   # list of tuple pairs... pairs can be single strings or tuples of strings
                             count_by=None):  # edge weight field
-        # Make the df into a list
-        if type(df) != list:
-            df = [df]
-
         # Check the count_by column across all the df's...  if any of them
         # don't work.. then it's count_by_set
         count_by_set = False
         if count_by is not None:
-            for _df in df:
-                if self.fieldIsArithmetic(_df, count_by) == False:
-                    count_by_set = True
+            if self.fieldIsArithmetic(df, count_by) == False:
+                count_by_set = True
 
         # Create the return graph structure
         nx_g = nx.Graph()
@@ -542,44 +540,41 @@ class RTLinkNodeMixin(object):
             if type(to_flds) != list:
                 to_flds = [to_flds]
 
-            # Iterate over the dfs
-            for _df in df:
+            def stringify(_list_):
+                _str_ = str(_list_[0])
+                for _x_ in _list_[1:]:
+                    _str_ += '|' + str(_x_)
+                return _str_
 
-                def stringify(_list_):
-                    _str_ = str(_list_[0])
-                    for _x_ in _list_[1:]:
-                        _str_ += '|' + str(_x_)
-                    return _str_
-
-                # if the _df has all of the columns
-                if len(set(_df.columns) & set(flat)) == len(set(flat)):
-                    if self.isPandas(_df):
-                        if count_by is None or count_by_set: # count_by_set not implemented...
-                            gb = _df.groupby(flat).size()
-                        else:
-                            gb = _df.groupby(flat)[count_by].sum()
-                        for i in range(0,len(gb)):
-                            k = gb.index[i]
-                            k_fm   = k[:len(fm_flds)]
-                            k_to   = k[len(fm_flds):]
-                            _fm_   = stringify(k_fm)
-                            _to_   = stringify(k_to)
-                            nx_g.add_edge(_fm_,_to_,weight=gb.iloc[i])
-                    elif self.isPolars(_df):
-                        counter = self.polarsCounter(_df, flat, count_by, count_by_set)
-                        for i in range(len(counter)):
-                            _row_   = counter[i]
-                            fm_list = []
-                            for _fm_fld_ in fm_flds:
-                                fm_list.append(_row_[_fm_fld_][0])
-                            to_list = []
-                            for _to_fld_ in to_flds:
-                                to_list.append(_row_[_to_fld_][0])
-                            _fm_ = stringify(fm_list)
-                            _to_ = stringify(to_list)
-                            nx_g.add_edge(_fm_,_to_,weight=_row_['__count__'][0])
+            # if the df has all of the columns
+            if len(set(df.columns) & set(flat)) == len(set(flat)):
+                if self.isPandas(df):
+                    if count_by is None or count_by_set: # count_by_set not implemented...
+                        gb = df.groupby(flat).size()
                     else:
-                        raise Exception('RTLinkNode.createNetworkXGraph() - only pandas and polars is supported')
+                        gb = df.groupby(flat)[count_by].sum()
+                    for i in range(0,len(gb)):
+                        k = gb.index[i]
+                        k_fm   = k[:len(fm_flds)]
+                        k_to   = k[len(fm_flds):]
+                        _fm_   = stringify(k_fm)
+                        _to_   = stringify(k_to)
+                        nx_g.add_edge(_fm_,_to_,weight=gb.iloc[i])
+                elif self.isPolars(df):
+                    counter = self.polarsCounter(df, flat, count_by, count_by_set)
+                    for i in range(len(counter)):
+                        _row_   = counter[i]
+                        fm_list = []
+                        for _fm_fld_ in fm_flds:
+                            fm_list.append(_row_[_fm_fld_][0])
+                        to_list = []
+                        for _to_fld_ in to_flds:
+                            to_list.append(_row_[_to_fld_][0])
+                        _fm_ = stringify(fm_list)
+                        _to_ = stringify(to_list)
+                        nx_g.add_edge(_fm_,_to_,weight=_row_['__count__'][0])
+                else:
+                    raise Exception('RTLinkNode.createNetworkXGraph() - only pandas and polars is supported')
         return nx_g
 
     #
@@ -667,15 +662,9 @@ class RTLinkNodeMixin(object):
             self.draw_labels                = kwargs['draw_labels']
             self.draw_border                = kwargs['draw_border']
 
-            # Make sure it's a list... and prevent the added columns from corrupting original dataframe
-            my_df_list = []
-            if type(kwargs['df']) != list:
-                my_df_list.append(rt_self.copyDataFrame(kwargs['df']))
-            else:
-                for _df in kwargs['df']:
-                    my_df_list.append(rt_self.copyDataFrame(_df))
-            self.df = my_df_list
-            
+            # Copy dataframe            
+            self.df = rt_self.copyDataFrame(kwargs['df'])
+
             # Apply count-by transforms
             if self.count_by is not None and rt_self.isTField(self.count_by):
                 self.df,self.count_by = rt_self.applyTransform(self.df, self.count_by)
@@ -684,17 +673,16 @@ class RTLinkNodeMixin(object):
             if self.color_by is not None and rt_self.isTField(self.color_by):
                 self.df,self.color_by = rt_self.applyTransform(self.df, self.color_by)
 
-            # Apply node field transforms across all of the dataframes
-            for _df in self.df:
-                for _edge in self.relationships_orig:
-                    for _node in _edge:
-                        if type(_node) == str:
-                            if rt_self.isTField(_node) and rt_self.tFieldApplicableField(_node) in _df.columns:
-                                _df,_throwaway = rt_self.applyTransform(_df, _node)
-                        else:
-                            for _tup_part in _node:
-                                if rt_self.isTField(_tup_part) and rt_self.tFieldApplicableField(_tup_part) in _df.columns:
-                                    _df,_throwaway = rt_self.applyTransform(_df, _tup_part)
+            # Apply node field transforms
+            for _edge in self.relationships_orig:
+                for _node in _edge:
+                    if type(_node) == str:
+                        if rt_self.isTField(_node) and rt_self.tFieldApplicableField(_node) in self.df.columns:
+                            self.df,_throwaway = rt_self.applyTransform(self.df, _node)
+                    else:
+                        for _tup_part in _node:
+                            if rt_self.isTField(_tup_part) and rt_self.tFieldApplicableField(_tup_part) in self.df.columns:
+                                self.df,_throwaway = rt_self.applyTransform(self.df, _tup_part)
 
             # vvv
             # vvv -- REMOVABLE (UNTIL WE MODIFIED THE REST OF THE CODE BASE)
@@ -707,25 +695,23 @@ class RTLinkNodeMixin(object):
                 return True
 
             # Create concatenated fields for the tuple nodes
+            # ... may be inefficient if there are multiples of the same tuple in different edges...
             self.relationships, i = [], 0
             for _edge_ in self.relationships_orig:
                 _fm_ = _edge_[0]
                 _to_ = _edge_[1]
                 if type(_fm_) == tuple or type(_to_) == tuple:
                     new_fm, new_to = _fm_, _to_
-                    new_dfs = []
-                    for _df_ in self.df:
-                        if type(_fm_) == tuple and allColumnsInDF(_df_, _fm_):
-                            new_fm = f'__fm{i}__'
-                            _df_ = self.rt_self.createConcatColumn(_df_, _fm_, new_fm)
 
-                        if type(_to_) == tuple and allColumnsInDF(_df_, _fm_):
-                            new_to = f'__to{i}__'
-                            _df_ = self.rt_self.createConcatColumn(_df_, _to_, new_to)
+                    if type(_fm_) == tuple and allColumnsInDF(self.df, _fm_):
+                        new_fm = f'__fm{i}__'
+                        self.df = self.rt_self.createConcatColumn(self.df, _fm_, new_fm)
 
-                        new_dfs.append(_df_)
+                    if type(_to_) == tuple and allColumnsInDF(self.df, _fm_):
+                        new_to = f'__to{i}__'
+                        self.df = self.rt_self.createConcatColumn(self.df, _to_, new_to)
+
                     self.relationships.append((new_fm, new_to))
-                    self.df = new_dfs
                 else:
                     self.relationships.append((_fm_, _to_))
                 i += 1
@@ -821,37 +807,36 @@ class RTLinkNodeMixin(object):
                     to_flds = flattenTuple(rel_tuple[1])                
                     if type(to_flds) != list:
                         to_flds = [to_flds]                    
-                    for _df in self.df:
-                        if len(set(_df.columns) & set(flat)) == len(set(flat)):
-                            gb = _df.groupby(flat) if self.rt_self.isPandas(_df) else _df.group_by(flat) if self.rt_self.isPolars(_df) else None
-                            for k,k_df in gb:
-                                k_fm   = k[:len(fm_flds)]
-                                k_to   = k[len(fm_flds):]
+                    if len(set(self.df.columns) & set(flat)) == len(set(flat)):
+                        gb = self.df.groupby(flat) if self.rt_self.isPandas(self.df) else self.df.group_by(flat) if self.rt_self.isPolars(self.df) else None
+                        for k,k_df in gb:
+                            k_fm   = k[:len(fm_flds)]
+                            k_to   = k[len(fm_flds):]
 
-                                fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
-                                to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
+                            fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
+                            to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
 
-                                x1 = self.xT(self.pos[fm_str][0])
-                                x2 = self.xT(self.pos[to_str][0])
-                                y1 = self.yT(self.pos[fm_str][1])
-                                y2 = self.yT(self.pos[to_str][1])
+                            x1 = self.xT(self.pos[fm_str][0])
+                            x2 = self.xT(self.pos[to_str][0])
+                            y1 = self.yT(self.pos[fm_str][1])
+                            y2 = self.yT(self.pos[to_str][1])
 
-                                for i in range(0,2):
-                                    if i == 0:
-                                        _str = fm_str
-                                        _x   = x1
-                                        _y   = y1
-                                    else:
-                                        _str = to_str
-                                        _x   = x2
-                                        _y   = y2
+                            for i in range(0,2):
+                                if i == 0:
+                                    _str = fm_str
+                                    _x   = x1
+                                    _y   = y1
+                                else:
+                                    _str = to_str
+                                    _x   = x2
+                                    _y   = y2
 
-                                    for my_regex in self.convex_hull_lu.keys():
-                                        my_regex_name = self.convex_hull_lu[my_regex]
-                                        if re.match(my_regex, _str):
-                                            if my_regex_name not in _pt_lu.keys():
-                                                _pt_lu[my_regex_name] = {}
-                                            _pt_lu[my_regex_name][_str] = [_x,_y]
+                                for my_regex in self.convex_hull_lu.keys():
+                                    my_regex_name = self.convex_hull_lu[my_regex]
+                                    if re.match(my_regex, _str):
+                                        if my_regex_name not in _pt_lu.keys():
+                                            _pt_lu[my_regex_name] = {}
+                                        _pt_lu[my_regex_name][_str] = [_x,_y]
 
                 # Render each convex hull
                 for my_regex_name in _pt_lu.keys():
@@ -1002,9 +987,8 @@ class RTLinkNodeMixin(object):
                     # don't work.. then it's count_by_set
                     count_by_set = False
                     if self.count_by is not None:
-                        for _df in self.df:
-                            if self.rt_self.fieldIsArithmetic(_df, self.count_by) == False:
-                                count_by_set = True
+                        if self.rt_self.fieldIsArithmetic(self.df, self.count_by) == False:
+                            count_by_set = True
                     _sz_min, _sz_max = self.rt_self.__minAndMaxLinkSize__(self.df, self.relationships, self.count_by)
                     _sz = None
 
@@ -1025,232 +1009,229 @@ class RTLinkNodeMixin(object):
                     if type(to_flds) != list:
                         to_flds = [to_flds]
 
-                    # Iterate over the dfs
-                    for _df in self.df:
+                    # if the df has all of the columns
+                    if len(set(self.df.columns) & set(flat)) == len(set(flat)):
+                        gb = self.df.groupby(flat) if self.rt_self.isPandas(self.df) else self.df.group_by(flat) if self.rt_self.isPolars(self.df) else None
 
-                        # if the _df has all of the columns
-                        if len(set(_df.columns) & set(flat)) == len(set(flat)):
-                            gb = _df.groupby(flat) if self.rt_self.isPandas(_df) else _df.group_by(flat) if self.rt_self.isPolars(_df) else None
-
-                            if self.rt_self.isPandas(_df):
-                                if self.count_by is None: 
-                                    gb_sz = gb.size()
-                                elif count_by_set:
-                                    gb_sz = gb[self.count_by].nunique()
-                                else:
-                                    gb_sz = gb[self.count_by].sum()
+                        if self.rt_self.isPandas(self.df):
+                            if self.count_by is None: 
+                                gb_sz = gb.size()
+                            elif count_by_set:
+                                gb_sz = gb[self.count_by].nunique()
                             else:
-                                counter = self.rt_self.polarsCounter(_df, flat, self.count_by, self.count_by_set)
+                                gb_sz = gb[self.count_by].sum()
+                        else:
+                            counter = self.rt_self.polarsCounter(self.df, flat, self.count_by, self.count_by_set)
 
-                            gb_sz_i = 0
-                            for k,k_df in gb:
-                                if self.rt_self.isPandas(_df):
-                                    _weight_ =  gb_sz.iloc[gb_sz_i]
-                                    gb_sz_i  += 1
+                        gb_sz_i = 0
+                        for k,k_df in gb:
+                            if self.rt_self.isPandas(self.df):
+                                _weight_ =  gb_sz.iloc[gb_sz_i]
+                                gb_sz_i  += 1
+                            else:
+                                if self.count_by is None:
+                                    _weight_ = len(k_df)
+                                elif count_by_set:
+                                    _weight_ = k_df[self.count_by].n_unique()
                                 else:
-                                    if self.count_by is None:
-                                        _weight_ = len(k_df)
-                                    elif count_by_set:
-                                        _weight_ = k_df[self.count_by].n_unique()
-                                    else:
-                                        _weight_ = k_df[self.count_by].sum()
+                                    _weight_ = k_df[self.count_by].sum()
 
-                                k_fm   = k[:len(fm_flds)]
-                                k_to   = k[len(fm_flds):]
+                            k_fm   = k[:len(fm_flds)]
+                            k_to   = k[len(fm_flds):]
 
-                                fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
-                                to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
-                                
-                                # Transform the coordinates
-                                x1 = self.xT(self.pos[fm_str][0])
-                                x2 = self.xT(self.pos[to_str][0])
-                                y1 = self.yT(self.pos[fm_str][1])
-                                y2 = self.yT(self.pos[to_str][1])
-                                                            
-                                # Determine the color
-                                if   self.link_color == 'vary' and self.color_by is not None and self.color_by in _df.columns:
-                                    _co_set = set(k_df[self.color_by])
-                                    if len(_co_set) == 1:
-                                        _co = self.rt_self.co_mgr.getColor(_co_set.pop())
-                                    else:
-                                        _co = self.rt_self.co_mgr.getTVColor('data','default')
-                                elif self.link_color is not None and self.link_color.startswith('#'):
-                                    _co = self.link_color
+                            fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
+                            to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
+                            
+                            # Transform the coordinates
+                            x1 = self.xT(self.pos[fm_str][0])
+                            x2 = self.xT(self.pos[to_str][0])
+                            y1 = self.yT(self.pos[fm_str][1])
+                            y2 = self.yT(self.pos[to_str][1])
+                                                        
+                            # Determine the color
+                            if   self.link_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
+                                _co_set = set(k_df[self.color_by])
+                                if len(_co_set) == 1:
+                                    _co = self.rt_self.co_mgr.getColor(_co_set.pop())
                                 else:
                                     _co = self.rt_self.co_mgr.getTVColor('data','default')
+                            elif self.link_color is not None and self.link_color.startswith('#'):
+                                _co = self.link_color
+                            else:
+                                _co = self.rt_self.co_mgr.getTVColor('data','default')
 
-                                # Capture the state
-                                if self.track_state:
-                                    _line = LineString([[x1,y1],[x2,y2]])
-                                    if _line not in self.geom_to_df.keys():
-                                        self.geom_to_df[_line] = []
-                                    self.geom_to_df[_line].append(k_df)
-                                
-                                # Determine the size
-                                if _sz is None:
-                                    _this_sz = self.min_link_size + self.max_link_size * (_weight_ - _sz_min) / (_sz_max - _sz_min)
-                                else:
-                                    if type(self.link_size) == dict:
-                                        if rel_tuple in self.link_size.keys():
-                                            _str_ = self.link_size[rel_tuple]
-                                            if   type(_str_) == int or type(_str_) == float:
-                                                _this_sz = _str_
-                                            elif _str_ == 'small':
-                                                _this_sz = 1
-                                            elif _str_ == 'medium':
-                                                _this_sz = 3
-                                            elif _str_ == 'large':
-                                                _this_sz = 5
-                                            elif _str_ == 'nil':
-                                                _this_sz = 0.2
-                                            else:
-                                                _this_sz = 0.0
+                            # Capture the state
+                            if self.track_state:
+                                _line = LineString([[x1,y1],[x2,y2]])
+                                if _line not in self.geom_to_df.keys():
+                                    self.geom_to_df[_line] = []
+                                self.geom_to_df[_line].append(k_df)
+                            
+                            # Determine the size
+                            if _sz is None:
+                                _this_sz = self.min_link_size + self.max_link_size * (_weight_ - _sz_min) / (_sz_max - _sz_min)
+                            else:
+                                if type(self.link_size) == dict:
+                                    if rel_tuple in self.link_size.keys():
+                                        _str_ = self.link_size[rel_tuple]
+                                        if   type(_str_) == int or type(_str_) == float:
+                                            _this_sz = _str_
+                                        elif _str_ == 'small':
+                                            _this_sz = 1
+                                        elif _str_ == 'medium':
+                                            _this_sz = 3
+                                        elif _str_ == 'large':
+                                            _this_sz = 5
+                                        elif _str_ == 'nil':
+                                            _this_sz = 0.2
                                         else:
                                             _this_sz = 0.0
                                     else:
-                                        _this_sz = _sz
-                                
-                                # Determine stroke dash
-                                stroke_dash = ''
-                                if self.link_dash is not None:
-                                    if   type(self.link_dash) == str:
-                                        stroke_dash = f'stroke-dasharray="{self.link_dash}"'
-                                    elif type(self.link_dash) == dict and rel_tuple in self.link_dash:
-                                        stroke_dash = f'stroke-dasharray="{self.link_dash[rel_tuple]}"'
-                                    elif callable(self.link_dash):
-                                        _return_value_ = self.link_dash(fm_str, to_str, (x1,y1), (x2,y2))
-                                        if _return_value_ is not None:
-                                            stroke_dash = f'stroke-dasharray="{_return_value_}"'
+                                        _this_sz = 0.0
+                                else:
+                                    _this_sz = _sz
+                            
+                            # Determine stroke dash
+                            stroke_dash = ''
+                            if self.link_dash is not None:
+                                if   type(self.link_dash) == str:
+                                    stroke_dash = f'stroke-dasharray="{self.link_dash}"'
+                                elif type(self.link_dash) == dict and rel_tuple in self.link_dash:
+                                    stroke_dash = f'stroke-dasharray="{self.link_dash[rel_tuple]}"'
+                                elif callable(self.link_dash):
+                                    _return_value_ = self.link_dash(fm_str, to_str, (x1,y1), (x2,y2))
+                                    if _return_value_ is not None:
+                                        stroke_dash = f'stroke-dasharray="{_return_value_}"'
 
-                                # Determine the link style
-                                if    self.link_shape == 'line':
-                                    svg += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
-                                    svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
+                            # Determine the link style
+                            if    self.link_shape == 'line':
+                                svg += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
+                                svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
 
-                                    def _xyLink_(t):
-                                        return x1+(x2-x1)*t, y1+(y2-y1)*t
-                                    if fm_str < to_str:
-                                        _xyLinkDir_ = _xyLink_
-                                    else:
-                                        def _xyLinkDir_(t):
-                                            return x2+(x1-x2)*t, y2+(y1-y2)*t
+                                def _xyLink_(t):
+                                    return x1+(x2-x1)*t, y1+(y2-y1)*t
+                                if fm_str < to_str:
+                                    _xyLinkDir_ = _xyLink_
+                                else:
+                                    def _xyLinkDir_(t):
+                                        return x2+(x1-x2)*t, y2+(y1-y2)*t
 
-                                    if self.link_arrow:
-                                        dx, dy = x2 - x1, y2 - y1
-                                        l = sqrt((dx*dx)+(dy*dy))
-                                        if l <= 0.01:
-                                            l = 1
-                                        dx /= l
-                                        dy /= l
-
-                                        x3 = x2 - dx*self.link_arrow_length - dy*3*self.link_arrow_length/4
-                                        y3 = y2 - dy*self.link_arrow_length + dx*3*self.link_arrow_length/4
-                                        x4 = x2 - dx*self.link_arrow_length + dy*3*self.link_arrow_length/4
-                                        y4 = y2 - dy*self.link_arrow_length - dx*3*self.link_arrow_length/4
-
-                                        svg += f'<path d="M {x3} {y3} L {x2} {y2} L {x4} {y4}" '
-                                        svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
-                                elif self.link_shape == 'curve':
-                                    dx = x2 - x1
-                                    dy = y2 - y1
-                                    # vector length
-                                    l  = sqrt((dx*dx)+(dy*dy))
+                                if self.link_arrow:
+                                    dx, dy = x2 - x1, y2 - y1
+                                    l = sqrt((dx*dx)+(dy*dy))
                                     if l <= 0.01:
                                         l = 1
-
-                                    # normalize the vector
                                     dx /= l
                                     dy /= l
 
-                                    # calculate the perpendicular vector
-                                    pdx =  dy
-                                    pdy = -dx
+                                    x3 = x2 - dx*self.link_arrow_length - dy*3*self.link_arrow_length/4
+                                    y3 = y2 - dy*self.link_arrow_length + dx*3*self.link_arrow_length/4
+                                    x4 = x2 - dx*self.link_arrow_length + dy*3*self.link_arrow_length/4
+                                    y4 = y2 - dy*self.link_arrow_length - dx*3*self.link_arrow_length/4
 
-                                    # bound the link curvature
-                                    _link_curve_ = self.link_max_curvature_px if l > self.link_max_curvature_px else l
+                                    svg += f'<path d="M {x3} {y3} L {x2} {y2} L {x4} {y4}" '
+                                    svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
+                            elif self.link_shape == 'curve':
+                                dx = x2 - x1
+                                dy = y2 - y1
+                                # vector length
+                                l  = sqrt((dx*dx)+(dy*dy))
+                                if l <= 0.01:
+                                    l = 1
 
-                                    # calculate the control points
-                                    x1p = x1 + self.link_parallel_perc*_link_curve_*dx + self.link_ortho_perc*_link_curve_*pdx
-                                    y1p = y1 + self.link_parallel_perc*_link_curve_*dy + self.link_ortho_perc*_link_curve_*pdy
+                                # normalize the vector
+                                dx /= l
+                                dy /= l
 
-                                    x2p = x2 - self.link_parallel_perc*_link_curve_*dx + self.link_ortho_perc*_link_curve_*pdx
-                                    y2p = y2 - self.link_parallel_perc*_link_curve_*dy + self.link_ortho_perc*_link_curve_*pdy
+                                # calculate the perpendicular vector
+                                pdx =  dy
+                                pdy = -dx
 
-                                    def _xyLink_(t): # Bezier Curve Formula from Wikipedia
-                                        return (1-t)**3*x1+3*(1-t)**2*t*x1p+3*(1-t)*t**2*x2p+t**3*x2,(1-t)**3*y1+3*(1-t)**2*t*y1p+3*(1-t)*t**2*y2p+t**3*y2
-                                    if fm_str < to_str:
-                                        _xyLinkDir_ = _xyLink_
-                                    else:
-                                        def _xyLinkDir_(t):
-                                            return (1-t)**3*x2+3*(1-t)**2*t*x2p+3*(1-t)*t**2*x1p+t**3*x1,(1-t)**3*y2+3*(1-t)**2*t*y2p+3*(1-t)*t**2*y1p+t**3*y1
+                                # bound the link curvature
+                                _link_curve_ = self.link_max_curvature_px if l > self.link_max_curvature_px else l
 
-                                    edx, edy = _xyLink_(1.0 - 0.05) # Calculate the endpoint derivative
-                                    edx, edy = x2 - edx, y2 - edy
-                                    l = sqrt((edx*edx)+(edy*edy))
-                                    l = 1.0 if l < 0.01 else l
-                                    edx, edy = edx/l, edy/l        # As a unit vector
+                                # calculate the control points
+                                x1p = x1 + self.link_parallel_perc*_link_curve_*dx + self.link_ortho_perc*_link_curve_*pdx
+                                y1p = y1 + self.link_parallel_perc*_link_curve_*dy + self.link_ortho_perc*_link_curve_*pdy
 
-                                    x3  = x2 - self.link_arrow_length*edx - (self.link_arrow_length/2) * (-edy)
-                                    y3  = y2 - self.link_arrow_length*edy - (self.link_arrow_length/2) * ( edx)
+                                x2p = x2 - self.link_parallel_perc*_link_curve_*dx + self.link_ortho_perc*_link_curve_*pdx
+                                y2p = y2 - self.link_parallel_perc*_link_curve_*dy + self.link_ortho_perc*_link_curve_*pdy
 
-                                    x4  = x2 - self.link_arrow_length*edx + (self.link_arrow_length/2) * (-edy)
-                                    y4  = y2 - self.link_arrow_length*edy + (self.link_arrow_length/2) * ( edx)
-
-                                    if self.link_arrow:
-                                        svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} M {x3} {y3} L {x2} {y2} L {x4} {y4}" '
-                                        svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
-                                    else:
-                                        svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2}" '
-                                        svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
+                                def _xyLink_(t): # Bezier Curve Formula from Wikipedia
+                                    return (1-t)**3*x1+3*(1-t)**2*t*x1p+3*(1-t)*t**2*x2p+t**3*x2,(1-t)**3*y1+3*(1-t)**2*t*y1p+3*(1-t)*t**2*y2p+t**3*y2
+                                if fm_str < to_str:
+                                    _xyLinkDir_ = _xyLink_
                                 else:
-                                    raise Exception(f'Unknown link_shape "{self.link_shape}"')
-                                
-                                # Small multiples
-                                if self.sm_mode == 'link' and self.sm_type is not None:
-                                    link_to_dfs[fm_str + '->' + to_str] = k_df
-                                    _x_, _y_ = _xyLink_(self.sm_t)
-                                    if self.link_shape == 'line': # For linear version, offset one side a little to make it visible
-                                        if fm_str < to_str:
-                                            _x_ += 2
-                                            _y_ += 2
-                                        else:
-                                            _x_ -= 2
-                                            _y_ -= 2
-                                    link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
-                                
-                                # Timing marks
-                                if self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns and self.rt_self.isPandas(k_df):
-                                    _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
-                                    _side_ = 1.0 if fm_str < to_str else -1.0
-                                    k_df[_tfield_] = (k_df[self.ts_field] - _df[self.ts_field].min()) / (_df[self.ts_field].max() - _df[self.ts_field].min())
-                                    for row_i, row in k_df.iterrows():
-                                        _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_], 0.0, 1.0)
-                                        _t_box_     = 0.1 + 0.8 * row[_tfield_]
-                                        _x_  , _y_  = _xyLinkDir_(_t_box_)
-                                        _xp_ , _yp_ = _xyLinkDir_(_t_box_+0.01)  # slight offset point
-                                        _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_          # slope at this location
-                                        _l_         = sqrt(_dx_*_dx_ + _dy_*_dy_)
-                                        _l_         = 1.0 if _l_ < 0.001 else _l_
-                                        _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
-                                        _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
-                                        svg += f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />'
-                                elif self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns and self.rt_self.isPolars(k_df):
-                                    _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
-                                    _side_ = 1.0 if fm_str < to_str else -1.0
-                                    my_min, my_max = _df[self.ts_field].min(), _df[self.ts_field].max()
-                                    k_df = k_df.with_columns(((pl.col(self.ts_field)-my_min)/(my_max-my_min)).alias(_tfield_))
-                                    for row_i in range(len(k_df)):
-                                        row = k_df[row_i]
-                                        _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_][0], 0.0, 1.0)
-                                        _t_box_     = 0.1 + 0.8 * row[_tfield_][0]
-                                        _x_  , _y_  = _xyLinkDir_(_t_box_)
-                                        _xp_ , _yp_ = _xyLinkDir_(_t_box_+0.01)  # slight offset point
-                                        _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_          # slope at this location
-                                        _l_         = sqrt(_dx_*_dx_ + _dy_*_dy_)
-                                        _l_         = 1.0 if _l_ < 0.001 else _l_
-                                        _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
-                                        _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
-                                        svg += f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />'
+                                    def _xyLinkDir_(t):
+                                        return (1-t)**3*x2+3*(1-t)**2*t*x2p+3*(1-t)*t**2*x1p+t**3*x1,(1-t)**3*y2+3*(1-t)**2*t*y2p+3*(1-t)*t**2*y1p+t**3*y1
+
+                                edx, edy = _xyLink_(1.0 - 0.05) # Calculate the endpoint derivative
+                                edx, edy = x2 - edx, y2 - edy
+                                l = sqrt((edx*edx)+(edy*edy))
+                                l = 1.0 if l < 0.01 else l
+                                edx, edy = edx/l, edy/l        # As a unit vector
+
+                                x3  = x2 - self.link_arrow_length*edx - (self.link_arrow_length/2) * (-edy)
+                                y3  = y2 - self.link_arrow_length*edy - (self.link_arrow_length/2) * ( edx)
+
+                                x4  = x2 - self.link_arrow_length*edx + (self.link_arrow_length/2) * (-edy)
+                                y4  = y2 - self.link_arrow_length*edy + (self.link_arrow_length/2) * ( edx)
+
+                                if self.link_arrow:
+                                    svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} M {x3} {y3} L {x2} {y2} L {x4} {y4}" '
+                                    svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
+                                else:
+                                    svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2}" '
+                                    svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
+                            else:
+                                raise Exception(f'Unknown link_shape "{self.link_shape}"')
+                            
+                            # Small multiples
+                            if self.sm_mode == 'link' and self.sm_type is not None:
+                                link_to_dfs[fm_str + '->' + to_str] = k_df
+                                _x_, _y_ = _xyLink_(self.sm_t)
+                                if self.link_shape == 'line': # For linear version, offset one side a little to make it visible
+                                    if fm_str < to_str:
+                                        _x_ += 2
+                                        _y_ += 2
+                                    else:
+                                        _x_ -= 2
+                                        _y_ -= 2
+                                link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
+                            
+                            # Timing marks
+                            if self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns and self.rt_self.isPandas(k_df):
+                                _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
+                                _side_ = 1.0 if fm_str < to_str else -1.0
+                                k_df[_tfield_] = (k_df[self.ts_field] - self.df[self.ts_field].min()) / (self.df[self.ts_field].max() - self.df[self.ts_field].min())
+                                for row_i, row in k_df.iterrows():
+                                    _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_], 0.0, 1.0)
+                                    _t_box_     = 0.1 + 0.8 * row[_tfield_]
+                                    _x_  , _y_  = _xyLinkDir_(_t_box_)
+                                    _xp_ , _yp_ = _xyLinkDir_(_t_box_+0.01)  # slight offset point
+                                    _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_          # slope at this location
+                                    _l_         = sqrt(_dx_*_dx_ + _dy_*_dy_)
+                                    _l_         = 1.0 if _l_ < 0.001 else _l_
+                                    _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
+                                    _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
+                                    svg += f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />'
+                            elif self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns and self.rt_self.isPolars(k_df):
+                                _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
+                                _side_ = 1.0 if fm_str < to_str else -1.0
+                                my_min, my_max = self.df[self.ts_field].min(), self.df[self.ts_field].max()
+                                k_df = k_df.with_columns(((pl.col(self.ts_field)-my_min)/(my_max-my_min)).alias(_tfield_))
+                                for row_i in range(len(k_df)):
+                                    row = k_df[row_i]
+                                    _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_][0], 0.0, 1.0)
+                                    _t_box_     = 0.1 + 0.8 * row[_tfield_][0]
+                                    _x_  , _y_  = _xyLinkDir_(_t_box_)
+                                    _xp_ , _yp_ = _xyLinkDir_(_t_box_+0.01)  # slight offset point
+                                    _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_          # slope at this location
+                                    _l_         = sqrt(_dx_*_dx_ + _dy_*_dy_)
+                                    _l_         = 1.0 if _l_ < 0.001 else _l_
+                                    _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
+                                    _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
+                                    svg += f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />'
 
                 # Handle the small multiples
                 if self.sm_mode == 'link' and self.sm_type is not None:
@@ -1324,174 +1305,171 @@ class RTLinkNodeMixin(object):
                         if flds_i == 1 and fm_flds == to_flds:
                             continue
                         
-                        # Iterate over the dfs
-                        for _df in self.df:
-                            # if the _df has all of the columns
-                            if len(set(_df.columns) & set(flds)) == len(set(flds)):
-                                # create the node table
-                                if   self.rt_self.isPandas(_df):
-                                    gb = _df.groupby(flds[0]) if len(flds) == 1 else _df.groupby(flds)
-                                elif self.rt_self.isPolars(_df):
-                                    gb = _df.group_by(flds[0]) if len(flds) == 1 else _df.group_by(flds)
+                        # if the df has all of the columns
+                        if len(set(self.df.columns) & set(flds)) == len(set(flds)):
+                            # create the node table
+                            if   self.rt_self.isPandas(self.df):
+                                gb = self.df.groupby(flds[0]) if len(flds)  == 1 else self.df.groupby(flds)
+                            elif self.rt_self.isPolars(self.df):
+                                gb = self.df.group_by(flds[0]) if len(flds) == 1 else self.df.group_by(flds)
+                            else:
+                                raise Exception('RTLinkNode.__renderNodes__() - only pandas and polars supported')
+
+                            # iterate over the nodes
+                            for k,k_df in gb:
+                                node_str = self.rt_self.nodeStringAndFillPos(k, self.pos)
+
+                                # Prevents duplicate renderings
+                                if node_str in node_already_rendered:
+                                    continue
                                 else:
-                                    raise Exception('RTLinkNode.__renderNodes__() - only pandas and polars supported')
+                                    node_already_rendered.add(node_str)
+                                
+                                # Transform the coordinates
+                                x = self.xT(self.pos[node_str][0])
+                                y = self.yT(self.pos[node_str][1])
+                                self.node_coords[node_str] = (x,y)
 
-                                # iterate over the nodes
-                                for k,k_df in gb:
-                                    node_str = self.rt_self.nodeStringAndFillPos(k, self.pos)
+                                if self.node_shape == 'small_multiple':
+                                    if k not in node_to_dfs.keys():
+                                        node_to_dfs[k] = []
 
-                                    # Prevents duplicate renderings
-                                    if node_str in node_already_rendered:
-                                        continue
-                                    else:
-                                        node_already_rendered.add(node_str)
-                                    
-                                    # Transform the coordinates
-                                    x = self.xT(self.pos[node_str][0])
-                                    y = self.yT(self.pos[node_str][1])
-                                    self.node_coords[node_str] = (x,y)
+                                    node_to_dfs[k].append(k_df)
+                                    node_to_xy[k] = (x,y)
 
-                                    if self.node_shape == 'small_multiple':
-                                        if k not in node_to_dfs.keys():
-                                            node_to_dfs[k] = []
+                                    if self.track_state:
+                                        _poly = Polygon([[x-self.sm_w/2,y-self.sm_h/2],
+                                                            [x+self.sm_w/2,y-self.sm_h/2],
+                                                            [x+self.sm_w/2,y+self.sm_h/2],
+                                                            [x-self.sm_w/2,y+self.sm_h/2]])
+                                        if _poly not in self.geom_to_df.keys():
+                                            self.geom_to_df[_poly] = []
+                                        self.geom_to_df[_poly].append(k_df)
 
-                                        node_to_dfs[k].append(k_df)
-                                        node_to_xy[k] = (x,y)
+                                else:
+                                    # Determine the color
+                                    if   type(self.node_color) == dict:
+                                        if node_str in self.node_color.keys():
+                                            _lu_co = self.node_color[node_str]
 
-                                        if self.track_state:
-                                            _poly = Polygon([[x-self.sm_w/2,y-self.sm_h/2],
-                                                             [x+self.sm_w/2,y-self.sm_h/2],
-                                                             [x+self.sm_w/2,y+self.sm_h/2],
-                                                             [x-self.sm_w/2,y+self.sm_h/2]])
-                                            if _poly not in self.geom_to_df.keys():
-                                                self.geom_to_df[_poly] = []
-                                            self.geom_to_df[_poly].append(k_df)
-
-                                    else:
-                                        # Determine the color
-                                        if   type(self.node_color) == dict:
-                                            if node_str in self.node_color.keys():
-                                                _lu_co = self.node_color[node_str]
-
-                                                # It's a hash RGB hex string
-                                                if len(_lu_co) == 7 and _lu_co.startswith('#'):
-                                                    _co        = _lu_co
-                                                    _co_border = _lu_co
-        
-                                                # The string needs to be converted at the global level
-                                                else:
-                                                    _co        = self.rt_self.co_mgr.getColor(_lu_co)
-                                                    _co_border = _co
+                                            # It's a hash RGB hex string
+                                            if len(_lu_co) == 7 and _lu_co.startswith('#'):
+                                                _co        = _lu_co
+                                                _co_border = _lu_co
+    
+                                            # The string needs to be converted at the global level
                                             else:
-                                                _co        = self.rt_self.co_mgr.getTVColor('data','default')
-                                                _co_border = self.rt_self.co_mgr.getTVColor('data','default_border')
-                                        elif self.node_color == 'vary' and self.color_by is not None and self.color_by in _df.columns:
-                                            _co_set = set(k_df[self.color_by])
-                                            if len(_co_set) == 1:
-                                                _co        = self.rt_self.co_mgr.getColor(_co_set.pop())
+                                                _co        = self.rt_self.co_mgr.getColor(_lu_co)
                                                 _co_border = _co
-                                            else:
-                                                _co        = self.rt_self.co_mgr.getTVColor('data','default')
-                                                _co_border = _co
-                                        elif self.node_color is not None and self.node_color.startswith('#'):
-                                            _co        = self.node_color
-                                            if self.node_border_color is not None:
-                                                _co_border = self.node_border_color
-                                            else:
-                                                _co_border = self.node_color
                                         else:
                                             _co        = self.rt_self.co_mgr.getTVColor('data','default')
                                             _co_border = self.rt_self.co_mgr.getTVColor('data','default_border')
-                                                                                
-                                        # Determine the size (if it varies)
-                                        if self.node_size == 'vary':
-                                            if self.count_by is None:
-                                                _sz = self.max_node_size * len(k_df) / self.max_node_value
-                                            elif self.count_by in _df.columns and self.count_by_set:
-                                                _sz = self.max_node_size * len(set(k_df[self.count_by])) / self.max_node_value
-                                            elif self.count_by in _df.columns:
-                                                _sz = self.max_node_size * k_df[self.count_by].sum() / self.max_node_value
-                                            else:
-                                                _sz = 1
-                                            if _sz < self.min_node_size:
-                                                _sz = self.min_node_size
-                                        
-                                        # Determine the node shape
-                                        # ... by dictionary... into either a shape string... or into an SVG string
-                                        if type(self.node_shape) == dict:
-                                            # Create the Node Shape Key ... complicated by tuples... // field (column) version
-                                            _node_shape_key = flds
-                                            if type(_node_shape_key) == list and len(_node_shape_key) == 1:
-                                                _node_shape_key = _node_shape_key[0]
-                                            if type(_node_shape_key) == list and len(_node_shape_key) > 1:
-                                                _node_shape_key = tuple(_node_shape_key)
-
-                                            # Retrieve the node shape key
-                                            if _node_shape_key in self.node_shape.keys():
-                                                _shape = self.node_shape[_node_shape_key]
-                                            else:
-                                                # Otherwise, see if there's a direct key lookup...
-                                                if k in self.node_shape.keys():
-                                                    _shape = self.node_shape[k]
-                                                else:
-                                                    _shape = 'ellipse'
-                                                    _sz    = 5
-
-                                        # Functional node shapes...
-                                        elif callable(self.node_shape):
-                                            _shape = self.node_shape(k_df, k, x, y, _sz, _co, self.node_opacity)
-                                        
-                                        # Just a simple node shape
+                                    elif self.node_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
+                                        _co_set = set(k_df[self.color_by])
+                                        if len(_co_set) == 1:
+                                            _co        = self.rt_self.co_mgr.getColor(_co_set.pop())
+                                            _co_border = _co
                                         else:
-                                            _shape = self.node_shape
-
-                                        # Shape render...  if it's SVG, the rewrite coordinates into the right place...
-                                        if _shape is not None and _shape.startswith('<svg'):
-                                            _svg_w,_svg_h  = self.rt_self.__extractSVGWidthAndHeight__(_shape)
-                                            svg           += self.rt_self.__overwriteSVGOriginPosition__(_shape, (x,y), _svg_w, _svg_h)
-                                            _sz            = _svg_h/2
-
-                                        # Otherwise, call the super class shape renderer...
+                                            _co        = self.rt_self.co_mgr.getTVColor('data','default')
+                                            _co_border = _co
+                                    elif self.node_color is not None and self.node_color.startswith('#'):
+                                        _co        = self.node_color
+                                        if self.node_border_color is not None:
+                                            _co_border = self.node_border_color
                                         else:
-                                            svg += self.rt_self.renderShape(_shape, x, y, _sz, _co, _co_border, self.node_opacity)
+                                            _co_border = self.node_color
+                                    else:
+                                        _co        = self.rt_self.co_mgr.getTVColor('data','default')
+                                        _co_border = self.rt_self.co_mgr.getTVColor('data','default_border')
+                                                                            
+                                    # Determine the size (if it varies)
+                                    if self.node_size == 'vary':
+                                        if self.count_by is None:
+                                            _sz = self.max_node_size * len(k_df) / self.max_node_value
+                                        elif self.count_by in self.df.columns and self.count_by_set:
+                                            _sz = self.max_node_size * len(set(k_df[self.count_by])) / self.max_node_value
+                                        elif self.count_by in self.df.columns:
+                                            _sz = self.max_node_size * k_df[self.count_by].sum() / self.max_node_value
+                                        else:
+                                            _sz = 1
+                                        if _sz < self.min_node_size:
+                                            _sz = self.min_node_size
+                                    
+                                    # Determine the node shape
+                                    # ... by dictionary... into either a shape string... or into an SVG string
+                                    if type(self.node_shape) == dict:
+                                        # Create the Node Shape Key ... complicated by tuples... // field (column) version
+                                        _node_shape_key = flds
+                                        if type(_node_shape_key) == list and len(_node_shape_key) == 1:
+                                            _node_shape_key = _node_shape_key[0]
+                                        if type(_node_shape_key) == list and len(_node_shape_key) > 1:
+                                            _node_shape_key = tuple(_node_shape_key)
 
-                                        # Track state
-                                        if self.track_state:
-                                            _poly = Polygon([[x-_sz,y-_sz],
-                                                             [x+_sz,y-_sz],
-                                                             [x+_sz,y+_sz],
-                                                             [x-_sz,y+_sz]])
-                                            if _poly not in self.geom_to_df.keys():
-                                                self.geom_to_df[_poly] = []
-                                            self.geom_to_df[_poly].append(k_df)
+                                        # Retrieve the node shape key
+                                        if _node_shape_key in self.node_shape.keys():
+                                            _shape = self.node_shape[_node_shape_key]
+                                        else:
+                                            # Otherwise, see if there's a direct key lookup...
+                                            if k in self.node_shape.keys():
+                                                _shape = self.node_shape[k]
+                                            else:
+                                                _shape = 'ellipse'
+                                                _sz    = 5
 
-                                        # Prepare the label
-                                        k_str = node_str
+                                    # Functional node shapes...
+                                    elif callable(self.node_shape):
+                                        _shape = self.node_shape(k_df, k, x, y, _sz, _co, self.node_opacity)
+                                    
+                                    # Just a simple node shape
+                                    else:
+                                        _shape = self.node_shape
 
-                                        # Check for if the conditions are met to render the label
-                                        if self.draw_labels and self.node_shape != 'small_multiple' and ((len(self.label_only) == 0) or (k_str in self.label_only)):
-                                            if len(k_str) > 16:
-                                                k_str = k_str[:16] + '...'
+                                    # Shape render...  if it's SVG, the rewrite coordinates into the right place...
+                                    if _shape is not None and _shape.startswith('<svg'):
+                                        _svg_w,_svg_h  = self.rt_self.__extractSVGWidthAndHeight__(_shape)
+                                        svg           += self.rt_self.__overwriteSVGOriginPosition__(_shape, (x,y), _svg_w, _svg_h)
+                                        _sz            = _svg_h/2
 
-                                            if self.node_labels_only == False:
-                                                svg_text = self.rt_self.svgText(str(k_str), x, y+_sz+self.txt_h, self.txt_h, anchor='middle')                                            
+                                    # Otherwise, call the super class shape renderer...
+                                    else:
+                                        svg += self.rt_self.renderShape(_shape, x, y, _sz, _co, _co_border, self.node_opacity)
+
+                                    # Track state
+                                    if self.track_state:
+                                        _poly = Polygon([[x-_sz,y-_sz],
+                                                            [x+_sz,y-_sz],
+                                                            [x+_sz,y+_sz],
+                                                            [x-_sz,y+_sz]])
+                                        if _poly not in self.geom_to_df.keys():
+                                            self.geom_to_df[_poly] = []
+                                        self.geom_to_df[_poly].append(k_df)
+
+                                    # Prepare the label
+                                    k_str = node_str
+
+                                    # Check for if the conditions are met to render the label
+                                    if self.draw_labels and self.node_shape != 'small_multiple' and ((len(self.label_only) == 0) or (k_str in self.label_only)):
+                                        if len(k_str) > 16:
+                                            k_str = k_str[:16] + '...'
+
+                                        if self.node_labels_only == False:
+                                            svg_text = self.rt_self.svgText(str(k_str), x, y+_sz+self.txt_h, self.txt_h, anchor='middle')                                            
+                                            self.defer_render.append(svg_text) # Defer render
+
+                                        if self.node_labels is not None and k_str in self.node_labels.keys():
+                                            if self.node_labels_only:
+                                                y_label = y + _sz + 1*self.txt_h
+                                            else:
+                                                y_label = y + _sz + 2*self.txt_h
+                                            _strs_  = self.node_labels[k_str]
+                                            if type(_strs_) == str:
+                                                svg_text = self.rt_self.svgText(_strs_, x, y_label, self.txt_h, anchor='middle')
                                                 self.defer_render.append(svg_text) # Defer render
-
-                                            if self.node_labels is not None and k_str in self.node_labels.keys():
-                                                if self.node_labels_only:
-                                                    y_label = y + _sz + 1*self.txt_h
-                                                else:
-                                                    y_label = y + _sz + 2*self.txt_h
-                                                _strs_  = self.node_labels[k_str]
-                                                if type(_strs_) == str:
-                                                    svg_text = self.rt_self.svgText(_strs_, x, y_label, self.txt_h, anchor='middle')
+                                            else:
+                                                for _str_ in _strs_:
+                                                    svg_text = self.rt_self.svgText(_str_, x, y_label, self.txt_h, anchor='middle')
                                                     self.defer_render.append(svg_text) # Defer render
-                                                else:
-                                                    for _str_ in _strs_:
-                                                        svg_text = self.rt_self.svgText(_str_, x, y_label, self.txt_h, anchor='middle')
-                                                        self.defer_render.append(svg_text) # Defer render
-                                                        y_label += self.txt_h
-                                                
+                                                    y_label += self.txt_h
 
             # Handle the small multiples
             if self.node_shape == 'small_multiple':
@@ -1650,7 +1628,7 @@ class RTLinkNodeMixin(object):
             self.xT_inv = lambda __sx__: self.wx0 + ((__sx__ * (self.wx1 - self.wx0))/self.w)
             self.yT_inv = lambda __sy__: self.wy0 + ((self.h - __sy__) * (self.wy1 - self.wy0))/self.h
 
-            # 2023-12-22 19:50
+            # 2023-12-22 19:50 TO_DELETE
             #self.xT     = lambda __x__: self.x_ins + (self.w - 2*self.x_ins) * (__x__ - self.wx0)/(self.wx1-self.wx0)
             #self.yT     = lambda __y__: (self.h + self.y_ins) - (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0)
             #self.xT_inv = lambda __sx__: self.wx0 + (self.wx1 - self.wx0) * (__sx__ - self.x_ins)/(self.w - 2*self.x_ins)
