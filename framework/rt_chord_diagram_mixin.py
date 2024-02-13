@@ -249,8 +249,8 @@ class RTChordDiagramMixin(object):
                      h                   = 256,      # height of the view
                      x_ins               = 3,
                      y_ins               = 3,
-                     txt_h               = 12,       # text height for labeling
-                     draw_labels         = True,     # draw labels flag # not implemented yet
+                     txt_h               = 10,       # text height for labeling
+                     draw_labels         = False,    # draw labels flag # not implemented yet
                      draw_border         = True):    # draw a border around the graph
         _params_ = locals().copy()
         _params_.pop('self')
@@ -607,6 +607,8 @@ class RTChordDiagramMixin(object):
             # Determine the geometry
             self.rx, self.ry = (self.w - 2 * self.x_ins)/2, (self.h - 2 * self.y_ins)/2
             self.r           = self.rx if (self.rx < self.ry) else self.ry
+            if self.draw_labels:
+                self.r -= self.txt_h
             self.cx, self.cy = self.w/2, self.h/2
             self.circ        = 2.0 * pi * self.r
 
@@ -707,7 +709,8 @@ class RTChordDiagramMixin(object):
                     _node_color_ = node_color_lu[node]
                 else:
                     _node_color_ = self.rt_self.co_mgr.getColor(str(node))
-                svg.append(f'<path d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
+                _id_ = self.rt_self.encSVGID(node)
+                svg.append(f'<path id="{self.widget_id}-{_id_}" d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
 
                 # Draw the edges from this node to the nbors
                 for node in self.node_dir_arc.keys():
@@ -760,6 +763,12 @@ class RTChordDiagramMixin(object):
 
                             svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
 
+            # Draw the labels
+            if self.draw_labels:
+                for node in self.node_to_arc.keys():
+                      _id_ = self.rt_self.encSVGID(node)
+                      svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" y="-3" >''')
+                      svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{node}</textPath></text>''')
             # Draw the border
             if self.draw_border:
                 border_color = self.rt_self.co_mgr.getTVColor('border','default')
