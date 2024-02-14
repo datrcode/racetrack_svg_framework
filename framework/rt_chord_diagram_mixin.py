@@ -235,7 +235,7 @@ class RTChordDiagramMixin(object):
                      label_only          = set(),    # label only set
                      # ----------------------------- # link options
                      link_color          = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
-                     link_opacity        = 0.1,      # link opacity
+                     link_opacity        = 0.5,      # link opacity
                      link_arrow          = 'subtle', # None, 'subtle', or 'sharp'
                      # ----------------------------- # small multiples config
                      structure_template  = None,     # existing RTChordDiagram()
@@ -712,56 +712,56 @@ class RTChordDiagramMixin(object):
                 _id_ = self.rt_self.encSVGID(node)
                 svg.append(f'<path id="{self.widget_id}-{_id_}" d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
 
-                # Draw the edges from this node to the nbors
-                for node in self.node_dir_arc.keys():
-                    for _fm_ in self.node_dir_arc[node].keys():
-                        if node != _fm_:
-                            continue
-                        for _to_ in self.node_dir_arc[node][_fm_].keys():
-                            nbor = _fm_ if node != _fm_ else _to_
-                            a0, a1 = self.node_dir_arc[node][_fm_][_to_]                            
-                            b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
-                            if struct_matches_render == False:
-                                if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
-                                    continue
-                                if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
-                                    perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
-                                    a1   = a0 + perc * (a1 - a0)
-                                    b1   = b0 + perc * (b1 - b0)
+            # Draw the edges from the node to the neighbors
+            for node in self.node_dir_arc.keys():
+                for _fm_ in self.node_dir_arc[node].keys():
+                    if node != _fm_:
+                        continue
+                    for _to_ in self.node_dir_arc[node][_fm_].keys():
+                        nbor = _fm_ if node != _fm_ else _to_
+                        a0, a1 = self.node_dir_arc[node][_fm_][_to_]                            
+                        b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
+                        if struct_matches_render == False:
+                            if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
+                                continue
+                            if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
+                                perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                a1   = a0 + perc * (a1 - a0)
+                                b1   = b0 + perc * (b1 - b0)
 
-                            b_avg  = (b0+b1)/2 # for arrow points
+                        b_avg  = (b0+b1)/2 # for arrow points
 
-                            xa0, ya0, xa1, ya1  = xTi(a0), yTi(a0), xTi(b1), yTi(b1)
-                            xb0, yb0, xb1, yb1  = xTi(a1), yTi(a1), xTi(b0), yTi(b0)
-                            xarrow0, yarrow0    = xTarrow(b0), yTarrow(b0)
-                            xarrow_pt,yarrow_pt = xTi(b_avg),  yTi(b_avg)
-                            xarrow1, yarrow1    = xTarrow(b1), yTarrow(b1)
-                            
-                            if self.link_arrow is None:
-                                _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1} ' + \
-                                         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
-                                         f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
-                                         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
-                            elif self.link_arrow == 'sharp':
-                                _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
-                                         f'L {xarrow_pt} {yarrow_pt} L {xarrow0} {yarrow0} ' + \
-                                         f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
-                                         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
-                            else: # 'subtle'
-                                _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
-                                         f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow_pt} {yarrow_pt} ' + \
-                                         f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow0} {yarrow0} ' + \
-                                         f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
-                                         f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
-                            
-                            if self.link_color is None or self.color_by is None:
-                                _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
-                            elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
-                                _link_color_ = self.link_color
-                            else: # 'vary'
-                                _link_color_ = fmto_color_lu[_fm_][_to_]
+                        xa0, ya0, xa1, ya1  = xTi(a0), yTi(a0), xTi(b1), yTi(b1)
+                        xb0, yb0, xb1, yb1  = xTi(a1), yTi(a1), xTi(b0), yTi(b0)
+                        xarrow0, yarrow0    = xTarrow(b0), yTarrow(b0)
+                        xarrow_pt,yarrow_pt = xTi(b_avg),  yTi(b_avg)
+                        xarrow1, yarrow1    = xTarrow(b1), yTarrow(b1)
+                        
+                        if self.link_arrow is None:
+                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1} ' + \
+                                        f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
+                                        f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                        f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                        elif self.link_arrow == 'sharp':
+                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
+                                        f'L {xarrow_pt} {yarrow_pt} L {xarrow0} {yarrow0} ' + \
+                                        f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                        f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                        else: # 'subtle'
+                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
+                                        f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow_pt} {yarrow_pt} ' + \
+                                        f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow0} {yarrow0} ' + \
+                                        f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                        f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                        
+                        if self.link_color is None or self.color_by is None:
+                            _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
+                        elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                            _link_color_ = self.link_color
+                        else: # 'vary'
+                            _link_color_ = fmto_color_lu[_fm_][_to_]
 
-                            svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
+                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
 
             # Draw the labels
             if self.draw_labels:
