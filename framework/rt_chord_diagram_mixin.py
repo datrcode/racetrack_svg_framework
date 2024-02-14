@@ -229,16 +229,14 @@ class RTChordDiagramMixin(object):
                      widget_id           = None,     # naming the svg elements                 
                      # ----------------------------- # node options
                      node_color          = None,     # none means color by node name, 'vary' by color_by, or specific color "#xxxxxx"
-                     node_labels         = None,     # Dictionary of node string to array of strings for additional labeling options
-                     node_labels_only    = False,    # Only label based on the node_labels dictionary
                      node_h              = 10,       # height of node from circle edge
                      node_gap            = 5,        # node gap in pixels (gap between the arcs)
                      order               = None,     # override calculated ordering...
+                     label_only          = set(),    # label only set
                      # ----------------------------- # link options
                      link_color          = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
                      link_opacity        = 0.1,      # link opacity
-                     link_arrow          = 'suble',  # None, 'subtle', or 'sharp'
-                     label_only          = set(),    # label only set
+                     link_arrow          = 'subtle', # None, 'subtle', or 'sharp'
                      # ----------------------------- # small multiples config
                      structure_template  = None,     # existing RTChordDiagram()
                      # ----------------------------- # visualization geometry / etc.
@@ -251,7 +249,9 @@ class RTChordDiagramMixin(object):
                      y_ins               = 3,
                      txt_h               = 10,       # text height for labeling
                      draw_labels         = False,    # draw labels flag # not implemented yet
-                     draw_border         = True):    # draw a border around the graph
+                     draw_border         = True,     # draw a border around the graph
+                     draw_background     = False):   # useful to turn off in small multiples settings
+
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTChordDiagram(self, **_params_)
@@ -300,17 +300,15 @@ class RTChordDiagramMixin(object):
             self.count_by_set     = kwargs['count_by_set']              # done!
             self.widget_id        = kwargs['widget_id']                 # done!
             if self.widget_id is None:
-                self.widget_id = 'chorddiagram_' + str(random.randint(0,65535))          
+                self.widget_id = 'chorddiagram_' + str(random.randint(0,8*65535))          
             self.node_color       = kwargs['node_color']                # done! (maybe)
-            self.node_labels      = kwargs['node_labels']
-            self.node_labels_only = kwargs['node_labels_only']
             self.node_h           = kwargs['node_h']                    # done!
             self.node_gap         = kwargs['node_gap']                  # done!
             self.order            = kwargs['order']                     # done!
+            self.label_only       = kwargs['label_only']                # done!
             self.link_color       = kwargs['link_color']                # done!
             self.link_opacity     = kwargs['link_opacity']              # done!
             self.link_arrow       = kwargs['link_arrow']                # done!
-            self.label_only       = kwargs['label_only']
             self.track_state      = kwargs['track_state']
             self.x_view           = kwargs['x_view']                    # n/a
             self.y_view           = kwargs['y_view']                    # n/a
@@ -318,9 +316,10 @@ class RTChordDiagramMixin(object):
             self.h                = kwargs['h']                         # n/a
             self.x_ins            = kwargs['x_ins']                     # n/a
             self.y_ins            = kwargs['y_ins']                     # n/a
-            self.txt_h            = kwargs['txt_h']
-            self.draw_labels      = kwargs['draw_labels']
+            self.txt_h            = kwargs['txt_h']                     # done!
+            self.draw_labels      = kwargs['draw_labels']               # done!
             self.draw_border      = kwargs['draw_border']               # done!
+            self.draw_background  = kwargs['draw_background']           # done!
 
             # Apply count-by transforms
             if self.count_by is not None and rt_self.isTField(self.count_by):
@@ -681,7 +680,8 @@ class RTChordDiagramMixin(object):
             svg = []
             svg.append(f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">')
             background_color, axis_color = self.rt_self.co_mgr.getTVColor('background','default'), self.rt_self.co_mgr.getTVColor('axis','default')
-            svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
+            if self.draw_background:
+                svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
 
             xTo = lambda a: self.cx + self.r                 * cos(pi*a/180.0) # Outer Circle - x transform
             xTi = lambda a: self.cx + (self.r - self.node_h) * cos(pi*a/180.0) # Inner Circle - x transform
@@ -766,9 +766,11 @@ class RTChordDiagramMixin(object):
             # Draw the labels
             if self.draw_labels:
                 for node in self.node_to_arc.keys():
-                      _id_ = self.rt_self.encSVGID(node)
-                      svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" y="-3" >''')
-                      svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{node}</textPath></text>''')
+                    if len(self.label_only) == 0 or node in self.label_only:
+                        _id_ = self.rt_self.encSVGID(node)
+                        svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" y="-3" >''')
+                        svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{node}</textPath></text>''')
+
             # Draw the border
             if self.draw_border:
                 border_color = self.rt_self.co_mgr.getTVColor('border','default')
