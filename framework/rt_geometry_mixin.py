@@ -26,6 +26,25 @@ __name__ = 'rt_geometry_mixin'
 #
 class RTGeometryMixin(object):
     #
+    # segmentLength()
+    # - _segment_ = [(x0,y0),(x1,y1)]
+    #
+    def segmentLength(self, _segment_):
+        dx, dy = _segment_[1][0] - _segment_[0][0], _segment_[1][1] - _segment_[0][1]
+        return sqrt(dx*dx+dy*dy)
+
+    #
+    # unitVector()
+    # - _segment_ = [(x0,y0),(x1,y1)]
+    #
+    def unitVector(self, _segment_):
+        dx, dy = _segment_[1][0] - _segment_[0][0], _segment_[1][1] - _segment_[0][1]
+        _len_  = sqrt(dx*dx+dy*dy)
+        if _len_ < 0.0001:
+            _len_ = 1.0
+        return (dx/_len_, dy/_len_)
+
+    #
     # intersectionPoint() - determine where two lines intersect
     # - returns None if the lines do not intersect
     #
@@ -168,7 +187,37 @@ class RTGeometryMixin(object):
                 if t1 >= 0.0 and  t1 <= 1.0:
                     return True, x, y, t0, t1
         return False, 0.0, 0.0, 0.0, 0.0
-    
+
+    #
+    # segmentIntersectsCircle() - does a line segment intersect a circle
+    # - segment is ((x0,y0),(x1,y1))
+    # - circle  is (cx, cy, r)
+    # - modification from the following:
+    # https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm
+    #
+    def segmentIntersectsCircle(self, segment, circle):
+        A, B, C = segment[0], segment[1], (circle[0], circle[1])
+        sub  = lambda a, b: (a[0] - b[0], a[1] - b[1])
+        AC, AB = sub(C,A), sub(B,A)
+        add  = lambda a, b: (a[0] + b[0], a[1] + b[1])
+        dot  = lambda a, b: a[0]*b[0] + a[1]*b[1]
+        def proj(a,b):
+            k = dot(a,b)/dot(b,b)
+            return (k*b[0],k*b[1])
+        D = add(proj(AC, AB), A)
+        AD = sub(D,A)
+        if abs(AB[0]) > abs(AB[1]):
+            k = AD[0] / AB[0]
+        else:
+            k = AD[1] / AB[1]
+        hypot2 = lambda a, b: dot(sub(a,b),sub(a,b))
+        if k <= 0.0:
+            return sqrt(hypot2(C,A)), C
+        elif k >= 1.0:
+            return sqrt(hypot2(C,B)), B
+        else:
+            return sqrt(hypot2(C,D)), D
+
     #
     # Create a background lookup table (and the fill table) from a shape file...
     # ... fill table is complicated because line strings don't require fill...
