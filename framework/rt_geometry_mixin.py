@@ -45,12 +45,13 @@ class RTGeometryMixin(object):
         return (dx/_len_, dy/_len_)
 
     #
-    # closestPointOnSegment()
-    #
+    # closestPointOnSegment() - find the closest point on the specified segment.
+    # returns distance, point
+    # ... for example:  10, (1,2)
     def closestPointOnSegment(self, _segment_, _pt_):
         if _segment_[0][0] == _segment_[1][0] and _segment_[0][1] == _segment_[1][1]: # not a segment...
             dx, dy = _pt_[0] - _segment_[0][0], _pt_[1] - _segment_[0][1]
-            return sqrt(dx*dx+dy*dy), _segment_[0][0], _segment_[0][1]
+            return sqrt(dx*dx+dy*dy), _segment_[0]
         else:
             dx, dy = _pt_[0] - _segment_[0][0], _pt_[1] - _segment_[0][1]
             d0 = dx*dx+dy*dy
@@ -65,16 +66,16 @@ class RTGeometryMixin(object):
                 dx, dy = _pt_[0] - _ret_[0], _pt_[1] - _ret_[1]
                 d2 = dx*dx+dy*dy
                 if d2 < d0 and d2 < d1:
-                    return sqrt(d2), _ret_[0], _ret_[1]
+                    return sqrt(d2), _ret_
                 elif d0 < d1:
-                    return sqrt(d0), _segment_[0][0], _segment_[0][1]
+                    return sqrt(d0), _segment_[0]
                 else:
-                    return sqrt(d1), _segment_[1][0], _segment_[1][1]
+                    return sqrt(d1), _segment_[1]
             else:
                 if d0 < d1:
-                    return sqrt(d0), _segment_[0][0], _segment_[0][1]
+                    return sqrt(d0), _segment_[0]
                 else:
-                    return sqrt(d1), _segment_[1][0], _segment_[1][1]
+                    return sqrt(d1), _segment_[1]
 
     #
     # intersectionPoint() - determine where two lines intersect
