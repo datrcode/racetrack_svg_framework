@@ -45,6 +45,38 @@ class RTGeometryMixin(object):
         return (dx/_len_, dy/_len_)
 
     #
+    # closestPointOnSegment()
+    #
+    def closestPointOnSegment(self, _segment_, _pt_):
+        if _segment_[0][0] == _segment_[1][0] and _segment_[0][1] == _segment_[1][1]: # not a segment...
+            dx, dy = _pt_[0] - _segment_[0][0], _pt_[1] - _segment_[0][1]
+            return sqrt(dx*dx+dy*dy), _segment_[0][0], _segment_[0][1]
+        else:
+            dx, dy = _pt_[0] - _segment_[0][0], _pt_[1] - _segment_[0][1]
+            d0 = dx*dx+dy*dy
+            dx, dy = _pt_[0] - _segment_[1][0], _pt_[1] - _segment_[1][1]
+            d1 = dx*dx+dy*dy
+
+            dx,  dy  = _segment_[1][0] - _segment_[0][0], _segment_[1][1] - _segment_[0][1]
+            pdx, pdy = -dy, dx
+            _pt_line_ = (_pt_, (_pt_[0] + pdx, _pt_[1] + pdy)) 
+            _ret_ = self.lineSegmentIntersectionPoint(_pt_line_, _segment_)
+            if _ret_ is not None:
+                dx, dy = _pt_[0] - _ret_[0], _pt_[1] - _ret_[1]
+                d2 = dx*dx+dy*dy
+                if d2 < d0 and d2 < d1:
+                    return sqrt(d2), _ret_[0], _ret_[1]
+                elif d0 < d1:
+                    return sqrt(d0), _segment_[0][0], _segment_[0][1]
+                else:
+                    return sqrt(d1), _segment_[1][0], _segment_[1][1]
+            else:
+                if d0 < d1:
+                    return sqrt(d0), _segment_[0][0], _segment_[0][1]
+                else:
+                    return sqrt(d1), _segment_[1][0], _segment_[1][1]
+
+    #
     # intersectionPoint() - determine where two lines intersect
     # - returns None if the lines do not intersect
     #
