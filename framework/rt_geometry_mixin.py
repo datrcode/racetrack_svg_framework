@@ -45,6 +45,19 @@ class RTGeometryMixin(object):
         return (dx/_len_, dy/_len_)
 
     #
+    # bezierCurve() - parametric bezier curve object
+    # - from Bezier Curve on wikipedia.org
+    #
+    def bezierCurve(self, pt1, pt1p, pt2p, pt2):
+        class BezierCurve(object):
+            def __init__(self, pt1, pt1p, pt2p, pt2):
+                self.pt1, self.pt1p, self.pt2p, self.pt2 = pt1, pt1p, pt2p, pt2
+            def __call__(self, t):
+                return (1-t)**3*self.pt1[0]+3*(1-t)**2*t*self.pt1p[0]+3*(1-t)*t**2*self.pt2p[0]+t**3*self.pt2[0], \
+                       (1-t)**3*self.pt1[1]+3*(1-t)**2*t*self.pt1p[1]+3*(1-t)*t**2*self.pt2p[1]+t**3*self.pt2[1]
+        return BezierCurve(pt1, pt1p, pt2p, pt2)
+
+    #
     # closestPointOnSegment() - find the closest point on the specified segment.
     # returns distance, point
     # ... for example:  10, (1,2)
