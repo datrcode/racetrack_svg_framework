@@ -917,6 +917,26 @@ class SegmentOctTree(object):
                     self.__split__(k)
 
     #
+    # closestSegmentToPoint() - find the closest segment to the specified point.
+    # - pt = (x,y)
+    # - returns distance, segment,              segment_pt
+    #           10.0,     ((x0,y0),(x1,y1))     (x3,y3)
+    def closestSegmentToPoint(self, pt):
+        oct       = self.findOctet(pt)
+        oct_nbors = self.__neighbors__(oct) | set([oct])
+
+        closest_d, closest_segment, closest_xy = None, None, None
+        for node in oct_nbors:
+            for segment in self.tree[node]:
+                d, xy = self.rt_self.closestPointOnSegment(segment, pt)
+                if closest_d is None:
+                    closest_d, closest_segment, closest_xy = d, segment, xy
+                elif d < closest_d:
+                    closest_d, closest_segment, closest_xy = d, segment, xy
+        
+        return closest_d, closest_segment, closest_xy
+
+    #
     # closestSegment() - return the closest segment to the specified segment.
     # - _segment_ = ((x0,y0),(x1,y1))
     # - returns distance, other_segment
