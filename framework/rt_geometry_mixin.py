@@ -806,8 +806,9 @@ class SegmentOctTree(object):
         self.tree_bounds            = {}
         self.tree['']               = set()
         self.tree_bounds['']        = self.bounds
-        self.tree_already_split     = {}
-        self.tree_already_split[''] = False
+        self.node_already_split     = {}
+        self.node_already_split[''] = False
+        # self.bad_svgs               = []
 
         if bounds[0] >= bounds[2]:
             raise Exception(f'SegmentOctTree.__init__() - [1] bounds messed up {bounds}')
@@ -816,16 +817,7 @@ class SegmentOctTree(object):
 
 
         # For Debugging...
-        self.pieces                 = set()            # for debugging...
-        debug = False
-        if debug:
-            self.__split__('')
-            iters = 0
-            while (iters < 4):
-                ks = set(self.tree.keys())
-                for k in ks:
-                    self.__split__(k)
-                iters += 1
+        self.pieces = set() # for debugging...
 
     #
     # findOctet() - find the placement of a point within the octtree
@@ -837,11 +829,11 @@ class SegmentOctTree(object):
             if check_parents and len(self.tree[s]) > 0:
                 raise Exception(f'SegmentOctTree.findOctet("{pt}") has children... but node "{s}" not empty (len={len(self.tree[s])})')
             b = self.tree_bounds[s+'0']
-            if   pt[0] <= b[2] and pt[1] <= b[1]:
+            if   pt[0] <= b[2] and pt[1] <= b[3]:
                 s += '0'
             elif pt[0] <= b[2]:
                 s += '2'
-            elif                   pt[1] <= b[1]:
+            elif                   pt[1] <= b[3]:
                 s += '1'
             else:
                 s += '3'
@@ -851,70 +843,128 @@ class SegmentOctTree(object):
     # def lineSegmentIntersectionPoint(self, line, segment):
     #
     def __split__(self, node):
-        print(f'splitting "{node}"')
-        if self.tree_already_split[node]: # shouldn't have anything in it...
+        if self.node_already_split[node]: # shouldn't have anything in it...
             if len(self.tree[node]) != 0:
                 raise Exception(f'SegmentOcttree.__split__(node="{node}") shouldn\'t be non-zero')
             return
         
         # determine the split points -- median of the coordinates in x and y
         b = self.tree_bounds[node]
-        self.debug_last_bounds = b # debug
         xs, ys = [], []
         for piece in self.tree[node]:
-            self.debug_last_piece_parsed = piece # debug
+            valid = True
             x0,y0,x1,y1 = piece[0][0], piece[0][1], piece[1][0], piece[1][1]
             # clip segment first...
-            if x0 < b[0]:
-                x0, y0 = self.rt_self.lineSegmentIntersectionPoint(((b[0],0),(b[0],1)),piece)
-            if x0 > b[2]:
-                x0, y0 = self.rt_self.lineSegmentIntersectionPoint(((b[2],0),(b[2],1)),piece)
-            if x1 < b[0]:
-                x1, y1 = self.rt_self.lineSegmentIntersectionPoint(((b[0],0),(b[0],1)),piece)
-            if x1 > b[2]:
-                x1, y1 = self.rt_self.lineSegmentIntersectionPoint(((b[2],0),(b[2],1)),piece)
-            if y0 < b[1]:
-                x0, y0 = self.rt_self.lineSegmentIntersectionPoint(((0,b[1]),(1,b[1])),piece)
-            if y0 > b[3]:
-                x0, y0 = self.rt_self.lineSegmentIntersectionPoint(((0,b[3]),(1,b[3])),piece)
-            if y1 < b[1]:
-                x1, y1 = self.rt_self.lineSegmentIntersectionPoint(((0,b[1]),(1,b[1])),piece)
-            if y1 > b[3]:
-                x1, y1 = self.rt_self.lineSegmentIntersectionPoint(((0,b[3]),(1,b[3])),piece)
-            xs.append(x0), xs.append(x1), ys.append(y0), ys.append(y1)
+            if (x0 <= b[0] and x1 <= b[0]) or (x0 >= b[2] and x1 >= b[2]):
+                valid = False
+            else:
+                if x0 < b[0]:
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[0],0),(b[0],1)),piece)
+                    if pt is None:
+                        valid = False
+                    else:
+                        x0, y0 = pt
+                if x0 > b[2]:
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[2],0),(b[2],1)),piece)
+                    if pt is None:
+                        valid = False
+                    else:
+                        x0, y0 = pt
+                if x1 < b[0]:
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[0],0),(b[0],1)),piece)
+                    if pt is None:
+                        valid = False
+                    else:
+                        x1, y1 = pt
+                if x1 > b[2]:
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[2],0),(b[2],1)),piece)
+                    if pt is None:
+                        valid = False
+                    else:
+                        x1, y1 = pt
+            if (y0 <= b[1] and y1 <= b[1]) or (y0 >= b[3] and y1 >= b[3]):
+                valid = False
+            else:
+                if y0 < b[1]:
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((0,b[1]),(1,b[1])),piece)
+                    if pt is None:
+                        valid = False
+                    else:
+                        x0, y0 = pt
+                if y0 > b[3]:
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((0,b[3]),(1,b[3])),piece)
+                    if pt is None:
+                        valid = False
+                    else:
+                        x0, y0 = pt
+                if y1 < b[1]:
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((0,b[1]),(1,b[1])),piece)
+                    if pt is None:
+                        valid = False
+                    else:
+                        x1, y1 = pt
+                if y1 > b[3]:
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((0,b[3]),(1,b[3])),piece)
+                    if pt is None:
+                        valid = False
+                    else:
+                        x1, y1 = pt
+            if valid:
+                xs.append(x0), xs.append(x1), ys.append(y0), ys.append(y1)
         xs,ys = sorted(xs),sorted(ys)
+
+        if len(xs) == 0 or len(ys) == 0: # nothing if we don't have values to sort
+            return # prevent bad cases
+        if xs[0] == xs[-1] or ys[0] == ys[-1]: # nothing if the values are all the same
+            return # prevent bad cases
 
         x_split = xs[int(len(xs)/2)]
         y_split = ys[int(len(ys)/2)]
 
-        self.tree_already_split[node] = True # marks that the node has already been split and shouldn't be split again...
+        if x_split == b[0] or x_split == b[2] or y_split == b[1] or y_split == b[3]: # nothing if the split equals a current boundary
+            return # prevent bad cases
+
+        if abs(x_split - b[0]) < 1.0 or abs(x_split - b[2]) < 1.0 or abs(y_split - b[1]) < 1.0 or abs(y_split - b[3]) < 1.0: # nothing less than one...
+            return # prevent bad cases
+
+        self.node_already_split[node] = True # marks that the node has already been split and shouldn't be split again...
 
         self.tree       [node+'0'] = set()
         self.tree_bounds[node+'0'] = (b[0],     b[1],    x_split, y_split)
-        self.tree_already_split[node+'0'] = False
+        self.node_already_split[node+'0'] = False
 
         self.tree       [node+'1'] = set()
         self.tree_bounds[node+'1'] = (x_split,  b[1],    b[2],    y_split)        
-        self.tree_already_split[node+'1'] = False
+        self.node_already_split[node+'1'] = False
 
         self.tree       [node+'2'] = set()
         self.tree_bounds[node+'2'] = (b[0],     y_split, x_split, b[3])
-        self.tree_already_split[node+'2'] = False
+        self.node_already_split[node+'2'] = False
 
         self.tree       [node+'3'] = set()
         self.tree_bounds[node+'3'] = (x_split,  y_split, b[2],    b[3])
-        self.tree_already_split[node+'3'] = False
+        self.node_already_split[node+'3'] = False
 
         to_check =      [node+'0', node+'1', node+'2', node+'3']
         for piece in self.tree[node]:
             x_min, y_min, x_max, y_max = min(piece[0][0], piece[1][0]), min(piece[0][1], piece[1][1]), max(piece[0][0], piece[1][0]), max(piece[0][1], piece[1][1])
             oct0, oct1, piece_addition_count = self.findOctet(piece[0], check_parents=False), self.findOctet(piece[1], check_parents=False), 0
             for k in to_check:
-                if self.__segmentInNode__(piece, k):
+                if self.__segmentTouchesNode__(piece, k):
                     self.tree[k].add(piece)
                     piece_addition_count +=1
             if piece_addition_count == 0:
-                print(f"Error -- No additions for piece {piece} ... node = '{node}' | node_sz = {len(self.tree[k])}")
+                pass # ... not necessarily a problem -- happens when the segment touches the exact boundary only
+                     # ... should probably keep track to ensure all segments are represented in at least one place instead...
+                #print(f"Error -- No additions for piece {piece} ... node = '{node}' | node_sz = {len(self.tree[k])}")
+                #svg = '<svg width="500" height="500">\n'
+                #svg += f'<rect x="0" y="0" width="500" height="500" fill="#ffffff"/>\n'
+                #for k in to_check:
+                #    b = self.tree_bounds[k]
+                #    svg += f'<rect x="{b[0]}" y="{b[1]}" width="{b[2]-b[0]}" height="{b[3]-b[1]}" fill="none" stroke="#000000"/>\n'
+                #svg += f'<line x1="{piece[0][0]}" y1="{piece[0][1]}" x2="{piece[1][0]}" y2="{piece[1][1]}" stroke="#ff0000"/>\n'
+                #svg += "</svg>"
+                #self.bad_svgs.append(svg)
         self.tree[node] = set()
         for k in to_check:
             if len(self.tree[k]) > self.max_segments_per_cell:
@@ -939,7 +989,7 @@ class SegmentOctTree(object):
             else:
                 to_split = set() # to avoid messing with the keys in this iteration
                 for k in self.tree.keys():
-                    if self.__segmentInNode__(piece, k):
+                    if self.__segmentTouchesNode__(piece, k):
                         self.tree[k].add(piece)
                         if len(self.tree) > self.max_segments_per_cell:
                             to_split.add(k)
@@ -967,14 +1017,17 @@ class SegmentOctTree(object):
         return closest_d, closest_segment, closest_xy
 
     #
-    # __segmentInNode__() - does a segment intersect (or belong in) a node?
+    # __segmentTouchesNode__() - does a segment intersect (or belong in) a node?
+    # ... changes here should be propagated to the _reason_ version...
     #
-    def __segmentInNode__(self, segment, node):
+    def __segmentTouchesNode__(self, segment, node):
+        if self.node_already_split[node]:
+            return False
         if node == self.findOctet(segment[0]) or node == self.findOctet(segment[1]):
             return True
         x_min, y_min = min(segment[0][0], segment[1][0]), min(segment[0][1], segment[1][1])
         x_max, y_max = max(segment[0][0], segment[1][0]), max(segment[0][1], segment[1][1])
-        b      = self.tree_bounds[node]
+        b            = self.tree_bounds[node]
         if   x_max < b[0] or x_min > b[2] or y_max < b[1] or y_min > b[3]:
             return False
         else:
@@ -996,6 +1049,37 @@ class SegmentOctTree(object):
         return False
 
     #
+    # __segmentTouchesNode_reason_() - does a segment intersect (or belong in) a node?  gives the reason -- copy of the above...
+    #
+    def __segmentTouchesNode_reason__(self, segment, node):
+        if self.node_already_split[node]:
+            return 'false - node already split'
+        if node == self.findOctet(segment[0]) or node == self.findOctet(segment[1]):
+            return 'true - one endpoint originates in the specified node'
+        x_min, y_min = min(segment[0][0], segment[1][0]), min(segment[0][1], segment[1][1])
+        x_max, y_max = max(segment[0][0], segment[1][0]), max(segment[0][1], segment[1][1])
+        b            = self.tree_bounds[node]
+        if   x_max < b[0] or x_min > b[2] or y_max < b[1] or y_min > b[3]:
+            return 'false - bounds test failed'
+        else:
+            flag0, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[0],b[1]),(b[0],b[3])))
+            if flag0:
+                return f'flag0 ... (({b[0]},{b[1]}),({b[0]},{b[3]}))'
+            else:
+                flag1, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[0],b[1]),(b[2],b[1])))
+                if flag1:
+                    return 'flag1 ... (({b[0]},{b[1]}),({b[2]},{b[1]}))'
+                else:
+                    flag2, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[2],b[3]),(b[0],b[3])))
+                    if flag2:
+                        return 'flag2 ... (({b[2]},{b[3]}),({b[0]},{b[3]}))'
+                    else:
+                        flag3, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[2],b[3]),(b[2],b[1])))
+                        if flag3:
+                            return 'flag3 ... (({b[2]},{b[3]}),({b[2]},{b[1]}))'
+        return False
+
+    #
     # closestSegment() - return the closest segment to the specified segment.
     # - _segment_ = ((x0,y0),(x1,y1))
     # - returns distance, other_segment
@@ -1014,7 +1098,7 @@ class SegmentOctTree(object):
             to_check |= oct0_nbors | self.__neighbors__(oct1)
         else: # :( ... have to search for all possibles...
             for k in self.tree_bounds.keys():
-                if self.__segmentInNode__(segment, k):
+                if self.__segmentTouchesNode__(segment, k):
                     to_check.add(k)
             all_nbors = set()
             for node in to_check:                
@@ -1038,6 +1122,8 @@ class SegmentOctTree(object):
             
 
     # __segmentDistance__() ... probably biased towards human scale numbers... 0 to 1000
+    # ... this is a really bad way to do this... for example, take two segments that intersect like a plus...
+    # ... those would have intersected but have a far distance...
     def __segmentDistance__(self, _s0_, _s1_):
         d0 = self.rt_self.segmentLength((_s0_[0], _s1_[0]))
         v0 = self.rt_self.unitVector(_s0_)
@@ -1053,7 +1139,7 @@ class SegmentOctTree(object):
             return _set_
         node_b = self.tree_bounds[node]
         for k in self.tree_bounds:
-            if self.tree_already_split[k]: # don't bother with split nodes
+            if self.node_already_split[k]: # don't bother with split nodes
                 continue
             b = self.tree_bounds[k]
             right, left  = (b[0] == node_b[2]), (b[2] == node_b[0])
@@ -1103,7 +1189,7 @@ class SegmentOctTree(object):
         # Draw example neighbors
         _as_list_ = list(self.tree.keys())
         _node_    = _as_list_[random.randint(0,len(_as_list_)-1)]
-        while self.tree_already_split[_node_]: # find a non-split node...
+        while self.node_already_split[_node_]: # find a non-split node...
             _node_    = _as_list_[random.randint(0,len(_as_list_)-1)]
         _node_b_  = self.tree_bounds[_node_]
         xc, yc    = (_node_b_[0]+_node_b_[2])/2.0, (_node_b_[1]+_node_b_[3])/2.0
@@ -1127,17 +1213,16 @@ class SegmentOctTree(object):
         svg += f'<rect x="0" y="0" width="{w+2*x_ins}" height="{h+2*y_ins}" fill="#ffffff" />'
         for k in self.tree:
             b = self.tree_bounds[k]
-            _color_ = '#b0b0b0'
+            _color_ = '#c0c0c0'
             svg += f'<rect x="{xT(b[0])}" y="{yT(b[1])}" width="{xT(b[2])-xT(b[0])}" height="{yT(b[3])-yT(b[1])}" fill="none" stroke="{_color_}" stroke-width="0.5" stroke-opacity="1.0" />'
-            svg += f'<text x="{xT(b[0])+2}" y="{yT(b[3])-2}" font-size="10px">{k}</text>'
 
         b = self.tree_bounds[node]
         _color_ = self.rt_self.co_mgr.getColor(node)
-        svg += f'<rect x="{xT(b[0])}" y="{yT(b[1])}" width="{xT(b[2])-xT(b[0])}" height="{yT(b[3])-yT(b[1])}" fill="none" stroke="{_color_}" stroke-width="2" stroke-opacity="1.0" />'
-        svg += f'<text x="{xT(b[0])+2}" y="{yT(b[3])-2}" font-size="10px">{k}</text>'
+        svg += f'<rect x="{xT(b[0])}" y="{yT(b[1])}" width="{xT(b[2])-xT(b[0])}" height="{yT(b[3])-yT(b[1])}" fill="none" stroke="{_color_}" stroke-width="3" stroke-opacity="1.0" />'
+        svg += f'<text x="{xT(b[0])+2}" y="{yT(b[3])-2}" font-size="10px">{node}</text>'
 
         for segment in self.tree[node]:
-            if self.__segmentInNode__(segment, node):
+            if self.__segmentTouchesNode__(segment, node):
                 _color_ = '#000000'
                 _width_ = 1.0
             else:
@@ -1145,307 +1230,6 @@ class SegmentOctTree(object):
                 _width_ = 3.0
             svg += f'<line x1="{xT(segment[0][0])}" y1="{yT(segment[0][1])}" x2="{xT(segment[1][0])}" y2="{yT(segment[1][1])}" stroke="{_color_}" stroke-width="{_width_}" />'
 
-        svg +=  '</svg>'
-        return svg
-
-#######################################################################################################################
-#######################################################################################################################
-#######################################################################################################################
-
-#
-# SegmentOctTreeFixedSplit -- oct tree implementation for faster segment discovery.
-# - This one splits each exactly in half... which is suboptimal :(
-#
-class SegmentOctTreeFixedSplit(object):
-    #    
-    # bounds == (x0,y0,x1,y1)
-    #
-    def __init__(self, rt_self, bounds, max_segments_per_cell=20):
-        self.rt_self                = rt_self
-        self.bounds                 = bounds
-        self.max_segments_per_cell  = max_segments_per_cell
-        self.tree                   = {}
-        self.tree_bounds            = {}
-        self.tree['']               = set()
-        self.tree_bounds['']        = self.bounds
-        self.tree_already_split     = {}
-        self.tree_already_split[''] = False
-
-        if bounds[0] >= bounds[2]:
-            raise Exception(f'SegmentOctTree.__init__() - [1] bounds messed up {bounds}')
-        if bounds[1] >= bounds[3]:
-            raise Exception(f'SegmentOctTree.__init__() - [2] bounds messed up {bounds}')
-
-
-        # For Debugging...
-        self.pieces                 = set()            # for debugging...
-        debug = False
-        if debug:
-            self.__split__('')
-            iters = 0
-            while (iters < 4):
-                ks = set(self.tree.keys())
-                for k in ks:
-                    self.__split__(k)
-                iters += 1
-
-    #
-    # findOctet() - find octet for point.
-    #
-    def findOctet(self, pt):
-        last_s = s = ''
-        b = self.bounds
-        while s in self.tree.keys():
-            b = self.tree_bounds[s]
-            if    pt[0] <= (b[0]+b[2])/2.0 and pt[1] <= (b[1]+b[3])/2.0:
-                n = '0'
-            elif  pt[0] >  (b[0]+b[2])/2.0 and pt[1] <= (b[1]+b[3])/2.0:
-                n = '1'
-            elif  pt[0] <= (b[0]+b[2])/2.0 and pt[1] >  (b[1]+b[3])/2.0:
-                n = '2'
-            elif  pt[0] >  (b[0]+b[2])/2.0 and pt[1] >  (b[1]+b[3])/2.0:
-                n = '3'
-            last_s = s
-            s += n
-        return last_s
-
-    #
-    # __split__() - split a tree node into four parts ... not thread safe
-    #
-    def __split__(self, node):
-        if self.tree_already_split[node]:
-            return
-        else:
-            self.tree_already_split[node] = True
-        
-        b = self.tree_bounds[node]
-        self.tree       [node+'0'] = set()
-        self.tree_bounds[node+'0'] = (b[0],            b[1],            (b[0]+b[2])/2.0, (b[1]+b[3])/2.0)
-        self.tree_already_split[node+'0'] = False
-
-        self.tree       [node+'1'] = set()
-        self.tree_bounds[node+'1'] = ((b[0]+b[2])/2.0, b[1],            b[2],            (b[1]+b[3])/2.0)        
-        self.tree_already_split[node+'1'] = False
-
-        self.tree       [node+'2'] = set()
-        self.tree_bounds[node+'2'] = (b[0],            (b[1]+b[3])/2.0, (b[0]+b[2])/2.0, b[3])
-        self.tree_already_split[node+'2'] = False
-
-        self.tree       [node+'3'] = set()
-        self.tree_bounds[node+'3'] = ((b[0]+b[2])/2.0, (b[1]+b[3])/2.0, b[2],            b[3])
-        self.tree_already_split[node+'3'] = False
-
-
-        to_check =      [node+'0', node+'1', node+'2', node+'3']
-        for piece in self.tree[node]:
-            x_min, y_min, x_max, y_max = min(piece[0][0], piece[1][0]), min(piece[0][1], piece[1][1]), max(piece[0][0], piece[1][0]), max(piece[0][1], piece[1][1])
-            oct0, oct1, piece_addition_count = self.findOctet(piece[0]), self.findOctet(piece[1]), 0
-            for k in to_check:
-                b = self.tree_bounds[k]                                    
-                if   x_max < b[0] or x_min > b[2] or y_max < b[1] or y_min > b[3]:
-                        pass
-                elif oct0 == oct1 and oct0 == k:
-                    self.tree[k].add(piece)
-                    piece_addition_count +=1
-                elif self.rt_self.segmentsIntersect(piece, ((b[0],b[1]),(b[0],b[3]))) or \
-                     self.rt_self.segmentsIntersect(piece, ((b[0],b[1]),(b[2],b[1]))) or \
-                     self.rt_self.segmentsIntersect(piece, ((b[2],b[3]),(b[0],b[3]))) or \
-                     self.rt_self.segmentsIntersect(piece, ((b[2],b[3]),(b[2],b[1]))):
-                        self.tree[k].add(piece)
-                        piece_addition_count += 1
-            if piece_addition_count == 0:
-                print(f"Error -- No additions for piece {piece} ... node = '{node}' | node_sz = {len(self.tree[k])}")
-        self.tree[node] = set()
-        for k in to_check:
-            if len(self.tree[k]) > self.max_segments_per_cell:
-                self.__split__(k)
-
-    #
-    # addSegments() -- add segments to the tree
-    # - segments = [(x0,y0), (x1,y1), (x2,y2), (x3,y3)]
-    def addSegments(self, segments):
-        for i in range(len(segments)-1):
-            piece = ((segments[i][0], segments[i][1]), (segments[i+1][0], segments[i+1][1])) # make sure it's a tuple
-            self.pieces.add(piece)
-            oct0  = self.findOctet(segments[i])
-            x0,y0 = segments[i]
-            oct1  = self.findOctet(segments[i+1])
-            x1,y1 = segments[i+1]
-            x_min,y_min,x_max,y_max = min(x0,x1), min(y0,y1), max(x0,x1), max(y0,y1)
-            if oct0 == oct1:
-                self.tree[oct0].add(piece)
-                if len(self.tree[oct0]) > self.max_segments_per_cell:
-                    self.__split__(oct0)
-            else:
-                to_split = set() # to avoid messing with the keys in this iteration
-                self.tree[oct0].add(piece)
-                if len(self.tree[oct0]) > self.max_segments_per_cell:
-                    to_split.add(oct0)
-                self.tree[oct1].add(piece)
-                if len(self.tree[oct1]) > self.max_segments_per_cell:
-                    to_split.add(oct1)
-                for k in self.tree_bounds.keys():
-                    b      = self.tree_bounds[k]
-                    if k != oct0 and k != oct1:
-                        if   x_max < b[0] or x_min > b[2] or y_max < b[1] or y_min > b[3]:
-                             pass
-                        elif self.rt_self.segmentsIntersect(piece, ((b[0],b[1]),(b[0],b[3]))) or \
-                             self.rt_self.segmentsIntersect(piece, ((b[0],b[1]),(b[2],b[1]))) or \
-                             self.rt_self.segmentsIntersect(piece, ((b[2],b[3]),(b[0],b[3]))) or \
-                             self.rt_self.segmentsIntersect(piece, ((b[2],b[3]),(b[2],b[1]))):
-                             self.tree[k].add(piece)
-                             if len(self.tree[k]) > self.max_segments_per_cell:
-                                to_split.add(k)
-                for k in to_split:
-                    self.__split__(k)
-
-    #
-    # closestSegmentToPoint() - find the closest segment to the specified point.
-    # - pt = (x,y)
-    # - returns distance, segment,              segment_pt
-    #           10.0,     ((x0,y0),(x1,y1))     (x3,y3)
-    def closestSegmentToPoint(self, pt):
-        oct       = self.findOctet(pt)
-        oct_nbors = self.__neighbors__(oct) | set([oct])
-
-        closest_d, closest_segment, closest_xy = None, None, None
-        for node in oct_nbors:
-            for segment in self.tree[node]:
-                d, xy = self.rt_self.closestPointOnSegment(segment, pt)
-                if closest_d is None:
-                    closest_d, closest_segment, closest_xy = d, segment, xy
-                elif d < closest_d:
-                    closest_d, closest_segment, closest_xy = d, segment, xy
-        
-        return closest_d, closest_segment, closest_xy
-
-    #
-    # closestSegment() - return the closest segment to the specified segment.
-    # - _segment_ = ((x0,y0),(x1,y1))
-    # - returns distance, other_segment
-    #
-    # ... i don't really think this will return the absolute closest segment :(
-    #
-    def closestSegment(self, segment):
-        # Figure out which tree leaves to check
-        oct0       = self.findOctet(segment[0])
-        oct0_nbors = self.__neighbors__(oct0)
-        oct1       = self.findOctet(segment[1])
-        to_check   = set([oct0,oct1])
-        if    oct0 == oct1:
-            to_check |= oct0_nbors
-        elif  oct1 in oct0_nbors:
-            to_check |= oct0_nbors | self.__neighbors__(oct1)
-        else: # :( ... have to search for all possibles...
-            x_min, y_min = min(segment[0][0], segment[1][0]), min(segment[0][1], segment[1][1])
-            x_max, y_max = max(segment[0][0], segment[1][0]), max(segment[0][1], segment[1][1])
-            for k in self.tree_bounds.keys():
-                b      = self.tree_bounds[k]
-                if k != oct0 and k != oct1:
-                    if   x_max < b[0] or x_min > b[2] or y_max < b[1] or y_min > b[3]:
-                        pass
-                    elif self.rt_self.segmentsIntersect(segment, ((b[0],b[1]),(b[0],b[3]))) or \
-                         self.rt_self.segmentsIntersect(segment, ((b[0],b[1]),(b[2],b[1]))) or \
-                         self.rt_self.segmentsIntersect(segment, ((b[2],b[3]),(b[0],b[3]))) or \
-                         self.rt_self.segmentsIntersect(segment, ((b[2],b[3]),(b[2],b[1]))):
-                        to_check.add(k)
-            all_nbors = set()
-            for node in to_check:                
-                all_nbors |= self.__neighbors__(node)
-            to_check |= all_nbors
-
-        # Find the closest...
-        nodes_checked = set()            
-        closest_d = closest_segment = None
-        for node in to_check:
-            nodes_checked.add(node)
-            for other_segment in self.tree[node]:
-                d = self.__segmentDistance__(segment, other_segment)
-                if closest_d is None:
-                    closest_d, closest_segment = d, other_segment
-                elif d < closest_d:
-                    closest_d, closest_segment = d, other_segment
-        
-        # Return the results
-        return closest_d, closest_segment
-            
-
-    # __segmentDistance__() ... probably biased towards human scale numbers... 0 to 1000
-    def __segmentDistance__(self, _s0_, _s1_):
-        d0 = self.rt_self.segmentLength((_s0_[0], _s1_[0]))
-        v0 = self.rt_self.unitVector(_s0_)
-        d1 = self.rt_self.segmentLength((_s0_[1], _s1_[1]))
-        v1 = self.rt_self.unitVector(_s1_)
-        return d0 + d1 + abs(v0[0]*v1[0]+v0[1]*v1[1])
-
-
-    # __neighbors__() ... return the neighbors of a node...
-    def __neighbors__(self, node):
-        _set_ = set()
-        if node == '':
-            return _set_
-        node_b = self.tree_bounds[node]
-        for k in self.tree_bounds:
-            if self.tree_already_split[k]: # don't bother with split nodes
-                continue
-            b = self.tree_bounds[k]
-            right, left  = (b[0] == node_b[2]), (b[2] == node_b[0])
-            above, below = (b[3] == node_b[1]), (b[1] == node_b[3])
-            # diagonals:
-            if (right and above) or (right and below) or (left and above) or (left and below):
-                _set_.add(k)
-            elif right or left:
-                if (b[1] >= node_b[1] and b[1] <= node_b[3]) or \
-                   (b[3] >= node_b[1] and b[3] <= node_b[3]) or \
-                   (node_b[1] >= b[1] and node_b[1] <= b[3]) or \
-                   (node_b[3] >= b[1] and node_b[3] <= b[3]):
-                    _set_.add(k)
-            elif above or below:
-                if (b[0] >= node_b[0] and b[0] <= node_b[2]) or \
-                   (b[2] >= node_b[0] and b[2] <= node_b[2]) or \
-                   (node_b[0] >= b[0] and node_b[0] <= b[2]) or \
-                   (node_b[2] >= b[0] and node_b[2] <= b[2]):
-                    _set_.add(k)
-        return _set_
-
-    #
-    # _repr_svg_() - return an SVG version of the oct tree
-    #
-    def _repr_svg_(self):
-        w,  h, x_ins, y_ins = 800, 800, 50, 50
-        xa, ya, xb, yb      = self.tree_bounds['']
-        xT = lambda x: x_ins + w*(x - xa)/(xb-xa)
-        yT = lambda y: y_ins + h*(y - ya)/(yb-ya)
-        svg =  f'<svg x="0" y="0" width="{w+2*x_ins}" height="{h+2*y_ins}" xmlns="http://www.w3.org/2000/svg">'
-        all_segments = set()
-        for k in self.tree:
-            all_segments = all_segments | self.tree[k]
-            b = self.tree_bounds[k]
-            _color_ = self.rt_self.co_mgr.getColor(k)
-            svg += f'<rect x="{xT(b[0])}" y="{yT(b[1])}" width="{xT(b[2])-xT(b[0])}" height="{yT(b[3])-yT(b[1])}" fill="{_color_}" opacity="0.4" stroke="{_color_}" stroke-width="0.5" stroke-opacity="1.0" />'
-            svg += f'<text x="{xT(b[0])+2}" y="{yT(b[3])-2}" font-size="10px">{k}</text>'
-        for segment in self.pieces:
-            svg += f'<line x1="{xT(segment[0][0])}" y1="{yT(segment[0][1])}" x2="{xT(segment[1][0])}" y2="{yT(segment[1][1])}" stroke="#ffffff" stroke-width="4.0" />'
-            nx,  ny  = self.rt_self.unitVector(segment)
-            pnx, pny = -ny, nx
-            svg += f'<line x1="{xT(segment[0][0]) + pnx*3}" y1="{yT(segment[0][1]) + pny*3}" x2="{xT(segment[0][0]) - pnx*3}" y2="{yT(segment[0][1]) - pny*3}" stroke="#000000" stroke-width="0.5" />'
-            svg += f'<line x1="{xT(segment[1][0]) + pnx*3}" y1="{yT(segment[1][1]) + pny*3}" x2="{xT(segment[1][0]) - pnx*3}" y2="{yT(segment[1][1]) - pny*3}" stroke="#000000" stroke-width="0.5" />'
-        for segment in all_segments:
-            svg += f'<line x1="{xT(segment[0][0])}" y1="{yT(segment[0][1])}" x2="{xT(segment[1][0])}" y2="{yT(segment[1][1])}" stroke="#ff0000" stroke-width="2.0" />'
-
-        # Draw example neighbors
-        _as_list_ = list(self.tree.keys())
-        _node_    = _as_list_[random.randint(0,len(_as_list_)-1)]
-        while self.tree_already_split[_node_]: # find a non-split node...
-            _node_    = _as_list_[random.randint(0,len(_as_list_)-1)]
-        _node_b_  = self.tree_bounds[_node_]
-        xc, yc    = (_node_b_[0]+_node_b_[2])/2.0, (_node_b_[1]+_node_b_[3])/2.0
-        _nbors_   = self.__neighbors__(_node_)
-        for _nbor_ in _nbors_:
-            _nbor_b_ = self.tree_bounds[_nbor_]
-            xcn, ycn = (_nbor_b_[0]+_nbor_b_[2])/2.0, (_nbor_b_[1]+_nbor_b_[3])/2.0
-            svg += f'<line x1="{xT(xc)}" y1="{yT(yc)}" x2="{xT(xcn)}" y2="{yT(ycn)}" stroke="#000000" stroke-width="0.5" />'
-            
         svg +=  '</svg>'
         return svg
 
