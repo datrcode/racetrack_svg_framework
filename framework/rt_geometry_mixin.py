@@ -1017,6 +1017,35 @@ class SegmentOctTree(object):
         return closest_d, closest_segment, closest_xy
 
     #
+    # closestSegmentsToPoint() - find the closest segments to the specifid point.
+    # ... may not be able to guarantee these are the closest...
+    # ... return list of the following tuples:  (distance, segment, xy) where xy is the closest part of the segment to the point.
+    #
+    def closestSegmentsToPoint(self, pt, n=10):
+        n = min(n, len(self.pieces)) # can't find more pieces than are in the data structure...
+        nbors     = set([self.findOctet(pt)])
+        sorter    = []
+        checked   = set() # nodes that have been checked already
+        while len(sorter) < n:
+            # expand to all neighbors from the current region
+            new_nbors = set()
+            for node in nbors:
+                new_nbors |= self.__neighbors__(node)
+            nbors = new_nbors | nbors
+            # check those nodes for segments
+            for node in nbors:
+                if node in checked:
+                    continue
+                checked.add(node)
+                for segment in self.tree[node]:
+                    if segment in checked:
+                        continue
+                    checked.add(segment)
+                    d, xy = self.rt_self.closestPointOnSegment(segment, pt)
+                    sorter.append((d, segment, xy))
+        return sorted(sorter)[:n]
+
+    #
     # __segmentTouchesNode__() - does a segment intersect (or belong in) a node?
     # ... changes here should be propagated to the _reason_ version...
     #
