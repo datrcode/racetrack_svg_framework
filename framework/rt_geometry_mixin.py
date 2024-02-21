@@ -793,6 +793,7 @@ class RTGeometryMixin(object):
 #
 # SegmentOctTree -- oct tree implementation for faster segment discovery.
 # - splits based on the median values in both x and y
+# ... this is probably actually a "QuadTree" :(
 #
 class SegmentOctTree(object):
     #    
