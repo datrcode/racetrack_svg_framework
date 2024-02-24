@@ -783,10 +783,238 @@ class RTGeometryMixin(object):
 
     #
     # segmentOctTree() - return a segment octree
-    # - bounds == (x0,y0,x1,y1)    
+    # - bounds == (x0,y0,x1,y1)
+    # - DONT USE!!!    
     #
     def segmentOctTree(self, bounds, max_segments_per_cell=20):
         return SegmentOctTree(self, bounds, max_segments_per_cell=max_segments_per_cell)
+
+
+    #
+    # xyQuadTree() - returns an xy quadtree
+    #
+    def xyQuadTree(self, bounds, max_pts_per_node=50):
+        return XYQuadTree(self, bounds, max_pts_per_node=max_pts_per_node)
+
+#
+# XYQuadTree() - implementation of an xy quad tree...
+#
+class XYQuadTree(object):
+    #
+    # __init__()
+    # - bounds = (xmin,ymin,xmax,ymax)
+    #
+    def __init__(self, rt_self, bounds, max_pts_per_node=50):
+        self.rt_self              = rt_self
+        self.bounds               = bounds
+        self.max_pts_per_node     = max_pts_per_node
+        self.node_pts             = {}
+        self.node_pts['']         = set()
+        self.node_bounds          = {}
+        self.node_bounds['']      = bounds
+        self.y_to_node            = {}         # track which nodes have which y bounds
+        self.y_to_node[bounds[1]] = set([''])
+        self.y_to_node[bounds[3]] = set([''])
+        self.x_to_node            = {}         # track which nodes have which x bounds
+        self.x_to_node[bounds[0]] = set([''])
+        self.x_to_node[bounds[2]] = set([''])
+
+    #
+    # __split__() - split a quad... maybe...
+    #
+    def __split__(self, q):
+        b = self.node_bounds[q]
+        xs, ys = [],[]
+        for pt in self.node_pts[q]:
+            xs.append(pt[0]), ys.append(pt[1])
+        xs, ys = sorted(xs), sorted(ys)
+        mid = int(len(xs)/2)
+        if xs[0] == xs[-1] and ys[0] == ys[-1]:
+            return # not splitable...
+        if xs[0] == xs[-1]:
+            xsplit = (b[0] + b[2])/2.0
+        else:
+            xsplit = xs[mid]
+        if ys[0] == ys[-1]:
+            ysplit = (b[1] + b[3])/2.0
+        else:
+            ysplit = ys[mid]
+
+        self.node_pts   [q+'0'] = set()
+        self.node_bounds[q+'0'] = (b[0],    b[1],     xsplit,  ysplit)
+        self.node_pts   [q+'1'] = set()
+        self.node_bounds[q+'1'] = (xsplit,  b[1],     b[2],    ysplit)
+        self.node_pts   [q+'2'] = set()
+        self.node_bounds[q+'2'] = (b[0],    ysplit,   xsplit,  b[3])
+        self.node_pts   [q+'3'] = set()
+        self.node_bounds[q+'3'] = (xsplit,  ysplit,   b[2],    b[3])
+        for node in [q+'0',q+'1',q+'2',q+'3']:
+            b = self.node_bounds[node]
+            if b[0] not in self.x_to_node.keys():
+                self.x_to_node[b[0]] = set()
+            if b[2] not in self.x_to_node.keys():
+                self.x_to_node[b[2]] = set()
+            if b[1] not in self.y_to_node.keys():
+                self.y_to_node[b[1]] = set()
+            if b[3] not in self.y_to_node.keys():
+                self.y_to_node[b[3]] = set()
+            self.x_to_node[b[0]].add(node), self.x_to_node[b[2]].add(node)
+            self.y_to_node[b[1]].add(node), self.y_to_node[b[3]].add(node)
+
+        for pt in self.node_pts[q]:
+            if   pt[0] <= xsplit and pt[1] <= ysplit:
+                s = '0'
+            elif                     pt[1] <= ysplit:
+                s = '1'
+            elif pt[0] <= xsplit:
+                s = '2'
+            else:
+                s = '3'
+            self.node_pts[q+s].add(pt)
+
+        self.node_pts[q] = set()
+
+    #
+    # quad() - find the quad string describing where the point should reside
+    #
+    def quad(self, pt):
+        s = ''
+        while (s+'0') in self.node_pts.keys():
+            b = self.node_bounds[(s+'0')]
+            if   pt[0] <= b[2] and pt[1] <= b[3]:
+                s += '0'
+            elif                   pt[1] <= b[3]:
+                s += '1'
+            elif pt[0] <= b[2]:
+                s += '2'
+            else:
+                s += '3'
+        return s
+    #
+    # add() - add a list of points to the quadtree
+    #    
+    def add(self, pts):
+        for pt in pts:
+            q = self.quad(pt)
+            self.node_pts[q].add(pt)
+            if len(self.node_pts[q]) > self.max_pts_per_node:
+                self.__split__(q)
+
+    #
+    # __nbors__() - return the neighbors to the specified quad
+    # - return set will also include the node passed as a parameter
+    # - if q is a set, the set will be iterated over and added as nbors
+    #
+    def __nbors__STRICT__(self, q):
+        if type(q) == set:
+            _set_ = set()
+            for _q_ in q:
+                _set_ = _set_ | set([_q_]) | self.__nbors__(_q_)
+            return _set_
+        else:
+            _set_ = set()
+            _set_.add(q)
+            b = self.node_bounds[q]
+            to_check = self.x_to_node[b[0]] | self.x_to_node[b[2]] | self.y_to_node[b[1]] | self.y_to_node[b[3]]
+            for n in self.node_bounds.keys():
+                _b_ = self.node_bounds[n]
+                if _b_[0] == b[2] or \
+                   _b_[2] == b[0]:
+                    if (_b_[1] >=  b [1] and _b_[1] <=  b [3]) or \
+                       (_b_[3] >=  b [1] and _b_[3] <=  b [3]) or \
+                       (_b_[1] <=  b [1] and _b_[3] >= _b_[3]) or \
+                       ( b [1] >= _b_[1] and  b [1] <= _b_[3]) or \
+                       ( b [3] >= _b_[1] and  b [3] <= _b_[3]) or \
+                       ( b [1] <= _b_[1] and  b [3] >= _b_[3]):
+                        _set_.add(n)
+                if _b_[1] == b[3] or \
+                   _b_[3] == b[1]:
+                    if (_b_[0] >=  b [0] and _b_[0] <=  b [2]) or \
+                       (_b_[2] >=  b [0] and _b_[2] <=  b [2]) or \
+                       (_b_[0] <=  b [0] and _b_[2] >= _b_[2]) or \
+                       ( b [0] >= _b_[0] and  b [0] <= _b_[2]) or \
+                       ( b [2] >= _b_[0] and  b [2] <= _b_[2]) or \
+                       ( b [0] <= _b_[0] and  b [2] >= _b_[2]):
+                        _set_.add(n)
+            return _set_
+
+    #
+    # __nbors__() - return the neighbors to the specified quad
+    # - return set will also include the node passed as a parameter
+    # - if q is a set, the set will be iterated over and added as nbors
+    #
+    def __nbors__(self, q):
+        if type(q) == set:
+            _set_ = set()
+            for _q_ in q:
+                _set_ = _set_ | set([_q_]) | self.__nbors__(_q_)
+            return _set_
+        else:
+            _set_ = set()
+            _set_.add(q)
+            b = self.node_bounds[q]
+            ex,ey = (b[2]-b[0])*0.1, (b[3]-b[1])*0.1 # within 10 percent...
+            to_check = self.x_to_node[b[0]] | self.x_to_node[b[2]] | self.y_to_node[b[1]] | self.y_to_node[b[3]]
+            for n in self.node_bounds.keys():
+                _b_ = self.node_bounds[n]
+                if _b_[0] == b[2] or \
+                   _b_[2] == b[0]:
+                    if (_b_[1] >=  (b [1]-ey) and _b_[1] <=  (b [3]+ey)) or \
+                       (_b_[3] >=  (b [1]-ey) and _b_[3] <=  (b [3]+ey)) or \
+                       (_b_[1] <=  (b [1])    and _b_[3] >= (_b_[3]))    or \
+                       ( b [1] >= (_b_[1]-ey) and  b [1] <= (_b_[3]+ey)) or \
+                       ( b [3] >= (_b_[1]-ey) and  b [3] <= (_b_[3]+ey)) or \
+                       ( b [1] <= (_b_[1])    and  b [3] >=  _b_[3]):
+                        _set_.add(n)
+                if _b_[1] == b[3] or \
+                   _b_[3] == b[1]:
+                    if (_b_[0] >=  (b [0]-ex) and _b_[0] <=  (b [2]+ex)) or \
+                       (_b_[2] >=  (b [0]-ex) and _b_[2] <=  (b [2]+ex)) or \
+                       (_b_[0] <=   b [0]     and _b_[2] >=  _b_[2])     or \
+                       ( b [0] >= (_b_[0]-ex) and  b [0] <= (_b_[2]+ex)) or \
+                       ( b [2] >= (_b_[0]-ex) and  b [2] <= (_b_[2]+ex)) or \
+                       ( b [0] <=  _b_[0]     and  b [2] >=  _b_[2]):
+                        _set_.add(n)
+            return _set_
+
+    #
+    # closest() - return the closest points
+    #
+    def closest(self, pt, n=10):
+        if n >= self.max_pts_per_node/4:
+            raise Exception(f'QuadTree.closest() - {n} shouldn\'t be larger than (max_pts_per_node/4) == {self.max_pts_per_node/4}')
+        q       = self.quad(pt)
+        nodes   = self.__nbors__(set([q]))
+        if q != '':
+            for x in ['0','1','2','3']:
+                nodes.add(q[:-1]+x)
+        sorter  = []
+        for node in nodes:
+            for _pt_ in self.node_pts[node]:
+                sorter.append((self.rt_self.segmentLength((pt,_pt_)), _pt_))
+        return sorted(sorter)[:n]
+
+    #
+    # _repr_svg_()
+    #
+    def _repr_svg_(self):
+        w     = h     = 600
+        x_ins = y_ins = 5
+        svg = []
+        svg.append(f'<svg width="{w+2*x_ins}" height="{h+2*y_ins}">')
+        xT = lambda x: x_ins + w * (x - self.bounds[0])/(self.bounds[2] - self.bounds[0])
+        yT = lambda y: y_ins + h * (y - self.bounds[1])/(self.bounds[2] - self.bounds[1])
+        for q in self.node_bounds.keys():
+            if q+'0' not in self.node_bounds.keys():
+                b = self.node_bounds[q]
+                _color_ = self.rt_self.co_mgr.getColor(q)
+                svg.append(f'<rect x="{xT(b[0])}" y="{yT(b[1])}" width="{xT(b[2])-xT(b[0])}" height="{yT(b[3])-yT(b[1])}" fill="{_color_}" opacity="0.4" />')
+        for q in self.node_pts.keys():
+            for pt in self.node_pts[q]:
+                svg.append(f'<circle cx="{xT(pt[0])}" cy="{yT(pt[1])}" r="0.8" fill="#000000" />')
+        svg.append('</svg>')
+        return ''.join(svg)
+
 
 
 
