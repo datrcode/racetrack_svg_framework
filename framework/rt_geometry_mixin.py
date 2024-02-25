@@ -1001,9 +1001,10 @@ class XYQuadTree(object):
         w     = h     = 600
         x_ins = y_ins = 5
         svg = []
-        svg.append(f'<svg width="{w+2*x_ins}" height="{h+2*y_ins}">')
+        svg.append(f'<svg x="0" y="0" width="{w+2*x_ins}" height="{h+2*y_ins}">')
+        svg.append(f'<rect x="0" y="0" width="{w+2*x_ins}" height="{h+2*y_ins}" fill="#ffffff" />')
         xT = lambda x: x_ins + w * (x - self.bounds[0])/(self.bounds[2] - self.bounds[0])
-        yT = lambda y: y_ins + h * (y - self.bounds[1])/(self.bounds[2] - self.bounds[1])
+        yT = lambda y: y_ins + h * (y - self.bounds[1])/(self.bounds[3] - self.bounds[1])
         for q in self.node_bounds.keys():
             if q+'0' not in self.node_bounds.keys():
                 b = self.node_bounds[q]
@@ -1014,9 +1015,6 @@ class XYQuadTree(object):
                 svg.append(f'<circle cx="{xT(pt[0])}" cy="{yT(pt[1])}" r="0.8" fill="#000000" />')
         svg.append('</svg>')
         return ''.join(svg)
-
-
-
 
 #
 # SegmentOctTree -- oct tree implementation for faster segment discovery.
