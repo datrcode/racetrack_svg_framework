@@ -6,7 +6,6 @@ pandas
 panel
 pyarrow
 polars
-rlPyCairo
 shapely
 squarify
 svglib
