@@ -237,6 +237,7 @@ class RTChordDiagramMixin(object):
                      link_color          = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
                      link_opacity        = 0.5,      # link opacity
                      link_arrow          = 'subtle', # None, 'subtle', or 'sharp'
+                     link_style          = 'narrow', # 'narrow' or 'wide'
                      # ----------------------------- # small multiples config
                      structure_template  = None,     # existing RTChordDiagram()
                      # ----------------------------- # visualization geometry / etc.
@@ -309,7 +310,8 @@ class RTChordDiagramMixin(object):
             self.link_color       = kwargs['link_color']                # done!
             self.link_opacity     = kwargs['link_opacity']              # done!
             self.link_arrow       = kwargs['link_arrow']                # done!
-            self.track_state      = kwargs['track_state']
+            self.link_style       = kwargs['link_style']   # <===== still needs done
+            self.track_state      = kwargs['track_state']  # <===== still needs done
             self.x_view           = kwargs['x_view']                    # n/a
             self.y_view           = kwargs['y_view']                    # n/a
             self.w                = kwargs['w']                         # n/a
@@ -590,6 +592,138 @@ class RTChordDiagramMixin(object):
             return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu, df_fm_to_gb
 
         #
+        # __renderNodes__() - render the nodes (outer edges of the circle)
+        #
+        def __renderNodes__(self, node_color_lu):
+            svg     = []
+            _color_ = self.rt_self.co_mgr.getTVColor('data','default')
+            for node in self.node_to_arc.keys():
+                a0, a1 = self.node_to_arc[node]
+                x0_out,  y0_out  = self.xTo(a0), self.yTo(a0)
+                x0_in,   y0_in   = self.xTi(a0), self.yTi(a0)
+                x1_out,  y1_out  = self.xTo(a1), self.yTo(a1)
+                x1_in,   y1_in   = self.xTi(a1), self.yTi(a1)
+                large_arc = 0 if (a1-a0) <= 180.0 else 1
+                _path_ = f'M {x0_out} {y0_out} A {self.r} {self.r} 0 {large_arc} 1 {x1_out} {y1_out} L {x1_in} {y1_in} ' + \
+                                            f' A {self.r-self.node_h} {self.r-self.node_h} 0 {large_arc} 0 {x0_in}  {y0_in}  Z'
+                if   type(self.node_color) == str and len(self.node_color) == 7 and self.node_color.startswith('#'):
+                    _node_color_ = self.node_color
+                elif self.color_by is not None and self.node_color == 'vary':
+                    _node_color_ = node_color_lu[node]
+                else:
+                    _node_color_ = self.rt_self.co_mgr.getColor(str(node))
+                _id_ = self.rt_self.encSVGID(node)
+                svg.append(f'<path id="{self.widget_id}-{_id_}" d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
+
+            return ''.join(svg)
+
+        #
+        # __renderEdges__(self) - render the edges
+        #
+        def __renderEdges_wide__(self, struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu):
+            svg = []
+            for node in self.node_dir_arc.keys():
+                for _fm_ in self.node_dir_arc[node].keys():
+                    if node != _fm_:
+                        continue
+                    for _to_ in self.node_dir_arc[node][_fm_].keys():
+                        nbor = _fm_ if node != _fm_ else _to_
+                        a0, a1 = self.node_dir_arc[node][_fm_][_to_]                            
+                        b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
+                        if struct_matches_render == False:
+                            if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
+                                continue
+                            if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
+                                perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                a1   = a0 + perc * (a1 - a0)
+                                b1   = b0 + perc * (b1 - b0)
+
+                        b_avg  = (b0+b1)/2 # for arrow points
+
+                        xa0, ya0, xa1, ya1  = self.xTi(a0), self.yTi(a0), self.xTi(b1), self.yTi(b1)
+                        xb0, yb0, xb1, yb1  = self.xTi(a1), self.yTi(a1), self.xTi(b0), self.yTi(b0)
+                        xarrow0, yarrow0    = self.xTarrow(b0), self.yTarrow(b0)
+                        xarrow_pt,yarrow_pt = self.xTi(b_avg),  self.yTi(b_avg)
+                        xarrow1, yarrow1    = self.xTarrow(b1), self.yTarrow(b1)
+                        
+                        if self.link_arrow is None:
+                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
+                                     f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                        elif self.link_arrow == 'sharp':
+                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
+                                     f'L {xarrow_pt} {yarrow_pt} L {xarrow0} {yarrow0} ' + \
+                                     f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                        else: # 'subtle'
+                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
+                                     f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow_pt} {yarrow_pt} ' + \
+                                     f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow0} {yarrow0} ' + \
+                                     f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
+                        
+                        if self.link_color is None or self.color_by is None:
+                            _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
+                        elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                            _link_color_ = self.link_color
+                        else: # 'vary'
+                            _link_color_ = fmto_color_lu[_fm_][_to_]
+
+                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
+
+            return ''.join(svg)
+
+        #
+        # __renderEdges__(self) - render the edges
+        #
+        def __renderEdges_narrow__(self, struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu):
+            svg = []
+            for node in self.node_dir_arc.keys():
+                for _fm_ in self.node_dir_arc[node].keys():
+                    if node != _fm_:
+                        continue
+                    for _to_ in self.node_dir_arc[node][_fm_].keys():
+                        nbor = _fm_ if node != _fm_ else _to_
+                        a0, a1 = self.node_dir_arc[node][_fm_][_to_]                            
+                        b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
+                        if struct_matches_render == False:
+                            if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
+                                continue
+                            if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
+                                perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                a1   = a0 + perc * (a1 - a0)
+                                b1   = b0 + perc * (b1 - b0)
+
+                        a_avg, b_avg  = (a0+a1)/2, (b0+b1)/2 # for arrow points
+
+                        xa0, ya0, xa1, ya1  = self.xTi(a0), self.yTi(a0), self.xTi(b1), self.yTi(b1)
+                        xb0, yb0, xb1, yb1  = self.xTi(a1), self.yTi(a1), self.xTi(b0), self.yTi(b0)
+                        xarrow0_pt,yarrow0_pt = self.xTarrow(a_avg), self.yTarrow(a_avg)
+                        xarrow1_pt,yarrow1_pt = self.xTarrow(b_avg), self.yTarrow(b_avg)
+
+                        if self.link_color is None or self.color_by is None:
+                            _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
+                        elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                            _link_color_ = self.link_color
+                        else: # 'vary'
+                            _link_color_ = fmto_color_lu[_fm_][_to_]
+
+                        _path_ = f'M {xa1} {ya1} ' + \
+                                 f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
+                                 f'L {xarrow1_pt} {yarrow1_pt} L {xa1} {ya1} Z'
+                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
+                        _path_ = f'M {xb0} {yb0} ' + \
+                                 f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}' + \
+                                 f'L {xarrow0_pt} {yarrow0_pt} L {xb0} {yb0} Z'
+                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
+                        _path_ = f'M {xarrow0_pt} {yarrow0_pt} L {xarrow1_pt} {yarrow1_pt}'
+                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" stroke-width="3.0" fill="none" />')
+
+
+            return ''.join(svg)
+
+        #
         # renderSVG() - render as SVG
         #
         def renderSVG(self, just_calc_max=False):
@@ -683,85 +817,25 @@ class RTChordDiagramMixin(object):
             if self.draw_background:
                 svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
 
-            xTo = lambda a: self.cx + self.r                 * cos(pi*a/180.0) # Outer Circle - x transform
-            xTi = lambda a: self.cx + (self.r - self.node_h) * cos(pi*a/180.0) # Inner Circle - x transform
-            yTo = lambda a: self.cy + self.r                 * sin(pi*a/180.0) # Outer Circle - y transform
-            yTi = lambda a: self.cy + (self.r - self.node_h) * sin(pi*a/180.0) # Inner Circle - y transform
-            xTc = lambda a: self.cx + 20                     * cos(pi*a/180.0) # 20 pixels from center
-            yTc = lambda a: self.cy + 20                     * sin(pi*a/180.0) # 20 pixels from center
-            xTarrow = lambda a: self.cx + (self.r - 2*self.node_h) * cos(pi*a/180.0)
-            yTarrow = lambda a: self.cy + (self.r - 2*self.node_h) * sin(pi*a/180.0)
+            self.xTo     = lambda a: self.cx + self.r                   * cos(pi*a/180.0) # Outer Circle - x transform
+            self.xTi     = lambda a: self.cx + (self.r - self.node_h)   * cos(pi*a/180.0) # Inner Circle - x transform
+            self.yTo     = lambda a: self.cy + self.r                   * sin(pi*a/180.0) # Outer Circle - y transform
+            self.yTi     = lambda a: self.cy + (self.r - self.node_h)   * sin(pi*a/180.0) # Inner Circle - y transform
+            self.xTc     = lambda a: self.cx + 20                       * cos(pi*a/180.0) # 20 pixels from center
+            self.yTc     = lambda a: self.cy + 20                       * sin(pi*a/180.0) # 20 pixels from center
+            self.xTarrow = lambda a: self.cx + (self.r - 2*self.node_h) * cos(pi*a/180.0)
+            self.yTarrow = lambda a: self.cy + (self.r - 2*self.node_h) * sin(pi*a/180.0)
 
             # Draw the nodes
-            _color_ = self.rt_self.co_mgr.getTVColor('data','default')
-            for node in self.node_to_arc.keys():
-                a0, a1 = self.node_to_arc[node]
-                x0_out,  y0_out  = xTo(a0), yTo(a0)
-                x0_in,   y0_in   = xTi(a0), yTi(a0)
-                x1_out,  y1_out  = xTo(a1), yTo(a1)
-                x1_in,   y1_in   = xTi(a1), yTi(a1)
-                large_arc = 0 if (a1-a0) <= 180.0 else 1
-                _path_ = f'M {x0_out} {y0_out} A {self.r} {self.r} 0 {large_arc} 1 {x1_out} {y1_out} L {x1_in} {y1_in} ' + \
-                                            f' A {self.r-self.node_h} {self.r-self.node_h} 0 {large_arc} 0 {x0_in}  {y0_in}  Z'
-                if   type(self.node_color) == str and len(self.node_color) == 7 and self.node_color.startswith('#'):
-                    _node_color_ = self.node_color
-                elif self.color_by is not None and self.node_color == 'vary':
-                    _node_color_ = node_color_lu[node]
-                else:
-                    _node_color_ = self.rt_self.co_mgr.getColor(str(node))
-                _id_ = self.rt_self.encSVGID(node)
-                svg.append(f'<path id="{self.widget_id}-{_id_}" d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
+            svg.append(self.__renderNodes__(node_color_lu))
 
             # Draw the edges from the node to the neighbors
-            for node in self.node_dir_arc.keys():
-                for _fm_ in self.node_dir_arc[node].keys():
-                    if node != _fm_:
-                        continue
-                    for _to_ in self.node_dir_arc[node][_fm_].keys():
-                        nbor = _fm_ if node != _fm_ else _to_
-                        a0, a1 = self.node_dir_arc[node][_fm_][_to_]                            
-                        b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
-                        if struct_matches_render == False:
-                            if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
-                                continue
-                            if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
-                                perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
-                                a1   = a0 + perc * (a1 - a0)
-                                b1   = b0 + perc * (b1 - b0)
-
-                        b_avg  = (b0+b1)/2 # for arrow points
-
-                        xa0, ya0, xa1, ya1  = xTi(a0), yTi(a0), xTi(b1), yTi(b1)
-                        xb0, yb0, xb1, yb1  = xTi(a1), yTi(a1), xTi(b0), yTi(b0)
-                        xarrow0, yarrow0    = xTarrow(b0), yTarrow(b0)
-                        xarrow_pt,yarrow_pt = xTi(b_avg),  yTi(b_avg)
-                        xarrow1, yarrow1    = xTarrow(b1), yTarrow(b1)
-                        
-                        if self.link_arrow is None:
-                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xa1} {ya1} ' + \
-                                        f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
-                                        f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
-                                        f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
-                        elif self.link_arrow == 'sharp':
-                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
-                                        f'L {xarrow_pt} {yarrow_pt} L {xarrow0} {yarrow0} ' + \
-                                        f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
-                                        f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
-                        else: # 'subtle'
-                            _path_ = f'M {xa0} {ya0} C {self.cx} {self.cy} {self.cx} {self.cy} {xarrow1} {yarrow1} ' + \
-                                        f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow_pt} {yarrow_pt} ' + \
-                                        f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow0} {yarrow0} ' + \
-                                        f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
-                                        f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
-                        
-                        if self.link_color is None or self.color_by is None:
-                            _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
-                        elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
-                            _link_color_ = self.link_color
-                        else: # 'vary'
-                            _link_color_ = fmto_color_lu[_fm_][_to_]
-
-                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
+            if   self.link_style == 'wide':
+                svg.append(self.__renderEdges_wide__(struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu))
+            elif self.link_style == 'narrow':
+                svg.append(self.__renderEdges_narrow__(struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu))
+            else:
+                raise Exception(f'RTChordDiagram.renderSVG() -- unknown link_style "{self.link_style}"')
 
             # Draw the labels
             if self.draw_labels:
