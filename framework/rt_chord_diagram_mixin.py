@@ -374,20 +374,24 @@ class RTChordDiagramMixin(object):
 
             # Geometric construction... these members map the nodes into the circle...
             # ... manipulating these prior to render is how small multiples needs to work
-            self.node_to_arc     = None
-            self.node_dir_arc    = None
-            self.node_to_arc_ct  = None
-            self.node_dir_arc_ct = None
+            self.node_to_arc         = None
+            self.node_dir_arc        = None
+            self.node_to_arc_ct      = None
+            self.node_dir_arc_ct     = None
+            self.node_dir_arc_ct_min = None
+            self.node_dir_arc_ct_max = None
             if kwargs['structure_template'] is not None:
                 other = kwargs['structure_template']
                 # Force render if necessary... ### COPY OF APPLYVIEWCONFIGUATION() BELOW
                 if other.node_to_arc is None:
                     other._repr_svg_()
-                self.order           = other.order
-                self.node_to_arc     = other.node_to_arc
-                self.node_dir_arc    = other.node_dir_arc
-                self.node_to_arc_ct  = other.node_to_arc_ct
-                self.node_dir_arc_ct = other.node_dir_arc_ct
+                self.order               = other.order
+                self.node_to_arc         = other.node_to_arc
+                self.node_dir_arc        = other.node_dir_arc
+                self.node_to_arc_ct      = other.node_to_arc_ct
+                self.node_dir_arc_ct     = other.node_dir_arc_ct
+                self.node_dir_arc_ct_min = other.node_dir_arc_ct_min
+                self.node_dir_arc_ct_max = other.node_dir_arc_ct_max
 
 
         #
@@ -400,11 +404,13 @@ class RTChordDiagramMixin(object):
             # Force render if necessary...
             if other.node_to_arc is None:
                 other._repr_svg_()
-            self.order           = other.order
-            self.node_to_arc     = other.node_to_arc
-            self.node_dir_arc    = other.node_dir_arc
-            self.node_to_arc_ct  = other.node_to_arc_ct
-            self.node_dir_arc_ct = other.node_dir_arc_ct
+            self.order               = other.order
+            self.node_to_arc         = other.node_to_arc
+            self.node_dir_arc        = other.node_dir_arc
+            self.node_to_arc_ct      = other.node_to_arc_ct
+            self.node_dir_arc_ct     = other.node_dir_arc_ct
+            self.node_dir_arc_ct_min = other.node_dir_arc_ct_min
+            self.node_dir_arc_ct_max = other.node_dir_arc_ct_max
             return True
         
         #
@@ -709,17 +715,29 @@ class RTChordDiagramMixin(object):
                         else: # 'vary'
                             _link_color_ = fmto_color_lu[_fm_][_to_]
 
-                        _path_ = f'M {xa1} {ya1} ' + \
-                                 f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
-                                 f'L {xarrow1_pt} {yarrow1_pt} L {xa1} {ya1} Z'
-                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
-                        _path_ = f'M {xb0} {yb0} ' + \
-                                 f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}' + \
-                                 f'L {xarrow0_pt} {yarrow0_pt} L {xb0} {yb0} Z'
-                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
+                        if (a1-a0) < 30:
+                            _path_ = f'M {xa1} {ya1} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
+                                     f'L {xarrow1_pt} {yarrow1_pt} L {xa1} {ya1} Z'
+                            svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
+                        else:
+                            _path_ = f'M {xa1} {ya1} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
+                                     f'C {self.xTarrow(b0)} {self.yTarrow(b0)} {self.xTo(b_avg)} {self.yTo(b_avg)} {xarrow1_pt} {yarrow1_pt}' + \
+                                     f'C {self.xTo(b_avg)} {self.yTo(b_avg)} {self.xTarrow(b1)} {self.yTarrow(b1)} {xa1} {ya1} '
+                            svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
 
-                        # _path_ = f'M {xarrow0_pt} {yarrow0_pt} L {xarrow1_pt} {yarrow1_pt}'
-                        # _path_ = f'M {xarrow0_pt} {yarrow0_pt} C {self.rx} {self.ry} {self.rx} {self.ry} {xarrow1_pt} {yarrow1_pt}'
+                        if (b1-b0) < 30:
+                            _path_ = f'M {xb0} {yb0} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}' + \
+                                     f'L {xarrow0_pt} {yarrow0_pt} L {xb0} {yb0} Z'
+                            svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
+                        else:
+                            _path_ = f'M {xb0} {yb0} ' + \
+                                     f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0} ' + \
+                                     f'C {self.xTarrow(a0)} {self.yTarrow(a0)} {self.xTo(a_avg)} {self.yTo(a_avg)} {xarrow0_pt} {yarrow0_pt}' + \
+                                     f'C {self.xTo(a_avg)} {self.yTo(a_avg)} {self.xTarrow(a1)} {self.yTarrow(a1)} {xb0} {yb0} '
+                            svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
 
                         angle_d   = 180 - abs(abs(a_avg - b_avg) - 180)
                         _ratio_   = 0.8 - 0.8 * angle_d/180
@@ -727,10 +745,9 @@ class RTChordDiagramMixin(object):
                         x_pull1, y_pull1 = self.rx + self.r * _ratio_ * cos(pi*b_avg/180.0), self.ry + self.r * _ratio_ * sin(pi*b_avg/180.0)
                         _path_ = f'M {xarrow0_pt} {yarrow0_pt} C {x_pull0} {y_pull0} {x_pull1} {y_pull1} {xarrow1_pt} {yarrow1_pt}'
 
-                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" stroke-width="3.0" fill="none" opacity="{self.link_opacity}" />')
-                        #svg.append(f'<circle cx="{x_pull0}" cy="{y_pull0}" r="4" fill="none" stroke="{_link_color_}"/>')
-                        #svg.append(f'<circle cx="{x_pull1}" cy="{y_pull1}" r="4" fill="none" stroke="{_link_color_}"/>')
-
+                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="{self.link_opacity}" stroke-width="3.0" fill="none" />')
+                        #svg.append(f'<circle cx="{x_pull0}" cy="{y_pull0}" r="4" fill="none" stroke="{_link_color_}"/>') # debug - control points
+                        #svg.append(f'<circle cx="{x_pull1}" cy="{y_pull1}" r="4" fill="none" stroke="{_link_color_}"/>') # debug - control points
 
             return ''.join(svg)
 
@@ -779,6 +796,7 @@ class RTChordDiagramMixin(object):
                     self.node_to_arc_ct [node] = counter_lu[node]
                     self.node_dir_arc   [node] = {}
                     self.node_dir_arc_ct[node] = {}
+                    self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = None, None
 
                     b, j = a, i - 1
                     for k in range(len(self.order)):
@@ -789,7 +807,11 @@ class RTChordDiagramMixin(object):
                                 self.node_dir_arc   [node][node] = {}
                                 self.node_dir_arc_ct[node][node] = {}
                             self.node_dir_arc   [node][node][dest] = (b, b+b_inc)
-                            self.node_dir_arc_ct[node][node][dest] = fmto_lu[node][dest]
+                            _value_ = fmto_lu[node][dest]
+                            self.node_dir_arc_ct[node][node][dest] = _value_
+                            if self.node_dir_arc_ct_min is None:
+                                self.node_dir_arc_ct_min = self.node_dir_arc_ct_max = _value_
+                            self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = min(_value_, self.node_dir_arc_ct_min), max(_value_, self.node_dir_arc_ct_max)
                             b += b_inc
                         if node in tofm_lu.keys() and dest in tofm_lu[node].keys():
                             b_inc = node_degrees*tofm_lu[node][dest]/counter_lu[node]
@@ -797,13 +819,18 @@ class RTChordDiagramMixin(object):
                                 self.node_dir_arc   [node][dest] = {}
                                 self.node_dir_arc_ct[node][dest] = {}
                             self.node_dir_arc   [node][dest][node] = (b, b+b_inc)
-                            self.node_dir_arc_ct[node][dest][node] = tofm_lu[node][dest]
+                            _value_ = tofm_lu[node][dest]
+                            self.node_dir_arc_ct[node][dest][node] = _value_
+                            if self.node_dir_arc_ct_min is None:
+                                self.node_dir_arc_ct_min = self.node_dir_arc_ct_max = _value_
+                            self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = min(_value_, self.node_dir_arc_ct_min), max(_value_, self.node_dir_arc_ct_max)
                             b += b_inc
                         j = j - 1
                     a += node_degrees + self.node_gap_degs
                 struct_matches_render = True   # to faciliate faster rendering
             else:
                 local_dir_arc_ct = {}
+                local_dir_arc_ct_min, local_dir_arc_ct_max = None, None
                 for i in range(len(self.order)):
                     node = self.order[i]
                     local_dir_arc_ct[node] = {}
@@ -813,11 +840,21 @@ class RTChordDiagramMixin(object):
                         if node in fmto_lu.keys() and dest in fmto_lu[node].keys():
                             if node not in local_dir_arc_ct[node].keys():
                                 local_dir_arc_ct[node][node] = {}
-                            local_dir_arc_ct[node][node][dest] = fmto_lu[node][dest]
+                            _value_ = fmto_lu[node][dest]
+                            local_dir_arc_ct[node][node][dest] = _value_
+                            if local_dir_arc_ct_min is None:
+                                local_dir_arc_ct_min = local_dir_arc_ct_max = _value_
+                            local_dir_arc_ct_min, local_dir_arc_ct_max = min(_value_, local_dir_arc_ct_min), max(_value_, local_dir_arc_ct_max)
+
                         if node in tofm_lu.keys() and dest in tofm_lu[node].keys():
                             if dest not in local_dir_arc_ct[node].keys():
                                 local_dir_arc_ct[node][dest] = {}
-                            local_dir_arc_ct[node][dest][node] = tofm_lu[node][dest]
+                            _value_ = tofm_lu[node][dest]
+                            local_dir_arc_ct[node][dest][node] = _value_
+                            if local_dir_arc_ct_min is None:
+                                local_dir_arc_ct_min = local_dir_arc_ct_max = _value_
+                            local_dir_arc_ct_min, local_dir_arc_ct_max = min(_value_, local_dir_arc_ct_min), max(_value_, local_dir_arc_ct_max)
+
                         j = j - 1
                 struct_matches_render = False  # adjusts rendering based on another diagrams structure
 
