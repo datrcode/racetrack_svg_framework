@@ -717,8 +717,19 @@ class RTChordDiagramMixin(object):
                                  f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}' + \
                                  f'L {xarrow0_pt} {yarrow0_pt} L {xb0} {yb0} Z'
                         svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
-                        _path_ = f'M {xarrow0_pt} {yarrow0_pt} L {xarrow1_pt} {yarrow1_pt}'
-                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" stroke-width="3.0" fill="none" />')
+
+                        # _path_ = f'M {xarrow0_pt} {yarrow0_pt} L {xarrow1_pt} {yarrow1_pt}'
+                        # _path_ = f'M {xarrow0_pt} {yarrow0_pt} C {self.rx} {self.ry} {self.rx} {self.ry} {xarrow1_pt} {yarrow1_pt}'
+
+                        angle_d   = 180 - abs(abs(a_avg - b_avg) - 180)
+                        _ratio_   = 0.8 - 0.8 * angle_d/180
+                        x_pull0, y_pull0 = self.rx + self.r * _ratio_ * cos(pi*a_avg/180.0), self.ry + self.r * _ratio_ * sin(pi*a_avg/180.0)
+                        x_pull1, y_pull1 = self.rx + self.r * _ratio_ * cos(pi*b_avg/180.0), self.ry + self.r * _ratio_ * sin(pi*b_avg/180.0)
+                        _path_ = f'M {xarrow0_pt} {yarrow0_pt} C {x_pull0} {y_pull0} {x_pull1} {y_pull1} {xarrow1_pt} {yarrow1_pt}'
+
+                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" stroke-width="3.0" fill="none" opacity="{self.link_opacity}" />')
+                        #svg.append(f'<circle cx="{x_pull0}" cy="{y_pull0}" r="4" fill="none" stroke="{_link_color_}"/>')
+                        #svg.append(f'<circle cx="{x_pull1}" cy="{y_pull1}" r="4" fill="none" stroke="{_link_color_}"/>')
 
 
             return ''.join(svg)
