@@ -238,6 +238,8 @@ class RTChordDiagramMixin(object):
                      link_opacity        = 0.5,      # link opacity
                      link_arrow          = 'subtle', # None, 'subtle', or 'sharp'
                      link_style          = 'narrow', # 'narrow' or 'wide'
+                     min_link_size       = 0.8,      # for 'narrow', min link size
+                     max_link_size       = 4.0,      # for 'narrow', max link size
                      # ----------------------------- # small multiples config
                      structure_template  = None,     # existing RTChordDiagram()
                      # ----------------------------- # visualization geometry / etc.
@@ -310,8 +312,10 @@ class RTChordDiagramMixin(object):
             self.link_color       = kwargs['link_color']                # done!
             self.link_opacity     = kwargs['link_opacity']              # done!
             self.link_arrow       = kwargs['link_arrow']                # done!
-            self.link_style       = kwargs['link_style']   # <===== still needs done
-            self.track_state      = kwargs['track_state']  # <===== still needs done
+            self.link_style       = kwargs['link_style']                # <===== still needs done
+            self.min_link_size    = kwargs['min_link_size']
+            self.max_link_size    = kwargs['max_link_size']
+            self.track_state      = kwargs['track_state']               # <===== still needs done
             self.x_view           = kwargs['x_view']                    # n/a
             self.y_view           = kwargs['y_view']                    # n/a
             self.w                = kwargs['w']                         # n/a
@@ -683,7 +687,9 @@ class RTChordDiagramMixin(object):
         #
         # __renderEdges__(self) - render the edges
         #
-        def __renderEdges_narrow__(self, struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu):
+        def __renderEdges_narrow__(self, struct_matches_render, fmto_lu, 
+                                   local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
+                                   fmto_color_lu):
             svg = []
             for node in self.node_dir_arc.keys():
                 for _fm_ in self.node_dir_arc[node].keys():
@@ -693,14 +699,16 @@ class RTChordDiagramMixin(object):
                         nbor = _fm_ if node != _fm_ else _to_
                         a0, a1 = self.node_dir_arc[node][_fm_][_to_]                            
                         b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
+                        link_w_perc = (self.node_dir_arc_ct[nbor][_fm_][_to_] - self.node_dir_arc_ct_min) / (self.node_dir_arc_ct_max - self.node_dir_arc_ct_min)
                         if struct_matches_render == False:
                             if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
                                 continue
                             if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
                                 perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                link_w_perc *= perc
                                 a1   = a0 + perc * (a1 - a0)
                                 b1   = b0 + perc * (b1 - b0)
-
+                                
                         a_avg, b_avg  = (a0+a1)/2, (b0+b1)/2 # for arrow points
 
                         xa0, ya0, xa1, ya1  = self.xTi(a0), self.yTi(a0), self.xTi(b1), self.yTi(b1)
@@ -745,7 +753,9 @@ class RTChordDiagramMixin(object):
                         x_pull1, y_pull1 = self.rx + self.r * _ratio_ * cos(pi*b_avg/180.0), self.ry + self.r * _ratio_ * sin(pi*b_avg/180.0)
                         _path_ = f'M {xarrow0_pt} {yarrow0_pt} C {x_pull0} {y_pull0} {x_pull1} {y_pull1} {xarrow1_pt} {yarrow1_pt}'
 
-                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="{self.link_opacity}" stroke-width="3.0" fill="none" />')
+                        link_w = self.min_link_size + link_w_perc * (self.max_link_size - self.min_link_size)
+
+                        svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="{self.link_opacity}" stroke-width="{link_w}" fill="none" />')
                         #svg.append(f'<circle cx="{x_pull0}" cy="{y_pull0}" r="4" fill="none" stroke="{_link_color_}"/>') # debug - control points
                         #svg.append(f'<circle cx="{x_pull1}" cy="{y_pull1}" r="4" fill="none" stroke="{_link_color_}"/>') # debug - control points
 
@@ -784,6 +794,9 @@ class RTChordDiagramMixin(object):
 
             # Node to arc calculation
             local_dir_arc_ct = None
+            local_dir_arc_ct_min, local_dir_arc_ct_max = None, None
+            self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = None, None
+
             if self.node_to_arc is None or self.node_dir_arc is None or self.node_to_arc_ct is None or self.node_dir_arc_ct is None:
                 self.node_to_arc,    self.node_dir_arc    = {}, {}
                 self.node_to_arc_ct, self.node_dir_arc_ct = {}, {} # counts for the info... for small multiples
@@ -796,7 +809,6 @@ class RTChordDiagramMixin(object):
                     self.node_to_arc_ct [node] = counter_lu[node]
                     self.node_dir_arc   [node] = {}
                     self.node_dir_arc_ct[node] = {}
-                    self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = None, None
 
                     b, j = a, i - 1
                     for k in range(len(self.order)):
@@ -858,6 +870,20 @@ class RTChordDiagramMixin(object):
                         j = j - 1
                 struct_matches_render = False  # adjusts rendering based on another diagrams structure
 
+            # Avoid div by zero later...
+            if   self.node_dir_arc_ct_min is None:
+                self.node_dir_arc_ct_min = 0.0
+                self.node_dir_arc_ct_max = 1.0
+            elif self.node_dir_arc_ct_min == self.node_dir_arc_ct_max:
+                self.node_dir_arc_ct_min -= 1.0
+                self.node_dir_arc_ct_max += 1.0
+            if   local_dir_arc_ct_min is None:
+                local_dir_arc_ct_min = 0.0
+                local_dir_arc_ct_max = 1.0
+            elif local_dir_arc_ct_min == local_dir_arc_ct_max:
+                local_dir_arc_ct_min -= 1.0
+                local_dir_arc_ct_max += 1.0
+
             # Start the SVG Frame
             svg = []
             svg.append(f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">')
@@ -881,7 +907,9 @@ class RTChordDiagramMixin(object):
             if   self.link_style == 'wide':
                 svg.append(self.__renderEdges_wide__(struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu))
             elif self.link_style == 'narrow':
-                svg.append(self.__renderEdges_narrow__(struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu))
+                svg.append(self.__renderEdges_narrow__(struct_matches_render, fmto_lu, 
+                                                       local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
+                                                       fmto_color_lu))
             else:
                 raise Exception(f'RTChordDiagram.renderSVG() -- unknown link_style "{self.link_style}"')
 
