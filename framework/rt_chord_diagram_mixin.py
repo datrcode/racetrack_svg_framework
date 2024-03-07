@@ -233,6 +233,7 @@ class RTChordDiagramMixin(object):
                      node_gap            = 5,        # node gap in pixels (gap between the arcs)
                      order               = None,     # override calculated ordering...
                      label_only          = set(),    # label only set
+                     equal_size_nodes    = False,    # equal size nodes
                      # ----------------------------- # link options
                      link_color          = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
                      link_opacity        = 0.5,      # link opacity
@@ -241,7 +242,7 @@ class RTChordDiagramMixin(object):
                      min_link_size       = 0.8,      # for 'narrow', min link size
                      max_link_size       = 4.0,      # for 'narrow', max link size
                      # ----------------------------- # small multiples config
-                     structure_template  = None,     # existing RTChordDiagram()
+                     structure_template  = None,     # existing RTChordDiagram() ... e.g., for small multiples
                      # ----------------------------- # visualization geometry / etc.
                      track_state         = False,    # track state for interactive filtering
                      x_view              = 0,        # x offset for the view
@@ -309,13 +310,14 @@ class RTChordDiagramMixin(object):
             self.node_gap         = kwargs['node_gap']                  # done!
             self.order            = kwargs['order']                     # done!
             self.label_only       = kwargs['label_only']                # done!
+            self.equal_size_nodes = kwargs['equal_size_nodes']          # done! (needs testing)
             self.link_color       = kwargs['link_color']                # done!
             self.link_opacity     = kwargs['link_opacity']              # done!
             self.link_arrow       = kwargs['link_arrow']                # done!
-            self.link_style       = kwargs['link_style']                # <===== still needs done
-            self.min_link_size    = kwargs['min_link_size']
-            self.max_link_size    = kwargs['max_link_size']
-            self.track_state      = kwargs['track_state']               # <===== still needs done
+            self.link_style       = kwargs['link_style']                # partially done... needs arrows
+            self.min_link_size    = kwargs['min_link_size']             # done!
+            self.max_link_size    = kwargs['max_link_size']             # done!
+            self.track_state      = kwargs['track_state']               # <--- still needs to be done
             self.x_view           = kwargs['x_view']                    # n/a
             self.y_view           = kwargs['y_view']                    # n/a
             self.w                = kwargs['w']                         # n/a
@@ -762,6 +764,92 @@ class RTChordDiagramMixin(object):
             return ''.join(svg)
 
         #
+        # __calculateNodeArcs__() - calculate the node positions.
+        # - note that the next method (__calculateNodeArcs_equal__) was derived from this method
+        # -- so, any changes here should be propagated to the next method
+        #
+        def __calculateNodeArcs__(self, counter_lu, counter_sum, left_over_degs, fmto_lu, tofm_lu):
+            a = 0.0
+            for i in range(len(self.order)):
+                node = self.order[i]
+                counter_perc  = counter_lu[node] / counter_sum
+                node_degrees  = counter_perc * left_over_degs
+                self.node_to_arc    [node] = (a, a+node_degrees)
+                self.node_to_arc_ct [node] = counter_lu[node]
+                self.node_dir_arc   [node] = {}
+                self.node_dir_arc_ct[node] = {}
+
+                b, j = a, i - 1
+                for k in range(len(self.order)):
+                    dest = self.order[j]
+                    if node in fmto_lu.keys() and dest in fmto_lu[node].keys():
+                        b_inc = node_degrees*fmto_lu[node][dest]/counter_lu[node]
+                        if node not in self.node_dir_arc[node].keys():
+                            self.node_dir_arc   [node][node] = {}
+                            self.node_dir_arc_ct[node][node] = {}
+                        self.node_dir_arc   [node][node][dest] = (b, b+b_inc)
+                        _value_ = fmto_lu[node][dest]
+                        self.node_dir_arc_ct[node][node][dest] = _value_
+                        if self.node_dir_arc_ct_min is None:
+                            self.node_dir_arc_ct_min = self.node_dir_arc_ct_max = _value_
+                        self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = min(_value_, self.node_dir_arc_ct_min), max(_value_, self.node_dir_arc_ct_max)
+                        b += b_inc
+                    if node in tofm_lu.keys() and dest in tofm_lu[node].keys():
+                        b_inc = node_degrees*tofm_lu[node][dest]/counter_lu[node]
+                        if dest not in self.node_dir_arc[node].keys():
+                            self.node_dir_arc   [node][dest] = {}
+                            self.node_dir_arc_ct[node][dest] = {}
+                        self.node_dir_arc   [node][dest][node] = (b, b+b_inc)
+                        _value_ = tofm_lu[node][dest]
+                        self.node_dir_arc_ct[node][dest][node] = _value_
+                        if self.node_dir_arc_ct_min is None:
+                            self.node_dir_arc_ct_min = self.node_dir_arc_ct_max = _value_
+                        self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = min(_value_, self.node_dir_arc_ct_min), max(_value_, self.node_dir_arc_ct_max)
+                        b += b_inc
+                    j = j - 1
+                a += node_degrees + self.node_gap_degs
+
+        #
+        # __calculateNodeArcs_equal__() - calculate the node arcs using equal spacing.
+        # - almost an exact duplicate of the above method
+        #
+        def __calculateNodeArcs_equal__(self, counter_lu, counter_sum, left_over_degs, fmto_lu, tofm_lu):
+            node_degrees = (360.0 / len(self.order)) - self.node_gap_degs
+            a = 0.0
+            for i in range(len(self.order)):
+                node = self.order[i]
+                self.node_to_arc    [node] = (a, a+node_degrees)
+                self.node_to_arc_ct [node] = counter_lu[node]
+                self.node_dir_arc   [node] = {}
+                self.node_dir_arc_ct[node] = {}
+
+                b, j = a, i - 1
+                for k in range(len(self.order)):
+                    dest = self.order[j]
+                    if node in fmto_lu.keys() and dest in fmto_lu[node].keys():
+                        if node not in self.node_dir_arc[node].keys():
+                            self.node_dir_arc   [node][node] = {}
+                            self.node_dir_arc_ct[node][node] = {}
+                        self.node_dir_arc   [node][node][dest] = (a, a + node_degrees/2.0)
+                        _value_ = fmto_lu[node][dest]
+                        self.node_dir_arc_ct[node][node][dest] = _value_
+                        if self.node_dir_arc_ct_min is None:
+                            self.node_dir_arc_ct_min = self.node_dir_arc_ct_max = _value_
+                        self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = min(_value_, self.node_dir_arc_ct_min), max(_value_, self.node_dir_arc_ct_max)
+                    if node in tofm_lu.keys() and dest in tofm_lu[node].keys():
+                        if dest not in self.node_dir_arc[node].keys():
+                            self.node_dir_arc   [node][dest] = {}
+                            self.node_dir_arc_ct[node][dest] = {}
+                        self.node_dir_arc   [node][dest][node] = (a + node_degrees/2.0, a + node_degrees)
+                        _value_ = tofm_lu[node][dest]
+                        self.node_dir_arc_ct[node][dest][node] = _value_
+                        if self.node_dir_arc_ct_min is None:
+                            self.node_dir_arc_ct_min = self.node_dir_arc_ct_max = _value_
+                        self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = min(_value_, self.node_dir_arc_ct_min), max(_value_, self.node_dir_arc_ct_max)
+                    j = j - 1
+                a += node_degrees + self.node_gap_degs
+
+        #
         # renderSVG() - render as SVG
         #
         def renderSVG(self, just_calc_max=False):
@@ -800,45 +888,10 @@ class RTChordDiagramMixin(object):
             if self.node_to_arc is None or self.node_dir_arc is None or self.node_to_arc_ct is None or self.node_dir_arc_ct is None:
                 self.node_to_arc,    self.node_dir_arc    = {}, {}
                 self.node_to_arc_ct, self.node_dir_arc_ct = {}, {} # counts for the info... for small multiples
-                a = 0.0
-                for i in range(len(self.order)):
-                    node = self.order[i]
-                    counter_perc  = counter_lu[node] / counter_sum
-                    node_degrees  = counter_perc * left_over_degs
-                    self.node_to_arc    [node] = (a, a+node_degrees)
-                    self.node_to_arc_ct [node] = counter_lu[node]
-                    self.node_dir_arc   [node] = {}
-                    self.node_dir_arc_ct[node] = {}
-
-                    b, j = a, i - 1
-                    for k in range(len(self.order)):
-                        dest = self.order[j]
-                        if node in fmto_lu.keys() and dest in fmto_lu[node].keys():
-                            b_inc = node_degrees*fmto_lu[node][dest]/counter_lu[node]
-                            if node not in self.node_dir_arc[node].keys():
-                                self.node_dir_arc   [node][node] = {}
-                                self.node_dir_arc_ct[node][node] = {}
-                            self.node_dir_arc   [node][node][dest] = (b, b+b_inc)
-                            _value_ = fmto_lu[node][dest]
-                            self.node_dir_arc_ct[node][node][dest] = _value_
-                            if self.node_dir_arc_ct_min is None:
-                                self.node_dir_arc_ct_min = self.node_dir_arc_ct_max = _value_
-                            self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = min(_value_, self.node_dir_arc_ct_min), max(_value_, self.node_dir_arc_ct_max)
-                            b += b_inc
-                        if node in tofm_lu.keys() and dest in tofm_lu[node].keys():
-                            b_inc = node_degrees*tofm_lu[node][dest]/counter_lu[node]
-                            if dest not in self.node_dir_arc[node].keys():
-                                self.node_dir_arc   [node][dest] = {}
-                                self.node_dir_arc_ct[node][dest] = {}
-                            self.node_dir_arc   [node][dest][node] = (b, b+b_inc)
-                            _value_ = tofm_lu[node][dest]
-                            self.node_dir_arc_ct[node][dest][node] = _value_
-                            if self.node_dir_arc_ct_min is None:
-                                self.node_dir_arc_ct_min = self.node_dir_arc_ct_max = _value_
-                            self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = min(_value_, self.node_dir_arc_ct_min), max(_value_, self.node_dir_arc_ct_max)
-                            b += b_inc
-                        j = j - 1
-                    a += node_degrees + self.node_gap_degs
+                if self.equal_size_nodes:
+                    self.__calculateNodeArcs_equal__(counter_lu, counter_sum, left_over_degs, fmto_lu, tofm_lu)
+                else:
+                    self.__calculateNodeArcs__(counter_lu, counter_sum, left_over_degs, fmto_lu, tofm_lu)
                 struct_matches_render = True   # to faciliate faster rendering
             else:
                 local_dir_arc_ct = {}
