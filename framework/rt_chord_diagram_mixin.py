@@ -754,6 +754,13 @@ class RTChordDiagramMixin(object):
                         x_pull0, y_pull0 = self.rx + self.r * _ratio_ * cos(pi*a_avg/180.0), self.ry + self.r * _ratio_ * sin(pi*a_avg/180.0)
                         x_pull1, y_pull1 = self.rx + self.r * _ratio_ * cos(pi*b_avg/180.0), self.ry + self.r * _ratio_ * sin(pi*b_avg/180.0)
                         _path_ = f'M {xarrow0_pt} {yarrow0_pt} C {x_pull0} {y_pull0} {x_pull1} {y_pull1} {xarrow1_pt} {yarrow1_pt}'
+                        if self.link_arrow is not None:
+                            _curve_ = self.rt_self.bezierCurve((xarrow0_pt, yarrow0_pt), (x_pull0, y_pull0), (x_pull1, y_pull1), (xarrow1_pt, yarrow1_pt))
+                            uv        = self.rt_self.unitVector((_curve_(0.8),(xarrow1_pt, yarrow1_pt)))
+                            arrow_len, arrow_scale = min(self.r/10.0, 20.0), 0.5
+                            _path_ += f' l {  arrow_len * (-uv[0] + arrow_scale*uv[1])}  {  arrow_len * (-uv[1] - arrow_scale*uv[0])}'
+                            _path_ += f' m {-(arrow_len * (-uv[0] + arrow_scale*uv[1]))} {-(arrow_len * (-uv[1] - arrow_scale*uv[0]))}'
+                            _path_ += f' l {  arrow_len * (-uv[0] - arrow_scale*uv[1])}  {  arrow_len * (-uv[1] + arrow_scale*uv[0])}'
 
                         link_w = self.min_link_size + link_w_perc * (self.max_link_size - self.min_link_size)
 
