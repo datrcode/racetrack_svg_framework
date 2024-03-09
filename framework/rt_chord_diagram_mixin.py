@@ -238,6 +238,8 @@ class RTChordDiagramMixin(object):
                      link_color          = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
                      link_opacity        = 0.5,      # link opacity
                      link_arrow          = 'subtle', # None, 'subtle', or 'sharp'
+                     arrow_px            = 16,       # arrow size in pixels
+                     arrow_ratio         = 0.05,     # arrow size as a ratio of the radius
                      link_style          = 'narrow', # 'narrow' or 'wide'
                      min_link_size       = 0.8,      # for 'narrow', min link size
                      max_link_size       = 4.0,      # for 'narrow', max link size
@@ -314,7 +316,9 @@ class RTChordDiagramMixin(object):
             self.link_color       = kwargs['link_color']                # done!
             self.link_opacity     = kwargs['link_opacity']              # done!
             self.link_arrow       = kwargs['link_arrow']                # done!
-            self.link_style       = kwargs['link_style']                # partially done... needs arrows
+            self.arrow_px         = kwargs['arrow_px']                  # done!
+            self.arrow_ratio      = kwargs['arrow_ratio']               # done!
+            self.link_style       = kwargs['link_style']                # done!
             self.min_link_size    = kwargs['min_link_size']             # done!
             self.max_link_size    = kwargs['max_link_size']             # done!
             self.track_state      = kwargs['track_state']               # <--- still needs to be done
@@ -751,13 +755,13 @@ class RTChordDiagramMixin(object):
 
                         angle_d   = 180 - abs(abs(a_avg - b_avg) - 180)
                         _ratio_   = 0.8 - 0.8 * angle_d/180
-                        x_pull0, y_pull0 = self.rx + self.r * _ratio_ * cos(pi*a_avg/180.0), self.ry + self.r * _ratio_ * sin(pi*a_avg/180.0)
-                        x_pull1, y_pull1 = self.rx + self.r * _ratio_ * cos(pi*b_avg/180.0), self.ry + self.r * _ratio_ * sin(pi*b_avg/180.0)
+                        x_pull0, y_pull0 = self.cx + self.r * _ratio_ * cos(pi*a_avg/180.0), self.cy + self.r * _ratio_ * sin(pi*a_avg/180.0)
+                        x_pull1, y_pull1 = self.cx + self.r * _ratio_ * cos(pi*b_avg/180.0), self.cy + self.r * _ratio_ * sin(pi*b_avg/180.0)
                         _path_ = f'M {xarrow0_pt} {yarrow0_pt} C {x_pull0} {y_pull0} {x_pull1} {y_pull1} {xarrow1_pt} {yarrow1_pt}'
                         if self.link_arrow is not None:
                             _curve_ = self.rt_self.bezierCurve((xarrow0_pt, yarrow0_pt), (x_pull0, y_pull0), (x_pull1, y_pull1), (xarrow1_pt, yarrow1_pt))
                             uv        = self.rt_self.unitVector((_curve_(0.8),(xarrow1_pt, yarrow1_pt)))
-                            arrow_len, arrow_scale = min(self.r/10.0, 20.0), 0.5
+                            arrow_len, arrow_scale = min(self.r * self.arrow_ratio, self.arrow_px), 0.5
                             _path_ += f' l {  arrow_len * (-uv[0] + arrow_scale*uv[1])}  {  arrow_len * (-uv[1] - arrow_scale*uv[0])}'
                             _path_ += f' m {-(arrow_len * (-uv[0] + arrow_scale*uv[1]))} {-(arrow_len * (-uv[1] - arrow_scale*uv[0]))}'
                             _path_ += f' l {  arrow_len * (-uv[0] - arrow_scale*uv[1])}  {  arrow_len * (-uv[1] + arrow_scale*uv[0])}'
