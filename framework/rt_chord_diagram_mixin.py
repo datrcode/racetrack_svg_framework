@@ -18,6 +18,7 @@ import polars as pl
 import numpy as np
 import random
 import heapq
+import time
 
 from math import pi, sin, cos
 
@@ -332,8 +333,10 @@ class RTChordDiagramMixin(object):
             self.draw_labels      = kwargs['draw_labels']               # done!
             self.draw_border      = kwargs['draw_border']               # done!
             self.draw_background  = kwargs['draw_background']           # done!
+            self.time_lu          = {}
 
             # Apply count-by transforms
+            _ts_ = time.time()
             if self.count_by is not None and rt_self.isTField(self.count_by):
                 self.df,self.count_by = rt_self.applyTransform(self.df, self.count_by)
 
@@ -351,8 +354,10 @@ class RTChordDiagramMixin(object):
                         for _tup_part in _node:
                             if rt_self.isTField(_tup_part) and rt_self.tFieldApplicableField(_tup_part) in self.df.columns:
                                 self.df,_throwaway = rt_self.applyTransform(self.df, _tup_part)
+            self.time_lu['transforms'] = time.time() - _ts_
 
             # If either from or to are lists, concat them together...
+            _ts_ = time.time()
             _fm_ = self.relationships[0][0]
             if type(_fm_) == list or type(_fm_) == tuple:
                 new_fm = '__fmcat__'
@@ -365,6 +370,7 @@ class RTChordDiagramMixin(object):
                 _to_ = new_to
             self.relationships = [(_fm_,_to_)]
             self.fm, self.to = _fm_, _to_
+            self.time_lu['concat_columns'] = time.time() - _ts_
 
             # Get rid of self references
             if   self.rt_self.isPandas(self.df):
@@ -868,11 +874,15 @@ class RTChordDiagramMixin(object):
                 self.geom_to_df = {}
 
             # Determine the node order
+            _ts_ = time.time()
             if self.order is None:
                 self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
+            self.time_lu['dendrogram'] = time.time() - _ts_
 
             # Counting calcs
+            _ts_ = time.time()
             counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu, df_lu = self.__countingCalc__()
+            self.time_lu['counting_calc'] = time.time() - _ts_
 
             # Determine the geometry
             self.rx, self.ry = (self.w - 2 * self.x_ins)/2, (self.h - 2 * self.y_ins)/2
@@ -892,6 +902,7 @@ class RTChordDiagramMixin(object):
             left_over_degs  = 360.0 - self.node_gap_degs * len(self.order)
 
             # Node to arc calculation
+            _ts_ = time.time()
             local_dir_arc_ct = None
             local_dir_arc_ct_min, local_dir_arc_ct_max = None, None
             self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = None, None
@@ -934,6 +945,8 @@ class RTChordDiagramMixin(object):
                         j = j - 1
                 struct_matches_render = False  # adjusts rendering based on another diagrams structure
 
+            self.time_lu['calc_node_arcs'] = time.time() - _ts_
+
             # Avoid div by zero later...
             if   self.node_dir_arc_ct_min is None:
                 self.node_dir_arc_ct_min = 0.0
@@ -965,9 +978,12 @@ class RTChordDiagramMixin(object):
             self.yTarrow = lambda a: self.cy + (self.r - 2*self.node_h) * sin(pi*a/180.0)
 
             # Draw the nodes
+            _ts_ = time.time()
             svg.append(self.__renderNodes__(node_color_lu))
+            self.time_lu['render_nodes'] = time.time() - _ts_
 
             # Draw the edges from the node to the neighbors
+            _ts_ = time.time()
             if   self.link_style == 'wide':
                 svg.append(self.__renderEdges_wide__(struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu))
             elif self.link_style == 'narrow':
@@ -976,6 +992,7 @@ class RTChordDiagramMixin(object):
                                                        fmto_color_lu))
             else:
                 raise Exception(f'RTChordDiagram.renderSVG() -- unknown link_style "{self.link_style}"')
+            self.time_lu['render_links'] = time.time() - _ts_
 
             # Draw the labels
             if self.draw_labels:
