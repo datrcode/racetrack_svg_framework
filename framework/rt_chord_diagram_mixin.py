@@ -19,6 +19,8 @@ import numpy as np
 import random
 import heapq
 import time
+import hdbscan
+import networkx as nx
 
 from math import pi, sin, cos
 
@@ -42,7 +44,11 @@ class RTChordDiagramMixin(object):
         return x[:i],x[i+len(_connector_):]
     # merges names (which themselves can be merged names)
     def __den_mergedName__(self, a, b, _sep_ = '|||'):
-        return _sep_.join(sorted(list(set(a.split(_sep_))|set(b.split(_sep_)))))
+        #return _sep_.join(sorted(list(set(a.split(_sep_))|set(b.split(_sep_)))))
+        #return _sep_.join(list(set(a.split(_sep_))|set(b.split(_sep_))))
+        ls = a.split(_sep_)
+        ls.extend(b.split(_sep_))
+        return _sep_.join(ls)
     # separates merged names back into parts
     def __den_breakdownMerge__(self, a, _sep_ = '|||'):
         return a.split(_sep_)
@@ -102,7 +108,7 @@ class RTChordDiagramMixin(object):
     #
     # dendrogramOrdering() - create an order of the fm/to nodes based on hierarchical clustering
     #
-    def dendrogramOrdering(self, df, fm, to, count_by, count_by_set, _sep_ = '|||'):        
+    def dendrogramOrdering(self, df, fm, to, count_by, count_by_set, _sep_ = '|||', _connector_ = ' <-|-> '):
         # perform the dataframe summation
         if   self.isPandas(df):
             _heap_, _graph_ = self.__dendrogramHelper_pandas__(df, fm, to, count_by, count_by_set)
@@ -135,7 +141,7 @@ class RTChordDiagramMixin(object):
                 # Rewire the neighbors & add the new values to the heap
                 for x in _graph_[_new_].keys():
                     _graph_[x][_new_] = _graph_[_new_][x]
-                    heapq.heappush(_heap_,(_graph_[_new_][x], _new_ + ' <-|-> ' + x))
+                    heapq.heappush(_heap_,(_graph_[_new_][x], _new_ + _connector_ + x))
                 # Remove the old nodes and their nbor connections
                 for x in _graph_[_fm_]:
                     _graph_[x].pop(_fm_)
@@ -178,11 +184,107 @@ class RTChordDiagramMixin(object):
                 elif r is None:
                     return l
                 else:
-                    _extended_ = l
-                    _extended_.extend(r)
+                    _extended_ = r
+                    _extended_.extend(l)
                     return _extended_
         
         return leafWalk(_tree_)
+
+    #
+    # dendrogramOrdering() - create an order of the fm/to nodes based on hierarchical clustering
+    #
+    def dendrogramOrdering_HDBSCAN(self, df, fm, to, count_by, count_by_set, _sep_ = '|||'):
+        if self.isPandas(df):
+            df = self.copyDataFrame(df)
+            df['__fmto__'] = df.apply(lambda x: self.__den_fromToString__(x, fm, to), axis=1)
+            if count_by is None:
+                df_den   = df.groupby('__fmto__').size().reset_index().rename({0:'__countby__'},axis=1)
+                count_by = '__countby__'
+            elif count_by_set:
+                df_den = df.groupby('__fmto__')[count_by].nunique().reset_index()
+            else:
+                df_den = df.groupby('__fmto__')[count_by].sum().reset_index()
+            dist_lu, dist_max = {}, 1.0
+            for row_i,row in df_den.iterrows():                
+                _count_ = row[count_by]
+                dist_max = max(_count_,dist_max)                
+                _fm_, _to_ = self.__den_fromToStringParts__(row['__fmto__'])
+                if _fm_ not in dist_lu:
+                    dist_lu[_fm_] = {}
+                dist_lu[_fm_][_to_] = _count_
+        elif self.isPolars(df):
+            # concats two strings together in alphabetical order
+            df = self.copyDataFrame(df)
+            __lambda__ = lambda x: self.__den_fromToString__(x, fm, to)
+            df = df.with_columns(pl.struct([fm,to]).map_elements(__lambda__).alias('__fmto__'))
+            df_den = self.polarsCounter(df, '__fmto__', count_by, count_by_set)
+            count_by = '__count__'
+            dist_lu, dist_max = {}, 1.0
+            for i in range(len(df_den)):
+                _count_ = df_den[count_by][i]
+                dist_max = max(_count_,dist_max)
+                _fm_, _to_ = self.__den_fromToStringParts__(df_den['__fmto__'][i])
+                if _fm_ not in dist_lu:
+                    dist_lu[_fm_] = {}
+                dist_lu[_fm_][_to_] = _count_            
+        else:
+            raise Exception('RTChordDiagram.dendrogramOrdering_HDBSCAN() - only accepts pandas or polars')
+
+        # Arrange the items in the appropriate structure
+        items_actual = list(set(df[fm]) | set(df[to]))
+        items        = [(int(x),) for x in range(len(items_actual))]
+
+        # Create a custom distance function
+        def __dist__(ai,bi):
+            a = items_actual[int(ai[0])]
+            b = items_actual[int(bi[0])]
+            if (a,b) in dist_lu:
+                return 0.01 + 1.0 - dist_lu[(a,b)]/dist_max
+            elif (b,a) in dist_lu:
+                return 0.01 + 1.0 - dist_lu[(b,a)]/dist_max
+            else:
+                return 2.0
+        
+        # Cluster the fms/tos...
+        clusterer = hdbscan.HDBSCAN(metric=__dist__)
+        clusterer.fit(items)
+
+        _not_this_ = '''
+        # Construct and disect the single linkage tree from the clustering operation
+        fms, tos, children, all, parent_to_children = [],[], set(), set(), {}
+        for edge in clusterer.single_linkage_tree_.to_networkx().edges():
+            _fm_, _to_ = int(edge[0]), int(edge[1])
+            fms.append(_fm_), tos.append(_to_)
+            children.add(_to_), all.add(_fm_), all.add(_to_)
+            if _fm_ not in parent_to_children.keys():
+                parent_to_children[_fm_] = []
+            parent_to_children[_fm_].append(_to_)
+        root = (all - children).__iter__().__next__()
+
+        # Perform a leaf walk
+        def __leafWalk__(node):
+            if node in parent_to_children.keys():
+                ls = []
+                for child in parent_to_children[node]:
+                    ls_children = __leafWalk__(child)
+                    if ls_children is not None:
+                        ls.extend(ls_children)
+                return ls
+            else:
+                return [node]
+        leaves_in_order = __leafWalk__(root)
+        leaves_in_order_actual = []
+        for i in leaves_in_order:
+            leaves_in_order_actual.append(items_actual[i])
+        return leaves_in_order_actual
+        '''
+
+        _df_ = clusterer.condensed_tree_.to_pandas()
+        leaves_in_order = list(_df_[_df_['child_size'] == 1]['child'])
+        leaves_in_order_actual = []
+        for i in leaves_in_order:
+            leaves_in_order_actual.append(items_actual[i])
+        return leaves_in_order_actual
 
     #
     # chordDiagramPreferredDimensions()
@@ -221,43 +323,44 @@ class RTChordDiagramMixin(object):
     # Make the SVG for a chord diagram.
     #    
     def chordDiagram(self,
-                     df,                             # dataframe to render
-                     relationships,                  # same convention as linknode [('fm','to')]
-                     # ----------------------------- # everything else is a default...
-                     color_by            = None,     # none (default) or field name (note that node_color or link_color needs to be 'vary')
-                     count_by            = None,     # none means just count rows, otherwise, use a field to sum by
-                     count_by_set        = False,    # count by summation (by default)... count_by column is checked
-                     widget_id           = None,     # naming the svg elements                 
+                     df,                                    # dataframe to render
+                     relationships,                         # same convention as linknode [('fm','to')]
+                     # ------------------------------------ # everything else is a default...
+                     color_by                   = None,     # none (default) or field name (note that node_color or link_color needs to be 'vary')
+                     count_by                   = None,     # none means just count rows, otherwise, use a field to sum by
+                     count_by_set               = False,    # count by summation (by default)... count_by column is checked
+                     widget_id                  = None,     # naming the svg elements                 
                      # ----------------------------- # node options
-                     node_color          = None,     # none means color by node name, 'vary' by color_by, or specific color "#xxxxxx"
-                     node_h              = 10,       # height of node from circle edge
-                     node_gap            = 5,        # node gap in pixels (gap between the arcs)
-                     order               = None,     # override calculated ordering...
-                     label_only          = set(),    # label only set
-                     equal_size_nodes    = False,    # equal size nodes
-                     # ----------------------------- # link options
-                     link_color          = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
-                     link_opacity        = 0.5,      # link opacity
-                     link_arrow          = 'subtle', # None, 'subtle', or 'sharp'
-                     arrow_px            = 16,       # arrow size in pixels
-                     arrow_ratio         = 0.05,     # arrow size as a ratio of the radius
-                     link_style          = 'narrow', # 'narrow' or 'wide'
-                     min_link_size       = 0.8,      # for 'narrow', min link size
-                     max_link_size       = 4.0,      # for 'narrow', max link size
-                     # ----------------------------- # small multiples config
-                     structure_template  = None,     # existing RTChordDiagram() ... e.g., for small multiples
-                     # ----------------------------- # visualization geometry / etc.
-                     track_state         = False,    # track state for interactive filtering
-                     x_view              = 0,        # x offset for the view
-                     y_view              = 0,        # y offset for the view
-                     w                   = 256,      # width of the view
-                     h                   = 256,      # height of the view
-                     x_ins               = 3,
-                     y_ins               = 3,
-                     txt_h               = 10,       # text height for labeling
-                     draw_labels         = False,    # draw labels flag # not implemented yet
-                     draw_border         = True,     # draw a border around the graph
-                     draw_background     = False):   # useful to turn off in small multiples settings
+                     node_color                 = None,     # none means color by node name, 'vary' by color_by, or specific color "#xxxxxx"
+                     node_h                     = 10,       # height of node from circle edge
+                     node_gap                   = 5,        # node gap in pixels (gap between the arcs)
+                     order                      = None,     # override calculated ordering...
+                     label_only                 = set(),    # label only set
+                     equal_size_nodes           = False,    # equal size nodes
+                     # ------------------------------------ # link options
+                     link_color                 = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
+                     link_opacity               = 0.5,      # link opacity
+                     link_arrow                 = 'subtle', # None, 'subtle', or 'sharp'
+                     arrow_px                   = 16,       # arrow size in pixels
+                     arrow_ratio                = 0.05,     # arrow size as a ratio of the radius
+                     link_style                 = 'narrow', # 'narrow' or 'wide'
+                     min_link_size              = 0.8,      # for 'narrow', min link size
+                     max_link_size              = 4.0,      # for 'narrow', max link size
+                     # ------------------------------------ # small multiples config
+                     structure_template         = None,     # existing RTChordDiagram() ... e.g., for small multiples
+                     use_hdbscan_for_dendrogram = True,     # use the hdbscan algorithm for the dendrogram
+                     # ------------------------------------ # visualization geometry / etc.
+                     track_state                = False,    # track state for interactive filtering
+                     x_view                     = 0,        # x offset for the view
+                     y_view                     = 0,        # y offset for the view
+                     w                          = 256,      # width of the view
+                     h                          = 256,      # height of the view
+                     x_ins                      = 3,
+                     y_ins                      = 3,
+                     txt_h                      = 10,       # text height for labeling
+                     draw_labels                = False,    # draw labels flag # not implemented yet
+                     draw_border                = True,     # draw a border around the graph
+                     draw_background            = False):   # useful to turn off in small multiples settings
 
         _params_ = locals().copy()
         _params_.pop('self')
@@ -333,6 +436,7 @@ class RTChordDiagramMixin(object):
             self.draw_labels      = kwargs['draw_labels']               # done!
             self.draw_border      = kwargs['draw_border']               # done!
             self.draw_background  = kwargs['draw_background']           # done!
+            self.use_hdbscan_for_dendrogram = kwargs['use_hdbscan_for_dendrogram']
             self.time_lu          = {}
 
             # Apply count-by transforms
@@ -876,7 +980,10 @@ class RTChordDiagramMixin(object):
             # Determine the node order
             _ts_ = time.time()
             if self.order is None:
-                self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
+                if self.use_hdbscan_for_dendrogram:
+                    self.order = self.rt_self.dendrogramOrdering_HDBSCAN(self.df, self.fm, self.to, self.count_by, self.count_by_set)
+                else:
+                    self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
             self.time_lu['dendrogram'] = time.time() - _ts_
 
             # Counting calcs
