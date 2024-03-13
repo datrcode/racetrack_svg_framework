@@ -46,6 +46,26 @@ class RTLinkNodeMixin(object):
             raise Exception('concatDisparateDataFrame() - only supports pandas and polars')
 
     #
+    # graphDictToDataFrame() - converts a dictionary into a dataframe.
+    # - fields will be "fm", "to", and "ct"
+    #
+    def graphDictToDataFrame(self, d):
+        fms, tos, cts = [], [], []
+        for fm in d.keys():
+            fm_str = fm if (type(fm) == int or type(fm) == float) else str(fm)
+            if   type(d[fm]) == set:
+                for to in d[fm]:
+                    to_str = to if (type(to) == int or type(to) == float) else str(to)
+                    fms.append(fm_str), tos.append(to_str), cts.append(1)
+            elif type(d[fm]) == dict:
+                for to in d[fm].keys():
+                    to_str = to if (type(to) == int or type(to) == float) else str(to)
+                    fms.append(fm_str), tos.append(to_str), cts.append(d[fm][to])
+            else:
+                raise Exception('RTLinkNode.graphDictToDataFrame() - only supports dictionary or set keys')
+        return pd.DataFrame({'fm':fms,'to':tos,'ct':cts})
+
+    #
     # viewWindowCenter()
     # - return the center coordinate of a view window
     #

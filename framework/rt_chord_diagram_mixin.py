@@ -16,6 +16,7 @@
 import pandas as pd
 import polars as pl
 import numpy as np
+import copy
 import random
 import heapq
 import time
@@ -285,6 +286,111 @@ class RTChordDiagramMixin(object):
         for i in leaves_in_order:
             leaves_in_order_actual.append(items_actual[i])
         return leaves_in_order_actual
+
+    # __dendrogramHelperTuples_pandas__()
+    def __dendrogramHelperTuples_pandas__(self, df, fm, to, count_by, count_by_set):
+        # concats two strings in alphabetical order   
+        df = self.copyDataFrame(df)
+        df['__fmto__'] = df.apply(lambda x: self.__den_fromToString__(x, fm, to), axis=1)
+        if count_by is None:
+            df_den   = df.groupby('__fmto__').size().reset_index().rename({0:'__countby__'},axis=1)
+            count_by = '__countby__'
+        elif count_by_set:
+            df_den = df.groupby('__fmto__')[count_by].nunique().reset_index()
+        else:
+            df_den = df.groupby('__fmto__')[count_by].sum().reset_index()
+
+        # create the initial graph and heap
+        _heap_ , _graph_ = [] , {}
+        for r_i,r in df_den.iterrows():
+            x, y = self.__den_fromToStringParts__(r['__fmto__'])
+            heapq.heappush(_heap_,(-r[count_by], ((x,),(y,))))
+            if x != y:
+                if (x,) not in _graph_.keys():
+                    _graph_[(x,)] = {}
+                _graph_[(x,)][(y,)] = -r[count_by]
+                if (y,) not in _graph_.keys():
+                    _graph_[(y,)] = {}
+                _graph_[(y,)][(x,)] = -r[count_by]
+        return _heap_, _graph_
+    
+    def dendrogramOrderingTuples(self, df, fm, to, count_by, count_by_set, _sep_ = '|||'):
+        if   self.isPandas(df):
+            _heap_,_graph_ = self.__dendrogramHelperTuples_pandas__(df, fm, to, count_by, count_by_set)
+        elif self.isPolars(df):
+            raise Exception('RTChordDiagram.dendrogramOrderingTuples() - polars not implemented')
+        else:
+            raise Exception('RTChordDiagram.dendrogramOrderingTuples() - only pandas and polars implemented')
+
+        _graph_orig_ = copy.deepcopy(_graph_)
+
+        def optimalArrangement(t0,t1):
+            if len(t0) == 1 and len(t1) == 1:
+                return t0 + t1
+            elif len(t0) == 1:
+                f,b = 0,0
+                for i in range(len(t1)):
+                    if (t1[i],) in _graph_orig_[t0].keys():
+                        s = _graph_orig_[t0][(t1[i],)]
+                        f += s * 1/(1+i)
+                        b += s * 1/(len(t1)-i)
+                if f > b:
+                    return t1 + t0
+                else:
+                    return t0 + t1
+            elif len(t1) == 1:
+                f,b = 0,0
+                for i in range(len(t0)):
+                    if (t0[i],) in _graph_orig_[t1].keys():
+                        s = _graph_orig_[t1][(t0[i],)]
+                        f += s * 1/(1+i)
+                        b += s * 1/(len(t0)-i)
+                if f > b:
+                    return t0 + t1
+                else:
+                    return t1 + t0
+            else:
+                print('happens!') # does this actually happen?
+                pass
+            return t0 + t1
+
+        _merged_already_ = set()
+        while len(_heap_) > 0:
+            _strength_, _fmto_ = heapq.heappop(_heap_)
+            _fm_, _to_ = _fmto_
+            if type(_fm_) != tuple:
+                _fm_ = (_fm_,)
+            if type(_to_) != tuple:
+                _to_ = (_to_,)
+            if _fm_ != _to_ and _fm_ not in _merged_already_ and _to_ not in _merged_already_:
+                _merged_already_.add(_fm_), _merged_already_.add(_to_)
+                _new_ = optimalArrangement(_fm_, _to_)
+                _graph_[_new_] = {}
+                # Rewire for _fm_
+                for x in _graph_[_fm_].keys():
+                    if x not in _graph_[_new_].keys():
+                        _graph_[_new_][x] = 0    
+                    _graph_[_new_][x] += _graph_[_fm_][x]
+                # Rewire for _to_
+                for x in _graph_[_to_].keys():
+                    if x not in _graph_[_new_].keys():
+                        _graph_[_new_][x] = 0
+                    _graph_[_new_][x] += _graph_[_to_][x]
+                # Rewire the neighbors & add the new values to the heap
+                for x in _graph_[_new_].keys():
+                    _graph_[x][_new_] = _graph_[_new_][x]
+                    heapq.heappush(_heap_,(_graph_[_new_][x], (_new_, x)))
+                # Remove the old nodes and their nbor connections
+                for x in _graph_[_fm_]:
+                    _graph_[x].pop(_fm_)
+                _graph_.pop(_fm_)
+                for x in _graph_[_to_]:
+                    _graph_[x].pop(_to_)
+                _graph_.pop(_to_)
+        _tuple_ = ()
+        for k in _graph_.keys():
+            _tuple_ += k
+        return list(_tuple_)
 
     #
     # chordDiagramPreferredDimensions()
@@ -983,7 +1089,7 @@ class RTChordDiagramMixin(object):
                 if self.use_hdbscan_for_dendrogram:
                     self.order = self.rt_self.dendrogramOrdering_HDBSCAN(self.df, self.fm, self.to, self.count_by, self.count_by_set)
                 else:
-                    self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
+                    self.order = self.rt_self.dendrogramOrderingTuples(self.df, self.fm, self.to, self.count_by, self.count_by_set)
             self.time_lu['dendrogram'] = time.time() - _ts_
 
             # Counting calcs
