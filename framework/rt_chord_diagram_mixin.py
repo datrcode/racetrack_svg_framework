@@ -314,11 +314,37 @@ class RTChordDiagramMixin(object):
                 _graph_[(y,)][(x,)] = -r[count_by]
         return _heap_, _graph_
     
+    # __dendrogramHelperTuples_polars__()
+    def __dendrogramHelperTuples_polars__(self, df, fm, to, count_by, count_by_set):
+        # concats two strings together in alphabetical order
+        df = self.copyDataFrame(df)
+        __lambda__ = lambda x: self.__den_fromToString__(x, fm, to)
+        df = df.with_columns(pl.struct([fm,to]).map_elements(__lambda__).alias('__fmto__'))
+        df_den = self.polarsCounter(df, '__fmto__', count_by, count_by_set)
+
+        # create the initial graph and heap
+        count_by_col , fmto_col = df_den['__count__'], df_den['__fmto__']
+        _heap_ , _graph_ = [] , {}
+        for i in range(len(df_den)):
+            x, y = self.__den_fromToStringParts__(fmto_col[i])
+            heapq.heappush(_heap_,(-count_by_col[i], ((x,),(y,))))
+            if x != y:
+                if (x,) not in _graph_.keys():
+                    _graph_[(x,)] = {}
+                _graph_[(x,)][(y,)] = -count_by_col[i]
+                if (y,) not in _graph_.keys():
+                    _graph_[(y,)] = {}
+                _graph_[(y,)][(x,)] = -count_by_col[i]
+        return _heap_, _graph_
+
+    #
+    # dendorgramOrderingTuples() - yet another version attempting to fix the suboptimal nature of the original version...
+    #
     def dendrogramOrderingTuples(self, df, fm, to, count_by, count_by_set, _sep_ = '|||'):
         if   self.isPandas(df):
             _heap_,_graph_ = self.__dendrogramHelperTuples_pandas__(df, fm, to, count_by, count_by_set)
         elif self.isPolars(df):
-            raise Exception('RTChordDiagram.dendrogramOrderingTuples() - polars not implemented')
+            _heap_,_graph_ = self.__dendrogramHelperTuples_polars__(df, fm, to, count_by, count_by_set)
         else:
             raise Exception('RTChordDiagram.dendrogramOrderingTuples() - only pandas and polars implemented')
 
@@ -350,7 +376,7 @@ class RTChordDiagramMixin(object):
                 else:
                     return t1 + t0
             else:
-                print('happens!') # does this actually happen?
+                # print('happens!') # does this actually happen? ... sigh... yes it does )
                 pass
             return t0 + t1
 
@@ -454,7 +480,7 @@ class RTChordDiagramMixin(object):
                      max_link_size              = 4.0,      # for 'narrow', max link size
                      # ------------------------------------ # small multiples config
                      structure_template         = None,     # existing RTChordDiagram() ... e.g., for small multiples
-                     use_hdbscan_for_dendrogram = True,     # use the hdbscan algorithm for the dendrogram
+                     dendrogram_algorithm       = None,     # 'original', 'hdbscan', or None
                      # ------------------------------------ # visualization geometry / etc.
                      track_state                = False,    # track state for interactive filtering
                      x_view                     = 0,        # x offset for the view
@@ -542,7 +568,7 @@ class RTChordDiagramMixin(object):
             self.draw_labels      = kwargs['draw_labels']               # done!
             self.draw_border      = kwargs['draw_border']               # done!
             self.draw_background  = kwargs['draw_background']           # done!
-            self.use_hdbscan_for_dendrogram = kwargs['use_hdbscan_for_dendrogram']
+            self.dendrogram_algorithm = kwargs['dendrogram_algorithm']
             self.time_lu          = {}
 
             # Apply count-by transforms
@@ -1086,8 +1112,10 @@ class RTChordDiagramMixin(object):
             # Determine the node order
             _ts_ = time.time()
             if self.order is None:
-                if self.use_hdbscan_for_dendrogram:
+                if   self.dendrogram_algorithm == 'hdbscan': 
                     self.order = self.rt_self.dendrogramOrdering_HDBSCAN(self.df, self.fm, self.to, self.count_by, self.count_by_set)
+                elif self.dendrogram_algorithm == 'original':
+                    self.order = self.rt_self.dendrogramOrdering(self.df, self.fm, self.to, self.count_by, self.count_by_set)
                 else:
                     self.order = self.rt_self.dendrogramOrderingTuples(self.df, self.fm, self.to, self.count_by, self.count_by_set)
             self.time_lu['dendrogram'] = time.time() - _ts_
