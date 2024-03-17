@@ -782,6 +782,90 @@ class RTGeometryMixin(object):
         return _piecewise_
 
     #
+    # piecewiseCubicBSpline() - interpolate piecewise cubic b-spline
+    # - Replicates formulas/implementation from "Hierarchical Edge Bundles: Visualization of Adjacency Relations in Hierarchical Data" by Danny Holten (2006)
+    # - there's an error in the continuity between the 4th degree and 3rd degree connections (on both ends)
+    # -- see the hierarchical_edge_bundling.ipynb test file for an example
+    # - this version returns points which is more efficient for constructing svg structures
+    # - t_inc should be something that (when added to a single precision number (e.g., 0.1) 
+    #   will eventually add to another single precision number evenly)
+    # - if you're going to debug this, start with testing in the hierarchical_edge_bundling.ipynb file and then copy over...
+    #
+    def piecewiseCubicBSpline(self, pts, beta=0.8, t_inc=0.1):
+        points = []
+        # Formula 1 form the Holten Paper - generates a control point
+        def cP(i, n, p_0, p_i, p_n_minus_1):
+            _fn_ = lambda k: beta * p_i[k] + (1.0 - beta) * (p_0[k] + ((i/(n-1)) * (p_n_minus_1[k] - p_0[k])))
+            return (_fn_(0),_fn_(1))
+        # Generate all the control points for the example
+        i, cps = 0, []
+        for i in range(len(pts)):
+            xy = cP(i, len(pts), pts[0], pts[i], pts[-1])    
+            cps.append(xy)
+
+        # For the first two perform the interpolation
+        t = 0.0
+        while t <= 0.4:
+            # Basis function copied from https://math.stackexchange.com/questions/1964113/b-splines-of-degree-1-2-and-3
+            _b0_ = lambda _t_: (1 - _t_)
+            _b1_ = lambda _t_: (_t_)
+            t0 = _b0_(t),       _b1_(t)
+            x1,y1 = cps[0][0]*t0[0] + cps[1][0]*t0[1], cps[0][1]*t0[0] + cps[1][1]*t0[1]
+            points.append((x1,y1))
+            t += t_inc
+
+        # [1of2] Copy : Basis functions copied from https://math.stackexchange.com/questions/1964113/b-splines-of-degree-1-2-and-3
+        _b0_ = lambda _t_: (   _t_**2            )/2
+        _b1_ = lambda _t_: (-2*_t_**2 + 2*_t_ + 1)/2
+        _b2_ = lambda _t_: (   _t_**2 - 2*_t_ + 1)/2
+
+        # For the first three points, perform the interpolation...
+        t = 0.0
+        while t <= 0.5:
+            t0 = _b0_(t),       _b1_(t),       _b2_(t)
+            x1,y1 = cps[2][0]*t0[0] + cps[1][0]*t0[1] + cps[0][0]*t0[2], cps[2][1]*t0[0] + cps[1][1]*t0[1] + cps[0][1]*t0[2] 
+            points.append((x1,y1))
+            t += t_inc
+
+        # For every four points, use the wikipedia interpolation...
+        # - it'd be faster to use the bezier implementation from SVG (see the test file) ... but if you want to colorize it,
+        #   there's no implementation within SVG to shade across the curve...
+        for i in range(len(cps)-3):
+            # Copied from wikipedia page on B-splines -- https://en.wikipedia.org/wiki/B-spline
+            b0,b1,b2,b3 = cps[i],cps[i+1],cps[i+2],cps[i+3]
+            t = 0.0
+            while t <= 1.0:
+                cT = lambda _t_, k: (1/6) * ( (-b0[k] + 3*b1[k] - 3*b2[k] +b3[k])*_t_**3 + (3*b0[k] - 6*b1[k] + 3*b2[k])*_t_**2 + (-3*b0[k] + 3*b2[k])*_t_ + (b0[k] + 4*b1[k] + b2[k]) )
+                x1,y1 = cT(t,0),       cT(t,1)
+                points.append((x1,y1))
+                t += t_inc
+
+        # [2of2] Copy : Basis functions copied from https://math.stackexchange.com/questions/1964113/b-splines-of-degree-1-2-and-3
+        _b0_ = lambda _t_: (   _t_**2            )/2
+        _b1_ = lambda _t_: (-2*_t_**2 + 2*_t_ + 1)/2
+        _b2_ = lambda _t_: (   _t_**2 - 2*_t_ + 1)/2
+
+        # For the last three points, perform the interpolation...
+        t = 0.5
+        while t <= 1.0:
+            t0 = _b0_(t),       _b1_(t),       _b2_(t)
+            x1,y1 = cps[-1][0]*t0[0] + cps[-2][0]*t0[1] + cps[-3][0]*t0[2], cps[-1][1]*t0[0] + cps[-2][1]*t0[1] + cps[-3][1]*t0[2]
+            points.append((x1,y1))
+            t += t_inc
+
+        # For the first two (and last two points), perform the interpolation
+        t = 0.0
+        while t <= 0.4:
+            # Basis function copied from https://math.stackexchange.com/questions/1964113/b-splines-of-degree-1-2-and-3
+            _b0_ = lambda _t_: (1 - _t_)
+            _b1_ = lambda _t_: (_t_)
+            t0 = _b0_(t+0.5),       _b1_(t+0.5)
+            x1,y1 = cps[-2][0]*t0[0] + cps[-1][0]*t0[1], cps[-2][1]*t0[0] + cps[-1][1]*t0[1], 
+            points.append((x1,y1))
+            t += t_inc
+        return points
+
+    #
     # segmentOctTree() - return a segment octree
     # - bounds == (x0,y0,x1,y1)
     # - DONT USE!!!    
