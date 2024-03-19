@@ -784,12 +784,12 @@ class RTGeometryMixin(object):
     #
     # piecewiseCubicBSpline() - interpolate piecewise cubic b-spline
     # - Replicates formulas/implementation from "Hierarchical Edge Bundles: Visualization of Adjacency Relations in Hierarchical Data" by Danny Holten (2006)
-    # - there's an error in the continuity between the 4th degree and 3rd degree connections (on both ends)
+    # - [fixed] there's an error in the continuity between the 4th degree and 3rd degree connections (on both ends)
     # -- see the hierarchical_edge_bundling.ipynb test file for an example
-    # - this version returns points which is more efficient for constructing svg structures
+    # -- fixed by hacking the first three points and last three points (not consistent w/ 2nd and 3rd order cubic b-splines)
+    # - this version returns points which is less efficient for constructing svg structures
     # - t_inc should be something that (when added to a single precision number (e.g., 0.1) 
     #   will eventually add to another single precision number evenly)
-    # - if you're going to debug this, start with testing in the hierarchical_edge_bundling.ipynb file and then copy over...
     #
     def piecewiseCubicBSpline(self, pts, beta=0.8, t_inc=0.1):
         points = []
@@ -797,34 +797,23 @@ class RTGeometryMixin(object):
         def cP(i, n, p_0, p_i, p_n_minus_1):
             _fn_ = lambda k: beta * p_i[k] + (1.0 - beta) * (p_0[k] + ((i/(n-1)) * (p_n_minus_1[k] - p_0[k])))
             return (_fn_(0),_fn_(1))
-        # Generate all the control points for the example
+        
+        # Generate all the control points
         i, cps = 0, []
         for i in range(len(pts)):
             xy = cP(i, len(pts), pts[0], pts[i], pts[-1])    
             cps.append(xy)
 
-        # For the first two perform the interpolation
+        # Hack the first three points into a bezier curve
+        pt_beg = cps[0]
+        pt_end   = ( (1/6) * (  cps[0][0] + 4*cps[1][0] + cps[2][0]) ,  (1/6) * (  cps[0][1] + 4*cps[1][1] + cps[2][1]) )
+        pt_end_d = ( (1/3) * (2*cps[1][0] +   cps[2][0]),               (1/3) * (2*cps[1][1] +   cps[2][1]) )
+        pt_mid_e = (pt_end[0] + (pt_end[0] - pt_end_d[0]), pt_end[1] + (pt_end[1] - pt_end_d[1]))
+        pt_mid_b = (pt_beg[0] + pt_mid_e[0])/2, (pt_beg[1] + pt_mid_e[1])/2
+        bezier   = self.bezierCurve(pt_beg, pt_mid_b, pt_mid_e, pt_end)
         t = 0.0
-        while t <= 0.4:
-            # Basis function copied from https://math.stackexchange.com/questions/1964113/b-splines-of-degree-1-2-and-3
-            _b0_ = lambda _t_: (1 - _t_)
-            _b1_ = lambda _t_: (_t_)
-            t0 = _b0_(t),       _b1_(t)
-            x1,y1 = cps[0][0]*t0[0] + cps[1][0]*t0[1], cps[0][1]*t0[0] + cps[1][1]*t0[1]
-            points.append((x1,y1))
-            t += t_inc
-
-        # [1of2] Copy : Basis functions copied from https://math.stackexchange.com/questions/1964113/b-splines-of-degree-1-2-and-3
-        _b0_ = lambda _t_: (   _t_**2            )/2
-        _b1_ = lambda _t_: (-2*_t_**2 + 2*_t_ + 1)/2
-        _b2_ = lambda _t_: (   _t_**2 - 2*_t_ + 1)/2
-
-        # For the first three points, perform the interpolation...
-        t = 0.0
-        while t <= 0.5:
-            t0 = _b0_(t),       _b1_(t),       _b2_(t)
-            x1,y1 = cps[2][0]*t0[0] + cps[1][0]*t0[1] + cps[0][0]*t0[2], cps[2][1]*t0[0] + cps[1][1]*t0[1] + cps[0][1]*t0[2] 
-            points.append((x1,y1))
+        while t < 1.0:
+            points.append(bezier(t))
             t += t_inc
 
         # For every four points, use the wikipedia interpolation...
@@ -840,30 +829,68 @@ class RTGeometryMixin(object):
                 points.append((x1,y1))
                 t += t_inc
 
-        # [2of2] Copy : Basis functions copied from https://math.stackexchange.com/questions/1964113/b-splines-of-degree-1-2-and-3
-        _b0_ = lambda _t_: (   _t_**2            )/2
-        _b1_ = lambda _t_: (-2*_t_**2 + 2*_t_ + 1)/2
-        _b2_ = lambda _t_: (   _t_**2 - 2*_t_ + 1)/2
-
-        # For the last three points, perform the interpolation...
-        t = 0.5
-        while t <= 1.0:
-            t0 = _b0_(t),       _b1_(t),       _b2_(t)
-            x1,y1 = cps[-1][0]*t0[0] + cps[-2][0]*t0[1] + cps[-3][0]*t0[2], cps[-1][1]*t0[0] + cps[-2][1]*t0[1] + cps[-3][1]*t0[2]
-            points.append((x1,y1))
-            t += t_inc
-
-        # For the first two (and last two points), perform the interpolation
+        # Hack the last three points
+        pt_beg   = ( (1/6) * (cps[-3][0] + 4*cps[-2][0] + cps[-1][0]), (1/6) * (cps[-3][1] + 4*cps[-2][1] + cps[-1][1]) )
+        pt_beg_d = ( (1/3) * (cps[-3][0] + 2*cps[-2][0]),              (1/3) * (cps[-3][1] + 2*cps[-2][1]) )
+        pt_mid_b = pt_beg[0] + (pt_beg[0] - pt_beg_d[0]), pt_beg[1] + (pt_beg[1] - pt_beg_d[1])
+        pt_end   = cps[-1]
+        pt_mid_e = (pt_end[0] + pt_mid_b[0])/2, (pt_end[1] + pt_mid_b[1])/2
+        bezier   = self.bezierCurve(pt_beg, pt_mid_b, pt_mid_e, pt_end)
         t = 0.0
-        while t <= 0.4:
-            # Basis function copied from https://math.stackexchange.com/questions/1964113/b-splines-of-degree-1-2-and-3
-            _b0_ = lambda _t_: (1 - _t_)
-            _b1_ = lambda _t_: (_t_)
-            t0 = _b0_(t+0.5),       _b1_(t+0.5)
-            x1,y1 = cps[-2][0]*t0[0] + cps[-1][0]*t0[1], cps[-2][1]*t0[0] + cps[-1][1]*t0[1], 
-            points.append((x1,y1))
+        while t < 1.0:
+            points.append(bezier(t))
             t += t_inc
+
         return points
+
+    #
+    # svgPathCubicBSpline() - cubic b-spline as an SVG path
+    # - should produce the same as above (but more efficient since it uses SVG's built in bezier curves)
+    #
+    def svgPathCubicBSpline(self, pts, beta=0.8):
+        svg_path = []
+        # Formula 1 form the Holten Paper - generates a control point
+        def cP(i, n, p_0, p_i, p_n_minus_1):
+            _fn_ = lambda k: beta * p_i[k] + (1.0 - beta) * (p_0[k] + ((i/(n-1)) * (p_n_minus_1[k] - p_0[k])))
+            return (_fn_(0),_fn_(1))
+        
+        # Generate all the control points
+        i, cps = 0, []
+        for i in range(len(pts)):
+            xy = cP(i, len(pts), pts[0], pts[i], pts[-1])    
+            cps.append(xy)
+
+        # Hack the first three points into a bezier curve
+        pt_beg = cps[0]
+        pt_end   = ( (1/6) * (  cps[0][0] + 4*cps[1][0] + cps[2][0]) ,  (1/6) * (  cps[0][1] + 4*cps[1][1] + cps[2][1]) )
+        pt_end_d = ( (1/3) * (2*cps[1][0] +   cps[2][0]),               (1/3) * (2*cps[1][1] +   cps[2][1]) )
+        pt_mid_e = (pt_end[0] + (pt_end[0] - pt_end_d[0]), pt_end[1] + (pt_end[1] - pt_end_d[1]))
+        pt_mid_b = (pt_beg[0] + pt_mid_e[0])/2, (pt_beg[1] + pt_mid_e[1])/2
+
+        svg_path.append(f'M {pt_beg[0]} {pt_beg[1]}')
+        svg_path.append(f'C {pt_mid_b[0]} {pt_mid_b[1]} {pt_mid_e[0]} {pt_mid_e[1]} {pt_end[0]} {pt_end[1]} ')
+
+        # For every four points, use the wikipedia interpolation...
+        # - it'd be faster to use the bezier implementation from SVG (see the test file) ... but if you want to colorize it,
+        #   there's no implementation within SVG to shade across the curve...
+        for i in range(len(cps)-3):
+            # Copied from wikipedia page on B-splines -- https://en.wikipedia.org/wiki/B-spline
+            # p0 = ( (1/6) * (cps[i][0] + 4*cps[i+1][0] + cps[i+2][0]) ,  (1/6) * (cps[i][1] + 4*cps[i+1][1] + cps[i+2][1]) )
+            p1 = ( (1/3) * (2*cps[i+1][0] + cps[i+2][0]),               (1/3) * (2*cps[i+1][1] + cps[i+2][1]) )
+            p2 = ( (1/3) * (cps[i+1][0] + 2*cps[i+2][0]),               (1/3) * (cps[i+1][1] + 2*cps[i+2][1]) )
+            p3 = ( (1/6) * (cps[i+1][0] + 4*cps[i+2][0] + cps[i+3][0]), (1/6) * (cps[i+1][1] + 4*cps[i+2][1] + cps[i+3][1]) )
+            svg_path.append(f'C {p1[0]} {p1[1]} {p2[0]} {p2[1]} {p3[0]} {p3[1]}')
+
+        # Hack the last three points
+        pt_beg   = ( (1/6) * (cps[-3][0] + 4*cps[-2][0] + cps[-1][0]), (1/6) * (cps[-3][1] + 4*cps[-2][1] + cps[-1][1]) )
+        pt_beg_d = ( (1/3) * (cps[-3][0] + 2*cps[-2][0]),              (1/3) * (cps[-3][1] + 2*cps[-2][1]) )
+        pt_mid_b = pt_beg[0] + (pt_beg[0] - pt_beg_d[0]), pt_beg[1] + (pt_beg[1] - pt_beg_d[1])
+        pt_end   = cps[-1]
+        pt_mid_e = (pt_end[0] + pt_mid_b[0])/2, (pt_end[1] + pt_mid_b[1])/2
+
+        svg_path.append(f'C {pt_mid_b[0]} {pt_mid_b[1]} {pt_mid_e[0]} {pt_mid_e[1]} {pt_end[0]} {pt_end[1]}')
+
+        return ' '.join(svg_path)
 
     #
     # segmentOctTree() - return a segment octree
