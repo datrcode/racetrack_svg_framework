@@ -23,7 +23,7 @@ import time
 import hdbscan
 import networkx as nx
 
-from math import pi, sin, cos
+from math import pi, sin, cos, ceil, floor
 
 from shapely.geometry import Polygon
 
@@ -475,7 +475,7 @@ class RTChordDiagramMixin(object):
                      link_arrow                 = 'subtle', # None, 'subtle', or 'sharp'
                      arrow_px                   = 16,       # arrow size in pixels
                      arrow_ratio                = 0.05,     # arrow size as a ratio of the radius
-                     link_style                 = 'narrow', # 'narrow' or 'wide'
+                     link_style                 = 'narrow', # 'narrow', 'wide', 'bundled'
                      min_link_size              = 0.8,      # for 'narrow', min link size
                      max_link_size              = 4.0,      # for 'narrow', max link size
                      # ------------------------------------ # small multiples config
@@ -569,6 +569,7 @@ class RTChordDiagramMixin(object):
             self.draw_border      = kwargs['draw_border']               # done!
             self.draw_background  = kwargs['draw_background']           # done!
             self.dendrogram_algorithm = kwargs['dendrogram_algorithm']
+            self.cluster_rings    = 7
             self.time_lu          = {}
 
             # Apply count-by transforms
@@ -876,7 +877,7 @@ class RTChordDiagramMixin(object):
             return ''.join(svg)
 
         #
-        # __renderEdges__(self) - render the edges
+        # __renderEdges_wide__(self) - render the edges (as large filled areas)
         #
         def __renderEdges_wide__(self, struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu):
             svg = []
@@ -933,7 +934,7 @@ class RTChordDiagramMixin(object):
             return ''.join(svg)
 
         #
-        # __renderEdges__(self) - render the edges
+        # __renderEdges_narrow__(self) - render the edges (links)
         #
         def __renderEdges_narrow__(self, struct_matches_render, fmto_lu, 
                                    local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
@@ -1013,6 +1014,164 @@ class RTChordDiagramMixin(object):
                         svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="{self.link_opacity}" stroke-width="{link_w}" fill="none" />')
                         #svg.append(f'<circle cx="{x_pull0}" cy="{y_pull0}" r="4" fill="none" stroke="{_link_color_}"/>') # debug - control points
                         #svg.append(f'<circle cx="{x_pull1}" cy="{y_pull1}" r="4" fill="none" stroke="{_link_color_}"/>') # debug - control points
+
+            return ''.join(svg)
+
+
+        #
+        # __renderEdges_bundled__(self) - render the edges (using the edge bundling from Holten 2006)
+        #
+        def __renderEdges_bundled__(self, struct_matches_render, fmto_lu, 
+                                    local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
+                                    fmto_color_lu):
+            svg = []
+
+            # Cluster the fm/to connections
+            fmto_fm_angle,     fmto_to_angle     = {}, {}
+            fmto_fm_angle_avg, fmto_to_angle_avg = {}, {}
+            fmto_fm_pos,       fmto_to_pos       = {}, {}
+            fmtos, fmtos_angles = [], []
+
+            for node in self.node_dir_arc.keys():
+                for _fm_ in self.node_dir_arc[node].keys():
+                    if node != _fm_: # just scan the fm -> to directions
+                        continue
+                    for _to_ in self.node_dir_arc[node][_fm_].keys():
+                        nbor = _fm_ if node != _fm_ else _to_
+                        a0, a1 = self.node_dir_arc[node][_fm_][_to_]                            
+                        b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
+                        link_w_perc = (self.node_dir_arc_ct[nbor][_fm_][_to_] - self.node_dir_arc_ct_min) / (self.node_dir_arc_ct_max - self.node_dir_arc_ct_min)
+                        if struct_matches_render == False:
+                            if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
+                                continue
+                            if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
+                                perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                link_w_perc *= perc
+                                a1   = a0 + perc * (a1 - a0)
+                                b1   = b0 + perc * (b1 - b0)
+                        a_avg, b_avg = (a0+a1)/2, (b0+b1)/2
+                        fmto_key = (_fm_,_to_)
+                        fmto_fm_angle[fmto_key], fmto_to_angle[fmto_key] = (a0,a1), (b0,b1)
+                        fmto_fm_angle_avg[fmto_key], fmto_to_angle_avg[fmto_key] = a_avg,b_avg
+                        fmtos.append(fmto_key),  fmtos_angles.append((a_avg,b_avg))
+                        fmto_fm_pos[fmto_key], fmto_to_pos[fmto_key] = (self.xTi(a_avg), self.yTi(a_avg)), (self.xTi(b_avg), self.yTi(b_avg))
+
+            clusterer = hdbscan.HDBSCAN()
+            clusterer.fit(fmtos_angles)
+            self.clusterer = clusterer
+
+            # Create the skeleton graph
+            last_fm_i_pos = None
+            last_to_i_pos = None
+            last_fm_i_avg = None
+            last_to_i_avg = None
+            fm_i_pos      = {}
+            to_i_pos      = {}
+            skeleton      = nx.Graph()
+            slt_as_np     = clusterer.single_linkage_tree_.to_numpy()
+            d, d_max      = 0.00, slt_as_np[-1][2]
+            d_inc         = d_max / self.cluster_rings
+            r, r_dec      = 1.0,  (1.0-0.1)/(floor(d_max/d_inc))
+            while d < d_max:
+                _labels_ = clusterer.single_linkage_tree_.get_clusters(d, min_cluster_size=1)
+
+                # Angles sum
+                fm_sum, to_sum, samples = {}, {}, {}
+                for i in range(len(_labels_)):
+                    _label_    = _labels_[i]
+                    fmto_key   = fmtos[i]
+                    _fm_, _to_ = fmto_key
+                    fm_angle, to_angle = fmto_fm_angle[fmto_key], fmto_to_angle[fmto_key]
+                    fm_sum[_label_], to_sum[_label_] = fm_sum.get(_label_, 0) + fm_angle[0] + fm_angle[1], to_sum.get(_label_, 0) + to_angle[0] + to_angle[1]
+                    samples[_label_] = samples.get(_label_, 0) + 2
+                fm_i_avg, to_i_avg, fm_i_pos, to_i_pos = {}, {}, {}, {}
+
+                # Angles average
+                to_deg = lambda angle: pi*angle/180.0
+                r_actual = self.r * r
+                svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="{r_actual}" stroke="#000000" stroke-width="0.2" fill="none" />')
+                for _label_ in set(_labels_):
+                    fm_avg, to_avg = fm_sum[_label_] / samples[_label_], to_sum[_label_] / samples[_label_]
+                    fm_pos = (self.cx + r_actual * cos(to_deg(fm_avg)), self.cy + r_actual * sin(to_deg(fm_avg)))
+                    to_pos = (self.cx + r_actual * cos(to_deg(to_avg)), self.cy + r_actual * sin(to_deg(to_avg)))
+                    svg.append(f'<circle cx="{fm_pos[0]}" cy="{fm_pos[1]}" r="3.0" stroke="#ff0000" fill="none" />')
+                    svg.append(f'<circle cx="{to_pos[0]}" cy="{to_pos[1]}" r="2.0" fill="#000000" />')
+                    for i in range(len(_labels_)):
+                        if _labels_[i] == _label_:
+                            fm_i_avg[i], to_i_avg[i], fm_i_pos[i], to_i_pos[i] = fm_avg, to_avg, fm_pos, to_pos
+                            if d == 0.0:
+                                fmto_key = fmtos[i]
+                                fmto_fm_pos[fmto_key], fmto_to_pos[fmto_key] = fm_pos, to_pos
+
+
+                # Add the edges to the skeleton
+                segment_added = set()
+                if last_fm_i_pos is not None:
+                    for i in range(len(_labels_)):
+                        _segment_ = (last_fm_i_pos[i], fm_i_pos[i])
+                        svg.append(f'<line x1="{_segment_[0][0]}" y1="{_segment_[0][1]}" x2="{_segment_[1][0]}" y2="{_segment_[1][1]}" stroke="#000000" />')
+                        if _segment_ not in segment_added:
+                            skeleton.add_edge(_segment_[0], _segment_[1], weight=self.rt_self.segmentLength(_segment_))
+                            segment_added.add(_segment_)
+                        _segment_ = (last_to_i_pos[i], to_i_pos[i])
+                        svg.append(f'<line x1="{_segment_[0][0]}" y1="{_segment_[0][1]}" x2="{_segment_[1][0]}" y2="{_segment_[1][1]}" stroke="#000000" />')
+                        if _segment_ not in segment_added:
+                            skeleton.add_edge(_segment_[0], _segment_[1], weight=self.rt_self.segmentLength(_segment_))
+                            segment_added.add(_segment_)
+
+                sec_last_fm_i_pos, sec_last_to_i_pos, sec_last_fm_i_avg, sec_last_to_i_avg = last_fm_i_pos, last_to_i_pos, last_fm_i_avg, last_to_i_avg
+                last_fm_i_pos, last_to_i_pos, last_fm_i_avg, last_to_i_avg = fm_i_pos, to_i_pos, fm_i_avg, to_i_avg
+                d, r = d + d_inc, r - r_dec
+            
+            # Connect the two rings together
+            for i in range(2):
+                if i == 0:
+                    fip, tip, fia, tia = sec_last_fm_i_pos, sec_last_to_i_pos, sec_last_fm_i_avg, sec_last_to_i_avg
+                else:
+                    fip, tip, fia, tia =     last_fm_i_pos,     last_to_i_pos,     last_fm_i_avg,     last_to_i_avg
+
+                seen, avg_to_pos, avgs = set(), {}, []
+                for j in fip.keys():
+                    pos, avg = fip[j], fia[j]
+                    if pos not in seen:
+                        avg_to_pos[avg] = pos
+                        avgs.append(avg)
+                        seen.add(pos)
+                for j in tip.keys():
+                    pos, avg = tip[j], tia[j]
+                    if pos not in seen:
+                        avg_to_pos[avg] = pos
+                        avgs.append(avg)
+                        seen.add(pos)
+
+                avgs.sort()
+                for j in range(len(avgs)):
+                    k = (j+1)%len(avgs)
+                    _segment_ = (avg_to_pos[avgs[j]], avg_to_pos[avgs[k]])
+                    skeleton.add_edge(_segment_[0], _segment_[1], weight=self.rt_self.segmentLength(_segment_))
+                    svg.append(f'<line x1="{_segment_[0][0]}" y1="{_segment_[0][1]}" x2="{_segment_[1][0]}" y2="{_segment_[1][1]}" stroke="#000000" />')
+
+            # Bundle the edges
+            for node in self.node_dir_arc.keys():
+                for _fm_ in self.node_dir_arc[node].keys():
+                    if node != _fm_: # just scan the fm -> to directions
+                        continue
+                    for _to_ in self.node_dir_arc[node][_fm_].keys():
+                        fmto_key = (_fm_,_to_)
+                        print(fmto_key)
+                        fm_pos   = fmto_fm_pos[fmto_key]
+                        to_pos   = fmto_to_pos[fmto_key]
+                        #_shortest_ = nx.shortest_path(fm_pos, to_pos, weight='weight')
+                        #print(len(_shortest_))
+
+            _saving_ = '''
+                        if self.link_color is None or self.color_by is None:
+                            _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
+                        elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                            _link_color_ = self.link_color
+                        else: # 'vary'
+                            _link_color_ = fmto_color_lu[_fm_][_to_]
+            '''
 
             return ''.join(svg)
 
@@ -1231,6 +1390,10 @@ class RTChordDiagramMixin(object):
                 svg.append(self.__renderEdges_narrow__(struct_matches_render, fmto_lu, 
                                                        local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
                                                        fmto_color_lu))
+            elif self.link_style == 'bundled':
+                svg.append(self.__renderEdges_bundled__(struct_matches_render, fmto_lu, 
+                                                        local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
+                                                        fmto_color_lu))
             else:
                 raise Exception(f'RTChordDiagram.renderSVG() -- unknown link_style "{self.link_style}"')
             self.time_lu['render_links'] = time.time() - _ts_

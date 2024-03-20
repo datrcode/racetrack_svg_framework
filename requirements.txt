@@ -1,4 +1,5 @@
 geopandas
+hdbscan
 jupyter_bokeh
 networkx
 numpy
