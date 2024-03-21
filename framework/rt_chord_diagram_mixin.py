@@ -1017,43 +1017,11 @@ class RTChordDiagramMixin(object):
 
             return ''.join(svg)
 
-
         #
-        # __renderEdges_bundled__(self) - render the edges (using the edge bundling from Holten 2006)
+        # __renderEdges_createSkeletonHDBSCAN__() - create the skeleton graph using the hdbscan clustering algorithm
         #
-        def __renderEdges_bundled__(self, struct_matches_render, fmto_lu, 
-                                    local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
-                                    fmto_color_lu):
-            svg, skeleton_svg = [], []
-
-            # Cluster the fm/to connections
-            fmto_fm_angle,     fmto_to_angle     = {}, {}
-            fmto_fm_angle_avg, fmto_to_angle_avg = {}, {}
-            fmto_fm_pos,       fmto_to_pos       = {}, {}
-            fmtos, fmtos_angles = [], []
-
-            for node in self.node_dir_arc.keys():
-                for _fm_ in self.node_dir_arc[node].keys():
-                    if node != _fm_: # just scan the fm -> to directions
-                        continue
-                    for _to_ in self.node_dir_arc[node][_fm_].keys():
-                        nbor = _fm_ if node != _fm_ else _to_
-                        a0, a1 = self.node_dir_arc[node][_fm_][_to_]                            
-                        b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
-                        link_w_perc = (self.node_dir_arc_ct[nbor][_fm_][_to_] - self.node_dir_arc_ct_min) / (self.node_dir_arc_ct_max - self.node_dir_arc_ct_min)
-                        if struct_matches_render == False:
-                            if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
-                                continue
-                            if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
-                                perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
-                                link_w_perc *= perc
-                                a1   = a0 + perc * (a1 - a0)
-                                b1   = b0 + perc * (b1 - b0)
-                        a_avg, b_avg = (a0+a1)/2, (b0+b1)/2
-                        fmto_key = (_fm_,_to_)
-                        fmto_fm_angle[fmto_key], fmto_to_angle[fmto_key] = (a0,a1), (b0,b1)
-                        fmto_fm_angle_avg[fmto_key], fmto_to_angle_avg[fmto_key] = a_avg,b_avg
-                        fmtos.append(fmto_key),  fmtos_angles.append((a_avg,b_avg))
+        def __renderEdges_createSkeletonHDBSCAN__(self, fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos):
+            skeleton_svg = []
 
             clusterer = hdbscan.HDBSCAN()
             clusterer.fit(fmtos_angles)
@@ -1147,7 +1115,48 @@ class RTChordDiagramMixin(object):
 
                 last_fm_i_pos, last_to_i_pos, last_fm_i_avg, last_to_i_avg = fm_i_pos, to_i_pos, fm_i_avg, to_i_avg
                 d, r, ring = d + d_inc, r - r_dec, ring + 1
-            
+    
+            return skeleton, skeleton_svg
+        #
+        # __renderEdges_bundled__(self) - render the edges (using the edge bundling from Holten 2006)
+        #
+        def __renderEdges_bundled__(self, struct_matches_render, fmto_lu, 
+                                    local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
+                                    fmto_color_lu):
+            svg, skeleton_svg = [], []
+
+            # Cluster the fm/to connections
+            fmto_fm_angle,     fmto_to_angle     = {}, {}
+            fmto_fm_angle_avg, fmto_to_angle_avg = {}, {}
+            fmto_fm_pos,       fmto_to_pos       = {}, {}
+            fmtos, fmtos_angles = [], []
+
+            for node in self.node_dir_arc.keys():
+                for _fm_ in self.node_dir_arc[node].keys():
+                    if node != _fm_: # just scan the fm -> to directions
+                        continue
+                    for _to_ in self.node_dir_arc[node][_fm_].keys():
+                        nbor = _fm_ if node != _fm_ else _to_
+                        a0, a1 = self.node_dir_arc[node][_fm_][_to_]                            
+                        b0, b1 = self.node_dir_arc[nbor][_fm_][_to_]
+                        link_w_perc = (self.node_dir_arc_ct[nbor][_fm_][_to_] - self.node_dir_arc_ct_min) / (self.node_dir_arc_ct_max - self.node_dir_arc_ct_min)
+                        if struct_matches_render == False:
+                            if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
+                                continue
+                            if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
+                                perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                link_w_perc *= perc
+                                a1   = a0 + perc * (a1 - a0)
+                                b1   = b0 + perc * (b1 - b0)
+                        a_avg, b_avg = (a0+a1)/2, (b0+b1)/2
+                        fmto_key = (_fm_,_to_)
+                        fmto_fm_angle[fmto_key], fmto_to_angle[fmto_key] = (a0,a1), (b0,b1)
+                        fmto_fm_angle_avg[fmto_key], fmto_to_angle_avg[fmto_key] = a_avg,b_avg
+                        fmtos.append(fmto_key),  fmtos_angles.append((a_avg,b_avg))
+
+            # Skeleton option
+            skeleton, skeleton_svg = self.__renderEdges_createSkeletonHDBSCAN__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+
             # Bundle the edges
             for node in self.node_dir_arc.keys():
                 for _fm_ in self.node_dir_arc[node].keys():
