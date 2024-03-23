@@ -455,44 +455,46 @@ class RTChordDiagramMixin(object):
     # Make the SVG for a chord diagram.
     #    
     def chordDiagram(self,
-                     df,                                    # dataframe to render
-                     relationships,                         # same convention as linknode [('fm','to')]
-                     # ------------------------------------ # everything else is a default...
-                     color_by                   = None,     # none (default) or field name (note that node_color or link_color needs to be 'vary')
-                     count_by                   = None,     # none means just count rows, otherwise, use a field to sum by
-                     count_by_set               = False,    # count by summation (by default)... count_by column is checked
-                     widget_id                  = None,     # naming the svg elements                 
-                     # ----------------------------- # node options
-                     node_color                 = None,     # none means color by node name, 'vary' by color_by, or specific color "#xxxxxx"
-                     node_h                     = 10,       # height of node from circle edge
-                     node_gap                   = 5,        # node gap in pixels (gap between the arcs)
-                     order                      = None,     # override calculated ordering...
-                     label_only                 = set(),    # label only set
-                     equal_size_nodes           = False,    # equal size nodes
-                     # ------------------------------------ # link options
-                     link_color                 = None,     # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
-                     link_opacity               = 0.5,      # link opacity
-                     link_arrow                 = 'subtle', # None, 'subtle', or 'sharp'
-                     arrow_px                   = 16,       # arrow size in pixels
-                     arrow_ratio                = 0.05,     # arrow size as a ratio of the radius
-                     link_style                 = 'narrow', # 'narrow', 'wide', 'bundled'
-                     min_link_size              = 0.8,      # for 'narrow', min link size
-                     max_link_size              = 4.0,      # for 'narrow', max link size
-                     # ------------------------------------ # small multiples config
-                     structure_template         = None,     # existing RTChordDiagram() ... e.g., for small multiples
-                     dendrogram_algorithm       = None,     # 'original', 'hdbscan', or None
-                     # ------------------------------------ # visualization geometry / etc.
-                     track_state                = False,    # track state for interactive filtering
-                     x_view                     = 0,        # x offset for the view
-                     y_view                     = 0,        # y offset for the view
-                     w                          = 256,      # width of the view
-                     h                          = 256,      # height of the view
+                     df,                                         # dataframe to render
+                     relationships,                              # same convention as linknode [('fm','to')]
+                     # ----------------------------------------- # everything else is a default...
+                     color_by                   = None,          # none (default) or field name (note that node_color or link_color needs to be 'vary')
+                     count_by                   = None,          # none means just count rows, otherwise, use a field to sum by
+                     count_by_set               = False,         # count by summation (by default)... count_by column is checked
+                     widget_id                  = None,          # naming the svg elements                 
+                     # ----------------------------------------- # node options
+                     node_color                 = None,          # none means color by node name, 'vary' by color_by, or specific color "#xxxxxx"
+                     node_h                     = 10,            # height of node from circle edge
+                     node_gap                   = 5,             # node gap in pixels (gap between the arcs)
+                     order                      = None,          # override calculated ordering...
+                     label_only                 = set(),         # label only set
+                     equal_size_nodes           = False,         # equal size nodes
+                     # ----------------------------------------- # link options
+                     link_color                 = None,          # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
+                     link_opacity               = 0.5,           # link opacity
+                     link_arrow                 = 'subtle',      # None, 'subtle', or 'sharp'
+                     arrow_px                   = 16,            # arrow size in pixels
+                     arrow_ratio                = 0.05,          # arrow size as a ratio of the radius
+                     link_style                 = 'narrow',      # 'narrow', 'wide', 'bundled'
+                     min_link_size              = 0.8,           # for 'narrow', min link size
+                     max_link_size              = 4.0,           # for 'narrow', max link size
+                     # ----------------------------------------- # small multiples config
+                     structure_template         = None,          # existing RTChordDiagram() ... e.g., for small multiples
+                     dendrogram_algorithm       = None,          # 'original', 'hdbscan', or None
+                     skeleton_algorithm         = 'hexagonal',   # 'hexagonal', 'hdbscan', 'simple'
+                     skeleton_rings             = 7,             # number of rings
+                     # ----------------------------------------- # visualization geometry / etc.
+                     track_state                = False,         # track state for interactive filtering
+                     x_view                     = 0,             # x offset for the view
+                     y_view                     = 0,             # y offset for the view
+                     w                          = 256,           # width of the view
+                     h                          = 256,           # height of the view
                      x_ins                      = 3,
                      y_ins                      = 3,
-                     txt_h                      = 10,       # text height for labeling
-                     draw_labels                = False,    # draw labels flag # not implemented yet
-                     draw_border                = True,     # draw a border around the graph
-                     draw_background            = False):   # useful to turn off in small multiples settings
+                     txt_h                      = 10,            # text height for labeling
+                     draw_labels                = False,         # draw labels flag # not implemented yet
+                     draw_border                = True,          # draw a border around the graph
+                     draw_background            = False):        # useful to turn off in small multiples settings
 
         _params_ = locals().copy()
         _params_.pop('self')
@@ -533,44 +535,45 @@ class RTChordDiagramMixin(object):
         def __init__(self,
                      rt_self,
                      **kwargs):
-            self.parms            = locals().copy()
-            self.rt_self          = rt_self
-            self.df               = rt_self.copyDataFrame(kwargs['df']) # still needs polars!
-            self.relationships    = kwargs['relationships']             # done!
-            self.color_by         = kwargs['color_by']                  # done! (nothing to handle)
-            self.count_by         = kwargs['count_by']                  # done!
-            self.count_by_set     = kwargs['count_by_set']              # done!
-            self.widget_id        = kwargs['widget_id']                 # done!
+            self.parms                  = locals().copy()
+            self.rt_self                = rt_self
+            self.df                     = rt_self.copyDataFrame(kwargs['df']) # still needs polars!
+            self.relationships          = kwargs['relationships']             # done!
+            self.color_by               = kwargs['color_by']                  # done! (nothing to handle)
+            self.count_by               = kwargs['count_by']                  # done!
+            self.count_by_set           = kwargs['count_by_set']              # done!
+            self.widget_id              = kwargs['widget_id']                 # done!
             if self.widget_id is None:
                 self.widget_id = 'chorddiagram_' + str(random.randint(0,8*65535))          
-            self.node_color       = kwargs['node_color']                # done! (maybe)
-            self.node_h           = kwargs['node_h']                    # done!
-            self.node_gap         = kwargs['node_gap']                  # done!
-            self.order            = kwargs['order']                     # done!
-            self.label_only       = kwargs['label_only']                # done!
-            self.equal_size_nodes = kwargs['equal_size_nodes']          # done! (needs testing)
-            self.link_color       = kwargs['link_color']                # done!
-            self.link_opacity     = kwargs['link_opacity']              # done!
-            self.link_arrow       = kwargs['link_arrow']                # done!
-            self.arrow_px         = kwargs['arrow_px']                  # done!
-            self.arrow_ratio      = kwargs['arrow_ratio']               # done!
-            self.link_style       = kwargs['link_style']                # done!
-            self.min_link_size    = kwargs['min_link_size']             # done!
-            self.max_link_size    = kwargs['max_link_size']             # done!
-            self.track_state      = kwargs['track_state']               # <--- still needs to be done
-            self.x_view           = kwargs['x_view']                    # n/a
-            self.y_view           = kwargs['y_view']                    # n/a
-            self.w                = kwargs['w']                         # n/a
-            self.h                = kwargs['h']                         # n/a
-            self.x_ins            = kwargs['x_ins']                     # n/a
-            self.y_ins            = kwargs['y_ins']                     # n/a
-            self.txt_h            = kwargs['txt_h']                     # done!
-            self.draw_labels      = kwargs['draw_labels']               # done!
-            self.draw_border      = kwargs['draw_border']               # done!
-            self.draw_background  = kwargs['draw_background']           # done!
-            self.dendrogram_algorithm = kwargs['dendrogram_algorithm']
-            self.cluster_rings    = 7
-            self.time_lu          = {}
+            self.node_color             = kwargs['node_color']                # done! (maybe)
+            self.node_h                 = kwargs['node_h']                    # done!
+            self.node_gap               = kwargs['node_gap']                  # done!
+            self.order                  = kwargs['order']                     # done!
+            self.label_only             = kwargs['label_only']                # done!
+            self.equal_size_nodes       = kwargs['equal_size_nodes']          # done! (needs testing)
+            self.link_color             = kwargs['link_color']                # done!
+            self.link_opacity           = kwargs['link_opacity']              # done!
+            self.link_arrow             = kwargs['link_arrow']                # done!
+            self.arrow_px               = kwargs['arrow_px']                  # done!
+            self.arrow_ratio            = kwargs['arrow_ratio']               # done!
+            self.link_style             = kwargs['link_style']                # done!
+            self.min_link_size          = kwargs['min_link_size']             # done!
+            self.max_link_size          = kwargs['max_link_size']             # done!
+            self.track_state            = kwargs['track_state']               # <--- still needs to be done
+            self.x_view                 = kwargs['x_view']                    # n/a
+            self.y_view                 = kwargs['y_view']                    # n/a
+            self.w                      = kwargs['w']                         # n/a
+            self.h                      = kwargs['h']                         # n/a
+            self.x_ins                  = kwargs['x_ins']                     # n/a
+            self.y_ins                  = kwargs['y_ins']                     # n/a
+            self.txt_h                  = kwargs['txt_h']                     # done!
+            self.draw_labels            = kwargs['draw_labels']               # done!
+            self.draw_border            = kwargs['draw_border']               # done!
+            self.draw_background        = kwargs['draw_background']           # done!
+            self.dendrogram_algorithm   = kwargs['dendrogram_algorithm']
+            self.skeleton_algorithm     = kwargs['skeleton_algorithm']
+            self.skeleton_rings         = kwargs['skeleton_rings']
+            self.time_lu                = {}
 
             # Apply count-by transforms
             _ts_ = time.time()
@@ -1018,6 +1021,72 @@ class RTChordDiagramMixin(object):
             return ''.join(svg)
 
         #
+        # __renderEdges_createSkeletonSimple__() - create the skeleton graph using a simple pattern
+        #
+        def __renderEdges_createSkeletonSimple__(self, fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos):
+            skeleton_svg, skeleton = [], nx.Graph()
+
+            # Assumption here about the number of rings ... 
+            ring_to_angle_to_pos    = {}
+            ring_to_angle_to_pos[2] = {}
+            ring_to_angle_to_pos[4] = {}
+
+            to_deg = lambda angle: pi*angle/180.0
+            for i in range(len(fmtos)):
+                _fmto_                         = fmtos[i]
+                _fm_, _to_                     = _fmto_
+                _fm_avg_angle_, _to_avg_angle_ = fmtos_angles[i]
+                _fm_angles_,    _to_angles_    = fmto_fm_angle[_fmto_], fmto_to_angle[_fmto_]
+                last_fm_pos,    last_to_pos    = None, None
+                for _ring_ in range(self.skeleton_rings):
+                    _ring_r_ = self.r * _ring_ / (self.skeleton_rings - 1)
+                    if i == 0:
+                        skeleton_svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="{_ring_r_}" fill="none" stroke="#a0a0a0" stroke-width="0.2" />')
+
+                    fmto_fm_x = self.cx + _ring_r_*cos(to_deg(_fm_avg_angle_))
+                    fmto_fm_y = self.cy + _ring_r_*sin(to_deg(_fm_avg_angle_))
+                    fm_pos    = (fmto_fm_x,fmto_fm_y)
+                    if _ring_ in ring_to_angle_to_pos:
+                        ring_to_angle_to_pos[_ring_][_fm_avg_angle_] = fm_pos
+
+                    fmto_to_x = self.cx + _ring_r_*cos(to_deg(_to_avg_angle_))
+                    fmto_to_y = self.cy + _ring_r_*sin(to_deg(_to_avg_angle_))
+                    to_pos    = (fmto_to_x,fmto_to_y)
+                    if _ring_ in ring_to_angle_to_pos:
+                        ring_to_angle_to_pos[_ring_][_to_avg_angle_] = to_pos
+
+                    if last_fm_pos is not None:
+                        skeleton.add_edge(last_fm_pos, fm_pos, weight=self.rt_self.segmentLength((last_fm_pos, fm_pos)))
+                        skeleton.add_edge(last_to_pos, to_pos, weight=self.rt_self.segmentLength((last_to_pos, to_pos)))
+                        skeleton_svg.append('<line x1="{0}" y1="{1}" x2="{2}" y2="{3}" stroke="black" stroke-width="0.1" />'.format(last_fm_pos[0], last_fm_pos[1], fm_pos[0], fm_pos[1]))
+                        skeleton_svg.append('<line x1="{0}" y1="{1}" x2="{2}" y2="{3}" stroke="black" stroke-width="0.1" />'.format(last_to_pos[0], last_to_pos[1], to_pos[0], to_pos[1]))
+
+                    if _ring_ == (self.skeleton_rings-1):
+                        fmto_fm_pos[_fmto_] = fm_pos 
+                        fmto_to_pos[_fmto_] = to_pos
+                    
+                    last_fm_pos, last_to_pos = fm_pos, to_pos
+            
+            # Create the rings
+            for _ring_ in ring_to_angle_to_pos.keys():
+                sorter = sorted(ring_to_angle_to_pos[_ring_].keys())
+                for i in range(len(sorter)):
+                    j  = (i+1)%len(sorter)
+                    p0 = ring_to_angle_to_pos[_ring_][sorter[i]]
+                    p1 = ring_to_angle_to_pos[_ring_][sorter[j]]
+                    skeleton.add_edge(p0, p1, weight=self.rt_self.segmentLength((p0, p1)))
+                    skeleton_svg.append('<line x1="{0}" y1="{1}" x2="{2}" y2="{3}" stroke="black" stroke-width="0.1" />'.format(p0[0], p0[1], p1[0], p1[1]))
+            return skeleton, skeleton_svg
+
+        #
+        # __renderEdges_createSkeletonHexagonal__() - create the skeleton graph using a honeycomb like structure
+        #
+        def __renderEdges_createSkeletonHexagonal__(self, fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos):
+            skeleton_svg, skeleton = [], nx.Graph()
+            skeleton, _throwaway_ = self.__renderEdges_createSkeletonSimple__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+            return skeleton, skeleton_svg
+
+        #
         # __renderEdges_createSkeletonHDBSCAN__() - create the skeleton graph using the hdbscan clustering algorithm
         #
         def __renderEdges_createSkeletonHDBSCAN__(self, fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos):
@@ -1059,7 +1128,7 @@ class RTChordDiagramMixin(object):
 
             slt_as_np      = clusterer.single_linkage_tree_.to_numpy()
             d, d_max       = 0.00, slt_as_np[-1][2]
-            d_inc          = d_max / self.cluster_rings
+            d_inc          = d_max / self.skeleton_rings
             r, r_dec, ring = 1.0,  (1.0-0.1)/(floor(d_max/d_inc)), 0
             while d < d_max:
                 _labels_ = clusterer.single_linkage_tree_.get_clusters(d, min_cluster_size=1)
@@ -1110,7 +1179,7 @@ class RTChordDiagramMixin(object):
                             segment_added.add(_segment_)
 
                 # Connect certain rings rotationally...
-                if ring == 3 or ring == (self.cluster_rings-2) or ring == (self.cluster_rings-1):
+                if ring == 3 or ring == (self.skeleton_rings-2) or ring == (self.skeleton_rings-1):
                     __connectRing__(last_fm_i_pos, last_to_i_pos, last_fm_i_avg, last_to_i_avg)
 
                 last_fm_i_pos, last_to_i_pos, last_fm_i_avg, last_to_i_avg = fm_i_pos, to_i_pos, fm_i_avg, to_i_avg
@@ -1155,7 +1224,14 @@ class RTChordDiagramMixin(object):
                         fmtos.append(fmto_key),  fmtos_angles.append((a_avg,b_avg))
 
             # Skeleton option
-            skeleton, skeleton_svg = self.__renderEdges_createSkeletonHDBSCAN__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+            if   self.skeleton_algorithm == 'hdbscan':
+                skeleton, skeleton_svg = self.__renderEdges_createSkeletonHDBSCAN__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+            elif self.skeleton_algorithm == 'hexagonal':
+                skeleton, skeleton_svg = self.__renderEdges_createSkeletonHDBSCAN__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+            elif self.skeleton_algorithm == 'simple':
+                skeleton, skeleton_svg = self.__renderEdges_createSkeletonSimple__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+            else:
+                raise Exception('RTChordDiagram.__renderEdges_bundled__() - only skeleton_methodology supported are "hdbscan", "simple", or "hexagonal"')
 
             # Bundle the edges
             for node in self.node_dir_arc.keys():
