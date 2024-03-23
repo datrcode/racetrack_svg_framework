@@ -478,6 +478,8 @@ class RTChordDiagramMixin(object):
                      link_style                 = 'narrow',      # 'narrow', 'wide', 'bundled'
                      min_link_size              = 0.8,           # for 'narrow', min link size
                      max_link_size              = 4.0,           # for 'narrow', max link size
+                     global_min                 = None,          # for small multiples, this is the largest across all of the variations
+                     global_max                 = None,          # for small multiples, this is the smallest across all of the variations
                      # ----------------------------------------- # small multiples config
                      structure_template         = None,          # existing RTChordDiagram() ... e.g., for small multiples
                      dendrogram_algorithm       = None,          # 'original', 'hdbscan', or None
@@ -559,6 +561,8 @@ class RTChordDiagramMixin(object):
             self.link_style             = kwargs['link_style']                # done!
             self.min_link_size          = kwargs['min_link_size']             # done!
             self.max_link_size          = kwargs['max_link_size']             # done!
+            self.global_max             = kwargs['global_max']                # done!
+            self.global_min             = kwargs['global_min']                # done!
             self.track_state            = kwargs['track_state']               # <--- still needs to be done
             self.x_view                 = kwargs['x_view']                    # n/a
             self.y_view                 = kwargs['y_view']                    # n/a
@@ -1477,7 +1481,7 @@ class RTChordDiagramMixin(object):
             local_dir_arc_ct_min, local_dir_arc_ct_max = None, None
             self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = None, None
 
-            if self.node_to_arc is None or self.node_dir_arc is None or self.node_to_arc_ct is None or self.node_dir_arc_ct is None:
+            if just_calc_max == False and (self.node_to_arc is None or self.node_dir_arc is None or self.node_to_arc_ct is None or self.node_dir_arc_ct is None):
                 self.node_to_arc,    self.node_dir_arc    = {}, {}
                 self.node_to_arc_ct, self.node_dir_arc_ct = {}, {} # counts for the info... for small multiples
                 if self.equal_size_nodes:
@@ -1487,7 +1491,6 @@ class RTChordDiagramMixin(object):
                 struct_matches_render = True   # to faciliate faster rendering
             else:
                 local_dir_arc_ct = {}
-                local_dir_arc_ct_min, local_dir_arc_ct_max = None, None
                 for i in range(len(self.order)):
                     node = self.order[i]
                     local_dir_arc_ct[node] = {}
@@ -1516,6 +1519,12 @@ class RTChordDiagramMixin(object):
                 struct_matches_render = False  # adjusts rendering based on another diagrams structure
 
             self.time_lu['calc_node_arcs'] = time.time() - _ts_
+
+            # return mins and maxes
+            if just_calc_max:
+                return local_dir_arc_ct_min, local_dir_arc_ct_max
+            elif self.global_max is not None:
+                self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = self.global_min, self.global_max
 
             # Avoid div by zero later...
             if   self.node_dir_arc_ct_min is None:

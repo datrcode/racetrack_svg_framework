@@ -318,7 +318,7 @@ class RTSmallMultiplesMixin(object):
                 most_params['use_pos_for_bounds'] = True
             
             #
-            # chordDiagram
+            # chordDiagram - x-axis is considered the ordering of the nodes (the y-axis -- in the next block, is the width of the lines/connections)
             #
             if sm_type == 'chordDiagram' and x_axis_independent == False:
                 most_params['structure_template'] = self.chordDiagram(df, sm_params['relationships'])
@@ -326,7 +326,7 @@ class RTSmallMultiplesMixin(object):
             #
             # histogram/periodicBarChart/temporalBarChart/boxplot and y-axis
             #
-            if y_axis_independent == False and (sm_type == 'histogram' or sm_type == 'periodicBarChart' or sm_type == 'temporalBarChart' or sm_type == 'boxplot' or sm_type == 'choroplethMap'):
+            if y_axis_independent == False and (sm_type == 'histogram' or sm_type == 'periodicBarChart' or sm_type == 'temporalBarChart' or sm_type == 'boxplot' or sm_type == 'choroplethMap' or sm_type == 'chordDiagram'):
                 global_min,global_max = None,None
 
                 if max_categories is None:
