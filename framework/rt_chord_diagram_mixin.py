@@ -23,7 +23,7 @@ import time
 import hdbscan
 import networkx as nx
 
-from math import pi, sin, cos, ceil, floor
+from math import pi, sin, cos, ceil, floor, sqrt
 
 from shapely.geometry import Polygon
 
@@ -1076,6 +1076,7 @@ class RTChordDiagramMixin(object):
                     p1 = ring_to_angle_to_pos[_ring_][sorter[j]]
                     skeleton.add_edge(p0, p1, weight=self.rt_self.segmentLength((p0, p1)))
                     skeleton_svg.append('<line x1="{0}" y1="{1}" x2="{2}" y2="{3}" stroke="black" stroke-width="0.1" />'.format(p0[0], p0[1], p1[0], p1[1]))
+
             return skeleton, skeleton_svg
 
         #
@@ -1083,7 +1084,86 @@ class RTChordDiagramMixin(object):
         #
         def __renderEdges_createSkeletonHexagonal__(self, fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos):
             skeleton_svg, skeleton = [], nx.Graph()
-            skeleton, _throwaway_ = self.__renderEdges_createSkeletonSimple__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+
+            def pointsToPath(points):
+                p = 'M '+str(points[0][0])+','+str(points[0][1])
+                for i in range(1,len(points)):
+                    p += ' L '+str(points[i][0])+','+str(points[i][1])
+                return p
+
+            def xDigitPrecision(_tuples_, precision=3):
+                return [(round(_t_[0],precision),round(_t_[1],precision)) for _t_ in _tuples_]
+
+            # Geometrical variables
+            r_div  = self.skeleton_rings # Overload the value for this purpose
+            hx_e   = self.r/r_div
+            hx_h   = sqrt(hx_e**2 - (hx_e/2)**2)
+            hx_p   = lambda x,y: f"M {x} {y} m {-hx_e} {0} l {hx_e/2} {hx_h} l {hx_e} {0} l {hx_e/2} {-hx_h} l {-hx_e/2} {-hx_h} l {-hx_e} {0} l {-hx_e/2} {hx_h}"
+            hx_pos = lambda x,y: [(x-hx_e, y), (x-hx_e/2, y+hx_h), (x+hx_e/2, y+hx_h), (x+hx_e, y), (x+hx_e/2, y-hx_h), (x-hx_e/2, y-hx_h), (x-hx_e, y)]
+            adj_r  = self.r - self.node_h
+
+            # Create the skeleton graph
+            points, exists = set(), set()
+            skeleton_svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="{self.r}" fill="none" stroke="#a0a0a0" />')
+            skeleton_svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="2" fill="#ff0000" stroke="#ff0000" />')
+            for j in range(r_div):
+                y_shift = hx_h if (j%2)==0 else 0.0
+                for i in range(r_div):
+                    for pnx in [-1, 1]:
+                        for pny in [-1, 1]:
+                            x,y = self.cx+pnx*hx_e*1.5*(j),self.cy+y_shift+pny*2*hx_h*(i)
+                            pts = xDigitPrecision(hx_pos(x,y))
+                            for _edge_ in zip(pts,pts[1:]):
+                                if self.rt_self.segmentLength((_edge_[0], (self.cx, self.cy))) < adj_r * 0.9 and \
+                                   self.rt_self.segmentLength((_edge_[1], (self.cx, self.cy))) < adj_r * 0.9 and \
+                                   _edge_ not in exists:
+                                    skeleton_svg.append(f'<path d="{pointsToPath(_edge_)}" fill="none" stroke="#ff0000" stroke-width="0.4" />')
+                                    skeleton.add_edge(_edge_[0], _edge_[1], weight=self.rt_self.segmentLength((_edge_[0], _edge_[1])))
+                                    exists.add(_edge_), exists.add((_edge_[1], _edge_[0]))
+                                    points.add(_edge_[0]), points.add(_edge_[1])
+                            for _pt_ in pts:
+                                if self.rt_self.segmentLength((_pt_, (self.cx, self.cy))) < adj_r * 0.9:
+                                    skeleton_svg.append(f'<line x1="{_pt_[0]}" y1="{_pt_[1]}" x2="{x}" y2="{y}" stroke="#ff0000" stroke-width="0.1" />')
+                                    skeleton.add_edge(_pt_, (x, y), weight=self.rt_self.segmentLength((_pt_, (x, y))))
+
+            # Create the quad tree
+            q_tree = self.rt_self.xyQuadTree((0.0, 0.0, self.w, self.h), max_pts_per_node=16)
+            q_tree.add(points)
+            to_deg = lambda angle: pi*angle/180.0
+            for i in range(len(fmtos)):
+                _fmto_                         = fmtos[i]
+                _fm_avg_angle_, _to_avg_angle_ = fmtos_angles[i]
+
+                fm_pos              = (self.cx + adj_r*cos(to_deg(_fm_avg_angle_)), self.cy + adj_r*sin(to_deg(_fm_avg_angle_)))
+                fmto_fm_pos[_fmto_] = fm_pos
+                _closest_           = q_tree.closest(fm_pos, n=3)
+                _choice_            = 0
+                skeleton.add_edge(fm_pos, _closest_[_choice_][1], weight=self.rt_self.segmentLength((fm_pos, _closest_[_choice_][1])))
+                skeleton_svg.append(f'<line x1="{_closest_[_choice_][1][0]}" y1="{_closest_[_choice_][1][1]}" x2="{fm_pos[0]}" y2="{fm_pos[1]}" stroke="#ff0000" stroke-width="0.4" />')
+
+                to_pos              = (self.cx + adj_r*cos(to_deg(_to_avg_angle_)), self.cy + adj_r*sin(to_deg(_to_avg_angle_)))
+                fmto_to_pos[_fmto_] = to_pos
+                _closest_           = q_tree.closest(to_pos, n=3)
+                _choice_            = 0
+                skeleton.add_edge(to_pos, _closest_[_choice_][1], weight=self.rt_self.segmentLength((to_pos, _closest_[_choice_][1])))
+                skeleton_svg.append(f'<line x1="{_closest_[_choice_][1][0]}" y1="{_closest_[_choice_][1][1]}" x2="{to_pos[0]}" y2="{to_pos[1]}" stroke="#000000" stroke-width="0.4" />')
+
+            to_found, not_to_found = 0, 0
+            fm_found, not_fm_found = 0, 0
+            for i in range(len(fmtos)):
+                _fmto_ = fmtos[i]
+                if fmto_to_pos[_fmto_] in skeleton:
+                    to_found += 1
+                else:
+                    not_to_found += 1
+                if fmto_fm_pos[_fmto_] in skeleton:
+                    fm_found += 1
+                else:
+                    not_fm_found += 1
+            print(f'to_found={to_found}, not_to_found={not_to_found}, fm_found={fm_found}, not_fm_found={not_fm_found}')
+
+            # skeleton, _throwaway_ = self.__renderEdges_createSkeletonSimple__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+
             return skeleton, skeleton_svg
 
         #
@@ -1181,6 +1261,22 @@ class RTChordDiagramMixin(object):
                 # Connect certain rings rotationally...
                 if ring == 3 or ring == (self.skeleton_rings-2) or ring == (self.skeleton_rings-1):
                     __connectRing__(last_fm_i_pos, last_to_i_pos, last_fm_i_avg, last_to_i_avg)
+                
+                # Connect the most inside ring to the center point
+                if ring == (self.skeleton_rings-1):
+                    for i in range(len(_labels_)):
+                        _segment_ = ((self.cx,self.cy), fm_i_pos[i])
+                        skeleton_svg.append(f'<line x1="{_segment_[0][0]}" y1="{_segment_[0][1]}" x2="{_segment_[1][0]}" y2="{_segment_[1][1]}" stroke="#000000" stroke-width="0.2" />') # debug
+                        if _segment_ not in segment_added:
+                            skeleton.add_edge(_segment_[0], _segment_[1], weight=self.rt_self.segmentLength(_segment_))
+                            segment_added.add(_segment_)
+                        _segment_ = ((self.cx,self.cy), to_i_pos[i])
+                        skeleton_svg.append(f'<line x1="{_segment_[0][0]}" y1="{_segment_[0][1]}" x2="{_segment_[1][0]}" y2="{_segment_[1][1]}" stroke="#000000" stroke-width="0.2" />') # debug
+                        if _segment_ not in segment_added:
+                            skeleton.add_edge(_segment_[0], _segment_[1], weight=self.rt_self.segmentLength(_segment_))
+                            segment_added.add(_segment_)
+
+                        
 
                 last_fm_i_pos, last_to_i_pos, last_fm_i_avg, last_to_i_avg = fm_i_pos, to_i_pos, fm_i_avg, to_i_avg
                 d, r, ring = d + d_inc, r - r_dec, ring + 1
@@ -1225,11 +1321,11 @@ class RTChordDiagramMixin(object):
 
             # Skeleton option
             if   self.skeleton_algorithm == 'hdbscan':
-                skeleton, skeleton_svg = self.__renderEdges_createSkeletonHDBSCAN__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                skeleton, skeleton_svg = self.__renderEdges_createSkeletonHDBSCAN__   (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
             elif self.skeleton_algorithm == 'hexagonal':
-                skeleton, skeleton_svg = self.__renderEdges_createSkeletonHDBSCAN__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                skeleton, skeleton_svg = self.__renderEdges_createSkeletonHexagonal__ (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
             elif self.skeleton_algorithm == 'simple':
-                skeleton, skeleton_svg = self.__renderEdges_createSkeletonSimple__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                skeleton, skeleton_svg = self.__renderEdges_createSkeletonSimple__    (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
             else:
                 raise Exception('RTChordDiagram.__renderEdges_bundled__() - only skeleton_methodology supported are "hdbscan", "simple", or "hexagonal"')
 
