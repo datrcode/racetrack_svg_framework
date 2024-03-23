@@ -470,9 +470,9 @@ class RTChordDiagramMixin(object):
                      label_only                 = set(),         # label only set
                      equal_size_nodes           = False,         # equal size nodes
                      # ----------------------------------------- # link options
-                     link_color                 = None,          # none means color by source node name, 'vary' by color_by, or specific color "#xxxxxx"
+                     link_color                 = None,          # none means color by source node name, 'vary' by color_by, 'shade_fm_to' to match the hierarchical bundle paper (expensive), or specific color "#xxxxxx"
                      link_opacity               = 0.5,           # link opacity
-                     link_arrow                 = 'subtle',      # None, 'subtle', or 'sharp'
+                     link_arrow                 = 'subtle',      # None, 'subtle', or 'sharp' - only applies to the "wide" linkstyle
                      arrow_px                   = 16,            # arrow size in pixels
                      arrow_ratio                = 0.05,          # arrow size as a ratio of the radius
                      link_style                 = 'narrow',      # 'narrow', 'wide', 'bundled'
@@ -1148,22 +1148,6 @@ class RTChordDiagramMixin(object):
                 skeleton.add_edge(to_pos, _closest_[_choice_][1], weight=self.rt_self.segmentLength((to_pos, _closest_[_choice_][1])))
                 skeleton_svg.append(f'<line x1="{_closest_[_choice_][1][0]}" y1="{_closest_[_choice_][1][1]}" x2="{to_pos[0]}" y2="{to_pos[1]}" stroke="#000000" stroke-width="0.4" />')
 
-            to_found, not_to_found = 0, 0
-            fm_found, not_fm_found = 0, 0
-            for i in range(len(fmtos)):
-                _fmto_ = fmtos[i]
-                if fmto_to_pos[_fmto_] in skeleton:
-                    to_found += 1
-                else:
-                    not_to_found += 1
-                if fmto_fm_pos[_fmto_] in skeleton:
-                    fm_found += 1
-                else:
-                    not_fm_found += 1
-            print(f'to_found={to_found}, not_to_found={not_to_found}, fm_found={fm_found}, not_fm_found={not_fm_found}')
-
-            # skeleton, _throwaway_ = self.__renderEdges_createSkeletonSimple__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
-
             return skeleton, skeleton_svg
 
         #
@@ -1335,21 +1319,27 @@ class RTChordDiagramMixin(object):
                     if node != _fm_: # just scan the fm -> to directions
                         continue
                     for _to_ in self.node_dir_arc[node][_fm_].keys():
-                        fmto_key   = (_fm_,_to_)
-                        fm_pos     = fmto_fm_pos[fmto_key]
-                        to_pos     = fmto_to_pos[fmto_key]
+                        fmto_key    = (_fm_,_to_)
+                        link_w_perc = (self.node_dir_arc_ct[node][_fm_][_to_] - self.node_dir_arc_ct_min) / (self.node_dir_arc_ct_max - self.node_dir_arc_ct_min)
+                        link_w      = self.min_link_size + link_w_perc * (self.max_link_size - self.min_link_size)
+                        fm_pos      = fmto_fm_pos[fmto_key]
+                        to_pos      = fmto_to_pos[fmto_key]
+
                         _shortest_ = nx.shortest_path(skeleton, fm_pos, to_pos, weight='weight')
 
-                        if self.link_color is None or self.color_by is None:
-                            _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
-                        elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
-                            _link_color_ = self.link_color
-                        else: # 'vary'
-                            _link_color_ = fmto_color_lu[_fm_][_to_]
-
-                        link_w = self.min_link_size + link_w_perc * (self.max_link_size - self.min_link_size)
-
-                        svg.append(f'<path d="{self.rt_self.svgPathCubicBSpline(_shortest_)}" fill="none" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
+                        if self.link_color == 'shade_fm_to':
+                            _pts_ = self.rt_self.piecewiseCubicBSpline(_shortest_)
+                            for i in range(len(_pts_)-1):
+                                _link_color_ = self.rt_self.co_mgr.spectrum(i, 0, len(_pts_))
+                                svg.append(f'<line x1="{_pts_[i][0]}" y1="{_pts_[i][1]}" x2="{_pts_[i+1][0]}" y2="{_pts_[i+1][1]}" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
+                        else:
+                            if self.link_color is None or self.color_by is None:
+                                _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
+                            elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                                _link_color_ = self.link_color
+                            else: # 'vary'
+                                _link_color_ = fmto_color_lu[_fm_][_to_]                        
+                            svg.append(f'<path d="{self.rt_self.svgPathCubicBSpline(_shortest_)}" fill="none" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
 
             self.skeleton_svg = f'<svg x="0" y="0" width="1024" height="1024" viewBox="0 0 {self.w} {self.h}" xmlns="http://www.w3.org/2000/svg">'+''.join(skeleton_svg)+'</svg>'
 
