@@ -1255,7 +1255,9 @@ class RTChordDiagramMixin(object):
                             segment_added.add(_segment_)
 
                 # Connect certain rings rotationally...
-                if ring == 3 or ring == (self.skeleton_rings-2) or ring == (self.skeleton_rings-1):
+                # if ring == 3 or ring == (self.skeleton_rings-2) or ring == (self.skeleton_rings-1): # original implementation... but doesn't match paper
+                # if ring == (self.skeleton_rings-1): # fails
+                if ring > 1: # this can't be too small or the last one won't be filled in ... OR the spline will fail because of not enough points
                     __connectRing__(last_fm_i_pos, last_to_i_pos, last_fm_i_avg, last_to_i_avg)
                 
                 # Connect the most inside ring to the center point
@@ -1271,8 +1273,6 @@ class RTChordDiagramMixin(object):
                         if _segment_ not in segment_added:
                             skeleton.add_edge(_segment_[0], _segment_[1], weight=self.rt_self.segmentLength(_segment_))
                             segment_added.add(_segment_)
-
-                        
 
                 last_fm_i_pos, last_to_i_pos, last_fm_i_avg, last_to_i_avg = fm_i_pos, to_i_pos, fm_i_avg, to_i_avg
                 d, r, ring = d + d_inc, r - r_dec, ring + 1
@@ -1361,7 +1361,7 @@ class RTChordDiagramMixin(object):
                                 _link_color_ = fmto_color_lu[_fm_][_to_]                        
                             svg.append(f'<path d="{self.rt_self.svgPathCubicBSpline(_shortest_)}" fill="none" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
 
-            self.skeleton_svg = f'<svg x="0" y="0" width="1024" height="1024" viewBox="0 0 {self.w} {self.h}" xmlns="http://www.w3.org/2000/svg">'+''.join(skeleton_svg)+'</svg>'
+            self.skeleton_svg = f'<svg x="0" y="0" width="512" height="512" viewBox="0 0 {self.w} {self.h}" xmlns="http://www.w3.org/2000/svg">'+''.join(skeleton_svg)+'</svg>'
 
             return ''.join(svg)
 
