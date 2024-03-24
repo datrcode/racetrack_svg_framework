@@ -1333,8 +1333,14 @@ class RTChordDiagramMixin(object):
                     if node != _fm_: # just scan the fm -> to directions
                         continue
                     for _to_ in self.node_dir_arc[node][_fm_].keys():
+                        if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
+                            continue
                         fmto_key    = (_fm_,_to_)
                         link_w_perc = (self.node_dir_arc_ct[node][_fm_][_to_] - self.node_dir_arc_ct_min) / (self.node_dir_arc_ct_max - self.node_dir_arc_ct_min)
+                        if struct_matches_render == False:
+                            if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
+                                perc = (local_dir_arc_ct[node][_fm_][_to_] - local_dir_arc_ct_min)/(local_dir_arc_ct_max - local_dir_arc_ct_min)
+                                link_w_perc *= perc
                         link_w      = self.min_link_size + link_w_perc * (self.max_link_size - self.min_link_size)
                         fm_pos      = fmto_fm_pos[fmto_key]
                         to_pos      = fmto_to_pos[fmto_key]
