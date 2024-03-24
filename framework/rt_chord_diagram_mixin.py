@@ -885,8 +885,11 @@ class RTChordDiagramMixin(object):
 
         #
         # __renderEdges_wide__(self) - render the edges (as large filled areas)
+        # ... for context, the local parts are for use in small multiples ... otherwise, the self.node_* methods are used        
         #
-        def __renderEdges_wide__(self, struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu):
+        def __renderEdges_wide__(self, struct_matches_render, fmto_lu, 
+                                 local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
+                                 fmto_color_lu):
             svg = []
             for node in self.node_dir_arc.keys():
                 for _fm_ in self.node_dir_arc[node].keys():
@@ -900,7 +903,9 @@ class RTChordDiagramMixin(object):
                             if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
                                 continue
                             if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
-                                perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                #perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                #perc = min(perc, 1.0)
+                                perc = (local_dir_arc_ct[node][_fm_][_to_] - local_dir_arc_ct_min)/(local_dir_arc_ct_max - local_dir_arc_ct_min)
                                 a1   = a0 + perc * (a1 - a0)
                                 b1   = b0 + perc * (b1 - b0)
 
@@ -942,6 +947,7 @@ class RTChordDiagramMixin(object):
 
         #
         # __renderEdges_narrow__(self) - render the edges (links)
+        # ... for context, the local parts are for use in small multiples ... otherwise, the self.node_* methods are used
         #
         def __renderEdges_narrow__(self, struct_matches_render, fmto_lu, 
                                    local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
@@ -960,7 +966,9 @@ class RTChordDiagramMixin(object):
                             if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
                                 continue
                             if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
-                                perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                #perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                #perc = min(perc, 1.0)
+                                perc = (local_dir_arc_ct[node][_fm_][_to_] - local_dir_arc_ct_min)/(local_dir_arc_ct_max - local_dir_arc_ct_min)
                                 link_w_perc *= perc
                                 a1   = a0 + perc * (a1 - a0)
                                 b1   = b0 + perc * (b1 - b0)
@@ -1297,7 +1305,9 @@ class RTChordDiagramMixin(object):
                             if _fm_ not in fmto_lu.keys() or _to_ not in fmto_lu[_fm_].keys():
                                 continue
                             if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
-                                perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                # perc = local_dir_arc_ct[node][_fm_][_to_] / self.node_dir_arc_ct[node][_fm_][_to_]
+                                # perc = min(perc, 1.0)
+                                perc = (local_dir_arc_ct[node][_fm_][_to_] - local_dir_arc_ct_min)/(local_dir_arc_ct_max - local_dir_arc_ct_min)
                                 link_w_perc *= perc
                                 a1   = a0 + perc * (a1 - a0)
                                 b1   = b0 + perc * (b1 - b0)
@@ -1481,7 +1491,7 @@ class RTChordDiagramMixin(object):
             local_dir_arc_ct_min, local_dir_arc_ct_max = None, None
             self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = None, None
 
-            if just_calc_max == False and (self.node_to_arc is None or self.node_dir_arc is None or self.node_to_arc_ct is None or self.node_dir_arc_ct is None):
+            if self.node_to_arc is None or self.node_dir_arc is None or self.node_to_arc_ct is None or self.node_dir_arc_ct is None:
                 self.node_to_arc,    self.node_dir_arc    = {}, {}
                 self.node_to_arc_ct, self.node_dir_arc_ct = {}, {} # counts for the info... for small multiples
                 if self.equal_size_nodes:
@@ -1522,9 +1532,15 @@ class RTChordDiagramMixin(object):
 
             # return mins and maxes
             if just_calc_max:
-                return local_dir_arc_ct_min, local_dir_arc_ct_max
+                if local_dir_arc_ct_min is None:
+                    return self.node_dir_arc_ct_min, self.node_dir_arc_ct_max
+                else:
+                    return local_dir_arc_ct_min,     local_dir_arc_ct_max
             elif self.global_max is not None:
-                self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = self.global_min, self.global_max
+                if local_dir_arc_ct is None:
+                    self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = self.global_min, self.global_max
+                else:
+                    local_dir_arc_ct_min, local_dir_arc_ct_max = self.global_min, self.global_max
 
             # Avoid div by zero later...
             if   self.node_dir_arc_ct_min is None:
@@ -1564,7 +1580,9 @@ class RTChordDiagramMixin(object):
             # Draw the edges from the node to the neighbors
             _ts_ = time.time()
             if   self.link_style == 'wide':
-                svg.append(self.__renderEdges_wide__(struct_matches_render, fmto_lu, local_dir_arc_ct, fmto_color_lu))
+                svg.append(self.__renderEdges_wide__(struct_matches_render, fmto_lu, 
+                                                     local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
+                                                     fmto_color_lu))
             elif self.link_style == 'narrow':
                 svg.append(self.__renderEdges_narrow__(struct_matches_render, fmto_lu, 
                                                        local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
