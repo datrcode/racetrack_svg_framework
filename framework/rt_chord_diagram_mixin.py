@@ -1292,6 +1292,7 @@ class RTChordDiagramMixin(object):
             fmto_fm_pos,       fmto_to_pos       = {}, {}
             fmtos, fmtos_angles = [], []
 
+            _ts_ = time.time()
             for node in self.node_dir_arc.keys():
                 for _fm_ in self.node_dir_arc[node].keys():
                     if node != _fm_: # just scan the fm -> to directions
@@ -1316,8 +1317,10 @@ class RTChordDiagramMixin(object):
                         fmto_fm_angle[fmto_key], fmto_to_angle[fmto_key] = (a0,a1), (b0,b1)
                         fmto_fm_angle_avg[fmto_key], fmto_to_angle_avg[fmto_key] = a_avg,b_avg
                         fmtos.append(fmto_key),  fmtos_angles.append((a_avg,b_avg))
+            self.time_lu['bundler_prep'] = time.time() - _ts_
 
             # Skeleton option
+            _ts_ = time.time()
             if   self.skeleton_algorithm == 'hdbscan':
                 skeleton, skeleton_svg = self.__renderEdges_createSkeletonHDBSCAN__   (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
             elif self.skeleton_algorithm == 'hexagonal':
@@ -1326,8 +1329,10 @@ class RTChordDiagramMixin(object):
                 skeleton, skeleton_svg = self.__renderEdges_createSkeletonSimple__    (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
             else:
                 raise Exception('RTChordDiagram.__renderEdges_bundled__() - only skeleton_methodology supported are "hdbscan", "simple", or "hexagonal"')
+            self.time_lu['bundler_skeleton'] = time.time() - _ts_
 
             # Bundle the edges
+            ts_path_calc, ts_edge_render = 0.0, 0.0
             for node in self.node_dir_arc.keys():
                 for _fm_ in self.node_dir_arc[node].keys():
                     if node != _fm_: # just scan the fm -> to directions
@@ -1345,8 +1350,11 @@ class RTChordDiagramMixin(object):
                         fm_pos      = fmto_fm_pos[fmto_key]
                         to_pos      = fmto_to_pos[fmto_key]
 
+                        _ts_ = time.time()
                         _shortest_ = nx.shortest_path(skeleton, fm_pos, to_pos, weight='weight')
+                        ts_path_calc += time.time() - _ts_
 
+                        _ts_ = time.time()
                         if self.link_color == 'shade_fm_to':
                             _pts_ = self.rt_self.piecewiseCubicBSpline(_shortest_)
                             for i in range(len(_pts_)-1):
@@ -1360,7 +1368,10 @@ class RTChordDiagramMixin(object):
                             else: # 'vary'
                                 _link_color_ = fmto_color_lu[_fm_][_to_]                        
                             svg.append(f'<path d="{self.rt_self.svgPathCubicBSpline(_shortest_)}" fill="none" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
+                        ts_edge_render += time.time() - _ts_
 
+            self.time_lu['path_calc']    = ts_path_calc
+            self.time_lu['render_links'] = ts_edge_render
             self.skeleton_svg = f'<svg x="0" y="0" width="512" height="512" viewBox="0 0 {self.w} {self.h}" xmlns="http://www.w3.org/2000/svg">'+''.join(skeleton_svg)+'</svg>'
 
             return ''.join(svg)
@@ -1584,22 +1595,24 @@ class RTChordDiagramMixin(object):
             self.time_lu['render_nodes'] = time.time() - _ts_
 
             # Draw the edges from the node to the neighbors
-            _ts_ = time.time()
             if   self.link_style == 'wide':
+                _ts_ = time.time()
                 svg.append(self.__renderEdges_wide__(struct_matches_render, fmto_lu, 
                                                      local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
                                                      fmto_color_lu))
+                self.time_lu['render_links'] = time.time() - _ts_
             elif self.link_style == 'narrow':
+                _ts_ = time.time()
                 svg.append(self.__renderEdges_narrow__(struct_matches_render, fmto_lu, 
                                                        local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
                                                        fmto_color_lu))
+                self.time_lu['render_links'] = time.time() - _ts_
             elif self.link_style == 'bundled':
                 svg.append(self.__renderEdges_bundled__(struct_matches_render, fmto_lu, 
                                                         local_dir_arc_ct, local_dir_arc_ct_min, local_dir_arc_ct_max, 
                                                         fmto_color_lu))
             else:
                 raise Exception(f'RTChordDiagram.renderSVG() -- unknown link_style "{self.link_style}"')
-            self.time_lu['render_links'] = time.time() - _ts_
 
             # Draw the labels
             if self.draw_labels:
