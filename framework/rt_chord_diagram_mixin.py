@@ -484,7 +484,7 @@ class RTChordDiagramMixin(object):
                      structure_template         = None,          # existing RTChordDiagram() ... e.g., for small multiples
                      dendrogram_algorithm       = None,          # 'original', 'hdbscan', or None
                      skeleton_algorithm         = 'hexagonal',   # 'hexagonal', 'hdbscan', 'simple'
-                     skeleton_rings             = 7,             # number of rings
+                     skeleton_rings             = 4,             # number of rings
                      # ----------------------------------------- # visualization geometry / etc.
                      track_state                = False,         # track state for interactive filtering
                      x_view                     = 0,             # x offset for the view
@@ -1332,7 +1332,15 @@ class RTChordDiagramMixin(object):
             self.time_lu['bundler_skeleton'] = time.time() - _ts_
 
             # Bundle the edges
-            ts_path_calc, ts_edge_render = 0.0, 0.0
+            use_all_pairs  = False
+            ts_path_calc   = 0.0 
+            ts_edge_render = 0.0
+
+            if use_all_pairs:
+                _ts_ = time.time()
+                shortest_paths = dict(nx.all_pairs_dijkstra_path(skeleton, weight='weight'))
+                self.time_lu['path_calc'] = time.time() - _ts_
+
             for node in self.node_dir_arc.keys():
                 for _fm_ in self.node_dir_arc[node].keys():
                     if node != _fm_: # just scan the fm -> to directions
@@ -1350,9 +1358,12 @@ class RTChordDiagramMixin(object):
                         fm_pos      = fmto_fm_pos[fmto_key]
                         to_pos      = fmto_to_pos[fmto_key]
 
-                        _ts_ = time.time()
-                        _shortest_ = nx.shortest_path(skeleton, fm_pos, to_pos, weight='weight')
-                        ts_path_calc += time.time() - _ts_
+                        if use_all_pairs:
+                            _shortest_ = shortest_paths[fm_pos][to_pos]
+                        else:
+                            _ts_ = time.time()
+                            _shortest_ = nx.shortest_path(skeleton, fm_pos, to_pos, weight='weight')
+                            ts_path_calc += time.time() - _ts_
 
                         _ts_ = time.time()
                         if self.link_color == 'shade_fm_to':
@@ -1370,8 +1381,11 @@ class RTChordDiagramMixin(object):
                             svg.append(f'<path d="{self.rt_self.svgPathCubicBSpline(_shortest_)}" fill="none" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
                         ts_edge_render += time.time() - _ts_
 
-            self.time_lu['path_calc']    = ts_path_calc
+            if use_all_pairs == False:
+                self.time_lu['path_calc']    = ts_path_calc
+
             self.time_lu['render_links'] = ts_edge_render
+
             self.skeleton_svg = f'<svg x="0" y="0" width="512" height="512" viewBox="0 0 {self.w} {self.h}" xmlns="http://www.w3.org/2000/svg">'+''.join(skeleton_svg)+'</svg>'
 
             return ''.join(svg)
