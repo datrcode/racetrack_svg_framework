@@ -640,6 +640,8 @@ class RTChordDiagramMixin(object):
             self.node_dir_arc_ct     = None
             self.node_dir_arc_ct_min = None
             self.node_dir_arc_ct_max = None
+            self.skeleton            = None
+            self.skeleton_svg        = None
             if kwargs['structure_template'] is not None:
                 other = kwargs['structure_template']
                 # Force render if necessary... ### COPY OF APPLYVIEWCONFIGUATION() BELOW
@@ -652,6 +654,8 @@ class RTChordDiagramMixin(object):
                 self.node_dir_arc_ct     = other.node_dir_arc_ct
                 self.node_dir_arc_ct_min = other.node_dir_arc_ct_min
                 self.node_dir_arc_ct_max = other.node_dir_arc_ct_max
+                self.skeleton            = other.skeleton
+                self.skeleton_svg        = other.skeleton_svg
 
 
         #
@@ -671,6 +675,8 @@ class RTChordDiagramMixin(object):
             self.node_dir_arc_ct     = other.node_dir_arc_ct
             self.node_dir_arc_ct_min = other.node_dir_arc_ct_min
             self.node_dir_arc_ct_max = other.node_dir_arc_ct_max
+            self.skeleton            = other.skeleton
+            self.skeleton_svg        = other.skeleton_svg
             return True
         
         #
@@ -987,7 +993,9 @@ class RTChordDiagramMixin(object):
                         else: # 'vary'
                             _link_color_ = fmto_color_lu[_fm_][_to_]
 
-                        if (a1-a0) < 30:
+                        if   (a1-a0) < 4:
+                            pass
+                        elif (a1-a0) < 30:
                             _path_ = f'M {xa1} {ya1} ' + \
                                      f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xb1} {yb1} ' + \
                                      f'L {xarrow1_pt} {yarrow1_pt} L {xa1} {ya1} Z'
@@ -999,7 +1007,9 @@ class RTChordDiagramMixin(object):
                                      f'C {self.xTo(b_avg)} {self.yTo(b_avg)} {self.xTarrow(b1)} {self.yTarrow(b1)} {xa1} {ya1} '
                             svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="1.0" fill="{_link_color_}" opacity="{self.link_opacity}" />')
 
-                        if (b1-b0) < 30:
+                        if   (b1-b0) < 4:
+                            pass
+                        elif (b1-b0) < 30:
                             _path_ = f'M {xb0} {yb0} ' + \
                                      f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}' + \
                                      f'L {xarrow0_pt} {yarrow0_pt} L {xb0} {yb0} Z'
@@ -1025,6 +1035,7 @@ class RTChordDiagramMixin(object):
                             _path_ += f' l {  arrow_len * (-uv[0] - arrow_scale*uv[1])}  {  arrow_len * (-uv[1] + arrow_scale*uv[0])}'
 
                         link_w = self.min_link_size + link_w_perc * (self.max_link_size - self.min_link_size)
+                        link_w = max(min(link_w, self.max_link_size), self.min_link_size)
 
                         svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="{self.link_opacity}" stroke-width="{link_w}" fill="none" />')
                         #svg.append(f'<circle cx="{x_pull0}" cy="{y_pull0}" r="4" fill="none" stroke="{_link_color_}"/>') # debug - control points
@@ -1321,14 +1332,15 @@ class RTChordDiagramMixin(object):
 
             # Skeleton option
             _ts_ = time.time()
-            if   self.skeleton_algorithm == 'hdbscan':
-                skeleton, skeleton_svg = self.__renderEdges_createSkeletonHDBSCAN__   (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
-            elif self.skeleton_algorithm == 'hexagonal':
-                skeleton, skeleton_svg = self.__renderEdges_createSkeletonHexagonal__ (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
-            elif self.skeleton_algorithm == 'simple':
-                skeleton, skeleton_svg = self.__renderEdges_createSkeletonSimple__    (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
-            else:
-                raise Exception('RTChordDiagram.__renderEdges_bundled__() - only skeleton_methodology supported are "hdbscan", "simple", or "hexagonal"')
+            if self.skeleton is None: # if wouldn't be none in the case of small multiples (x-axis dependency)
+                if   self.skeleton_algorithm == 'hdbscan':
+                    skeleton, skeleton_svg = self.__renderEdges_createSkeletonHDBSCAN__   (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                elif self.skeleton_algorithm == 'hexagonal':
+                    skeleton, skeleton_svg = self.__renderEdges_createSkeletonHexagonal__ (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                elif self.skeleton_algorithm == 'simple':
+                    skeleton, skeleton_svg = self.__renderEdges_createSkeletonSimple__    (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                else:
+                    raise Exception('RTChordDiagram.__renderEdges_bundled__() - only skeleton_methodology supported are "hdbscan", "simple", or "hexagonal"')
             self.time_lu['bundler_skeleton'] = time.time() - _ts_
 
             # Bundle the edges
@@ -1355,6 +1367,7 @@ class RTChordDiagramMixin(object):
                                 perc = (local_dir_arc_ct[node][_fm_][_to_] - local_dir_arc_ct_min)/(local_dir_arc_ct_max - local_dir_arc_ct_min)
                                 link_w_perc *= perc
                         link_w      = self.min_link_size + link_w_perc * (self.max_link_size - self.min_link_size)
+                        link_w      = max(min(link_w, self.max_link_size), self.min_link_size)
                         fm_pos      = fmto_fm_pos[fmto_key]
                         to_pos      = fmto_to_pos[fmto_key]
 
@@ -1386,6 +1399,7 @@ class RTChordDiagramMixin(object):
 
             self.time_lu['render_links'] = ts_edge_render
 
+            self.skeleton     = skeleton
             self.skeleton_svg = f'<svg x="0" y="0" width="512" height="512" viewBox="0 0 {self.w} {self.h}" xmlns="http://www.w3.org/2000/svg">'+''.join(skeleton_svg)+'</svg>'
 
             return ''.join(svg)
