@@ -1044,66 +1044,6 @@ class RTChordDiagramMixin(object):
             return ''.join(svg)
 
         #
-        # __renderEdges_createSkeletonSimple__() - create the skeleton graph using a simple pattern
-        #
-        def __renderEdges_createSkeletonSimple__(self, fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos):
-            skeleton_svg, skeleton  = [], nx.Graph()
-            fmto_entry,   fmto_exit = {}, {}
-
-            # Assumption here about the number of rings ... 
-            ring_to_angle_to_pos    = {}
-            ring_to_angle_to_pos[2] = {}
-            ring_to_angle_to_pos[4] = {}
-
-            to_deg = lambda angle: pi*angle/180.0
-            for i in range(len(fmtos)):
-                _fmto_                         = fmtos[i]
-                _fm_, _to_                     = _fmto_
-                _fm_avg_angle_, _to_avg_angle_ = fmtos_angles[i]
-                _fm_angles_,    _to_angles_    = fmto_fm_angle[_fmto_], fmto_to_angle[_fmto_]
-                last_fm_pos,    last_to_pos    = None, None
-                for _ring_ in range(self.skeleton_rings):
-                    _ring_r_ = self.r * _ring_ / (self.skeleton_rings - 1)
-                    if i == 0:
-                        skeleton_svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="{_ring_r_}" fill="none" stroke="#a0a0a0" stroke-width="0.2" />')
-
-                    fmto_fm_x = self.cx + _ring_r_*cos(to_deg(_fm_avg_angle_))
-                    fmto_fm_y = self.cy + _ring_r_*sin(to_deg(_fm_avg_angle_))
-                    fm_pos    = (fmto_fm_x,fmto_fm_y)
-                    if _ring_ in ring_to_angle_to_pos:
-                        ring_to_angle_to_pos[_ring_][_fm_avg_angle_] = fm_pos
-
-                    fmto_to_x = self.cx + _ring_r_*cos(to_deg(_to_avg_angle_))
-                    fmto_to_y = self.cy + _ring_r_*sin(to_deg(_to_avg_angle_))
-                    to_pos    = (fmto_to_x,fmto_to_y)
-                    if _ring_ in ring_to_angle_to_pos:
-                        ring_to_angle_to_pos[_ring_][_to_avg_angle_] = to_pos
-
-                    if last_fm_pos is not None:
-                        skeleton.add_edge(last_fm_pos, fm_pos, weight=self.rt_self.segmentLength((last_fm_pos, fm_pos)))
-                        skeleton.add_edge(last_to_pos, to_pos, weight=self.rt_self.segmentLength((last_to_pos, to_pos)))
-                        skeleton_svg.append('<line x1="{0}" y1="{1}" x2="{2}" y2="{3}" stroke="black" stroke-width="0.1" />'.format(last_fm_pos[0], last_fm_pos[1], fm_pos[0], fm_pos[1]))
-                        skeleton_svg.append('<line x1="{0}" y1="{1}" x2="{2}" y2="{3}" stroke="black" stroke-width="0.1" />'.format(last_to_pos[0], last_to_pos[1], to_pos[0], to_pos[1]))
-
-                    if _ring_ == (self.skeleton_rings-1):
-                        fmto_fm_pos[_fmto_] = fm_pos 
-                        fmto_to_pos[_fmto_] = to_pos
-                    
-                    last_fm_pos, last_to_pos = fm_pos, to_pos
-            
-            # Create the rings
-            for _ring_ in ring_to_angle_to_pos.keys():
-                sorter = sorted(ring_to_angle_to_pos[_ring_].keys())
-                for i in range(len(sorter)):
-                    j  = (i+1)%len(sorter)
-                    p0 = ring_to_angle_to_pos[_ring_][sorter[i]]
-                    p1 = ring_to_angle_to_pos[_ring_][sorter[j]]
-                    skeleton.add_edge(p0, p1, weight=self.rt_self.segmentLength((p0, p1)))
-                    skeleton_svg.append('<line x1="{0}" y1="{1}" x2="{2}" y2="{3}" stroke="black" stroke-width="0.1" />'.format(p0[0], p0[1], p1[0], p1[1]))
-
-            return skeleton, skeleton_svg, fmto_entry, fmto_exit
-
-        #
         # __renderEdges_createSkeletonHexagonal__() - create the skeleton graph using a honeycomb like structure
         #
         def __renderEdges_createSkeletonHexagonal__(self, fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos):
@@ -1151,7 +1091,7 @@ class RTChordDiagramMixin(object):
                                     skeleton_svg.append(f'<line x1="{_pt_[0]}" y1="{_pt_[1]}" x2="{x}" y2="{y}" stroke="#ff0000" stroke-width="0.1" />')
                                     skeleton.add_edge(_pt_, (x, y), weight=self.rt_self.segmentLength((_pt_, (x, y))))
 
-            # Create the quad tree
+            # Create the quad tree and fill in the lookups from the edge nodes to the skeleton graph based on closest point found
             q_tree = self.rt_self.xyQuadTree((0.0, 0.0, self.w, self.h), max_pts_per_node=16)
             q_tree.add(points)
             to_deg = lambda angle: pi*angle/180.0
@@ -1162,16 +1102,12 @@ class RTChordDiagramMixin(object):
                 fm_pos              = (self.cx + adj_r*cos(to_deg(_fm_avg_angle_)), self.cy + adj_r*sin(to_deg(_fm_avg_angle_)))
                 fmto_fm_pos[_fmto_] = fm_pos
                 _closest_           = q_tree.closest(fm_pos, n=3)
-                _choice_            = 0
-                skeleton.add_edge(fm_pos, _closest_[_choice_][1], weight=self.rt_self.segmentLength((fm_pos, _closest_[_choice_][1])))
-                skeleton_svg.append(f'<line x1="{_closest_[_choice_][1][0]}" y1="{_closest_[_choice_][1][1]}" x2="{fm_pos[0]}" y2="{fm_pos[1]}" stroke="#ff0000" stroke-width="0.4" />')
+                fmto_entry[fm_pos]  = _closest_[0][1]
 
                 to_pos              = (self.cx + adj_r*cos(to_deg(_to_avg_angle_)), self.cy + adj_r*sin(to_deg(_to_avg_angle_)))
                 fmto_to_pos[_fmto_] = to_pos
                 _closest_           = q_tree.closest(to_pos, n=3)
-                _choice_            = 0
-                skeleton.add_edge(to_pos, _closest_[_choice_][1], weight=self.rt_self.segmentLength((to_pos, _closest_[_choice_][1])))
-                skeleton_svg.append(f'<line x1="{_closest_[_choice_][1][0]}" y1="{_closest_[_choice_][1][1]}" x2="{to_pos[0]}" y2="{to_pos[1]}" stroke="#000000" stroke-width="0.4" />')
+                fmto_exit[to_pos]   = _closest_[0][1]
 
             return skeleton, skeleton_svg, fmto_entry, fmto_exit
 
@@ -1254,7 +1190,7 @@ class RTChordDiagramMixin(object):
 
                 # Add the edges to the skeleton
                 segment_added = set()
-                if last_fm_i_pos is not None:
+                if ring > 1:
                     for i in range(len(_labels_)):
                         _segment_ = (last_fm_i_pos[i], fm_i_pos[i])
                         skeleton_svg.append(f'<line x1="{_segment_[0][0]}" y1="{_segment_[0][1]}" x2="{_segment_[1][0]}" y2="{_segment_[1][1]}" stroke="#000000" stroke-width="0.2" />') # debug
@@ -1266,6 +1202,10 @@ class RTChordDiagramMixin(object):
                         if _segment_ not in segment_added:
                             skeleton.add_edge(_segment_[0], _segment_[1], weight=self.rt_self.segmentLength(_segment_))
                             segment_added.add(_segment_)
+                elif ring == 1:
+                    for i in range(len(_labels_)):
+                        fmto_entry[last_fm_i_pos[i]] = fm_i_pos[i]
+                        fmto_exit [last_to_i_pos[i]] = to_i_pos[i]
 
                 # Connect certain rings rotationally...
                 # if ring == 3 or ring == (self.skeleton_rings-2) or ring == (self.skeleton_rings-1): # original implementation... but doesn't match paper
@@ -1339,11 +1279,9 @@ class RTChordDiagramMixin(object):
                     if len(fmtos) > 8:
                         skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonHDBSCAN__   (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
                     else:
-                        skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonSimple__    (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
-                elif self.skeleton_algorithm == 'hexagonal':
+                        skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonHexagonal__ (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                elif self.skeleton_algorithm == 'hexagonal' or self.skeleton_algorithm == 'simple':
                     skeleton, skeleton_svg, fmto_entry, fmto_exit     = self.__renderEdges_createSkeletonHexagonal__ (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
-                elif self.skeleton_algorithm == 'simple':
-                    skeleton, skeleton_svg, fmto_entry, fmto_exit     = self.__renderEdges_createSkeletonSimple__    (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
                 else:
                     raise Exception('RTChordDiagram.__renderEdges_bundled__() - only skeleton_methodology supported are "hdbscan", "simple", or "hexagonal"')
             self.time_lu['bundler_skeleton'] = time.time() - _ts_
@@ -1377,10 +1315,14 @@ class RTChordDiagramMixin(object):
                         to_pos      = fmto_to_pos[fmto_key]
 
                         if use_all_pairs:
-                            _shortest_ = shortest_paths[fm_pos][to_pos]
+                            _shortest_ = shortest_paths[fmto_entry[fm_pos]][fmto_exit[to_pos]]
+                            _shortest_.insert(0, fm_pos)
+                            _shortest_.append(to_pos)
                         else:
                             _ts_ = time.time()
-                            _shortest_ = nx.shortest_path(skeleton, fm_pos, to_pos, weight='weight')
+                            _shortest_ = nx.shortest_path(skeleton, fmto_entry[fm_pos], fmto_exit[to_pos], weight='weight')
+                            _shortest_.insert(0, fm_pos)
+                            _shortest_.append(to_pos)
                             ts_path_calc += time.time() - _ts_
 
                         _ts_ = time.time()
