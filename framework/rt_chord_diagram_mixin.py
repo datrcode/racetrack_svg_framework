@@ -495,6 +495,7 @@ class RTChordDiagramMixin(object):
                      y_ins                      = 3,
                      txt_h                      = 10,            # text height for labeling
                      draw_labels                = False,         # draw labels flag # not implemented yet
+                     label_style                = 'radial',      # 'radial' or 'circular'
                      draw_border                = True,          # draw a border around the graph
                      draw_background            = False):        # useful to turn off in small multiples settings
 
@@ -572,11 +573,12 @@ class RTChordDiagramMixin(object):
             self.y_ins                  = kwargs['y_ins']                     # n/a
             self.txt_h                  = kwargs['txt_h']                     # done!
             self.draw_labels            = kwargs['draw_labels']               # done!
+            self.label_style            = kwargs['label_style']               # ... working on it
             self.draw_border            = kwargs['draw_border']               # done!
             self.draw_background        = kwargs['draw_background']           # done!
-            self.dendrogram_algorithm   = kwargs['dendrogram_algorithm']
-            self.skeleton_algorithm     = kwargs['skeleton_algorithm']
-            self.skeleton_rings         = kwargs['skeleton_rings']
+            self.dendrogram_algorithm   = kwargs['dendrogram_algorithm']      # done!
+            self.skeleton_algorithm     = kwargs['skeleton_algorithm']        # done!
+            self.skeleton_rings         = kwargs['skeleton_rings']            # done!
             self.time_lu                = {}
 
             # Apply count-by transforms
@@ -1593,9 +1595,20 @@ class RTChordDiagramMixin(object):
             if self.draw_labels:
                 for node in self.node_to_arc.keys():
                     if len(self.label_only) == 0 or node in self.label_only:
-                        _id_ = self.rt_self.encSVGID(node)
-                        svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" y="-3" >''')
-                        svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{node}</textPath></text>''')
+                        if self.label_style == 'circular':
+                            _id_ = self.rt_self.encSVGID(node)
+                            svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" y="-3" >''')
+                            svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{node}</textPath></text>''')
+                        elif self.label_style == 'radial':                            
+                            angle_avg = (self.node_to_arc[node][0] + self.node_to_arc[node][1])/2.0
+                            x_text    = self.cx + (self.r+self.txt_h/2) * cos(pi*angle_avg/180.0)
+                            y_text    = self.cy + (self.r+self.txt_h/2) * sin(pi*angle_avg/180.0)
+                            if angle_avg >= 270.0 or angle_avg < 90.0:
+                                svg.append(self.rt_self.svgText(node, x_text, y_text, self.txt_h, anchor = 'start', rotation=angle_avg))
+                            else:
+                                svg.append(self.rt_self.svgText(node, x_text, y_text, self.txt_h, anchor = 'end',   rotation=angle_avg-180.0))
+                        else:
+                            raise Exception(f'RTChordDiagram.renderSVG() -- unknown label_style "{self.label_style}"')
 
             # Draw the border
             if self.draw_border:
