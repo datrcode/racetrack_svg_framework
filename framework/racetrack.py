@@ -473,7 +473,7 @@ class RACETrack(RTAnnotationsMixin,
                 elif transform == 'year_month_day':
                     df[tfield] = df[field].apply(lambda x: f'{x.year}-{x.month:02}-{x.day:02}')
                 elif transform == 'year_month_day_hour':
-                    df[tfield] = df[field].apply(lambda x: f'{x.year}-{x.month:02}-{x.day:02}-{x.hour:02}')
+                    df[tfield] = df[field].apply(lambda x: f'{x.year}-{x.month:02}-{x.day:02} {x.hour:02}')
                 elif transform == 'day':
                     df[tfield] = df[field].apply(lambda x: f'{x.day:02}')
                 elif transform == 'day_of_year':
@@ -521,7 +521,7 @@ class RACETrack(RTAnnotationsMixin,
                 elif transform == 'year_month_day':
                     df = df.with_columns(pl.col(field).dt.strftime('%Y-%m-%d').alias(tfield))
                 elif transform == 'year_month_day_hour':
-                    df = df.with_columns(pl.col(field).dt.strftime('%Y-%m-%d-%H').alias(tfield))
+                    df = df.with_columns(pl.col(field).dt.strftime('%Y-%m-%d %H').alias(tfield))
                 elif transform == 'day':
                     # df = df.with_columns(pl.col(field).dt.strftime('%d').cast(pl.Int64).alias(tfield))
                     df = df.with_columns(pl.col(field).dt.strftime('%d').alias(tfield))
@@ -583,7 +583,7 @@ class RACETrack(RTAnnotationsMixin,
                     _order.append(f'{_date.year}-{_date.month:02}-{_date.day:02}')
             elif transform == 'year_month_day_hour':
                 for _date in pd.date_range(start=df[field].min(), end=df[field].max(), freq='H'):
-                    _order.append(f'{_date.year}-{_date.month:02}-{_date.day:02}-{_date.hour:02}')
+                    _order.append(f'{_date.year}-{_date.month:02}-{_date.day:02} {_date.hour:02}')
             elif transform == 'day':
                 for _day in range(1,32):
                     _order.append(f'{_day:02}')
