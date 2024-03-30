@@ -494,6 +494,7 @@ class RTChordDiagramMixin(object):
                      x_ins                      = 3,
                      y_ins                      = 3,
                      txt_h                      = 10,            # text height for labeling
+                     txt_offset                 = 0,             # text offset from the outer radius of the circle
                      draw_labels                = False,         # draw labels flag # not implemented yet
                      label_style                = 'radial',      # 'radial' or 'circular'
                      draw_border                = True,          # draw a border around the graph
@@ -572,8 +573,9 @@ class RTChordDiagramMixin(object):
             self.x_ins                  = kwargs['x_ins']                     # n/a
             self.y_ins                  = kwargs['y_ins']                     # n/a
             self.txt_h                  = kwargs['txt_h']                     # done!
+            self.txt_offset             = kwargs['txt_offset']                # done!
             self.draw_labels            = kwargs['draw_labels']               # done!
-            self.label_style            = kwargs['label_style']               # ... working on it
+            self.label_style            = kwargs['label_style']               # done!
             self.draw_border            = kwargs['draw_border']               # done!
             self.draw_background        = kwargs['draw_background']           # done!
             self.dendrogram_algorithm   = kwargs['dendrogram_algorithm']      # done!
@@ -1615,12 +1617,14 @@ class RTChordDiagramMixin(object):
                     if len(self.label_only) == 0 or node in self.label_only:
                         if self.label_style == 'circular':
                             _id_ = self.rt_self.encSVGID(node)
-                            svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" y="-3" >''')
+                            txt_offset = -3 - self.txt_offset
+                            svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" y="{txt_offset}" >''')
                             svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{node}</textPath></text>''')
                         elif self.label_style == 'radial':                            
-                            angle_avg = (self.node_to_arc[node][0] + self.node_to_arc[node][1])/2.0
-                            x_text    = self.cx + (self.r+self.txt_h/2) * cos(pi*angle_avg/180.0)
-                            y_text    = self.cy + (self.r+self.txt_h/2) * sin(pi*angle_avg/180.0)
+                            angle_avg  = (self.node_to_arc[node][0] + self.node_to_arc[node][1])/2.0
+                            txt_offset = self.txt_offset + self.txt_h/3
+                            x_text    = self.cx + (self.r+txt_offset) * cos(pi*angle_avg/180.0)
+                            y_text    = self.cy + (self.r+txt_offset) * sin(pi*angle_avg/180.0)
                             if angle_avg >= 270.0 or angle_avg < 90.0:
                                 svg.append(self.rt_self.svgText(node, x_text, y_text, self.txt_h, anchor = 'start', rotation=angle_avg))
                             else:
