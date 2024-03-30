@@ -869,7 +869,7 @@ class RTChordDiagramMixin(object):
         # __renderNodes__() - render the nodes (outer edges of the circle)
         #
         def __renderNodes__(self, node_color_lu):
-            svg     = []
+            svg, id_str = [], ''
             _color_ = self.rt_self.co_mgr.getTVColor('data','default')
             for node in self.node_to_arc.keys():
                 a0, a1 = self.node_to_arc[node]
@@ -886,8 +886,10 @@ class RTChordDiagramMixin(object):
                     _node_color_ = node_color_lu[node]
                 else:
                     _node_color_ = self.rt_self.co_mgr.getColor(str(node))
-                _id_ = self.rt_self.encSVGID(node)
-                svg.append(f'<path id="{self.widget_id}-{_id_}" d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
+                if self.draw_labels and self.label_style == 'circular':
+                    _id_ = self.rt_self.encSVGID(node)
+                    id_str = f'id="{self.widget_id}-{_id_}"'
+                svg.append(f'<path {id_str} d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
 
             return ''.join(svg)
 
