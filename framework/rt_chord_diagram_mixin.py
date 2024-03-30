@@ -466,7 +466,7 @@ class RTChordDiagramMixin(object):
                      node_color                 = None,          # none means color by node name, 'vary' by color_by, or specific color "#xxxxxx"
                      node_h                     = 10,            # height of node from circle edge
                      node_gap                   = 5,             # node gap in pixels (gap between the arcs)
-                     order                      = None,          # override calculated ordering...
+                     order                      = None,          # override calculated ordering... "None" in the list means user-specified gaps
                      label_only                 = set(),         # label only set
                      equal_size_nodes           = False,         # equal size nodes
                      # ----------------------------------------- # link options
@@ -1361,9 +1361,13 @@ class RTChordDiagramMixin(object):
         # -- so, any changes here should be propagated to the next method
         #
         def __calculateNodeArcs__(self, counter_lu, counter_sum, left_over_degs, fmto_lu, tofm_lu):
+            nones_in_count = (None in self.order)
             a = 0.0
             for i in range(len(self.order)):
                 node = self.order[i]
+                if node is None: # None in order are treated as user specified gaps
+                    a += self.node_gap_degs
+                    continue
                 counter_perc  = counter_lu[node] / counter_sum
                 node_degrees  = counter_perc * left_over_degs
                 self.node_to_arc    [node] = (a, a+node_degrees)
@@ -1399,17 +1403,23 @@ class RTChordDiagramMixin(object):
                         self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = min(_value_, self.node_dir_arc_ct_min), max(_value_, self.node_dir_arc_ct_max)
                         b += b_inc
                     j = j - 1
-                a += node_degrees + self.node_gap_degs
+                a += node_degrees
+                if nones_in_count == False:
+                    a += self.node_gap_degs
 
         #
         # __calculateNodeArcs_equal__() - calculate the node arcs using equal spacing.
         # - almost an exact duplicate of the above method
         #
         def __calculateNodeArcs_equal__(self, counter_lu, counter_sum, left_over_degs, fmto_lu, tofm_lu):
-            node_degrees = (360.0 / len(self.order)) - self.node_gap_degs
+            nones_in_count = (None in self.order)
+            node_degrees   = left_over_degs / (len(self.order) - self.order.count(None))
             a = 0.0
             for i in range(len(self.order)):
                 node = self.order[i]
+                if node is None: # None in order are treated as user specified gaps
+                    a += self.node_gap_degs
+                    continue
                 self.node_to_arc    [node] = (a, a+node_degrees)
                 self.node_to_arc_ct [node] = counter_lu[node]
                 self.node_dir_arc   [node] = {}
@@ -1439,7 +1449,9 @@ class RTChordDiagramMixin(object):
                             self.node_dir_arc_ct_min = self.node_dir_arc_ct_max = _value_
                         self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = min(_value_, self.node_dir_arc_ct_min), max(_value_, self.node_dir_arc_ct_max)
                     j = j - 1
-                a += node_degrees + self.node_gap_degs
+                a += node_degrees
+                if nones_in_count == False:
+                    a += self.node_gap_degs
 
         #
         # renderSVG() - render as SVG
@@ -1472,19 +1484,23 @@ class RTChordDiagramMixin(object):
             self.cx, self.cy = self.w/2, self.h/2
             self.circ        = 2.0 * pi * self.r
 
-            # Gap pixels adjustment
-            gap_pixels       = len(self.order) * self.node_gap
-            if gap_pixels > 0.2 * self.circ:
-                self.node_gap_adj = (0.2*self.circ)/len(self.order)
+            # Gap pixels adjustment ... if supplied by caller, None's in the list will be treated as the gaps (w/ no other gaps displayed)
+            if None not in self.order:
+                gap_pixels         = len(self.order) * self.node_gap # total amount of pixels needed with user supplied gap size
+                self.node_gap_adj  = (0.2*self.circ)/len(self.order) if gap_pixels > 0.2 * self.circ else self.node_gap # if more than 20% of the circle, use the default
+                self.node_gap_degs = 360.0 * (self.node_gap_adj / self.circ) # total number of degrees used by gaps
+                left_over_degs     = 360.0 - self.node_gap_degs * len(self.order) # left over degrees for the nodes
             else:
-                self.node_gap_adj = self.node_gap
-            self.node_gap_degs = 360.0 * (self.node_gap_adj / self.circ)
-            left_over_degs  = 360.0 - self.node_gap_degs * len(self.order)
+                none_count         = self.order.count(None)       # number of gaps
+                gap_pixels         = none_count * self.node_gap   # total amount of pixels needed with user supplied gap size
+                self.node_gap_adj  = (0.2*self.circ)/none_count if gap_pixels > 0.2 * self.circ else self.node_gap # if more than 20% of the circle, use the default
+                self.node_gap_degs = 360.0 * (self.node_gap_adj / self.circ)
+                left_over_degs     = 360.0 - self.node_gap_degs * none_count
 
             # Node to arc calculation
             _ts_ = time.time()
-            local_dir_arc_ct = None
-            local_dir_arc_ct_min, local_dir_arc_ct_max = None, None
+            local_dir_arc_ct                                   = None
+            local_dir_arc_ct_min,     local_dir_arc_ct_max     = None, None
             self.node_dir_arc_ct_min, self.node_dir_arc_ct_max = None, None
 
             if self.node_to_arc is None or self.node_dir_arc is None or self.node_to_arc_ct is None or self.node_dir_arc_ct is None:
@@ -1494,7 +1510,7 @@ class RTChordDiagramMixin(object):
                     self.__calculateNodeArcs_equal__(counter_lu, counter_sum, left_over_degs, fmto_lu, tofm_lu)
                 else:
                     self.__calculateNodeArcs__(counter_lu, counter_sum, left_over_degs, fmto_lu, tofm_lu)
-                struct_matches_render = True   # to faciliate faster rendering
+                struct_matches_render = True   # to faciliate faster rendering (because structure should all line up with dataframe)
             else:
                 local_dir_arc_ct = {}
                 for i in range(len(self.order)):
