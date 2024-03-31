@@ -1618,7 +1618,7 @@ class RTChordDiagramMixin(object):
                         if self.label_style == 'circular':
                             _id_ = self.rt_self.encSVGID(node)
                             txt_offset = -3 - self.txt_offset
-                            svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" y="{txt_offset}" >''')
+                            svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" dy="{txt_offset}" >''')
                             svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{node}</textPath></text>''')
                         elif self.label_style == 'radial':                            
                             angle_avg  = (self.node_to_arc[node][0] + self.node_to_arc[node][1])/2.0
