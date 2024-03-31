@@ -661,6 +661,26 @@ class RTChordDiagramMixin(object):
                 self.skeleton            = other.skeleton
                 self.skeleton_svg        = other.skeleton_svg
 
+        #
+        # entityPositions() - return information about the entity geometry for rendering
+        # - return the positions of the entity ... rendering had to have happened first
+        # - list with the following tuples:
+        #   (entity, xy_point_to, xy_attachment, svg_entity_id, svg_markup)
+        #    ... xy_point_to   = (x,y)       // if you were to point to the entity, this would be that location
+        #    ... xy_attachment = (x,y,xv,yv) // attachment location -- (x,y) is the attachment location on the entity geometry
+        #    ... where xv,yv is the unit vector for exiting from this entity (zeros indicate any direction works)
+        #    ... svg_entity_id = the svg entity id w/in the current markup
+        #    ... svg_markup    = the (unadorned) svg markup for the entity (which may differ from the svg_entity_id)
+        def entityPositions(self, entity):
+            a0, a1    = self.node_to_arc[entity]
+            a_avg     = (a0+a1)/2
+            a_avg_rad = a_avg * pi/180
+            return [(entity, (self.cx + (self.r - self.node_h/2)*cos(a_avg_rad), 
+                              self.cy + (self.r - self.node_h/2)*sin(a_avg_rad)), 
+                             (self.cx + (self.r)                *cos(a_avg_rad), 
+                              self.cy + (self.r)                *sin(a_avg_rad), cos(a_avg_rad), sin(a_avg_rad)),
+                              self.__entityID__(entity), 
+                              f'<path d="{self.__entityArc__(entity)}" />')]
 
         #
         # applyViewConfiguration()
@@ -868,31 +888,42 @@ class RTChordDiagramMixin(object):
             return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu, df_fm_to_gb
 
         #
+        # __entityArc__() - return the svg arc path
+        #
+        def __entityArc__(self, node):
+            a0, a1 = self.node_to_arc[node]
+            x0_out,  y0_out  = self.xTo(a0), self.yTo(a0)
+            x0_in,   y0_in   = self.xTi(a0), self.yTi(a0)
+            x1_out,  y1_out  = self.xTo(a1), self.yTo(a1)
+            x1_in,   y1_in   = self.xTi(a1), self.yTi(a1)
+            large_arc = 0 if (a1-a0) <= 180.0 else 1
+            _path_ = f'M {x0_out} {y0_out} A {self.r} {self.r} 0 {large_arc} 1 {x1_out} {y1_out} L {x1_in} {y1_in} ' + \
+                                        f' A {self.r-self.node_h} {self.r-self.node_h} 0 {large_arc} 0 {x0_in}  {y0_in}  Z'
+            return _path_
+
+        #
+        # __entityID__() - return the svg entity id
+        #
+        def __entityID__(self, node):
+            _id_ = self.rt_self.encSVGID(node)
+            id_str = f'id="{self.widget_id}-{_id_}"'
+            return id_str
+
+        #
         # __renderNodes__() - render the nodes (outer edges of the circle)
         #
         def __renderNodes__(self, node_color_lu):
-            svg, id_str = [], ''
+            svg = []
             _color_ = self.rt_self.co_mgr.getTVColor('data','default')
             for node in self.node_to_arc.keys():
-                a0, a1 = self.node_to_arc[node]
-                x0_out,  y0_out  = self.xTo(a0), self.yTo(a0)
-                x0_in,   y0_in   = self.xTi(a0), self.yTi(a0)
-                x1_out,  y1_out  = self.xTo(a1), self.yTo(a1)
-                x1_in,   y1_in   = self.xTi(a1), self.yTi(a1)
-                large_arc = 0 if (a1-a0) <= 180.0 else 1
-                _path_ = f'M {x0_out} {y0_out} A {self.r} {self.r} 0 {large_arc} 1 {x1_out} {y1_out} L {x1_in} {y1_in} ' + \
-                                            f' A {self.r-self.node_h} {self.r-self.node_h} 0 {large_arc} 0 {x0_in}  {y0_in}  Z'
+                _path_  = self.__entityArc__(node)
                 if   type(self.node_color) == str and len(self.node_color) == 7 and self.node_color.startswith('#'):
                     _node_color_ = self.node_color
                 elif self.color_by is not None and self.node_color == 'vary':
                     _node_color_ = node_color_lu[node]
                 else:
                     _node_color_ = self.rt_self.co_mgr.getColor(str(node))
-                if self.draw_labels and self.label_style == 'circular':
-                    _id_ = self.rt_self.encSVGID(node)
-                    id_str = f'id="{self.widget_id}-{_id_}"'
-                svg.append(f'<path {id_str} d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
-
+                svg.append(f'<path {self.__entityID__(node)} d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
             return ''.join(svg)
 
         #
