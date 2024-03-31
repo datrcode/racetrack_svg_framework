@@ -114,7 +114,13 @@ class RACETrack(RTAnnotationsMixin,
                                   #
                                   # Numeric transformations
                                   #
-                                  'log_bins'           # log-based binning
+                                  'log_bins',             # log-based binning
+                                  #
+                                  # IP-based transformations
+                                  #
+                                  'ipv4_cidr_24',         # ipv4_cidr_24
+                                  'ipv4_cidr_16',         # ipv4_cidr_16
+                                  'ipv4_cidr_08'          # ipv4_cidr_08
                                   ]
 
         # Used for reflections
@@ -452,6 +458,10 @@ class RACETrack(RTAnnotationsMixin,
             transform = tfield.split('|')[2]
             field     = '|'.join(tfield.split('|')[3:])
 
+            ipv4CIDR08 = lambda ipv4: ipv4.split('.')[0]
+            ipv4CIDR16 = lambda ipv4: ipv4.split('.')[0] + '.' + ipv4.split('.')[1]
+            ipv4CIDR24 = lambda ipv4: ipv4.split('.')[0] + '.' + ipv4.split('.')[1] + '.' + ipv4.split('.')[2]
+
             #
             # PANDAS Version
             #
@@ -488,6 +498,12 @@ class RACETrack(RTAnnotationsMixin,
                     df[tfield] = df[field].apply(lambda x: f'{x.second:02}')
                 elif transform == 'log_bins':
                     df[tfield] = df[field].apply(lambda x: self.transformLogBins(x))
+                elif transform == 'ipv4_cidr_24': # ipv4_cidr_24
+                    df[tfield] = df[field].apply(lambda x: ipv4CIDR24(x))
+                elif transform == 'ipv4_cidr_16': # ipv4_cidr_16
+                    df[tfield] = df[field].apply(lambda x: ipv4CIDR16(x))
+                elif transform == 'ipv4_cidr_08': # ipv4_cidr_08
+                    df[tfield] = df[field].apply(lambda x: ipv4CIDR08(x))
 
             #
             # POLARS Version
@@ -541,6 +557,12 @@ class RACETrack(RTAnnotationsMixin,
                     df = df.with_columns(pl.col(field).dt.strftime('%S').alias(tfield))
                 elif transform == 'log_bins':
                     df = df.with_columns(pl.col(field).apply(lambda x: self.transformLogBins(x)).alias(tfield))
+                elif transform == 'ipv4_cidr_24': # ipv4_cidr_24
+                    df = df.with_columns(pl.col(field).map_elements(lambda x: ipv4CIDR24(x)).alias(tfield))
+                elif transform == 'ipv4_cidr_16': # ipv4_cidr_16
+                    df = df.with_columns(pl.col(field).map_elements(lambda x: ipv4CIDR16(x)).alias(tfield))
+                elif transform == 'ipv4_cidr_08': # ipv4_cidr_08
+                    df = df.with_columns(pl.col(field).map_elements(lambda x: ipv4CIDR08(x)).alias(tfield))
             else:
                 raise Exception('applyTransform() - df is neither a pandas nor a polars dataframe')
 
@@ -613,6 +635,18 @@ class RACETrack(RTAnnotationsMixin,
                     _order.append(f'{_minute:02}')
             elif transform == 'log_bins':
                 _order = ['< 0', '= 0', '<= 1', '<= 10','<= 100', '<= 1K', '<= 100K', '<= 1M', '> 1M']
+            elif transform == 'ipv4_cidr_24':
+                _pad_ = lambda x: f'{int(x.split(".")[0]):03}.{int(x.split(".")[1]):03}.{int(x.split(".")[2]):03}'
+                _order = list(set(df[tfield]))
+                _order.sort(key=_pad_)
+            elif transform == 'ipv4_cidr_16':
+                _pad_ = lambda x: f'{int(x.split(".")[0]):03}.{int(x.split(".")[1]):03}'
+                _order = list(set(df[tfield]))
+                _order.sort(key=_pad_)
+            elif transform == 'ipv4_cidr_08':
+                _pad_ = lambda x: f'{int(x.split(".")[0]):03}'
+                _order = list(set(df[tfield]))
+                _order.sort(key=_pad_)
         return _order
 
     #
