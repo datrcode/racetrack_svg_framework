@@ -90,7 +90,7 @@ class RACETrack(RTAnnotationsMixin,
         # Visualization globals
         self.co_mgr            = RTColorManager(self)
         self.default_font      = "Times"
-        self.fformat           = '0.2f'
+        self.fformat           = '0.2f' # label formatting
         
         # Field transformations
                                   #
