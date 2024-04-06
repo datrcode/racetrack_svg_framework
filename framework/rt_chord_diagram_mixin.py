@@ -419,6 +419,27 @@ class RTChordDiagramMixin(object):
         return list(_tuple_)
 
     #
+    # hierarchicalCIDRParentLookups() - helper method to create parent lookups for CIDR hierarchies
+    #
+    def hierarchicalCIDRParentLookups(self, df, cols, cidr24=True, cidr16=True, cidr08=True):
+        parent_lu, base = {}, set()
+        for col in cols:
+            base = base | set(df[col])
+        for i in range(3,0,-1):
+            if i == 3 and cidr24 == False:
+                continue
+            if i == 2 and cidr16 == False:
+                continue
+            if i == 1 and cidr08 == False:
+                continue
+            base_next = set()
+            for ip in base:
+                parent_lu[ip] = '.'.join(ip.split('.')[:i])
+                base_next.add(parent_lu[ip])
+            base = base_next
+        return parent_lu
+
+    #
     # chordDiagramPreferredDimensions()
     # - Return the preferred size
     #
@@ -670,13 +691,9 @@ class RTChordDiagramMixin(object):
                 self.skeleton_svg        = other.skeleton_svg
 
         #
-        # orderedChildren() - return a list of children ordered by parent
-        # - lu is a lookup dictionary from child to parent
-        # - lu[child] = parent
-        # - returns a list of children ordered firstly by parent (only leaf children are included)
-        # -- None is used as a separator
+        # INCORRECT_orderedChildren() - original... failed to consider complete hierarchy
         #
-        def orderedChildren(self, lu):
+        def INCORRECT_orderedChildren(self, lu):
             children = {}
             for child in lu:
                 if lu[child] not in children:
@@ -692,6 +709,50 @@ class RTChordDiagramMixin(object):
                 if one_added:
                     ordered.append(None)
             return ordered
+        #
+        # orderedChildren() - return a list of children ordered by parent
+        # - lu is a lookup dictionary from child to parent
+        # - lu[child] = parent
+        # - returns a list of children ordered firstly by parent (only leaf children are included)
+        # -- None is used as a separator
+        #
+        def orderedChildren(self, lu):
+            child_lu, roots = {}, set()
+            for child in lu:
+                parent = lu[child]
+                if parent not in child_lu:
+                    child_lu[parent] = []
+                child_lu[parent].append(child)
+                if parent not in lu:
+                    roots.add(parent)
+
+            def leafWalk(t, root):
+                if root in t:
+                    _order_ = []
+                    for child in t[root]:
+                        _order_.extend(leafWalk(t,child))
+                    _order_.append(None)
+                    return _order_
+                else:
+                    return [root]
+
+            order = []
+            for root in roots:
+                suborder = leafWalk(child_lu, root)
+                order.extend(suborder)
+                order.append(None)
+
+            new_order, last_was_none = [], False
+            for x in order:
+                if x is None:
+                    if not last_was_none:
+                        new_order.append(None)
+                    last_was_none = True
+                else:
+                    new_order.append(x)
+                    last_was_none = False
+                    
+            return new_order
 
         # entityPositions() - return information about the entity geometry for rendering
         # - return the positions of the entity ... rendering had to have happened first
