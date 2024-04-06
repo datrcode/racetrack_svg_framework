@@ -888,6 +888,20 @@ class RTChordDiagramMixin(object):
             return counter_lu, counter_sum, fmto_lu, tofm_lu, fmto_color_lu, node_color_lu, df_fm_to_gb
 
         #
+        # __genericArc__()
+        #
+        def __genericArc__(self, a0, a1, r_inner, r_outer):
+            _fn_ = lambda a,r: (self.cx + r * cos(a * pi / 180.0), self.cy + r * sin(a * pi / 180.0))
+            x0_out,  y0_out  = _fn_(a0, r_outer)
+            x0_in,   y0_in   = _fn_(a0, r_inner)
+            x1_out,  y1_out  = _fn_(a1, r_outer)
+            x1_in,   y1_in   = _fn_(a1, r_inner)
+            large_arc = 0 if (a1-a0) <= 180.0 else 1
+            _path_ = f'M {x0_out} {y0_out} A {r_outer} {r_outer} 0 {large_arc} 1 {x1_out} {y1_out} L {x1_in} {y1_in} ' + \
+                                        f' A {r_inner} {r_inner} 0 {large_arc} 0 {x0_in}  {y0_in}  Z'
+            return _path_
+
+        #
         # __entityArc__() - return the svg arc path
         #
         def __entityArc__(self, node):
