@@ -467,6 +467,7 @@ class RTChordDiagramMixin(object):
                      node_h                     = 10,            # height of node from circle edge
                      node_gap                   = 5,             # node gap in pixels (gap between the arcs)
                      order                      = None,          # override calculated ordering... "None" in the list means user-specified gaps
+                     parent_lu                  = None,          # parent lookup (if filled in & order is None, it will be calculated)
                      label_only                 = set(),         # label only set
                      equal_size_nodes           = False,         # equal size nodes
                      # ----------------------------------------- # link options
@@ -553,6 +554,7 @@ class RTChordDiagramMixin(object):
             self.node_h                 = kwargs['node_h']                    # done!
             self.node_gap               = kwargs['node_gap']                  # done!
             self.order                  = kwargs['order']                     # done!
+            self.parent_lu              = kwargs['parent_lu']                 # done!
             self.label_only             = kwargs['label_only']                # done!
             self.equal_size_nodes       = kwargs['equal_size_nodes']          # done! (needs testing)
             self.link_color             = kwargs['link_color']                # done!
@@ -632,6 +634,12 @@ class RTChordDiagramMixin(object):
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
             
+            # Create the order in parent_lu mode
+            self.hierarchical_labels = set()
+            self.hierarchical_to_arc = {} # (a0, a1, r0, r1)
+            if self.parent_lu is not None and self.order is None:
+                self.order = self.orderedChildren(self.parent_lu)
+
             # Tracking state
             self.geom_to_df  = {}
             self.last_render = None
@@ -662,6 +670,29 @@ class RTChordDiagramMixin(object):
                 self.skeleton_svg        = other.skeleton_svg
 
         #
+        # orderedChildren() - return a list of children ordered by parent
+        # - lu is a lookup dictionary from child to parent
+        # - lu[child] = parent
+        # - returns a list of children ordered firstly by parent (only leaf children are included)
+        # -- None is used as a separator
+        #
+        def orderedChildren(self, lu):
+            children = {}
+            for child in lu:
+                if lu[child] not in children:
+                    children[lu[child]] = []
+                children[lu[child]].append(child)
+            ordered = []
+            for parent in children:
+                one_added = False
+                for x in children[parent]:
+                    if x not in children:
+                        ordered.append(x)
+                        one_added = True
+                if one_added:
+                    ordered.append(None)
+            return ordered
+
         # entityPositions() - return information about the entity geometry for rendering
         # - return the positions of the entity ... rendering had to have happened first
         # - list with the following tuples:
@@ -672,15 +703,28 @@ class RTChordDiagramMixin(object):
         #    ... svg_entity_id = the svg entity id w/in the current markup
         #    ... svg_markup    = the (unadorned) svg markup for the entity (which may differ from the svg_entity_id)
         def entityPositions(self, entity):
-            a0, a1    = self.node_to_arc[entity]
-            a_avg     = (a0+a1)/2
-            a_avg_rad = a_avg * pi/180
-            return [(entity, (self.cx + (self.r - self.node_h/2)*cos(a_avg_rad), 
-                              self.cy + (self.r - self.node_h/2)*sin(a_avg_rad)), 
-                             (self.cx + (self.r)                *cos(a_avg_rad), 
-                              self.cy + (self.r)                *sin(a_avg_rad), cos(a_avg_rad), sin(a_avg_rad)),
-                              self.__entityID__(entity), 
-                              f'<path d="{self.__entityArc__(entity)}" />')]
+            if entity in self.node_to_arc:
+                a0, a1    = self.node_to_arc[entity]
+                a_avg     = (a0+a1)/2
+                a_avg_rad = a_avg * pi/180
+                return [(entity, (self.cx + (self.r - self.node_h/2)*cos(a_avg_rad), 
+                                self.cy + (self.r - self.node_h/2)*sin(a_avg_rad)), 
+                                (self.cx + (self.r)                *cos(a_avg_rad), 
+                                self.cy + (self.r)                *sin(a_avg_rad), cos(a_avg_rad), sin(a_avg_rad)),
+                                self.__entityID__(entity), 
+                                f'<path d="{self.__entityArc__(entity)}" />')]
+            elif entity in self.hierarchical_to_arc:
+                a0, a1, r0, r1 = self.hierarchical_to_arc[entity]
+                a_avg, r_avg   = (a0+a1)/2, (r0+r1)/2
+                a_avg_rad      = a_avg * pi/180
+                return [(entity, (self.cx + (r_avg)*cos(a_avg_rad), 
+                                  self.cy + (r_avg)*sin(a_avg_rad)), 
+                                 (self.cx + (r1)*cos(a_avg_rad), 
+                                  self.cy + (r1)*sin(a_avg_rad), cos(a_avg_rad), sin(a_avg_rad)),
+                                  self.__entityID__(entity), 
+                                  f'<path d="{self.__genericArc__(a0, a1, r0, r1)}" />')]
+            else:
+                return []
 
         #
         # applyViewConfiguration()
@@ -928,6 +972,8 @@ class RTChordDiagramMixin(object):
         #
         def __renderNodes__(self, node_color_lu):
             svg = []
+
+            # draw the base ring
             _color_ = self.rt_self.co_mgr.getTVColor('data','default')
             for node in self.node_to_arc.keys():
                 _path_  = self.__entityArc__(node)
@@ -938,6 +984,42 @@ class RTChordDiagramMixin(object):
                 else:
                     _node_color_ = self.rt_self.co_mgr.getColor(str(node))
                 svg.append(f'<path {self.__entityID__(node)} d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
+
+            # draw the hierarchical layers (further out rings)
+            last_arc_lu = self.node_to_arc
+            ring_r = self.r
+            if self.draw_labels and self.label_style == 'circular':
+                ring_r += self.txt_h + 4
+            if self.parent_lu is not None:
+                while len(last_arc_lu.keys()) > 0:
+                    arc_lu = {}
+                    for node in last_arc_lu:
+                        if node in self.parent_lu:
+                            parent = self.parent_lu[node]
+                            a0, a1 = last_arc_lu[node]
+                            if parent not in arc_lu:
+                                arc_lu[parent] = (a0,a1)
+                            else:
+                                b0, b1 = arc_lu[parent]
+                                b0, b1 = min(b0, a0), max(b1, a1)
+                                arc_lu[parent] = (b0,b1)
+                    for node in arc_lu:
+                        a0, a1 = arc_lu[node]
+                        _path_  = self.__genericArc__(a0, a1, ring_r, ring_r + self.node_h)
+                        if   type(self.node_color) == str and len(self.node_color) == 7 and self.node_color.startswith('#'):
+                            _node_color_ = self.node_color
+                        elif self.color_by is not None and self.node_color == 'vary':
+                            _node_color_ = node_color_lu[node]
+                        else:
+                            _node_color_ = self.rt_self.co_mgr.getColor(str(node))
+                        svg.append(f'<path {self.__entityID__(node)} d="{_path_}" stroke-width="0.8" stroke="{_node_color_}" fill="{_node_color_}" />')
+                        # labeling later...
+                        self.hierarchical_labels.add(node)
+                        self.hierarchical_to_arc[node] = (a0, a1, ring_r, ring_r + self.node_h)
+                    last_arc_lu  = arc_lu
+                    ring_r      += self.node_h
+                    if self.draw_labels and self.label_style == 'circular':
+                        ring_r += self.txt_h + 4
             return ''.join(svg)
 
         #
@@ -1676,6 +1758,12 @@ class RTChordDiagramMixin(object):
                                 svg.append(self.rt_self.svgText(node, x_text, y_text, self.txt_h, anchor = 'end',   rotation=angle_avg-180.0))
                         else:
                             raise Exception(f'RTChordDiagram.renderSVG() -- unknown label_style "{self.label_style}"')
+                if self.label_style == 'circular' and len(self.hierarchical_labels) > 0:
+                    for node in self.hierarchical_labels:
+                        _id_ = self.rt_self.encSVGID(node)
+                        txt_offset = -3 - self.txt_offset
+                        svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" dy="{txt_offset}" >''')
+                        svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{node}</textPath></text>''')
 
             # Draw the border
             if self.draw_border:
