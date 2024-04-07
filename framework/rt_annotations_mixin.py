@@ -1016,7 +1016,7 @@ class RTAnnotationsMixin(object):
                 svg += f'<line x1="{x1_bracket-_x0}" y1="{y_bracket}" x2="{x1_bracket-_x0-4}" y2="{y_bracket-4}" stroke="{_co}" stroke-width="1" />'
                 
         svg += '</svg>'
-        return svg
+        return self.svgObject(svg)
 
     #
     # annotateTimelineInstancesSubOptimal()
