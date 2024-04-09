@@ -24,7 +24,7 @@ from datetime import datetime
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 
-from math import sqrt,pi,atan
+from math import sqrt,pi,atan,floor
 
 __name__ = 'rt_annotations_mixin'
 
@@ -754,6 +754,103 @@ class RTAnnotationsMixin(object):
         if '.' not in _max_str:
             _max_str += '.000000'       
         return _max_str
+
+    #
+    # annotateEntityInstances()
+    # - produce a svg description of the supplied visualization instance with the specified annotation(s)
+    #
+    def annotateEntityInstances(self,
+                                vis_instance,                       # must implement getEntityPositions()
+                                annotations         = None,         # (1) None == Use Stateful List; (2) List of Annotations; (3) Single Annotation
+                                txt_h               = 14,           # Annotation text height
+                                txt_block_h_gap     = 32,           # Annotation text block gap
+                                txt_block_v_gap     = 5,            # Annotation text block gap
+                                max_line_w          = 96,           # Length of annotation line in pixels
+                                max_lines           = 3,            # Max # of lines of annotation to render
+                                annotation_color    = 'default',    # 'default', hex-color-string, 'common_name', 'tag:<tag_name>'
+                                instance_fade       = 0.5,          # 0.0 == no fade, 1.0 == full fade
+                                x_ins               = 5,            # x inset
+                                y_ins               = 5,            # y inset
+                                draw_text_border    = False,        # Draw a border around the annotation text
+                                include_common_name = True,         # The annotation description is the common name (possible concatenate)
+                                include_description = False):       # The annotation description is the description (possible concatenate)
+        # Force a render
+        _instance_svg_ = vis_instance.renderSVG()
+        _instance_svg_w_, _instance_svg_h_ = self.__extractSVGWidthAndHeight__(vis_instance)
+
+        # Create list of possible annotations that will be used
+        _possibles = []
+        if   annotations is None:
+             for _annotation in self.annotations_ls:
+                  _possibles.append(_annotation)
+        elif type(annotations) == list:
+             for _annotation in annotations:
+                  _possibles.append(_annotation)                       
+        elif type(annotations) == RTAnnotation:
+             _possibles.append(annotations)
+        else:
+             raise Exception(f'annotateTimelineInstances() - annotations parameter must be None, a list of RTAnnotation, found type = "{type(annotations)}"')
+
+        # Refine possibles into applicables... & figure out how much space we need
+        _applicables_, to_positions, cols_needed, cols_filled = [], {}, 0, 0
+        for _annotation_ in _possibles:
+            if _annotation_.annotationType() == 'entity':
+                _positions_ = vis_instance.entityPositions(_annotation_.commonName())
+                if _positions_ is not None and len(_positions_) > 0:
+                    _applicables_.append(_annotation_)
+                    to_positions[_annotation_.commonName()] = _positions_
+                    _str_ = _annotation_.commonName() if include_common_name else ''
+                    if include_description and _annotation_.description() is not None:
+                        _str_ += ' - ' + _annotation_.description() if (len(_str_) > 0) else _annotation_.description()
+                    txt_w    = self.textLength(_str_, txt_h)
+                    my_lines = 1 + floor(txt_w / max_line_w)
+                    my_lines = min(my_lines, max_lines)
+                    block_h  = my_lines*txt_h + txt_block_v_gap
+                    if block_h > (_instance_svg_h_ + 2*y_ins):
+                        cols_needed += 1
+                        cols_filled  = 0
+                    else:
+                        cols_filled += block_h
+        if cols_filled > 0:
+            cols_needed += 1
+
+        # Allocate the svg based on the columns needed
+        col_x      = {}
+        col_fill_h = {}
+        x          = x_ins
+        to_add = (cols_needed%2)
+        half = floor(cols_needed/2)
+        for i in range(half):
+            col_x[i]      = x
+            col_fill_h[i] = 0
+            x += max_line_w + txt_block_h_gap
+        _instance_x_ = x
+        x += _instance_svg_w_
+        for i in range(half+to_add):
+            col_x[half+i] = x
+            col_fill_h[half+i] = 0
+            x += max_line_w + txt_block_h_gap
+        x += x_ins
+
+        # Create the svg
+        w_annotated, h_annotated = x, _instance_svg_h_ + 2*y_ins
+        svg  = [f'<svg x="0" y="0" width="{w_annotated}" height="{h_annotated}" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(self.__overwriteSVGOriginPosition__(_instance_svg_, (_instance_x_, y_ins)))
+        if instance_fade > 0.0:
+            svg.append(f'<rect x="{_instance_x_}" y="{y_ins}" width="{_instance_svg_w_}" height="{_instance_svg_h_}" fill="{self.co_mgr.getTVColor("background","default")}" opacity="{instance_fade}" />')
+
+        # Sort annotations horizontally...
+        h_sorter = []
+        for common_name in to_positions:
+            xs = []
+            for position in to_positions[common_name]:
+                xs.append(position.xy()[0]-_instance_svg_w_/2)
+            sorted(xs)
+            # NEED MORE HERE
+
+        # Return as an svg object
+        svg.append('</svg>')
+        return self.svgObject(''.join(svg))
 
     #
     # annotateTimelineInstances()

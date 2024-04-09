@@ -27,7 +27,8 @@ from math import pi, sin, cos, ceil, floor, sqrt
 
 from shapely.geometry import Polygon
 
-from rt_component import RTComponent
+from rt_component       import RTComponent
+from rt_entity_position import RTEntityPosition
 
 __name__ = 'rt_chord_diagram_mixin'
 
@@ -768,22 +769,30 @@ class RTChordDiagramMixin(object):
                 a0, a1    = self.node_to_arc[entity]
                 a_avg     = (a0+a1)/2
                 a_avg_rad = a_avg * pi/180
-                return [(entity, (self.cx + (self.r - self.node_h/2)*cos(a_avg_rad), 
-                                self.cy + (self.r - self.node_h/2)*sin(a_avg_rad)), 
-                                (self.cx + (self.r)                *cos(a_avg_rad), 
-                                self.cy + (self.r)                *sin(a_avg_rad), cos(a_avg_rad), sin(a_avg_rad)),
-                                self.__entityID__(entity), 
-                                f'<path d="{self.__entityArc__(entity)}" />')]
+                return [RTEntityPosition(entity, self.rt_self,
+                                                 self,
+                                                 (self.cx + (self.r - self.node_h/2)*cos(a_avg_rad), 
+                                                  self.cy + (self.r - self.node_h/2)*sin(a_avg_rad)), 
+                                                 (self.cx + (self.r)                *cos(a_avg_rad), 
+                                                  self.cy + (self.r)                *sin(a_avg_rad), 
+                                                  cos(a_avg_rad), 
+                                                  sin(a_avg_rad)),
+                                                 self.__entityID__(entity), 
+                                                 f'<path d="{self.__entityArc__(entity)}" />',
+                                                 self.widget_id)]
             elif entity in self.hierarchical_to_arc:
                 a0, a1, r0, r1 = self.hierarchical_to_arc[entity]
                 a_avg, r_avg   = (a0+a1)/2, (r0+r1)/2
                 a_avg_rad      = a_avg * pi/180
-                return [(entity, (self.cx + (r_avg)*cos(a_avg_rad), 
-                                  self.cy + (r_avg)*sin(a_avg_rad)), 
-                                 (self.cx + (r1)*cos(a_avg_rad), 
-                                  self.cy + (r1)*sin(a_avg_rad), cos(a_avg_rad), sin(a_avg_rad)),
-                                  self.__entityID__(entity), 
-                                  f'<path d="{self.__genericArc__(a0, a1, r0, r1)}" />')]
+                return [RTEntityPosition(entity, self.rt_self,
+                                                 self,
+                                                 (self.cx + (r_avg)*cos(a_avg_rad), 
+                                                  self.cy + (r_avg)*sin(a_avg_rad)), 
+                                                 (self.cx + (r1)*cos(a_avg_rad), 
+                                                  self.cy + (r1)*sin(a_avg_rad), cos(a_avg_rad), sin(a_avg_rad)),
+                                                 self.__entityID__(entity), 
+                                                 f'<path d="{self.__genericArc__(a0, a1, r0, r1)}" />',
+                                                 self.widget_id)]
             else:
                 return []
 

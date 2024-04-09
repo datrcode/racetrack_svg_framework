@@ -42,13 +42,6 @@ class RTComponent(object):
         # (originally developed in the RTChordDiagram component... probably overkill here //2024-03-31)
         #
         # - return the positions of the entity ... rendering had to have happened first
-        # - list with the following tuples:
-        #   (entity, xy_point_to, xy_attachment, svg_entity_id, svg_markup)
-        #    ... xy_point_to   = (x,y)       // if you were to point to the entity, this would be that location
-        #    ... xy_attachment = (x,y,xv,yv) // attachment location -- (x,y) is the attachment location on the entity geometry
-        #    ... where xv,yv is the unit vector for exiting from this entity (zeros indicate any direction works)
-        #    ... svg_entity_id = the svg entity id w/in the current markup
-        #    ... svg_markup    = the (unadorned) svg markup for the entity (which may differ from the svg_entity_id)
         def entityPositions(self, entity):
              return []
 
