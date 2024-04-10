@@ -792,7 +792,8 @@ class RTAnnotationsMixin(object):
              raise Exception(f'annotateTimelineInstances() - annotations parameter must be None, a list of RTAnnotation, found type = "{type(annotations)}"')
 
         # Refine possibles into applicables... & figure out how much space we need
-        _applicables_, to_positions, cols_needed, cols_filled = [], {}, 0, 0
+        _applicables_, to_positions, cols_needed, cols_filled, common_name_to_block_h = [], {}, 0, 0, {}
+        common_name_to_actual_text = {}
         for _annotation_ in _possibles:
             if _annotation_.annotationType() == 'entity':
                 _positions_ = vis_instance.entityPositions(_annotation_.commonName())
@@ -802,16 +803,20 @@ class RTAnnotationsMixin(object):
                     _str_ = _annotation_.commonName() if include_common_name else ''
                     if include_description and _annotation_.description() is not None:
                         _str_ += ' - ' + _annotation_.description() if (len(_str_) > 0) else _annotation_.description()
+                    common_name_to_actual_text[_annotation_.commonName()] = _str_
                     txt_w    = self.textLength(_str_, txt_h)
                     my_lines = 1 + floor(txt_w / max_line_w)
                     my_lines = min(my_lines, max_lines)
                     block_h  = my_lines*txt_h + txt_block_v_gap
-                    if block_h > (_instance_svg_h_ + 2*y_ins):
+                    common_name_to_block_h[_annotation_.commonName()] = block_h
+                    if  cols_filled == 0 and block_h > _instance_svg_h_: # case where the block_h exceeds the svg height
                         cols_needed += 1
-                        cols_filled  = 0
-                    else:
+                    elif (cols_filled + block_h) > _instance_svg_h_:     # case where the block_h + the current fill exceeds the svg height
+                        cols_needed += 1
+                        cols_filled  = block_h
+                    else:                                                # add to the current fill
                         cols_filled += block_h
-        if cols_filled > 0:
+        if cols_filled > 0: # any extra?  will need another column
             cols_needed += 1
 
         # Allocate the svg based on the columns needed
@@ -839,14 +844,91 @@ class RTAnnotationsMixin(object):
         if instance_fade > 0.0:
             svg.append(f'<rect x="{_instance_x_}" y="{y_ins}" width="{_instance_svg_w_}" height="{_instance_svg_h_}" fill="{self.co_mgr.getTVColor("background","default")}" opacity="{instance_fade}" />')
 
-        # Sort annotations horizontally...
-        h_sorter = []
-        for common_name in to_positions:
-            xs = []
-            for position in to_positions[common_name]:
-                xs.append(position.xy()[0]-_instance_svg_w_/2)
-            sorted(xs)
-            # NEED MORE HERE
+        # Sort annotations into columns
+        col_to_common_names = {}
+        for i in range(cols_needed):
+            col_to_common_names[i] = []
+            col_fill_h[i]          = 0   # reuse filler
+        if cols_needed > 1:
+            # Sort the common names horizontally by position
+            h_sorter = []
+            for common_name in to_positions:
+                xs = []
+                for position in to_positions[common_name]:
+                    xs.append(position.xy()[0]-_instance_svg_w_/2)
+                sorted(xs)
+                x_median = xs[int(len(xs)/2)]
+                h_sorter.append((x_median, common_name))
+            sorted(h_sorter)
+            # Fill in the columns w/ a greedy strategy
+            unallocated_common_names = []
+            m                        = int(len(h_sorter)/2)-1 # middle of sorter
+            if m < 0:
+                m = 0
+            i, j                     = m, m+1                 # middle down and middle up pointers
+            col_m                    = int(cols_needed/2)-1   # middle of columns
+            if col_m < 0:
+                col_m = 0
+            col_i, col_j             = col_m, col_m+1         # middle down and middle up columns
+            while i >= 0 or j < len(h_sorter):
+                # fill to start
+                if i >= 0:
+                    common_name = h_sorter[i][1]
+                    if col_i >= 0:
+                        if   col_fill_h[col_i] == 0: # case where there's no fill... and by default put the next text here
+                            pass
+                        elif col_fill_h[col_i] + common_name_to_block_h[common_name] > _instance_svg_h_:
+                            col_i -= 1
+                    if col_i >= 0:
+                        col_to_common_names[col_i].append(common_name)
+                        col_fill_h[col_i] += common_name_to_block_h[common_name]
+                    else:
+                        unallocated_common_names.append(common_name)
+                # fill to end
+                if j < len(h_sorter):
+                    common_name = h_sorter[j][1]
+                    if col_j < cols_needed:
+                        if   col_fill_h[col_j] == 0: # case where there's no fill... and by default put the next text here
+                            pass
+                        elif col_fill_h[col_j] + common_name_to_block_h[common_name] > _instance_svg_h_:
+                            col_j += 1
+                    if col_j < cols_needed:
+                        col_to_common_names[col_j].append(common_name)
+                        col_fill_h[col_j] += common_name_to_block_h[common_name]
+                    else:
+                        unallocated_common_names.append(common_name)
+                # work our way from middle to the ends
+                i -= 1
+                j += 1
+        else:
+            for common_name in to_positions:
+                col_to_common_names[0].append(common_name)
+
+        # Render the annotations
+        for i in range(cols_needed):
+            x, y = col_x[i], y_ins + txt_h
+            col_common_names = col_to_common_names[i]
+            for common_name in col_common_names:
+                txt = common_name_to_actual_text[common_name]
+                _split_lines_ = self.__splitAnnotationTextIntoLines__(txt, max_line_w, max_lines, txt_h)
+                y_sub = y
+                for line in _split_lines_:
+                    svg.append(self.svgText(self.cropText(line, txt_h, max_line_w), x, y_sub, txt_h))
+                    y_sub += txt_h
+
+                # Determine the attachment point
+                if x < _instance_x_:
+                    x_attach = x + max_line_w + 2
+                else:
+                    x_attach = x - 2
+                y_attach = y - txt_h/2
+
+                # For all positions draw a line
+                for _position_ in to_positions[common_name]:
+                    svg.append(f'<line x1="{x_attach}" y1="{y_attach}" x2="{_position_.xy()[0]+_instance_x_}" y2="{_position_.xy()[1]+y_ins}" stroke="{self.co_mgr.getTVColor("label","defaultfg")}" stroke-width="1.5" />')
+
+                # Increment for next text block
+                y += common_name_to_block_h[common_name]
 
         # Return as an svg object
         svg.append('</svg>')
