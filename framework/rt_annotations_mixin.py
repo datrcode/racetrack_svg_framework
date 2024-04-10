@@ -807,15 +807,15 @@ class RTAnnotationsMixin(object):
                     txt_w    = self.textLength(_str_, txt_h)
                     my_lines = 1 + floor(txt_w / max_line_w)
                     my_lines = min(my_lines, max_lines)
-                    block_h  = my_lines*txt_h + txt_block_v_gap
+                    block_h  = my_lines*txt_h + txt_h # a little extra for the border
                     common_name_to_block_h[_annotation_.commonName()] = block_h
                     if  cols_filled == 0 and block_h > _instance_svg_h_: # case where the block_h exceeds the svg height
                         cols_needed += 1
                     elif (cols_filled + block_h) > _instance_svg_h_:     # case where the block_h + the current fill exceeds the svg height
                         cols_needed += 1
-                        cols_filled  = block_h
+                        cols_filled  = block_h + txt_block_v_gap
                     else:                                                # add to the current fill
-                        cols_filled += block_h
+                        cols_filled += block_h + txt_block_v_gap
         if cols_filled > 0: # any extra?  will need another column
             cols_needed += 1
 
@@ -830,7 +830,7 @@ class RTAnnotationsMixin(object):
             col_fill_h[i] = 0
             x += max_line_w + txt_block_h_gap
         _instance_x_ = x
-        x += _instance_svg_w_
+        x += _instance_svg_w_ + txt_block_h_gap
         for i in range(half+to_add):
             col_x[half+i] = x
             col_fill_h[half+i] = 0
@@ -855,11 +855,12 @@ class RTAnnotationsMixin(object):
             for common_name in to_positions:
                 xs = []
                 for position in to_positions[common_name]:
-                    xs.append(position.xy()[0]-_instance_svg_w_/2)
+                    xs.append(position.xy()[0])
                 sorted(xs)
                 x_median = xs[int(len(xs)/2)]
                 h_sorter.append((x_median, common_name))
-            sorted(h_sorter)
+            h_sorter = sorted(h_sorter)
+
             # Fill in the columns w/ a greedy strategy
             unallocated_common_names = []
             m                        = int(len(h_sorter)/2)-1 # middle of sorter
@@ -881,7 +882,7 @@ class RTAnnotationsMixin(object):
                             col_i -= 1
                     if col_i >= 0:
                         col_to_common_names[col_i].append(common_name)
-                        col_fill_h[col_i] += common_name_to_block_h[common_name]
+                        col_fill_h[col_i] += common_name_to_block_h[common_name] + txt_block_v_gap
                     else:
                         unallocated_common_names.append(common_name)
                 # fill to end
@@ -894,7 +895,7 @@ class RTAnnotationsMixin(object):
                             col_j += 1
                     if col_j < cols_needed:
                         col_to_common_names[col_j].append(common_name)
-                        col_fill_h[col_j] += common_name_to_block_h[common_name]
+                        col_fill_h[col_j] += common_name_to_block_h[common_name] + txt_block_v_gap
                     else:
                         unallocated_common_names.append(common_name)
                 # work our way from middle to the ends
@@ -908,7 +909,21 @@ class RTAnnotationsMixin(object):
         for i in range(cols_needed):
             x, y = col_x[i], y_ins + txt_h
             col_common_names = col_to_common_names[i]
+
+            # Sort by y position
+            v_sorter = []
             for common_name in col_common_names:
+                ys = []
+                for position in to_positions[common_name]:
+                    ys.append(position.xy()[1])
+                sorted(ys)
+                y_median = ys[int(len(ys)/2)]
+                v_sorter.append((y_median, common_name))
+            v_sorter = sorted(v_sorter)
+
+            # Render them in sorted order
+            for _tuple_ in v_sorter:
+                common_name = _tuple_[1]
                 txt = common_name_to_actual_text[common_name]
                 _split_lines_ = self.__splitAnnotationTextIntoLines__(txt, max_line_w, max_lines, txt_h)
                 y_sub = y
@@ -925,10 +940,12 @@ class RTAnnotationsMixin(object):
 
                 # For all positions draw a line
                 for _position_ in to_positions[common_name]:
-                    svg.append(f'<line x1="{x_attach}" y1="{y_attach}" x2="{_position_.xy()[0]+_instance_x_}" y2="{_position_.xy()[1]+y_ins}" stroke="{self.co_mgr.getTVColor("label","defaultfg")}" stroke-width="1.5" />')
+                    _color_ = self.co_mgr.getTVColor("label","defaultfg")
+                    _xy_    = _position_.xy()
+                    svg.append(f'<line x1="{x_attach}" y1="{y_attach}" x2="{_xy_[0]+_instance_x_}" y2="{_xy_[1]+y_ins}" stroke="{_color_}" stroke-width="1.5" />')
 
                 # Increment for next text block
-                y += common_name_to_block_h[common_name]
+                y += common_name_to_block_h[common_name] + txt_block_v_gap
 
         # Return as an svg object
         svg.append('</svg>')
