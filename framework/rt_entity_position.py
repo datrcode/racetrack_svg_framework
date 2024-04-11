@@ -32,13 +32,38 @@ class RTEntityPosition(object):
         self.svg_markup            = svg_markup
         self.widget_id             = widget_id
 
+    #
+    # xy() - entity position
+    #
     def xy(self):
         return self.point_to_xy
+    
+    #
+    # attachmentPointVecs() - list of attachment point vectors
+    #
     def attachmentPointVecs(self):
         return self.attachment_point_vecs
+    
+    #
+    # addAttachmentPointVec() - add a new attachment point to this entity
+    #
+    def addAttachmentPointVec(self, attachment_point_vec):
+        self.attachment_point_vecs.append(attachment_point_vec)
+
+    #
+    # svgId() - svg id of the entity within the markup
+    #
     def svgId(self):
         return self.svg_id
+    
+    #
+    # svg() - unadorned svg markup
+    #
     def svg(self):
         return self.svg_markup
-    def widgetId():
+    
+    #
+    # widgetId() - containing widget id
+    #
+    def widgetId(self):
         return self.widget_id

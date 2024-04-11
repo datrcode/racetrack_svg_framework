@@ -765,34 +765,36 @@ class RTChordDiagramMixin(object):
         #    ... svg_entity_id = the svg entity id w/in the current markup
         #    ... svg_markup    = the (unadorned) svg markup for the entity (which may differ from the svg_entity_id)
         def entityPositions(self, entity):
-            if entity in self.node_to_arc:
-                a0, a1    = self.node_to_arc[entity]
-                a_avg     = (a0+a1)/2
-                a_avg_rad = a_avg * pi/180
-                return [RTEntityPosition(entity, self.rt_self,
+            if entity in self.node_to_arc or entity in self.hierarchical_to_arc:
+                to_rad = lambda a: a * pi/180
+                if entity in self.node_to_arc:
+                    a0, a1     = self.node_to_arc[entity]
+                    r0, r1     = self.r - self.node_h, self.r
+                    r_avg      = (r0+r1)/2
+                    a_avg      = (a0+a1)/2
+                    a_avg_rad  = to_rad(a_avg)
+                    svg_markup = f'<path d="{self.__entityArc__(entity)}" />'
+                else:
+                    a0, a1, r0, r1 = self.hierarchical_to_arc[entity]
+                    a_avg, r_avg   = (a0+a1)/2, (r0+r1)/2
+                    a_avg_rad      = to_rad(a_avg)
+                    svg_markup = f'<path d="{self.__genericArc__(a0, a1, r0, r1)}" />'
+                
+                def AP(radius, radians):
+                    return (self.cx + (radius)*cos(radians), self.cy + (radius)*sin(radians), cos(radians), sin(radians))
+
+                rtep = RTEntityPosition(entity,  self.rt_self,
                                                  self,
-                                                 (self.cx + (self.r - self.node_h/2)*cos(a_avg_rad), 
-                                                  self.cy + (self.r - self.node_h/2)*sin(a_avg_rad)), 
-                                                 (self.cx + (self.r)                *cos(a_avg_rad), 
-                                                  self.cy + (self.r)                *sin(a_avg_rad), 
-                                                  cos(a_avg_rad), 
-                                                  sin(a_avg_rad)),
-                                                 self.__entityID__(entity), 
-                                                 f'<path d="{self.__entityArc__(entity)}" />',
-                                                 self.widget_id)]
-            elif entity in self.hierarchical_to_arc:
-                a0, a1, r0, r1 = self.hierarchical_to_arc[entity]
-                a_avg, r_avg   = (a0+a1)/2, (r0+r1)/2
-                a_avg_rad      = a_avg * pi/180
-                return [RTEntityPosition(entity, self.rt_self,
-                                                 self,
-                                                 (self.cx + (r_avg)*cos(a_avg_rad), 
-                                                  self.cy + (r_avg)*sin(a_avg_rad)), 
-                                                 (self.cx + (r1)*cos(a_avg_rad), 
-                                                  self.cy + (r1)*sin(a_avg_rad), cos(a_avg_rad), sin(a_avg_rad)),
-                                                 self.__entityID__(entity), 
-                                                 f'<path d="{self.__genericArc__(a0, a1, r0, r1)}" />',
-                                                 self.widget_id)]
+                                                (self.cx + (r_avg)*cos(a_avg_rad), 
+                                                 self.cy + (r_avg)*sin(a_avg_rad)),
+                                                AP(r1, a_avg_rad), 
+                                                self.__entityID__(entity), 
+                                                svg_markup,
+                                                self.widget_id)
+                if (a1 - a0) > 30.0:
+                    rtep.addAttachmentPointVec(AP(r1, to_rad(a0+5)))
+                    rtep.addAttachmentPointVec(AP(r1, to_rad(a1-5)))
+                return [rtep]
             else:
                 return []
 
