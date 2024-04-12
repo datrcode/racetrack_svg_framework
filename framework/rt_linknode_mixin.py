@@ -413,8 +413,9 @@ class RTLinkNodeMixin(object):
                  link_color        = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
                  link_size         = 'small',  # 'nil', 'small', 'medium', 'large', 'vary', 'hidden' / None
                  link_opacity      = '1.0',    # link opacity
-                 link_shape        = 'line',   # 'curve','line'
+                 link_shape        = 'line',   # 'curve','line', or 'arrow'
                  link_arrow        = True,     # draw an arrow at the end of the curve...
+                 link_arrow_style  = 'kite',   # 'kite'
                  link_arrow_length = 10,       # length in pixels of the link arrow
                  link_dash         = None,     # svg stroke-dash string, callable, or dictionary of relationship tuple to dash string array 
 
@@ -472,7 +473,7 @@ class RTLinkNodeMixin(object):
                  x_ins                 = 3,
                  y_ins                 = 3,
                  txt_h                 = 12,     # text height for labeling
-                 draw_labels           = True,   # draw labels flag # not implemented yet
+                 draw_labels           = False,  # draw labels flag # not implemented yet
                  draw_border           = True):  # draw a border around the graph
         _params_ = locals().copy()
         _params_.pop('self')
@@ -640,6 +641,7 @@ class RTLinkNodeMixin(object):
             self.link_opacity               = kwargs['link_opacity']
             self.link_shape                 = kwargs['link_shape']
             self.link_arrow                 = kwargs['link_arrow']
+            self.link_arrow_style           = kwargs['link_arrow_style']
             self.link_arrow_length          = kwargs['link_arrow_length']
             self.link_dash                  = kwargs['link_dash']
             self.link_max_curvature_px      = kwargs['link_max_curvature_px']
@@ -1123,6 +1125,13 @@ class RTLinkNodeMixin(object):
                                     if _return_value_ is not None:
                                         stroke_dash = f'stroke-dasharray="{_return_value_}"'
 
+                            # Vector info
+                            dx, dy = x2 - x1, y2 - y1
+                            l = sqrt((dx*dx)+(dy*dy))
+                            l = 1 if l <= 0.01 else l
+                            dx,  dy  =  dx/l,  dy/l
+                            pdx, pdy =  dy,   -dx
+
                             # Determine the link style
                             if    self.link_shape == 'line':
                                 svg += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
@@ -1137,13 +1146,6 @@ class RTLinkNodeMixin(object):
                                         return x2+(x1-x2)*t, y2+(y1-y2)*t
 
                                 if self.link_arrow:
-                                    dx, dy = x2 - x1, y2 - y1
-                                    l = sqrt((dx*dx)+(dy*dy))
-                                    if l <= 0.01:
-                                        l = 1
-                                    dx /= l
-                                    dy /= l
-
                                     x3 = x2 - dx*self.link_arrow_length - dy*3*self.link_arrow_length/4
                                     y3 = y2 - dy*self.link_arrow_length + dx*3*self.link_arrow_length/4
                                     x4 = x2 - dx*self.link_arrow_length + dy*3*self.link_arrow_length/4
@@ -1151,22 +1153,21 @@ class RTLinkNodeMixin(object):
 
                                     svg += f'<path d="M {x3} {y3} L {x2} {y2} L {x4} {y4}" '
                                     svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
+                            elif self.link_shape == 'arrow':
+                                x3 = x2 - dx*2*self.link_arrow_length - dy*2*self.link_arrow_length/4
+                                y3 = y2 - dy*2*self.link_arrow_length + dx*2*self.link_arrow_length/4
+                                x4 = x2 - dx*2*self.link_arrow_length + dy*2*self.link_arrow_length/4
+                                y4 = y2 - dy*2*self.link_arrow_length - dx*2*self.link_arrow_length/4
+
+                                x5 = x2 - dx*2*self.link_arrow_length - dy*1.8*self.link_arrow_length/4
+                                y5 = y2 - dy*2*self.link_arrow_length + dx*1.8*self.link_arrow_length/4
+                                x6 = x2 - dx*2*self.link_arrow_length + dy*1.8*self.link_arrow_length/4
+                                y6 = y2 - dy*2*self.link_arrow_length - dx*1.8*self.link_arrow_length/4
+
+                                #svg += f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x5} {y5} L {x6} {y6} L {x2} {y2} L {x4} {y4} Z" ' # arrow head is not filled
+                                svg += f'<path d="M {x1} {y1} L {x6} {y6} L {x5} {y5} L {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ' # arrow body is not filled
+                                svg += f'fill-opacity="{self.link_opacity}" fill="{_co}" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
                             elif self.link_shape == 'curve':
-                                dx = x2 - x1
-                                dy = y2 - y1
-                                # vector length
-                                l  = sqrt((dx*dx)+(dy*dy))
-                                if l <= 0.01:
-                                    l = 1
-
-                                # normalize the vector
-                                dx /= l
-                                dy /= l
-
-                                # calculate the perpendicular vector
-                                pdx =  dy
-                                pdy = -dx
-
                                 # bound the link curvature
                                 _link_curve_ = self.link_max_curvature_px if l > self.link_max_curvature_px else l
 
