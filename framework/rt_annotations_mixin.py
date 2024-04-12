@@ -208,13 +208,13 @@ class RTAnnotationsMixin(object):
     #
     # Wrapper for creating EventAnnotation
     #
-    def createEventAnnotation(self,
-                              event_str,                   # human readable event name
-                              timestamp_str,               # beginning of timeframe for the event // precision matters
-                              timestamp_end_str   = None,  # if set, the end of the timeframe... if not set, then the end precision of the timestamp_str will be used
-                              description_str     = None,  # human readable description // not necessary
-                              geospatial_bounds   = None,  # if set, the event will be geospatially constrained to the bounds
-                              tags                = None): # dictionary of type-value tags for the event // for future use
+    def eventAnnotation(self,
+                        event_str,                   # human readable event name
+                        timestamp_str,               # beginning of timeframe for the event // precision matters
+                        timestamp_end_str   = None,  # if set, the end of the timeframe... if not set, then the end precision of the timestamp_str will be used
+                        description_str     = None,  # human readable description // not necessary
+                        geospatial_bounds   = None,  # if set, the event will be geospatially constrained to the bounds
+                        tags                = None): # dictionary of type-value tags for the event // for future use
         return RTAnnotation('event', self,
                             common_str           = event_str,
                             description_str      = description_str,
@@ -226,14 +226,14 @@ class RTAnnotationsMixin(object):
     #
     # Wrapper for creating EntityAnnotation
     #
-    def createEntityAnnotation(self,
-                               entity_str,                # either exact match for field... or just the human readable entity name
-                               description_str   = None,  # human readable description // not necessary
-                               entity_regex      = None,  # if set, will be used to match entities
-                               ignore_case       = True,  # for regex compares, ignore case flag
-                               tags              = None,  # dictionary of type-value tags for the entity // for future use
-                               timestamp_str     = None,  # if set, timeframe entity is good for // precision matters
-                               timestamp_end_str = None): # if set w/ timestamp_str, timeframe end // precision matters
+    def entityAnnotation(self,
+                         entity_str,                # either exact match for field... or just the human readable entity name
+                         description_str   = None,  # human readable description // not necessary
+                         entity_regex      = None,  # if set, will be used to match entities
+                         ignore_case       = True,  # for regex compares, ignore case flag
+                         tags              = None,  # dictionary of type-value tags for the entity // for future use
+                         timestamp_str     = None,  # if set, timeframe entity is good for // precision matters
+                         timestamp_end_str = None): # if set w/ timestamp_str, timeframe end // precision matters
         return RTAnnotation('entity', self, 
                             common_str           = entity_str,
                             description_str      = description_str,
@@ -247,13 +247,13 @@ class RTAnnotationsMixin(object):
     #
     # Wrapper for creating a GeoSpatialAnnotation
     #
-    def createGeoSpatialAnnotation(self,
-                                   name_str,                   # human readable geospatial name
-                                   geospatial_bounds,          # either a list of point tuples or an SVG path description
-                                   description_str    = None,  # human readable description // not necessary
-                                   tags               = None,  # dictionary of type-value tags for the geospatial name // for future use 
-                                   timestamp_str      = None,  # if set, timeframe geospatial area is good for // precision matters
-                                   timestamp_end_str  = None): # if set w/ timestamp_str, timeframe end // precision matters
+    def geospatialAnnotation(self,
+                             name_str,                   # human readable geospatial name
+                             geospatial_bounds,          # either a list of point tuples or an SVG path description
+                             description_str    = None,  # human readable description // not necessary
+                             tags               = None,  # dictionary of type-value tags for the geospatial name // for future use 
+                             timestamp_str      = None,  # if set, timeframe geospatial area is good for // precision matters
+                             timestamp_end_str  = None): # if set w/ timestamp_str, timeframe end // precision matters
         return RTAnnotation('geospatial', self, 
                             common_str           = name_str,
                             description_str      = description_str,
@@ -763,13 +763,13 @@ class RTAnnotationsMixin(object):
                                 vis_instance,                       # must implement getEntityPositions()
                                 annotations         = None,         # (1) None == Use Stateful List; (2) List of Annotations; (3) Single Annotation
                                 txt_h               = 14,           # Annotation text height
-                                txt_block_h_gap     = 32,           # Annotation text block gap
+                                txt_block_h_gap     = 16,           # Annotation text block gap
                                 txt_block_v_gap     = 5,            # Annotation text block gap
                                 max_line_w          = 96,           # Length of annotation line in pixels
                                 max_lines           = 3,            # Max # of lines of annotation to render
                                 annotation_color    = 'default',    # 'default', hex-color-string, 'common_name', 'tag:<tag_name>'
                                 instance_fade       = 0.5,          # 0.0 == no fade, 1.0 == full fade
-                                x_ins               = 5,            # x inset
+                                x_ins               = 10,           # x inset
                                 y_ins               = 5,            # y inset
                                 draw_text_border    = False,        # Draw a border around the annotation text
                                 include_common_name = True,         # The annotation description is the common name (possible concatenate)
@@ -839,7 +839,7 @@ class RTAnnotationsMixin(object):
 
         # Create the svg
         w_annotated, h_annotated = x, _instance_svg_h_ + 2*y_ins
-        svg  = [f'<svg x="0" y="0" width="{w_annotated}" height="{h_annotated}" xmlns="http://www.w3.org/2000/svg">']
+        svg  = [f'<svg id="entity-annotation-{random.randint(0,2**32)}" x="0" y="0" width="{w_annotated}" height="{h_annotated}" xmlns="http://www.w3.org/2000/svg">']
         svg.append(self.__overwriteSVGOriginPosition__(_instance_svg_, (_instance_x_, y_ins)))
         if instance_fade > 0.0:
             svg.append(f'<rect x="{_instance_x_}" y="{y_ins}" width="{_instance_svg_w_}" height="{_instance_svg_h_}" fill="{self.co_mgr.getTVColor("background","default")}" opacity="{instance_fade}" />')
@@ -925,18 +925,21 @@ class RTAnnotationsMixin(object):
             for _tuple_ in v_sorter:
                 common_name = _tuple_[1]
                 txt = common_name_to_actual_text[common_name]
+                _color_ = self.co_mgr.getColor(txt)
                 _split_lines_ = self.__splitAnnotationTextIntoLines__(txt, max_line_w, max_lines, txt_h)
                 y_sub = y
                 for line in _split_lines_:
                     svg.append(self.svgText(self.cropText(line, txt_h, max_line_w), x, y_sub, txt_h))
                     y_sub += txt_h
+                if draw_text_border:
+                    svg.append(f'<rect x="{x-8}" y="{y-txt_h}" width="{max_line_w+16}" height="{6+y_sub-y}" fill="none" stroke="{_color_}" stroke-width="0.4" rx="15" />')
 
                 # Determine the attachment point
                 if x < _instance_x_:
-                    x_attach = x + max_line_w + 2
+                    x_attach = x + max_line_w + 8
                 else:
-                    x_attach = x - 2
-                y_attach = y - txt_h/2
+                    x_attach = x - 8
+                y_attach = y - txt_h + (y_sub - y)/2
 
                 # For all positions draw a line
                 for _position_ in to_positions[common_name]:
