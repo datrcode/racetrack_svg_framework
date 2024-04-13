@@ -55,11 +55,11 @@ class RTShapesMixin(object):
     # - xp, yp is the external point to match to th edge of the shape
     # - return (xa,ya) -- attachment coordinates
     #
-    def shapeAttachmentPoint(self, shape, x, y, xp, yp, sz=5):
+    def shapeAttachmentPoint(self, shape, x, y, sz, xp, yp):
         # for plus or x just return the shape center
         if   shape == 'plus' or shape == 'x' or sz < 2:
             return x,y
-        # for circle, just a vector the size of the circle radiu
+        # for circle, just a vector the size of the circle radius
         if shape is None or shape == 'ellipse' or shape == 'circle':
             vx, vy = xp-x, yp-y
             l = sqrt(vx**2 + vy**2)

@@ -1069,7 +1069,37 @@ class RTLinkNodeMixin(object):
                             x2 = self.xT(self.pos[to_str][0])
                             y1 = self.yT(self.pos[fm_str][1])
                             y2 = self.yT(self.pos[to_str][1])
-                                                        
+                            l  = self.rt_self.segmentLength(((x1,y1),(x2,y2)))
+
+                            # Adjust the coordinates based on the shape and size information information
+                            if self.node_size is not None and self.node_size != 'hidden' and (self.link_arrow == True or self.link_shape == 'arrow'):
+                                node_sz = self.__nodeSize__()
+                                if node_sz > 1 and l > 5+2*node_sz: # node has to be larger than 1... and the distance between the two also needs to be large
+                                    if   self.node_shape is None:
+                                        shape1 = 'circle'
+                                    elif type(self.node_shape) == str:
+                                        shape1 = self.node_shape
+                                    elif type(self.node_shape) == dict and fm_str in self.node_shape.keys():
+                                        shape1 = self.node_shape[fm_str]
+                                    else:
+                                        shape1 = None
+
+                                    x1_orig, y1_orig = x1, y1
+                                    if shape1 is not None:
+                                        x1, y1 = self.rt_self.shapeAttachmentPoint(shape1, x1, y1, node_sz, x2, y2)
+
+                                    if   self.node_shape is None:
+                                        shape2 = 'circle'
+                                    elif type(self.node_shape) == str:
+                                        shape2 = self.node_shape
+                                    elif type(self.node_shape) == dict and to_str in self.node_shape.keys():
+                                        shape2 = self.node_shape[to_str]
+                                    else:
+                                        shape2 = None
+
+                                    if shape2 is not None:
+                                        x2, y2 = self.rt_self.shapeAttachmentPoint(shape2, x2, y2, node_sz, x1_orig, y1_orig)
+                                
                             # Determine the color
                             if   self.link_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
                                 _co_set = set(k_df[self.color_by])
@@ -1273,6 +1303,22 @@ class RTLinkNodeMixin(object):
             return svg
 
         #
+        # __nodeSize__() - return the node size
+        #
+        def __nodeSize__(self):
+            if   type(self.node_size) == int or type(self.node_size) == float:
+                _sz = self.node_size
+            elif self.node_size == 'small':
+                _sz = 2
+            elif self.node_size == 'medium':
+                _sz = 5
+            elif self.node_size == 'large':
+                _sz = 8
+            else: # Vary
+                _sz = 1
+            return _sz
+
+        #
         # __renderNodes__() - render the nodes
         #
         def __renderNodes__(self):
@@ -1286,16 +1332,7 @@ class RTLinkNodeMixin(object):
             # Render nodes
             if self.node_size is not None and self.node_size != 'hidden':
                 # Set the node size
-                if   type(self.node_size) == int or type(self.node_size) == float:
-                    _sz = self.node_size
-                elif self.node_size == 'small':
-                    _sz = 2
-                elif self.node_size == 'medium':
-                    _sz = 5
-                elif self.node_size == 'large':
-                    _sz = 8
-                else: # Vary
-                    _sz = 1
+                _sz = self.__nodeSize__()
 
                 # Render position context (if selected)
                 if self.render_pos_context:
