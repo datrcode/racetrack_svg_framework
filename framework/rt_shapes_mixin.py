@@ -13,6 +13,8 @@
 # limitations under the License.
 #
 
+from math import sqrt
+
 __name__ = 'rt_shapes_mixin'
 
 class RTShapesMixin(object):
@@ -20,38 +22,69 @@ class RTShapesMixin(object):
     # Render Shape
     #
     def renderShape(self,
-                    _shape, # "ellipse", "triangle", "utriangle", "diamond", "plus", "x"
-                    _x,
-                    _y,
-                    _sz        = 5,
-                    _co        = None,
-                    _co_border = None,
-                    _opacity   = 1.0):
-        if _co is None:
-            _co = self.co_mgr.getTVColor('data','default')
-        if _co_border is None:
-            _co_border=_co
-        _append_ = f'fill="{_co}" stroke="{_co_border}" fill-opacity="{_opacity}" stroke-opacity="{_opacity}"'
-        if   _shape is None or _shape == 'ellipse' or _shape == 'circle':
-            return f'<circle cx="{_x}" cy="{_y}" r="{_sz}" {_append_} />'
-        elif _shape == 'square':
-            return f'<rect x="{_x-_sz}" y="{_y-_sz}" width="{2*_sz}" height="{2*_sz}" {_append_} />'
-        elif _shape == 'triangle':
-            return f'<path d="M {_x} {_y-_sz} l {_sz} {2*_sz} l {-2*_sz} 0 z" {_append_} />'
-        elif _shape == 'utriangle':
-            return f'<path d="M {_x} {_y+_sz} l {-_sz} {-2*_sz} l {2*_sz} 0 z" {_append_} />'
-        elif _shape == 'diamond':
-            svg  = f'<path d="M {_x} {_y-_sz} l {_sz} {_sz} l {-_sz} {_sz} '
-            svg += f'l {-_sz} {-_sz} z" {_append_} />'
-            return svg
-        elif _shape == 'plus':
-            return f'<path d="M {_x} {_y-_sz} v {2*_sz} M {_x-_sz} {_y} h {2*_sz}" {_append_} />'
-        elif _shape == 'x':
-            svg  = f'<path d="M {_x-_sz} {_y-_sz} l {2*_sz} {2*_sz} '
-            svg += f'M {_x-_sz} {_y+_sz} l {2*_sz} {-2*_sz}" {_append_} />'
-            return svg
+                    shape, # "ellipse", "square", "triangle", "utriangle", "diamond", "plus", "x"
+                    x,
+                    y,
+                    sz        = 5,
+                    co        = None,
+                    co_border = None,
+                    opacity   = 1.0):
+        co        = self.co_mgr.getTVColor('data','default') if co        is None else co
+        co_border = co                                       if co_border is None else co_border
+        _append_ = f'fill="{co}" stroke="{co_border}" fill-opacity="{opacity}" stroke-opacity="{opacity}"'
+        if   shape is None or shape == 'ellipse' or shape == 'circle':
+            return f'<circle cx="{x}" cy="{y}" r="{sz}" {_append_} />'
+        elif shape == 'square':
+            return f'<rect x="{x-sz}" y="{y-sz}" width="{2*sz}" height="{2*sz}" {_append_} />'
+        elif shape == 'triangle':
+            return f'<path d="M {x} {y-sz} l {sz} {2*sz} l {-2*sz} 0 z" {_append_} />'
+        elif shape == 'utriangle':
+            return f'<path d="M {x} {y+sz} l {-sz} {-2*sz} l {2*sz} 0 z" {_append_} />'
+        elif shape == 'diamond':
+            return f'<path d="M {x} {y-sz} l {sz} {sz} l {-sz} {sz} l {-sz} {-sz} z" {_append_} />'
+        elif shape == 'plus':
+            return f'<path d="M {x} {y-sz} v {2*sz} M {x-sz} {y} h {2*sz}" {_append_} />'
+        elif shape == 'x':
+            return f'<path d="M {x-sz} {y-sz} l {2*sz} {2*sz} M {x-sz} {y+sz} l {2*sz} {-2*sz}" {_append_} />'
         else:
-            return f'<circle cx="{_x}" cy="{_y}" r="{_sz}" {_append_} />'
+            return f'<circle cx="{x}" cy="{y}" r="{sz}" {_append_} />'
+
+    #
+    # shapeAttachmentPoint() - determine the attachment point for a shape
+    # - shape, x, y, and sz should be the same as "renderShape()"
+    # - xp, yp is the external point to match to th edge of the shape
+    # - return (xa,ya) -- attachment coordinates
+    #
+    def shapeAttachmentPoint(self, shape, x, y, xp, yp, sz=5):
+        # for plus or x just return the shape center
+        if   shape == 'plus' or shape == 'x' or sz < 2:
+            return x,y
+        # for circle, just a vector the size of the circle radiu
+        if shape is None or shape == 'ellipse' or shape == 'circle':
+            vx, vy = xp-x, yp-y
+            l = sqrt(vx**2 + vy**2)
+            if l > 0.1:
+                vx, vy = vx/l, vy/l
+                return x+vx*sz, y+vy*sz
+        # these shapes are from above -- using the same exact geometry
+        elif shape == 'square' or shape == 'triangle' or shape == 'utriangle' or shape == 'diamond':
+            to_match = []
+            if   shape == 'square':
+                to_match = [((x-sz,y-sz),(x+sz,y-sz)),((x-sz,y+sz),(x+sz,y+sz)),((x-sz,y-sz),(x-sz,y+sz)),((x+sz,y-sz),(x+sz,y+sz))]
+            elif shape == 'triangle':
+                to_match = [((x,y-sz),(x+sz,y+sz)),((x,y-sz),(x-sz,y+sz)),((x-sz,y+sz),(x+sz,y+sz))]
+            elif shape == 'utriangle':
+                to_match = [((x,y+sz),(x+sz,y-sz)),((x,y+sz),(x-sz,y-sz)),((x-sz,y-sz),(x+sz,y-sz))]
+            elif shape == 'diamond':
+                to_match = [((x-sz,y),(x,y-sz)),((x+sz,y),(x,y-sz)),((x-sz,y),(x,y+sz)),((x+sz,y),(x,y+sz))]
+            # test against all segments -- if one matches, return the intersection point
+            _segment_ = ((x,y),(xp,yp))
+            for shape_segment in to_match:
+                inter_flag, x_inter, y_inter, t_s0, t_s1 = self.segmentsIntersect(_segment_, shape_segment)
+                if inter_flag:
+                    return x_inter, y_inter
+        # give up and return the coordinates   
+        return x,y
 
     #
     # shapeByDataFrameLength()
