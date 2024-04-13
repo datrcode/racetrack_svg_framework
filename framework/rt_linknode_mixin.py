@@ -415,7 +415,7 @@ class RTLinkNodeMixin(object):
                  link_opacity      = '1.0',    # link opacity
                  link_shape        = 'line',   # 'curve','line', or 'arrow'
                  link_arrow        = True,     # draw an arrow at the end of the curve...
-                 link_arrow_style  = 'kite',   # 'kite'
+                 link_arrow_style  = 'kite_v3',# 'kite', 'kite_v2', 'kite_v3'
                  link_arrow_length = 10,       # length in pixels of the link arrow
                  link_dash         = None,     # svg stroke-dash string, callable, or dictionary of relationship tuple to dash string array 
 
@@ -1164,8 +1164,15 @@ class RTLinkNodeMixin(object):
                                 x6 = x2 - dx*2*self.link_arrow_length + dy*1.8*self.link_arrow_length/4
                                 y6 = y2 - dy*2*self.link_arrow_length - dx*1.8*self.link_arrow_length/4
 
-                                #svg += f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x5} {y5} L {x6} {y6} L {x2} {y2} L {x4} {y4} Z" ' # arrow head is not filled
-                                svg += f'<path d="M {x1} {y1} L {x6} {y6} L {x5} {y5} L {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ' # arrow body is not filled
+                                if   self.link_arrow_style ==  'kite':
+                                    svg += f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" '
+                                elif self.link_arrow_style ==  'kite_v2': 
+                                    svg += f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x5} {y5} L {x6} {y6} L {x2} {y2} L {x4} {y4} Z" ' # arrow head is not filled
+                                elif self.link_arrow_style ==  'kite_v3':
+                                    svg += f'<path d="M {x1} {y1} L {x6} {y6} L {x5} {y5} L {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ' # arrow body is not filled
+                                else:
+                                    raise Exception('link_arrow_style must be "kite" or "kite_v2" or "kite_v3"')
+
                                 svg += f'fill-opacity="{self.link_opacity}" fill="{_co}" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
                             elif self.link_shape == 'curve':
                                 # bound the link curvature
