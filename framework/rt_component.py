@@ -36,6 +36,11 @@ class RTComponent(object):
             pass
 
         #
+        # widgetId() - return the SVG widget id
+        #
+        def widgetId(self):
+             return self.widget_id
+        #
         # entityPositions() - return information about the entity geometry for rendering
         # - Empty list means either not implemented... or entity not in view...
         #
