@@ -35,37 +35,37 @@ class RTGeometryMixin(object):
         # Find the "middle" circle
         s, placed = [], []
         for i in range(n_circles):
-            cx, cy, r = circles[i]
-            placed.append((cx,cy,r)) # this will be the updated placement ... just initializing here
+            cx, cy, r = circles[i][:3]
+            placed.append(circles[i]) # this will be the updated placement ... just initializing here
             s.append((cx, i))
         s.sort()
         s2 = []
         m = int(len(s)/2)
         for _tuple_ in s[m-1:m+2]:
-            cx, cy, r = circles[_tuple_[1]]
+            cx, cy, r = circles[_tuple_[1]][:3]
             s2.append((cy, _tuple_[1]))
         s2.sort()
         middle_i = s2[1][1]
 
         # Place the middle circle
-        mx, my, mr = circles[middle_i]
-        placed[middle_i] = circles[middle_i]
-        placed_set = set([middle_i])
+        mx, my, mr       = circles[middle_i][:3]
+        placed[middle_i] = circles[middle_i] # not really necessary
+        placed_set       = set([middle_i])
 
         # Sort all circles relative to the middle
         to_place = []
-        cx_m, cy_m, r_m = circles[middle_i]
+        cx_m, cy_m, r_m = circles[middle_i][:3]
         for i in range(n_circles):
             if i == middle_i:
                 continue
-            cx, cy, r = circles[i]
+            cx, cy, r = circles[i][:3]
             d         = sqrt((cx-cx_m)**2 + (cy-cy_m)**2)
             to_place.append((d, i))
         to_place.sort()
 
         def overlapsWithPlaced(cx,cy,r):
             for j in placed_set:
-                cx2, cy2, r2 = placed[j]
+                cx2, cy2, r2 = placed[j][:3]
                 d = sqrt((cx-cx2)**2 + (cy-cy2)**2)
                 if (d-min_d) < (r+r2):
                     return True
@@ -74,7 +74,7 @@ class RTGeometryMixin(object):
         # Place the circles
         for k in range(len(to_place)):
             i = to_place[k][1]
-            cx, cy, r = circles[i]
+            cx, cy, r = circles[i][:3]
             uv = self.unitVector(((mx,my),(cx,cy)))
             if uv[0] == 0 and uv[1] == 0:
                 uv = (1,0)
@@ -89,7 +89,7 @@ class RTGeometryMixin(object):
                 cx, cy = cx - uv[0]*min_d/4, cy - uv[1]*min_d/4
                 fail_after += 1
             placed_set.add(i)
-            placed[i] = (last_cx,last_cy,r)
+            placed[i] = (last_cx,last_cy) + placed[i][2:]
         
         # Return the placed circles
         return placed
