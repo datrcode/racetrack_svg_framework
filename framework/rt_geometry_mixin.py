@@ -93,7 +93,132 @@ class RTGeometryMixin(object):
         
         # Return the placed circles
         return placed
-    
+
+    #
+    # circularPathRouter() - route exits to a single entry around circles
+    # - all points needs to be at least circle_radius + radius_inc_test + 1.0 from the circle centers...
+    #
+    def circularPathRouter(self,
+                           entry_pt,                  # (x,y,circle_i) -- where circle_i is the circle index from circle_geoms
+                           exit_pts,                  # [(x,y,circle_i),(x,y,circle_i),(x,y,circle_i), ...] -- where circle_i is the circle index from circle_geoms
+                           circle_geoms,              # [(cx,cy,r),(cx,cy,r), ...]
+                           escape_px          = 5,    # length to push the exit points (and entry point) away from circle
+                           min_circle_sep     = 30,   # minimum distance between circles
+                           half_sep           = 15,   # needs to be more than the radius_inc_test ... half separation (but doesn't have to be)
+                           radius_inc_test    = 4,    # for routing around circles, how much to test with
+                           radius_start       = 5,    # needs to be more than the radius_inc_test ... less than the min_circle_sep
+                           max_pts_per_node   = 50,   # maximum points per node for the xy quad tree
+                           merge_distance_min = 5):   # minimum distance necessary to merge a path into an already exiting path
+        # Calculate a path around the circle geometries
+        def calculatePathAroundCircles(pts):
+            def breakSegment(_segment_):
+                if self.segmentLength(_segment_) < 2.0:
+                    return _segment_
+                for _geom_ in circle_geoms:
+                    _circle_plus_ = (_geom_[0], _geom_[1], _geom_[2]+radius_inc_test)
+                    _dist_, _inter_  = self.segmentIntersectsCircle(_segment_,_circle_plus_)
+                    if _dist_ <= _circle_plus_[2]:
+                        if _inter_[0] == _geom_[0] and _inter_[1] == _geom_[1]:
+                            dx, dy   = _segment_[1][0] - _segment_[0][0], _segment_[1][1] - _segment_[0][1]
+                            l        = sqrt(dx*dx+dy*dy)
+                            dx,  dy  = dx/l, dy/l
+                            pdx, pdy = -dy, dx 
+                            return [(_segment_[0][0], _segment_[0][1]), (_geom_[0] + pdx*(_geom_[2]+half_sep), _geom_[1] + pdy*(_geom_[2]+half_sep)), (_segment_[1][0], _segment_[1][1])]
+                        else:
+                            dx, dy = _inter_[0] - _geom_[0], _inter_[1] - _geom_[1]
+                            l      = sqrt(dx*dx+dy*dy)
+                            dx, dy = dx/l, dy/l
+                            return [(_segment_[0][0], _segment_[0][1]), (_geom_[0]  + dx*(_geom_[2]+half_sep), _geom_[1]  + dy*(_geom_[2]+half_sep)), (_segment_[1][0], _segment_[1][1])]
+                return _segment_
+            last_length = 0
+            _segments_  = []
+            for _pt_ in pts:
+                _segments_.append(_pt_)
+            while last_length != len(_segments_):
+                last_length    = len(_segments_)
+                _new_segments_ = []
+                for i in range(len(_segments_)-1):
+                    _new_ = breakSegment([_segments_[i], _segments_[i+1]])
+                    if len(_new_) == 3:
+                        _new_segments_.append(_new_[0])
+                        _new_segments_.append(_new_[1])
+                    else:
+                        _new_segments_.append(_new_[0])
+                _new_segments_.append(_new_[-1])
+                _segments_ = _new_segments_        
+            return _segments_
+        
+        # Fix up the the entry and exit points...
+        x_min,y_min,x_max,y_max = entry_pt[0],entry_pt[1],entry_pt[0],entry_pt[1]
+        entries = []
+        x0,y0,ci  = entry_pt
+        uv        = self.unitVector(((circle_geoms[ci][0],circle_geoms[ci][1]),(x0,y0)))
+        x0s,y0s   = x0+uv[0]*escape_px, y0+uv[1]*escape_px
+        for pt in exit_pts:
+            x1,y1,ci  = pt        
+            uv        = self.unitVector(((circle_geoms[ci][0],circle_geoms[ci][1]),(x1,y1)))
+            x1s,y1s   = x1+uv[0]*escape_px, y1+uv[1]*escape_px
+            entries.append([(x0,y0), (x0s,y0s), (x1s,y1s), (x1,y1)])
+            x_min,y_min,x_max,y_max = min(x_min,x1),min(y_min,y1),max(x_max,x1),max(y_max,y1)
+            x_min,y_min,x_max,y_max = min(x_min,x1s),min(y_min,y1s),max(x_max,x1s),max(y_max,y1s)
+
+        # XY Quad Tree
+        xy_tree = self.xyQuadTree((x_min-half_sep,y_min-half_sep,x_max+half_sep,y_max+half_sep), max_pts_per_node=max_pts_per_node)
+
+        # Sort paths by length (longest first)
+        exit_sorter = []
+        for i in range(len(entries)):
+            _entry_ = entries[i]
+            l = self.segmentLength((_entry_[0], _entry_[3]))
+            exit_sorter.append((l,i))
+        exit_sorter = sorted(exit_sorter)
+        exit_sorter.reverse()
+
+        # keep track of all of the final paths
+        paths, merge_info = [], []
+        for i in range(len(entries)):
+            paths.append(entries[i])
+            merge_info.append((-1,-1))
+
+        # plot out the longest path
+        i_longest        = exit_sorter[0][1]
+        pts              = entries[i_longest]
+        _path_           = calculatePathAroundCircles(pts)
+        _path_smooth_    = self.smoothSegments(self.expandSegmentsIntoPiecewiseCurvedParts(_path_, amp=5.0, ampends=8.0, max_travel=1))
+        _path_smooth_.reverse()
+        paths[i_longest] = _path_smooth_
+        for i in range(len(_path_smooth_)):
+            pt = (_path_smooth_[i][0], _path_smooth_[i][1], i_longest, i)
+            xy_tree.add([pt])
+
+        # analyze the other paths
+        for i in range(1,len(exit_sorter)):
+            i_path        =  exit_sorter[i][1]
+            pts           =  entries[i_path]
+            _path_        =  calculatePathAroundCircles(pts)
+            _path_smooth_ =  self.smoothSegments(self.expandSegmentsIntoPiecewiseCurvedParts(_path_, amp=5.0, ampends=8.0, max_travel=1))    
+            # merge with existing path
+            merged_flag   = False
+            _path_merged_ =  [_path_smooth_[-1]]
+            for j in range(len(_path_smooth_)-2, 2, -1): # only down to 2... because the stem will exist from the longest path created
+                closest = xy_tree.closest((_path_smooth_[j][0],_path_smooth_[j][1]), n=1)
+                _path_merged_.append(_path_smooth_[j])
+                if closest[0][0] < merge_distance_min:
+                    _path_merged_.append((closest[0][1][0], closest[0][1][1]))
+                    merged_flag = True
+                    break
+            # save the path off
+            paths[i_path] = _path_merged_
+            if merged_flag:
+                merge_info[i_path] = (closest[0][1][2], closest[0][1][3]) # path index ... path point
+            # update xy tree
+            for j in range(len(_path_merged_)-3): # don't include the exit points (don't want merges with them...)
+                pt = (_path_merged_[j][0], _path_merged_[j][1], i_path, j)
+                xy_tree.add([pt])
+
+        # return the merged paths            
+        return paths, merge_info
+
     #
     # segmentLength()
     # - _segment_ = [(x0,y0),(x1,y1)]
