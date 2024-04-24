@@ -16,6 +16,7 @@
 import pandas as pd
 import polars as pl
 import numpy as np
+import time
 
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
 
@@ -941,7 +942,7 @@ class RTXYMixin(object):
 
             # Make a widget_id if it's not set already
             if self.widget_id is None:
-                self.widget_id = "xy_" + str(random.randint(0,65535))
+                self.widget_id = "xy_" + str(random.randint(0,2**24))
 
             self.x_axis_col              = kwargs['x_axis_col']
             self.x_is_time               = kwargs['x_is_time']
@@ -960,6 +961,8 @@ class RTXYMixin(object):
             self.line_groupby_field      = kwargs['line_groupby_field']
             self.line_groupby_w          = kwargs['line_groupby_w']
             self.line2_groupby_field     = kwargs['line2_groupby_field']
+
+            self.time_lu                 = {} # Performance Analysis
 
             #
             # Are we fitting to something?  Or just diplaying what the user wants to show as a secondary?
@@ -1000,6 +1003,7 @@ class RTXYMixin(object):
             # ... ... pros and cons with that approach... visually more accurate to align it... but you may not see the whole shape...
             #
             else:
+                t0_polyfit = time.time()
                 # Figure out the x-range
                 _min,_max = self.df[self.x_field].min(),self.df[self.x_field].max()
                 if _min == _max:
@@ -1024,6 +1028,9 @@ class RTXYMixin(object):
                         _df['groupby'] = k
                         _dfs.append(_df)
                     self.df2 = self.rt_self.concatDataFrames(_dfs)
+
+                t1_polyfit = time.time()
+                self.time_lu['polyfit'] = t1_polyfit - t0_polyfit
 
                 # Common settings once the df2 is created
                 self.line2_groupby_field = 'groupby'
@@ -1103,6 +1110,7 @@ class RTXYMixin(object):
             #
 
             # Apply axes transforms
+            t0_transforms = time.time()
             self.df, self.x_field   = rt_self.transformFieldListAndDataFrame(self.df, self.x_field)
             self.df, self.y_field   = rt_self.transformFieldListAndDataFrame(self.df, self.y_field)
             if self.x2_field is not None:
@@ -1136,7 +1144,11 @@ class RTXYMixin(object):
             if self.count_by_set == False:
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
 
+            t1_transforms = time.time()
+            self.time_lu['transforms'] = t1_transforms - t0_transforms
+
             # Setup the y2 info (if the y2_field is set)
+            t0_y2_setup = time.time()
             self.timestamp_min, self.timestamp_max, self.x_min, self.x_max = None,None,None,None
             if len(self.x_field) == 1 and \
                 ( (self.rt_self.isPandas(self.df) and is_datetime(self.df[self.x_field[0]])) or
@@ -1176,6 +1188,9 @@ class RTXYMixin(object):
                     for k, k_df in self.df2.group_by(self.x2_field):
                         _set1.add(k)
                 self.x_order = sorted(list(_set0 | _set1))
+
+            t1_y2_setup = time.time()
+            self.time_lu['y2_setup'] = t1_y2_setup - t0_y2_setup
 
             # Geometry lookup for tracking state
             self.geom_to_df = {}
@@ -1262,15 +1277,24 @@ class RTXYMixin(object):
             dot2_w = dotSizeNumber(self.dot2_size)
 
             # Create the extra columns for the x and y coordinates
+            t0_x_create = time.time()
             if self.x_axis_col is None:
                 self.x_axis_col = 'my_x_' + self.widget_id
                 self.df, self.x_is_time, self.x_label_min, self.x_label_max, self.x_trans_func, self.x_order = self.rt_self.xyCreateAxisColumn(self.df, self.x_field, self.x_field_is_scalar, self.x_axis_col, self.x_order, self.x_fill_transforms, 
                                                                                                                                                self.timestamp_min, self.timestamp_max, self.x_min, self.x_max)
+            t1_x_create = time.time()
+            self.time_lu['x_create'] = t1_x_create - t0_x_create
+
+            t0_y_create = time.time()
             if self.y_axis_col is None:
                 self.y_axis_col = 'my_y_' + self.widget_id
                 self.df, self.y_is_time, self.y_label_min, self.y_label_max, self.y_trans_func, self.y_order = self.rt_self.xyCreateAxisColumn(self.df, self.y_field, self.y_field_is_scalar, self.y_axis_col, self.y_order, self.y_fill_transforms)
+            
+            t1_y_create = time.time()
+            self.time_lu['y_create'] = t1_y_create - t0_y_create
 
             # Secondary axis settings
+            t0_y2_create = time.time()
             self.y2_label_min, self.y2_label_max = None,None
             if self.y2_field is not None and self.y2_axis_col is None:
                 self.y2_axis_col = 'my_y2_' + self.widget_id
@@ -1282,7 +1306,11 @@ class RTXYMixin(object):
                     self.df2, self.x2_is_time, self.x2_label_min, self.x2_label_max, _throwaway_func, _throwaway_order = self.rt_self.xyCreateAxisColumn(self.df2, self.x2_field, self.x2_field_is_scalar, self.x2_axis_col, self.x_order, self.x_fill_transforms, 
                                                                                                                                                          self.timestamp_min, self.timestamp_max, self.x_min, self.x_max)
 
+            t1_y2_create = time.time()
+            self.time_lu['y2_create'] = t1_y2_create - t0_y2_create
+
             # Create the pixel-level columns
+            t0_pixel_calc_and_align = time.time()
             if self.rt_self.isPandas(self.df):
                 self.df[self.x_axis_col+"_px"] = self.x_left                + self.df[self.x_axis_col]*self.w_usable
                 self.df[self.y_axis_col+"_px"] = self.y_ins + self.h_usable - self.df[self.y_axis_col]*self.h_usable
@@ -1320,6 +1348,9 @@ class RTXYMixin(object):
                 if self.align_pixels:
                     self.df2 = self.df2.with_columns([pl.col(self.y2_axis_col+'_px').cast(pl.Int32)])
 
+            t1_pixel_calc_and_align = time.time()
+            self.time_lu['pixel_calc_and_align'] = t1_pixel_calc_and_align - t0_pixel_calc_and_align
+
             # Create the SVG ... render the background
             svg_strs = []
             svg_strs.append(f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">')
@@ -1348,6 +1379,7 @@ class RTXYMixin(object):
                 svg_strs.append(self.__drawGridlines__(False, self.y_label_min, self.y_label_max, self.y_trans_norm_func, self.h_usable, self.x_left, self.x_left + self.w_usable))
                 
             # Draw the background shapes
+            t0_bg_shapes = time.time()
             if self.bg_shape_lu is not None and self.x_trans_func is not None and self.y_trans_func is not None:
                 _bg_shape_labels = []
                 for k in self.bg_shape_lu.keys():
@@ -1364,11 +1396,17 @@ class RTXYMixin(object):
                 for _label_svg in _bg_shape_labels:
                     svg_strs.append(_label_svg)
 
+            t1_bg_shapes = time.time()
+            self.time_lu['render_bg_shapes'] = t1_bg_shapes - t0_bg_shapes
+
             # Draw the distributions (if selected)
+            t0_render_distributions = time.time()
             if self.render_x_distribution is not None:
                 svg_strs.append(self.__renderBackgroundDistribution__(True,  self.x_left, self.y_bottom, self.x_left + self.w_usable, self.y_bottom, self.x_left, self.y_ins))
             if self.render_y_distribution is not None:
                 svg_strs.append(self.__renderBackgroundDistribution__(False, self.x_left, self.y_bottom, self.x_left + self.w_usable, self.y_bottom, self.x_left, self.y_ins))
+            t1_render_distributions = time.time()
+            self.time_lu['render_distributions'] = t1_render_distributions - t0_render_distributions
 
             # Axis
             axis_co = self.rt_self.co_mgr.getTVColor('axis',  'default')
@@ -1379,6 +1417,7 @@ class RTXYMixin(object):
                 
             # Handle the line option... this needs to be rendered before the dots so that the lines are behind the dots
             # ... first version handles vector data...
+            t0_render_lines = time.time()
             if self.line_groupby_field is not None and type(self.line_groupby_field) == list:
                 svg_strs.append(self.__rendersvg_line_groupby_timestamped__())
             # ... second version handles the normal use cases...
@@ -1388,11 +1427,15 @@ class RTXYMixin(object):
             if self.line2_groupby_field:
                 svg_strs.append(self.__rendersvg_line2_groupby__())
 
+            t1_render_lines = time.time()
+            self.time_lu['render_lines'] = t1_render_lines - t0_render_lines
+
             #
             # Dot Render Loops
             #
             # Small Multiples First -- can only be on the primary axis...
             if self.dot_shape == 'small_multiple':
+                t0_render_small_multiples = time.time()
                 node_to_xy  = {} # for small multiples
                 node_to_dfs = {} # for small multiples
                 gb = self.df.groupby([self.x_axis_col+"_px",self.y_axis_col+"_px"])
@@ -1416,21 +1459,30 @@ class RTXYMixin(object):
                                                           self.sm_w, self.sm_h)
                 for node_str in sm_lu.keys():
                     svg_strs.append(sm_lu[node_str])
+                
+                t1_render_small_multiples = time.time()
+                self.time_lu['render_small_multiples'] = t1_render_small_multiples - t0_render_small_multiples
 
             # Dots / Primary Axis
             elif dot_w is not None and dot_w != 0:
+                t0_render_dots = time.time()
                 if self.rt_self.isPandas(self.df):
                     svg_strs.append(self.__rendersvg_dots_pandas__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w))
                 elif self.rt_self.isPolars(self.df):
                     svg_strs.append(self.__rendersvg_dots_polars__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w))
+                t1_render_dots = time.time()
+                self.time_lu['render_dots'] = t1_render_dots - t0_render_dots
 
             # Dots / Secondary Axis
             if dot2_w is not None and self.df2 is not None and dot2_w != 0:
+                t0_render_dots2 = time.time()
                 _local_color_by = self.line2_groupby_color if self.line2_groupby_color is not None else self.color_by
                 if self.rt_self.isPandas(self.df):
                     svg_strs.append(self.__rendersvg_dots_pandas__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w))
                 elif self.rt_self.isPolars(self.df):
                     svg_strs.append(self.__rendersvg_dots_polars__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w))
+                t1_render_dots2 = time.time()
+                self.time_lu['render_dots2'] = t1_render_dots2 - t0_render_dots2
 
             # Draw labels
             if self.draw_labels:
