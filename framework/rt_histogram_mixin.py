@@ -176,7 +176,9 @@ class RTHistogramMixin(object):
         # - coordinate included to make it similar to other view functionality
         # ... looks like we don't know the list length... so we can't bound the calc by that...
         #
-        def applyScrollEvent(self, scroll_amount, coordinate=None):
+        # 2024-04-26 // continues to throw exceptions -- removed for now
+        #
+        def BROKEN_applyScrollEvent(self, scroll_amount, coordinate=None):
             scroll_amount /= 100.0
             if (self.first_line_i+scroll_amount) >= 0:
                 self.first_line_i += scroll_amount
