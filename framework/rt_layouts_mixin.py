@@ -862,11 +862,11 @@ class RTComponentsLayout(object):
     # SVG Representation
     #
     def _repr_svg_(self):
-        _svg_ = f'<svg id="{self.widget_id}" width="{self.w+1}" height="{self.h+1}" xmlns="http://www.w3.org/2000/svg">'
+        _svg_ = [f'<svg id="{self.widget_id}" width="{self.w+1}" height="{self.h+1}" xmlns="http://www.w3.org/2000/svg">']
         for _poly in self.instance_lu.keys():
-            _svg_ += self.instance_lu[_poly]._repr_svg_()
-        _svg_ += '</svg>'
-        return _svg_
+            _svg_.append(self.instance_lu[_poly]._repr_svg_())
+        _svg_.append('</svg>')
+        return ''.join(_svg_)
 
     #
     # applyViewConfigurations() - apply view configurations based on a reference layout.
