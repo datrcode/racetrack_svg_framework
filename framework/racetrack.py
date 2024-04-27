@@ -357,27 +357,37 @@ class RACETrack(RTAnnotationsMixin,
     # From:  "https://www.dofactory.com/html/svg/id":
     #  "A unique alphanumeric string. The id value must begin with a letter ([A-Za-z]) and may be followed by 
     #   any number of letters, digits ([0-9]), hyphens (-), underscores (_), colons (:), and periods (.)."
-    #  
+    #
     def encSVGID(self, s):
         _enc = 'encsvgid_'
-        for c in s:
-            if (c >= 'a' and c <= 'z') or \
-               (c >= 'A' and c <= 'Z') or \
-               (c >= '0' and c <= '9'):
-               _enc += c
-            elif c == ' ':
-                _enc += '_'
-            else:
-                as_int = ord(c)
-                _enc += ':'+str(as_int)+':'
+        if   type(s) == int:
+            _enc += f'i_{s}'
+            
+        elif type(s) == str:        
+            _enc += 's_'
+            for c in s:
+                if (c >= 'a' and c <= 'z') or \
+                   (c >= 'A' and c <= 'Z') or \
+                   (c >= '0' and c <= '9'):
+                   _enc += c
+                elif c == ' ':
+                    _enc += '_'
+                else:
+                    as_int = ord(c)
+                    _enc += ':'+str(as_int)+':'
+        else:
+            raise Exception('racetrack.encSVGID() -- only strings and ints supported')
         return _enc
 
     #
     # Decode a string that was created by the encSVGID() method.
     #
     def decSVGID(self, s):
-        if s.startswith('encsvgid_'):
-            s_prime = s[len('encsvgid_'):]
+        if   s.startswith('encsvgid_i_'):
+            s_prime = s[len('encsvgid_s_'):]
+            return int(s_prime)
+        elif s.startswith('encsvgid_s_'):
+            s_prime = s[len('encsvgid_s_'):]
             _dec    = ''
             i = 0
             while i < len(s_prime):
@@ -402,7 +412,7 @@ class RACETrack(RTAnnotationsMixin,
                     raise Exception(f'decSVGID() - failed to decode "{s}"')
             return _dec
         else:
-            return s
+            raise Exception(f'decSVGID() - unknown encoding type ... should be "_i_" or "_s_" "{s}"')
 
     # ****************************************************************************************************************
     #
