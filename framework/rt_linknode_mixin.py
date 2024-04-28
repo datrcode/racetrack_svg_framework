@@ -23,7 +23,7 @@ import re
 
 from math import sqrt
 
-from shapely.geometry import Polygon,LineString
+from shapely.geometry import Point,Polygon,LineString
 
 from rt_component import RTComponent
 
@@ -47,6 +47,7 @@ class RTLinkNodeMixin(object):
 
     #
     # graphDictToDataFrame() - converts a dictionary into a dataframe.
+    # - d[fm][to] = ct
     # - fields will be "fm", "to", and "ct"
     #
     def graphDictToDataFrame(self, d):
@@ -987,7 +988,7 @@ class RTLinkNodeMixin(object):
         #
         def __renderLinks__(self):
             # Render links
-            svg          = ''
+            svg          = []
             count_by_set = True
             if self.link_size is not None and self.link_size != 'hidden':
                 link_to_dfs, link_to_xy = {}, {} # For small multiples (if enabled)
@@ -1164,8 +1165,8 @@ class RTLinkNodeMixin(object):
 
                             # Determine the link style
                             if    self.link_shape == 'line':
-                                svg += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
-                                svg += f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
+                                svg.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" ')
+                                svg.append(f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />')
 
                                 def _xyLink_(t):
                                     return x1+(x2-x1)*t, y1+(y2-y1)*t
@@ -1181,8 +1182,8 @@ class RTLinkNodeMixin(object):
                                     x4 = x2 - dx*self.link_arrow_length + dy*3*self.link_arrow_length/4
                                     y4 = y2 - dy*self.link_arrow_length - dx*3*self.link_arrow_length/4
 
-                                    svg += f'<path d="M {x3} {y3} L {x2} {y2} L {x4} {y4}" '
-                                    svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
+                                    svg.append(f'<path d="M {x3} {y3} L {x2} {y2} L {x4} {y4}" ')
+                                    svg.append(f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />')
                             elif self.link_shape == 'arrow':
                                 x3 = x2 - dx*2*self.link_arrow_length - dy*2*self.link_arrow_length/4
                                 y3 = y2 - dy*2*self.link_arrow_length + dx*2*self.link_arrow_length/4
@@ -1195,15 +1196,15 @@ class RTLinkNodeMixin(object):
                                 y6 = y2 - dy*2*self.link_arrow_length - dx*1.8*self.link_arrow_length/4
 
                                 if   self.link_arrow_style ==  'kite':
-                                    svg += f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" '
+                                    svg.append(f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ')
                                 elif self.link_arrow_style ==  'kite_v2': 
-                                    svg += f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x5} {y5} L {x6} {y6} L {x2} {y2} L {x4} {y4} Z" ' # arrow head is not filled
+                                    svg.append(f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x5} {y5} L {x6} {y6} L {x2} {y2} L {x4} {y4} Z" ') # arrow head is not filled
                                 elif self.link_arrow_style ==  'kite_v3':
-                                    svg += f'<path d="M {x1} {y1} L {x6} {y6} L {x5} {y5} L {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ' # arrow body is not filled
+                                    svg.append(f'<path d="M {x1} {y1} L {x6} {y6} L {x5} {y5} L {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ') # arrow body is not filled
                                 else:
                                     raise Exception('link_arrow_style must be "kite" or "kite_v2" or "kite_v3"')
 
-                                svg += f'fill-opacity="{self.link_opacity}" fill="{_co}" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />'
+                                svg.append(f'fill-opacity="{self.link_opacity}" fill="{_co}" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />')
                             elif self.link_shape == 'curve':
                                 # bound the link curvature
                                 _link_curve_ = self.link_max_curvature_px if l > self.link_max_curvature_px else l
@@ -1236,11 +1237,11 @@ class RTLinkNodeMixin(object):
                                 y4  = y2 - self.link_arrow_length*edy + (self.link_arrow_length/2) * ( edx)
 
                                 if self.link_arrow:
-                                    svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} M {x3} {y3} L {x2} {y2} L {x4} {y4}" '
-                                    svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
+                                    svg.append(f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} M {x3} {y3} L {x2} {y2} L {x4} {y4}" ')
+                                    svg.append(f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />')
                                 else:
-                                    svg += f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2}" '
-                                    svg += f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />'
+                                    svg.append(f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2}" ')
+                                    svg.append(f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />')
                             else:
                                 raise Exception(f'Unknown link_shape "{self.link_shape}"')
                             
@@ -1272,7 +1273,7 @@ class RTLinkNodeMixin(object):
                                     _l_         = 1.0 if _l_ < 0.001 else _l_
                                     _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
                                     _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
-                                    svg += f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />'
+                                    svg.append(f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />')
                             elif self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns and self.rt_self.isPolars(k_df):
                                 _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
                                 _side_ = 1.0 if fm_str < to_str else -1.0
@@ -1289,7 +1290,7 @@ class RTLinkNodeMixin(object):
                                     _l_         = 1.0 if _l_ < 0.001 else _l_
                                     _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
                                     _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
-                                    svg += f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />'
+                                    svg.append(f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />')
 
                 # Handle the small multiples
                 if self.sm_mode == 'link' and self.sm_type is not None:
@@ -1298,9 +1299,9 @@ class RTLinkNodeMixin(object):
                                                               self.sm_type, self.sm_params, self.sm_x_axis_independent, self.sm_y_axis_independent,
                                                               self.sm_w, self.sm_h)
                     for node_str in sm_lu.keys():
-                        svg += sm_lu[node_str]
+                        svg.append(sm_lu[node_str])
 
-            return svg
+            return ''.join(svg)
 
         #
         # __nodeSize__() - return the node size
@@ -1322,7 +1323,7 @@ class RTLinkNodeMixin(object):
         # __renderNodes__() - render the nodes
         #
         def __renderNodes__(self):
-            svg = ''
+            svg = []
             node_already_rendered = set()
 
             # Small multiple structures
@@ -1334,14 +1335,14 @@ class RTLinkNodeMixin(object):
                 # Set the node size
                 _sz = self.__nodeSize__()
 
-                # Render position context (if selected)
+                # Render position context (if selected) [nodes are rendered in the background]
                 if self.render_pos_context:
                     _co = self.rt_self.co_mgr.getTVColor('context','text')
                     for node_str in self.pos.keys():
                         x = self.xT(self.pos[node_str][0])
                         y = self.yT(self.pos[node_str][1])
                         if x >= -5 and x <= self.w+5 and y >= -5 and y <= self.h+5:
-                            svg += f'<circle cx="{x}" cy="{y}" r="{2}" fill="{_co}" stroke="{_co}" stroke-opacity="{self.pos_context_opacity}" fill-opacity="{self.pos_context_opacity}" />'
+                            svg.append(f'<circle cx="{x}" cy="{y}" r="{2}" fill="{_co}" stroke="{_co}" stroke-opacity="{self.pos_context_opacity}" fill-opacity="{self.pos_context_opacity}" />')
 
                 # Iterate over the relationships
                 for rel_tuple in self.relationships:
@@ -1387,8 +1388,7 @@ class RTLinkNodeMixin(object):
                                 # Prevents duplicate renderings
                                 if node_str in node_already_rendered:
                                     continue
-                                else:
-                                    node_already_rendered.add(node_str)
+                                node_already_rendered.add(node_str)
                                 
                                 # Transform the coordinates
                                 x = self.xT(self.pos[node_str][0])
@@ -1492,12 +1492,17 @@ class RTLinkNodeMixin(object):
                                     # Shape render...  if it's SVG, the rewrite coordinates into the right place...
                                     if _shape is not None and _shape.startswith('<svg'):
                                         _svg_w,_svg_h  = self.rt_self.__extractSVGWidthAndHeight__(_shape)
-                                        svg           += self.rt_self.__overwriteSVGOriginPosition__(_shape, (x,y), _svg_w, _svg_h)
+                                        svg_markup = self.rt_self.__overwriteSVGOriginPosition__(_shape, (x,y), _svg_w, _svg_h)
+                                        svg_markup = self.rt_self.__overwriteSVGSVGID__(_shape, self.nodeSVGID(k))
+                                        svg.append(svg_markup)
+                                        self.node_to_svg_markup[k] = svg_markup
                                         _sz            = _svg_h/2
 
                                     # Otherwise, call the super class shape renderer...
                                     else:
-                                        svg += self.rt_self.renderShape(_shape, x, y, _sz, _co, _co_border, self.node_opacity)
+                                        svg_markup = self.rt_self.renderShape(_shape, x, y, _sz, _co, _co_border, self.node_opacity, self.nodeSVGID(k))
+                                        svg.append(svg_markup)
+                                        self.node_to_svg_markup[k] = svg_markup
 
                                     # Track state
                                     if self.track_state:
@@ -1550,7 +1555,7 @@ class RTLinkNodeMixin(object):
                         _small_multiple_svg_ = _small_multiple_svg_[:(_svg_index_+4)] + \
                                                f' opacity="{self.node_opacity}" '     + \
                                                _small_multiple_svg_[(_svg_index_+4):]
-                    svg += _small_multiple_svg_
+                    svg.append(_small_multiple_svg_)
 
                     # Copy of the draw labels portion a few lines up...
                     if self.draw_labels:
@@ -1577,7 +1582,7 @@ class RTLinkNodeMixin(object):
                                 x, y = node_to_xy[k]
                                 svg_text = self.rt_self.svgText(node_str, x, y+self.txt_h/2, self.txt_h, anchor='middle')
                                 self.defer_render.append(svg_text)
-            return svg
+            return ''.join(svg)
 
         #
         # __renderBackgroundShapes__() - render background shapes
@@ -1674,11 +1679,18 @@ class RTLinkNodeMixin(object):
             return self.view_window
 
         #
+        # nodeSVGID() - return the SVG ID for the specified node
+        #
+        def nodeSVGID(self, node):
+            return self.rt_self.encSVGID(self.widget_id + '-' + str(node))
+
+        #
         # renderSVG() - render as SVG
         #
         def renderSVG(self, just_calc_max=False):
             if self.track_state:
                 self.geom_to_df = {}
+            self.node_to_svg_markup = {}
 
             # Determine geometry
             if self.view_window is None:
@@ -1727,7 +1739,9 @@ class RTLinkNodeMixin(object):
             return svg
 
         #
-        # Determine which dataframe geometries overlap with a specific
+        # overlappingDataFrames() - Determine which dataframe geometries overlap with a specific region
+        # - to_intersect should be a shapely shape
+        # - return value is a pandas dataframe or None
         #
         def overlappingDataFrames(self, to_intersect):
             _dfs = []
@@ -1738,6 +1752,38 @@ class RTLinkNodeMixin(object):
                 return self.rt_self.concatDataFrames(_dfs)
             else:
                 return None
+
+        #
+        # overlappingEntities() - Determine which entity geometrics overlap with a specific region
+        # - to_intersect should be a shapely shape
+        # - return value is a list of entities (possibly an empty list) or None
+        #
+        def overlappingEntities(self, to_intersect):
+            node_strs = []
+            for node_str in self.node_coords:
+                xy = self.node_coords[node_str]
+                if to_intersect.contains(Point(xy[0],xy[1])):
+                    node_strs.append(node_str)
+            return node_strs
+
+
+        #
+        # entityPositions() - return information about the entity geometry for rendering
+        # - Empty list means either not implemented... or entity not in view...
+        # - return the positions of the entity ... rendering had to have happened first
+        def entityPositions(self, entity):
+             if entity in self.node_coords:
+                 xy   = self.node_coords[entity]
+                 rtep = RTEntityPosition(entity,
+                                         self.rt_self,
+                                         self,
+                                         xy,
+                                         (xy[0], xy[1], 0.0, 1.0),
+                                         self.nodeSVGID(entity),
+                                         self.node_to_svg_markup[entity],
+                                         self.widget_id)
+                 return [rtep]
+             return []
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------------------------------

@@ -40,6 +40,7 @@ class RTComponent(object):
         #
         def widgetId(self):
              return self.widget_id
+        
         #
         # entityPositions() - return information about the entity geometry for rendering
         # - Empty list means either not implemented... or entity not in view...
@@ -74,12 +75,20 @@ class RTComponent(object):
         # ===========================================================================================
 
         #
-        # Determine which dataframe geometries overlap with a specific
+        # overlappingDataFrames() - Determine which dataframe geometries overlap with a specific region
         # - to_intersect should be a shapely shape
-        # - return value is a pandas dataframe
+        # - return value is a pandas dataframe or None
         #
         def overlappingDataFrames(self, to_intersect):
-            pass
+            return None
+
+        #
+        # overlappingEntities() - Determine which entity geometrics overlap with a specific region
+        # - to_intersect should be a shapely shape
+        # - return value is a list of entities (possibly an empty list) or None
+        #
+        def overlappingEntities(self, to_intersect):
+            return None
 
         #
         # applyScrollEvent()
