@@ -852,7 +852,9 @@ class RTAnnotationsMixin(object):
         # Create the svg
         w_annotated, h_annotated = x, _instance_svg_h_ + 2*y_ins
         svg  = [f'<svg id="entity-annotation-{random.randint(0,2**32)}" x="0" y="0" width="{w_annotated}" height="{h_annotated}" xmlns="http://www.w3.org/2000/svg">']
-        svg.append(self.__overwriteSVGOriginPosition__(_instance_svg_, (_instance_x_, y_ins)))
+        svg.append(f'<svg x="{_instance_x_}" y="{y_ins}" width="{_instance_svg_w_}" height="{_instance_svg_h_}" xmlns="http://www.w3.org/2000/svg">')
+        svg.append(_instance_svg_)
+        svg.append('</svg>')
         if instance_fade > 0.0:
             svg.append(f'<rect x="{_instance_x_}" y="{y_ins}" width="{_instance_svg_w_}" height="{_instance_svg_h_}" fill="{self.co_mgr.getTVColor("background","default")}" opacity="{instance_fade}" />')
 
@@ -955,9 +957,11 @@ class RTAnnotationsMixin(object):
 
                 # For all positions draw a line
                 for _position_ in to_positions[common_name]:
-                    _color_ = self.co_mgr.getTVColor("label","defaultfg")
-                    _xy_    = _position_.xy()
-                    svg.append(f'<line x1="{x_attach}" y1="{y_attach}" x2="{_xy_[0]+_instance_x_}" y2="{_xy_[1]+y_ins}" stroke="{_color_}" stroke-width="1.5" />')
+                    _color_  = self.co_mgr.getTVColor("label","defaultfg")
+                    _xy_     = _position_.xy()
+                    _xy_off_ = _position_.xyOffset()
+                    svg.append(f'<line x1="{x_attach}" y1="{y_attach}" x2="{_xy_[0]+_xy_off_[0]+_instance_x_}" y2="{_xy_[1]+_xy_off_[1]+y_ins}" stroke="{_color_}" stroke-width="1.5" />')
+                    #svg.append(f'<line x1="{x_attach}" y1="{y_attach}" x2="{_xy_[0]+_xy_off_[0]}" y2="{_xy_[1]+_xy_off_[1]}" stroke="{_color_}" stroke-width="1.5" />')
 
                 # Increment for next text block
                 y += common_name_to_block_h[common_name] + txt_block_v_gap

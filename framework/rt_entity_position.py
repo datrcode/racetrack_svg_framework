@@ -22,7 +22,7 @@ class RTEntityPosition(object):
     #
     # Constructor
     #
-    def __init__(self, entity, rt, component_instance, point_to_xy, attachment_point_vec, svg_id, svg_markup, widget_id):
+    def __init__(self, entity, rt, component_instance, point_to_xy, attachment_point_vec, svg_id, svg_markup, widget_id, xy_offset=(0,0)):
         self.entity                = entity
         self.rt                    = rt
         self.component_instance    = component_instance
@@ -31,12 +31,21 @@ class RTEntityPosition(object):
         self.svg_id                = svg_id
         self.svg_markup            = svg_markup
         self.widget_id             = widget_id
+        self.xy_offset             = xy_offset # for multi component layouts
 
     #
     # xy() - entity position
     #
     def xy(self):
         return self.point_to_xy
+    
+    #
+    # xyOffset() - xy offset
+    #
+    def xyOffset(self, xy_offset=None):
+        if xy_offset is not None:
+            self.xy_offset = xy_offset
+        return self.xy_offset
     
     #
     # attachmentPointVecs() - list of attachment point vectors

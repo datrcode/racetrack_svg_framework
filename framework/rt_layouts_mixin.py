@@ -847,7 +847,7 @@ class RTLayoutsMixin(object):
 #
 # RT Layout Instance (new version)
 #
-class RTComponentsLayout(object):
+class RTComponentsLayout(RTComponent):
     #
     # Constructor
     #
@@ -857,16 +857,26 @@ class RTComponentsLayout(object):
         self.instance_lu = instance_lu
         self.w           = w
         self.h           = h
+        self.last_render = None
     
     #
     # SVG Representation
     #
     def _repr_svg_(self):
+        if self.last_render is None:
+            self.renderSVG()
+        return self.last_render
+    
+    #
+    # renderSVG() - render the SVG representation
+    #
+    def renderSVG(self):
         _svg_ = [f'<svg id="{self.widget_id}" width="{self.w+1}" height="{self.h+1}" xmlns="http://www.w3.org/2000/svg">']
         for _poly in self.instance_lu.keys():
             _svg_.append(self.instance_lu[_poly]._repr_svg_())
         _svg_.append('</svg>')
-        return ''.join(_svg_)
+        self.last_render = ''.join(_svg_)
+        return self.last_render
 
     #
     # applyViewConfigurations() - apply view configurations based on a reference layout.
@@ -895,10 +905,23 @@ class RTComponentsLayout(object):
         return self.instance_lu[k] if k in self.instance_lu.keys() else None
 
     #
-    # Return Overlapping Dataframes
+    # entityPositions() - return information about the entity geometry for rendering
+    def entityPositions(self, entity):
+        all_positions = []
+        for _poly_ in self.instance_lu.keys():
+            _instance_  = self.instance_lu[_poly_]
+            _positions_ = _instance_.entityPositions(entity)
+            if _positions_ is not None and len(_positions_) > 0:
+                for _pos_ in _positions_:
+                    _pos_.xyOffset((_poly_.bounds[0], _poly_.bounds[1]))
+                    all_positions.append(_pos_)
+        return all_positions
+
+    #
+    # overlappingDataFrames() - Return Overlapping Dataframes
     #
     def overlappingDataFrames(self, to_intersect):
-        if type(to_intersect) == tuple:
+        if type(to_intersect) == tuple: # assume it's a bounding box (x0,y0,x1,y1)
             _x0,_y0,_x1,_y1 = to_intersect
             if _x0 > _x1:
                 _x0,_x1 = _x1,_x0
