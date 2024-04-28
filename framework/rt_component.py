@@ -76,16 +76,18 @@ class RTComponent(object):
 
         #
         # overlappingDataFrames() - Determine which dataframe geometries overlap with a specific region
-        # - to_intersect should be a shapely shape
+        # - to_intersect should be a shapely shape (in screen coordinates... assuming no viewbox is active)
         # - return value is a pandas dataframe or None
+        # - it's up to the svg instance to determine what's in vs what's out -- may not be polygon exact
         #
         def overlappingDataFrames(self, to_intersect):
             return None
 
         #
         # overlappingEntities() - Determine which entity geometrics overlap with a specific region
-        # - to_intersect should be a shapely shape
+        # - to_intersect should be a shapely shape (in screen coordinates... assuming no viewbox is active)
         # - return value is a list of entities (possibly an empty list) or None
+        # - it's up to the svg instance to determine what's in vs what's out -- may not be polygon exact
         #
         def overlappingEntities(self, to_intersect):
             return None

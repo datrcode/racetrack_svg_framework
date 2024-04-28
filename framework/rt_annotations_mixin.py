@@ -756,24 +756,24 @@ class RTAnnotationsMixin(object):
         return _max_str
 
     #
-    # annotateEntityInstances()
+    # annotateEntities()
     # - produce a svg description of the supplied visualization instance with the specified annotation(s)
     #
-    def annotateEntityInstances(self,
-                                vis_instance,                       # must implement getEntityPositions()
-                                annotations         = None,         # (1) None == Use Stateful List; (2) List of Annotations; (3) Single Annotation
-                                txt_h               = 14,           # Annotation text height
-                                txt_block_h_gap     = 16,           # Annotation text block gap
-                                txt_block_v_gap     = 5,            # Annotation text block gap
-                                max_line_w          = 96,           # Length of annotation line in pixels
-                                max_lines           = 3,            # Max # of lines of annotation to render
-                                annotation_color    = 'default',    # 'default', hex-color-string, 'common_name', 'tag:<tag_name>'
-                                instance_fade       = 0.5,          # 0.0 == no fade, 1.0 == full fade
-                                x_ins               = 10,           # x inset
-                                y_ins               = 5,            # y inset
-                                draw_text_border    = False,        # Draw a border around the annotation text
-                                include_common_name = True,         # The annotation description is the common name (possible concatenate)
-                                include_description = False):       # The annotation description is the description (possible concatenate)
+    def annotateEntities(self,
+                         vis_instance,                       # must implement getEntityPositions()
+                         annotations         = None,         # (1) None == Use Stateful List; (2) List of Annotations; (3) Single Annotation
+                         txt_h               = 14,           # Annotation text height
+                         txt_block_h_gap     = 16,           # Annotation text block gap
+                         txt_block_v_gap     = 5,            # Annotation text block gap
+                         max_line_w          = 96,           # Length of annotation line in pixels
+                         max_lines           = 3,            # Max # of lines of annotation to render
+                         annotation_color    = 'default',    # 'default', hex-color-string, 'common_name', 'tag:<tag_name>'
+                         instance_fade       = 0.5,          # 0.0 == no fade, 1.0 == full fade
+                         x_ins               = 10,           # x inset
+                         y_ins               = 5,            # y inset
+                         draw_text_border    = False,        # Draw a border around the annotation text
+                         include_common_name = True,         # The annotation description is the common name (possible concatenate)
+                         include_description = False):       # The annotation description is the description (possible concatenate)
         # Force a render
         _instance_svg_ = vis_instance.renderSVG()
         _instance_svg_w_, _instance_svg_h_ = self.__extractSVGWidthAndHeight__(vis_instance)
@@ -783,11 +783,23 @@ class RTAnnotationsMixin(object):
         if   annotations is None:
              for _annotation in self.annotations_ls:
                   _possibles.append(_annotation)
-        elif type(annotations) == list:
+        elif type(annotations) == list or type(annotations) == set:
              for _annotation in annotations:
-                  _possibles.append(_annotation)                       
+                if   type(_annotation) == str:
+                    _possibles.append(self.entityAnnotation(_annotation))
+                elif type(_annotation) == int:
+                    _possibles.append(self.entityAnnotation(str(_annotation)))
+                elif type(_annotation) == RTAnnotation:                      
+                    _possibles.append(_annotation)
+                else:
+                    raise Exception(f'annotateTimelineInstances() - annotations type not understood -- "{type(_annotation)}"')
+        elif type(annotations) == dict:
+             for _k,_v in annotations.items():
+                 _possibles.append(self.entityAnnotation(str(_k),str(_v)))
         elif type(annotations) == RTAnnotation:
              _possibles.append(annotations)
+        elif type(annotations) == str or type(annotations) == int:
+             _possibles.append(self.entityAnnotation(str(annotations)))
         else:
              raise Exception(f'annotateTimelineInstances() - annotations parameter must be None, a list of RTAnnotation, found type = "{type(annotations)}"')
 
