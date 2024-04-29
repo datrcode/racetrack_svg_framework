@@ -768,6 +768,7 @@ class RTAnnotationsMixin(object):
                          max_line_w          = 96,           # Length of annotation line in pixels
                          max_lines           = 3,            # Max # of lines of annotation to render
                          annotation_color    = 'default',    # 'default', hex-color-string, 'common_name', 'tag:<tag_name>'
+                         shape_outline_size  = None,         # None -- no outlines, Int/Float -- stroke width
                          instance_fade       = 0.5,          # 0.0 == no fade, 1.0 == full fade
                          x_ins               = 10,           # x inset
                          y_ins               = 5,            # y inset
@@ -961,7 +962,10 @@ class RTAnnotationsMixin(object):
                     _xy_     = _position_.xy()
                     _xy_off_ = _position_.xyOffset()
                     svg.append(f'<line x1="{x_attach}" y1="{y_attach}" x2="{_xy_[0]+_xy_off_[0]+_instance_x_}" y2="{_xy_[1]+_xy_off_[1]+y_ins}" stroke="{_color_}" stroke-width="1.5" />')
-                    #svg.append(f'<line x1="{x_attach}" y1="{y_attach}" x2="{_xy_[0]+_xy_off_[0]}" y2="{_xy_[1]+_xy_off_[1]}" stroke="{_color_}" stroke-width="1.5" />')
+
+                    if shape_outline_size is not None:
+                        _unadorned_ = _position_.svg()
+                        svg.append(f'<g transform="translate({_xy_off_[0]+_instance_x_},{_xy_off_[1]+y_ins})" stroke="{_color_}" stroke-width="{shape_outline_size}" fill="none">{_unadorned_}</g>')
 
                 # Increment for next text block
                 y += common_name_to_block_h[common_name] + txt_block_v_gap
