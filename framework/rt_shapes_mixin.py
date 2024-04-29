@@ -28,12 +28,16 @@ class RTShapesMixin(object):
                     sz        = 5,
                     co        = None,
                     co_border = None,
-                    opacity   = 1.0,
+                    opacity   = None,
                     svg_id    = None):
         id_str    = '' if svg_id is None else f'id="{svg_id}"'
-        co        = self.co_mgr.getTVColor('data','default') if co        is None else co
-        co_border = co                                       if co_border is None else co_border
-        _append_ = f'fill="{co}" stroke="{co_border}" fill-opacity="{opacity}" stroke-opacity="{opacity}"'
+
+        append_ls = []
+        append_ls.append('' if co        is None else f'fill="{co}"')
+        append_ls.append('' if co_border is None else f'stroke="{co_border}"')
+        append_ls.append('' if opacity   is None else f'fill-opacity="{opacity}" stroke-opacity="{opacity}"')
+        _append_ = ' '.join(append_ls)
+
         if   shape is None or shape == 'ellipse' or shape == 'circle':
             return f'<circle {id_str} cx="{x}" cy="{y}" r="{sz}" {_append_} />'
         elif shape == 'square':

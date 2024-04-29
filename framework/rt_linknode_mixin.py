@@ -1494,16 +1494,16 @@ class RTLinkNodeMixin(object):
                                     if _shape is not None and _shape.startswith('<svg'):
                                         _svg_w,_svg_h  = self.rt_self.__extractSVGWidthAndHeight__(_shape)
                                         svg_markup = self.rt_self.__overwriteSVGOriginPosition__(_shape, (x,y), _svg_w, _svg_h)
-                                        svg_markup = self.rt_self.__overwriteSVGSVGID__(_shape, self.nodeSVGID(k))
+                                        svg_markup = self.rt_self.__overwriteSVGID__(_shape, self.nodeSVGID(k))
                                         svg.append(svg_markup)
                                         self.node_to_svg_markup[k] = svg_markup
-                                        _sz            = _svg_h/2
+                                        _sz = _svg_h/2 # probably for the label?
 
                                     # Otherwise, call the super class shape renderer...
                                     else:
                                         svg_markup = self.rt_self.renderShape(_shape, x, y, _sz, _co, _co_border, self.node_opacity, self.nodeSVGID(k))
                                         svg.append(svg_markup)
-                                        self.node_to_svg_markup[k] = svg_markup
+                                        self.node_to_svg_markup[k] = self.rt_self.renderShape(_shape, x, y, _sz) # unadorned
 
                                     # Track state
                                     if self.track_state:

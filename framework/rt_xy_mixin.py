@@ -2069,7 +2069,7 @@ class RTXYMixin(object):
                     if callable(self.dot_shape):
                         k_df = pb[(x,y)]
                         _my_dot_shape = self.dot_shape(k_df, (x,y), x, y, _local_dot_w, color, self.opacity)
-                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity))
+                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, color, self.opacity))
                 else: # Complex Render
                     my_count = gb['__countby__'][_index_]
                     
@@ -2088,7 +2088,7 @@ class RTXYMixin(object):
                         k_df = pb[(x,y)]
                         _my_dot_shape = self.dot_shape(k_df, (x,y), x, y, var_w, color, var_o)
 
-                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o))
+                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, color, var_o))
 
                 # Track state (if requested)
                 if self.track_state:
@@ -2191,7 +2191,7 @@ class RTXYMixin(object):
                     _my_dot_shape = self.dot_shape
                     if callable(self.dot_shape):
                         _my_dot_shape = self.dot_shape(k_df, k, x, y, _local_dot_w, color, self.opacity)
-                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, None, self.opacity))
+                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, _local_dot_w, color, color, self.opacity))
 
                     # Track state (if requested)
                     if self.track_state:
@@ -2227,7 +2227,7 @@ class RTXYMixin(object):
                     if callable(self.dot_shape):
                         _my_dot_shape = self.dot_shape(k_df, k, x, y, var_w, color, var_o)
 
-                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, None, var_o))
+                    svg_strs.append(self.rt_self.renderShape(_my_dot_shape, x, y, var_w, color, color, var_o))
 
                     # Track state (if requested)
                     if self.track_state:
