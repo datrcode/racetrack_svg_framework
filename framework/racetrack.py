@@ -231,10 +231,11 @@ class RACETrack(RTAnnotationsMixin,
                         _format_ = self.guessTimestampFormat(str(df[0][_column_][0]))
                     df = df.with_columns(pl.col(_column_).str.strptime(pl.Datetime, format=_format_).cast(pl.Datetime))
                 except:
-                    as_series = df[_column_].map_elements(lambda x: pd.to_datetime(x, utc=True).tz_convert(None))
-                    _format_  = self.guessTimestampFormat(str(as_series[0]))
-                    df = df.drop(_column_)
-                    df = df.with_columns(as_series.str.strptime(pl.Datetime, format=_format_).cast(pl.Datetime))
+                    df = df.with_columns(pl.col(_column_).map_elements(lambda x: pd.to_datetime(x, utc=True).tz_convert(None), return_dtype=pl.Datetime))
+                    #as_series = df[_column_].map_elements(lambda x: pd.to_datetime(x, utc=True).tz_convert(None), return_dtype=pl.Datetime)
+                    #_format_  = self.guessTimestampFormat(str(as_series[0]))
+                    #df = df.drop(_column_)
+                    #df = df.with_columns(as_series.str.strptime(pl.Datetime, format=_format_).cast(pl.Datetime))
             else:
                 raise Exception('columnsAreTimestamps() - not a pandas or polars dataframe')
         return df
