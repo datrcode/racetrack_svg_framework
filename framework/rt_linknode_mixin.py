@@ -428,7 +428,10 @@ class RTLinkNodeMixin(object):
                  max_link_size     = 4,        # for link vary...
                  min_link_size     = 0.25,     # for link vary...
 
+                 # -----------------------     # label information
+
                  label_only        = set(),    # label only set
+                 label_links       = False,    # label links (by color_by... if link_color is 'vary'... and label only is empty or contains the label)
 
                  # -----------------------     # timing information
 
@@ -652,6 +655,7 @@ class RTLinkNodeMixin(object):
             self.max_link_size              = kwargs['max_link_size']
             self.min_link_size              = kwargs['min_link_size']
             self.label_only                 = kwargs['label_only']
+            self.label_links                = kwargs['label_links']
             self.timing_marks               = kwargs['timing_marks']
             self.ts_field                   = kwargs['ts_field']
             self.timing_mark_length         = kwargs['timing_mark_length']
@@ -1101,26 +1105,7 @@ class RTLinkNodeMixin(object):
 
                                     if shape2 is not None:
                                         x2, y2 = self.rt_self.shapeAttachmentPoint(shape2, x2, y2, node_sz, x1_orig, y1_orig)
-                                
-                            # Determine the color
-                            if   self.link_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
-                                _co_set = set(k_df[self.color_by])
-                                if len(_co_set) == 1:
-                                    _co = self.rt_self.co_mgr.getColor(_co_set.pop())
-                                else:
-                                    _co = self.rt_self.co_mgr.getTVColor('data','default')
-                            elif self.link_color is not None and self.link_color.startswith('#'):
-                                _co = self.link_color
-                            else:
-                                _co = self.rt_self.co_mgr.getTVColor('data','default')
 
-                            # Capture the state
-                            if self.track_state:
-                                _line = LineString([[x1,y1],[x2,y2]])
-                                if _line not in self.geom_to_df.keys():
-                                    self.geom_to_df[_line] = []
-                                self.geom_to_df[_line].append(k_df)
-                            
                             # Determine the size
                             if _sz is None:
                                 _this_sz = self.min_link_size + self.max_link_size * (_weight_ - _sz_min) / (_sz_max - _sz_min)
@@ -1144,7 +1129,43 @@ class RTLinkNodeMixin(object):
                                         _this_sz = 0.0
                                 else:
                                     _this_sz = _sz
-                            
+
+                            # Vector info
+                            dx, dy = x2 - x1, y2 - y1
+                            l = sqrt((dx*dx)+(dy*dy))
+                            l = 1 if l <= 0.01 else l
+                            dx,  dy  =  dx/l,  dy/l
+                            pdx, pdy =  dy,   -dx
+
+                            # Determine the color
+                            if   self.link_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
+                                _co_set = set(k_df[self.color_by])
+                                if len(_co_set) == 1:
+                                    _link_str = _co_set.pop()
+                                    _co = self.rt_self.co_mgr.getColor(_link_str)
+                                else:
+                                    _link_str = '*'
+                                    _co = self.rt_self.co_mgr.getTVColor('data','default')
+                                # Draw the link labels
+                                if self.label_links and ((len(self.label_only) == 0) or \
+                                                         (_link_str in self.label_only) or \
+                                                         (_link_str == '*' and len(_co_set.intersection(self.label_only)) > 0)):
+                                    _l_shorter  = (l-10) if l > 15 else l
+                                    _cropped    = self.rt_self.cropText(_link_str, self.txt_h, _l_shorter)
+                                    _label_svg_ = self.rt_self.svgLabelOnLine((x1,y1,x2,y2), _cropped, _co, 2+_this_sz/2, self.txt_h)
+                                    svg.append(_label_svg_)
+                            elif self.link_color is not None and self.link_color.startswith('#'):
+                                _co = self.link_color
+                            else:
+                                _co = self.rt_self.co_mgr.getTVColor('data','default')
+
+                            # Capture the state
+                            if self.track_state:
+                                _line = LineString([[x1,y1],[x2,y2]])
+                                if _line not in self.geom_to_df.keys():
+                                    self.geom_to_df[_line] = []
+                                self.geom_to_df[_line].append(k_df)
+                                                        
                             # Determine stroke dash
                             stroke_dash = ''
                             if self.link_dash is not None:
@@ -1156,13 +1177,6 @@ class RTLinkNodeMixin(object):
                                     _return_value_ = self.link_dash(fm_str, to_str, (x1,y1), (x2,y2))
                                     if _return_value_ is not None:
                                         stroke_dash = f'stroke-dasharray="{_return_value_}"'
-
-                            # Vector info
-                            dx, dy = x2 - x1, y2 - y1
-                            l = sqrt((dx*dx)+(dy*dy))
-                            l = 1 if l <= 0.01 else l
-                            dx,  dy  =  dx/l,  dy/l
-                            pdx, pdy =  dy,   -dx
 
                             # Determine the link style
                             if    self.link_shape == 'line':
@@ -1178,10 +1192,10 @@ class RTLinkNodeMixin(object):
                                         return x2+(x1-x2)*t, y2+(y1-y2)*t
 
                                 if self.link_arrow:
-                                    x3 = x2 - dx*self.link_arrow_length - dy*3*self.link_arrow_length/4
-                                    y3 = y2 - dy*self.link_arrow_length + dx*3*self.link_arrow_length/4
-                                    x4 = x2 - dx*self.link_arrow_length + dy*3*self.link_arrow_length/4
-                                    y4 = y2 - dy*self.link_arrow_length - dx*3*self.link_arrow_length/4
+                                    x3 = x2 - dx*self.link_arrow_length - dy*3*self.link_arrow_length/8
+                                    y3 = y2 - dy*self.link_arrow_length + dx*3*self.link_arrow_length/8
+                                    x4 = x2 - dx*self.link_arrow_length + dy*3*self.link_arrow_length/8
+                                    y4 = y2 - dy*self.link_arrow_length - dx*3*self.link_arrow_length/8
 
                                     svg.append(f'<path d="M {x3} {y3} L {x2} {y2} L {x4} {y4}" ')
                                     svg.append(f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />')
