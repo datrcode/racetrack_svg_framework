@@ -320,7 +320,7 @@ class RTChordDiagramMixin(object):
         # concats two strings together in alphabetical order
         df = self.copyDataFrame(df)
         __lambda__ = lambda x: self.__den_fromToString__(x, fm, to)
-        df = df.with_columns(pl.struct([fm,to]).map_elements(__lambda__).alias('__fmto__'))
+        df = df.with_columns(pl.struct([fm,to]).map_elements(__lambda__, return_dtype=pl.String).alias('__fmto__'))
         df_den = self.polarsCounter(df, '__fmto__', count_by, count_by_set)
 
         # create the initial graph and heap
