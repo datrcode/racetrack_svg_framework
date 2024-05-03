@@ -1138,6 +1138,7 @@ class RTLinkNodeMixin(object):
                             pdx, pdy =  dy,   -dx
 
                             # Determine the color
+                            _link_str, _co_set = None, None
                             if   self.link_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
                                 _co_set = set(k_df[self.color_by])
                                 if len(_co_set) == 1:
@@ -1146,18 +1147,26 @@ class RTLinkNodeMixin(object):
                                 else:
                                     _link_str = '*'
                                     _co = self.rt_self.co_mgr.getTVColor('data','default')
-                                # Draw the link labels
-                                if self.label_links and ((len(self.label_only) == 0) or \
-                                                         (_link_str in self.label_only) or \
-                                                         (_link_str == '*' and len(_co_set.intersection(self.label_only)) > 0)):
-                                    _l_shorter  = (l-10) if l > 15 else l
-                                    _cropped    = self.rt_self.cropText(_link_str, self.txt_h, _l_shorter)
-                                    _label_svg_ = self.rt_self.svgLabelOnLine((x1,y1,x2,y2), _cropped, _co, 2+_this_sz/2, self.txt_h)
-                                    svg.append(_label_svg_)
                             elif self.link_color is not None and self.link_color.startswith('#'):
                                 _co = self.link_color
                             else:
                                 _co = self.rt_self.co_mgr.getTVColor('data','default')
+
+                            # Draw the link labels
+                            if self.label_links and self.color_by is not None:
+                                if _link_str is None: # if it wasn't set above already
+                                    _co_set = set(k_df[self.color_by])
+                                    _link_str = '*'
+                                    if len(_co_set) == 1:
+                                        _link_str = _co_set.pop()
+                                # no label set, str is in the label set, or set overlaps with the label set
+                                if (len(self.label_only) == 0)    or \
+                                   (_link_str in self.label_only) or \
+                                   (_link_str == '*' and len(_co_set.intersection(self.label_only)) > 0):                                
+                                    _l_shorter  = (l-10) if l > 15 else l
+                                    _cropped    = self.rt_self.cropText(_link_str, self.txt_h, _l_shorter)
+                                    _label_svg_ = self.rt_self.svgLabelOnLine((x1,y1,x2,y2), _cropped, _co, 2+_this_sz/2, self.txt_h)
+                                    svg.append(_label_svg_)
 
                             # Capture the state
                             if self.track_state:
