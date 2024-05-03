@@ -269,61 +269,48 @@ class RTLinkNodeMixin(object):
                 raise Exception(f'linkNode(): relationship tuples should have two parts "{rel_tuple}"')
 
             # Flatten out into the groupby array, the fm_flds array, and the to_flds array            
-            flat    = flattenTuple(rel_tuple)
-
-            fm_flds = flattenTuple(rel_tuple[0])
-            if type(fm_flds) != list:
-                fm_flds = [fm_flds]
-
-            to_flds = flattenTuple(rel_tuple[1])                
-            if type(to_flds) != list:
-                to_flds = [to_flds]
+            fm_flds = (rel_tuple[0])
+            to_flds = (rel_tuple[1])                
 
             # Do the from and to fields separately
             for flds_i in range(0,2):
-                if flds_i == 0:
-                    flds = fm_flds
+                flds = fm_flds if flds_i == 0 else to_flds
+
+                # create the edge table
+                if len(flds) == 1:
+                    if self.isPandas(df):
+                        gb = df.groupby(flds[0])
+                    elif self.isPolars(df):
+                        gb = df.group_by(flds[0])
                 else:
-                    flds = to_flds
+                    if self.isPandas(df):
+                        gb = df.groupby(flds)
+                    elif self.isPolars(df):
+                        gb = df.group_by(flds)
 
-                # if the df has all of the columns
-                if len(set(df.columns) & set(flds)) == len(set(flds)):
+                # iterate over the edges
+                for k,k_df in gb:
+                    node_str = self.nodeStringAndFillPos(k, pos)
 
-                    # create the edge table
-                    if len(flds) == 1:
-                        if self.isPandas(df):
-                            gb = df.groupby(flds[0])
-                        elif self.isPolars(df):
-                            gb = df.group_by(flds[0])
-                    else:
-                        if self.isPandas(df):
-                            gb = df.groupby(flds)
-                        elif self.isPolars(df):
-                            gb = df.group_by(flds)
+                    # Perform the comparison for the bounds
+                    v = pos[node_str]
+                    wx1 = max(v[0], wx1)
+                    wy1 = max(v[1], wy1)
+                    wx0 = min(v[0], wx0)
+                    wy0 = min(v[1], wy0)
 
-                    # iterate over the edges
-                    for k,k_df in gb:
-                        node_str = self.nodeStringAndFillPos(k, pos)
-
-                        # Perform the comparison for the bounds
-                        v = pos[node_str]
-                        wx1 = max(v[0], wx1)
-                        wy1 = max(v[1], wy1)
-                        wx0 = min(v[0], wx0)
-                        wy0 = min(v[1], wy0)
-
-                        # Determine the maximum node size
-                        if count_by is None:
-                            if max_node_value < len(k_df):
-                                max_node_value = len(k_df)
-                        elif count_by in df.columns and count_by_set:
-                            set_size = len(k_df[count_by])
-                            if max_node_value < set_size:
-                                max_node_value = set_size
-                        elif count_by in df.columns:
-                            summation = k_df[count_by].sum()
-                            if max_node_value < summation:
-                                max_node_value = summation
+                    # Determine the maximum node size
+                    if count_by is None:
+                        if max_node_value < len(k_df):
+                            max_node_value = len(k_df)
+                    elif count_by in df.columns and count_by_set:
+                        set_size = len(k_df[count_by])
+                        if max_node_value < set_size:
+                            max_node_value = set_size
+                    elif count_by in df.columns:
+                        summation = k_df[count_by].sum()
+                        if max_node_value < summation:
+                            max_node_value = summation
 
         # Make sure the max node value is not zero
         if max_node_value == 0:
@@ -377,6 +364,7 @@ class RTLinkNodeMixin(object):
                                                # [('f0','f1')] // 1 relationship: f0 to f1
                                                # [('f0','f1'),('f1','f2')] // 2 relationships: f0 to f1 and f1 to f2
                                                # [(('f0','f1'),('f2','f3'))] // 1 relationship: 'f0'|'f1' to 'f2'|'f3'
+                                               # ... can now also add the relationship field:  ('subject','predicate','object')
 
                  # -----------------------     # everything else is a default...
 
@@ -499,33 +487,26 @@ class RTLinkNodeMixin(object):
         # Iterate over the relationships
         for rel_tuple in relationships:
             # Flatten out into the groupby array, the fm_flds array, and the to_flds array            
-            flat    = flattenTuple(rel_tuple)
-            fm_flds = flattenTuple(rel_tuple[0])
-            if type(fm_flds) != list:
-                fm_flds = [fm_flds]
-            to_flds = flattenTuple(rel_tuple[1])                
-            if type(to_flds) != list:
-                to_flds = [to_flds]
-            # if the df has all of the columns
-            if len(set(df.columns) & set(flat)) == len(set(flat)):
-                if self.isPandas(df):
-                    gb = df.groupby(flat)
-                    if count_by is None: 
-                        gb_sz = gb.size()
-                    elif count_by_set:
-                        gb_sz = gb[count_by].nunique()
-                    else:
-                        gb_sz = gb[count_by].sum()
-                    for i in range(0,len(gb)):
-                        _weight_ = gb_sz.iloc[i]
-                        _min_ = _weight_ if _min_ is None else min(_min_, _weight_)
-                        _max_ = _weight_ if _max_ is None else max(_max_, _weight_)
-                elif self.isPolars(df):
-                    counter = self.polarsCounter(df, flat, count_by, count_by_set)
-                    _min_ = counter['__count__'].min()
-                    _max_ = counter['__count__'].max()
+            fm_flds = (rel_tuple[0])
+            to_flds = (rel_tuple[1])                
+            if self.isPandas(df):
+                gb = df.groupby(list(rel_tuple[:2]))
+                if count_by is None: 
+                    gb_sz = gb.size()
+                elif count_by_set:
+                    gb_sz = gb[count_by].nunique()
                 else:
-                    raise Exception('RTLinkNode.minAndMaxLinkSize() - only pandas and polars supported')
+                    gb_sz = gb[count_by].sum()
+                for i in range(0,len(gb)):
+                    _weight_ = gb_sz.iloc[i]
+                    _min_ = _weight_ if _min_ is None else min(_min_, _weight_)
+                    _max_ = _weight_ if _max_ is None else max(_max_, _weight_)
+            elif self.isPolars(df):
+                counter = self.polarsCounter(df, list(rel_tuple[:2]), count_by, count_by_set)
+                _min_ = counter['__count__'].min()
+                _max_ = counter['__count__'].max()
+            else:
+                raise Exception('RTLinkNode.minAndMaxLinkSize() - only pandas and polars supported')
         if _min_ == _max_:
             _max_ = _min_ + 1
         return _min_,_max_
@@ -555,16 +536,7 @@ class RTLinkNodeMixin(object):
             if len(rel_tuple) != 2:
                 raise Exception(f'createNetworkXGraph(): relationship tuples should have two parts "{rel_tuple}"')
 
-            # Flatten out into the groupby array, the fm_flds array, and the to_flds array            
-            flat    = flattenTuple(rel_tuple)
-
-            fm_flds = flattenTuple(rel_tuple[0])
-            if type(fm_flds) != list:
-                fm_flds = [fm_flds]
-
-            to_flds = flattenTuple(rel_tuple[1])                
-            if type(to_flds) != list:
-                to_flds = [to_flds]
+            fm_flds, to_flds = (rel_tuple[0]), (rel_tuple[1])
 
             def stringify(_list_):
                 _str_ = str(_list_[0])
@@ -572,35 +544,33 @@ class RTLinkNodeMixin(object):
                     _str_ += '|' + str(_x_)
                 return _str_
 
-            # if the df has all of the columns
-            if len(set(df.columns) & set(flat)) == len(set(flat)):
-                if self.isPandas(df):
-                    if count_by is None or count_by_set: # count_by_set not implemented...
-                        gb = df.groupby(flat).size()
-                    else:
-                        gb = df.groupby(flat)[count_by].sum()
-                    for i in range(0,len(gb)):
-                        k = gb.index[i]
-                        k_fm   = k[:len(fm_flds)]
-                        k_to   = k[len(fm_flds):]
-                        _fm_   = stringify(k_fm)
-                        _to_   = stringify(k_to)
-                        nx_g.add_edge(_fm_,_to_,weight=gb.iloc[i])
-                elif self.isPolars(df):
-                    counter = self.polarsCounter(df, flat, count_by, count_by_set)
-                    for i in range(len(counter)):
-                        _row_   = counter[i]
-                        fm_list = []
-                        for _fm_fld_ in fm_flds:
-                            fm_list.append(_row_[_fm_fld_][0])
-                        to_list = []
-                        for _to_fld_ in to_flds:
-                            to_list.append(_row_[_to_fld_][0])
-                        _fm_ = stringify(fm_list)
-                        _to_ = stringify(to_list)
-                        nx_g.add_edge(_fm_,_to_,weight=_row_['__count__'][0])
+            if self.isPandas(df):
+                if count_by is None or count_by_set: # count_by_set not implemented...
+                    gb = df.groupby(list(rel_tuple[:2])).size()
                 else:
-                    raise Exception('RTLinkNode.createNetworkXGraph() - only pandas and polars is supported')
+                    gb = df.groupby(list(rel_tuple[:2]))[count_by].sum()
+                for i in range(0,len(gb)):
+                    k = gb.index[i]
+                    k_fm   = k[:len(fm_flds)]
+                    k_to   = k[len(fm_flds):]
+                    _fm_   = stringify(k_fm)
+                    _to_   = stringify(k_to)
+                    nx_g.add_edge(_fm_,_to_,weight=gb.iloc[i])
+            elif self.isPolars(df):
+                counter = self.polarsCounter(df, list(rel_tuple[:2]), count_by, count_by_set)
+                for i in range(len(counter)):
+                    _row_   = counter[i]
+                    fm_list = []
+                    for _fm_fld_ in fm_flds:
+                        fm_list.append(_row_[_fm_fld_][0])
+                    to_list = []
+                    for _to_fld_ in to_flds:
+                        to_list.append(_row_[_to_fld_][0])
+                    _fm_ = stringify(fm_list)
+                    _to_ = stringify(to_list)
+                    nx_g.add_edge(_fm_,_to_,weight=_row_['__count__'][0])
+            else:
+                raise Exception('RTLinkNode.createNetworkXGraph() - only pandas and polars is supported')
         return nx_g
 
     #
@@ -715,12 +685,6 @@ class RTLinkNodeMixin(object):
             # vvv
             # vvv -- REMOVABLE (UNTIL WE MODIFIED THE REST OF THE CODE BASE)
             # vvv
-            # Determine if all columns are in the df
-            def allColumnsInDF(_df_, _cols_):
-                for x in _cols_:
-                    if x not in _df_.columns:
-                        return False
-                return True
 
             # Create concatenated fields for the tuple nodes
             # ... may be inefficient if there are multiples of the same tuple in different edges...
@@ -731,17 +695,27 @@ class RTLinkNodeMixin(object):
                 if type(_fm_) == tuple or type(_to_) == tuple:
                     new_fm, new_to = _fm_, _to_
 
-                    if type(_fm_) == tuple and allColumnsInDF(self.df, _fm_):
+                    if type(_fm_) == tuple:
                         new_fm = f'__fm{i}__'
                         self.df = self.rt_self.createConcatColumn(self.df, _fm_, new_fm)
 
-                    if type(_to_) == tuple and allColumnsInDF(self.df, _fm_):
+                    if type(_to_) == tuple:
                         new_to = f'__to{i}__'
                         self.df = self.rt_self.createConcatColumn(self.df, _to_, new_to)
 
-                    self.relationships.append((new_fm, new_to))
+                    if len(_edge) == 2:
+                        self.relationships.append((new_fm, new_to))
+                    elif len(_edge) == 3:
+                        self.relationships.append((new_fm, new_to, _edge[2]))
+                    else:
+                        raise Exception(f'linkNode(): relationship tuples should have two or three parts "{_edge}"')
                 else:
-                    self.relationships.append((_fm_, _to_))
+                    if len(_edge) == 2:
+                        self.relationships.append((_fm_, _to_))
+                    elif len(_edge) == 3:
+                        self.relationships.append((_fm_, _to_, _edge[2]))
+                    else:
+                        raise Exception(f'linkNode(): relationship tuples should have two or three parts "{_edge}"')
                 i += 1
             # ^^^
             # ^^^ -- REMOVABLE (UNTIL WE MODIFY THE REST OF THE CODE BASE)
@@ -826,45 +800,39 @@ class RTLinkNodeMixin(object):
 
                 # Determine the points for each convex hull
                 for rel_tuple in self.relationships:
-                    if len(rel_tuple) != 2:
-                        raise Exception(f'linkNode(): relationship tuples should have two parts "{rel_tuple}"')
-                    flat    = flattenTuple(rel_tuple)
-                    fm_flds = flattenTuple(rel_tuple[0])
-                    if type(fm_flds) != list:
-                        fm_flds = [fm_flds]
-                    to_flds = flattenTuple(rel_tuple[1])                
-                    if type(to_flds) != list:
-                        to_flds = [to_flds]                    
-                    if len(set(self.df.columns) & set(flat)) == len(set(flat)):
-                        gb = self.df.groupby(flat) if self.rt_self.isPandas(self.df) else self.df.group_by(flat) if self.rt_self.isPolars(self.df) else None
-                        for k,k_df in gb:
-                            k_fm   = k[:len(fm_flds)]
-                            k_to   = k[len(fm_flds):]
+                    if len(rel_tuple) < 2 or len(rel_tuple) > 3:
+                        raise Exception(f'linkNode(): relationship tuples should have two or three parts "{rel_tuple}"')
+                    fm_flds = [rel_tuple[0]]
+                    to_flds = [rel_tuple[1]]                
+                    gb = self.df.groupby(list(rel_tuple[:2])) if self.rt_self.isPandas(self.df) else self.df.group_by(list(rel_tuple[:2])) if self.rt_self.isPolars(self.df) else None
+                    for k,k_df in gb:
+                        k_fm   = k[:len(fm_flds)]
+                        k_to   = k[len(fm_flds):]
 
-                            fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
-                            to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
+                        fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
+                        to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
 
-                            x1 = self.xT(self.pos[fm_str][0])
-                            x2 = self.xT(self.pos[to_str][0])
-                            y1 = self.yT(self.pos[fm_str][1])
-                            y2 = self.yT(self.pos[to_str][1])
+                        x1 = self.xT(self.pos[fm_str][0])
+                        x2 = self.xT(self.pos[to_str][0])
+                        y1 = self.yT(self.pos[fm_str][1])
+                        y2 = self.yT(self.pos[to_str][1])
 
-                            for i in range(0,2):
-                                if i == 0:
-                                    _str = fm_str
-                                    _x   = x1
-                                    _y   = y1
-                                else:
-                                    _str = to_str
-                                    _x   = x2
-                                    _y   = y2
+                        for i in range(0,2):
+                            if i == 0:
+                                _str = fm_str
+                                _x   = x1
+                                _y   = y1
+                            else:
+                                _str = to_str
+                                _x   = x2
+                                _y   = y2
 
-                                for my_regex in self.convex_hull_lu.keys():
-                                    my_regex_name = self.convex_hull_lu[my_regex]
-                                    if re.match(my_regex, _str):
-                                        if my_regex_name not in _pt_lu.keys():
-                                            _pt_lu[my_regex_name] = {}
-                                        _pt_lu[my_regex_name][_str] = [_x,_y]
+                            for my_regex in self.convex_hull_lu.keys():
+                                my_regex_name = self.convex_hull_lu[my_regex]
+                                if re.match(my_regex, _str):
+                                    if my_regex_name not in _pt_lu.keys():
+                                        _pt_lu[my_regex_name] = {}
+                                    _pt_lu[my_regex_name][_str] = [_x,_y]
 
                 # Render each convex hull
                 for my_regex_name in _pt_lu.keys():
@@ -1023,298 +991,282 @@ class RTLinkNodeMixin(object):
                 # Iterate over the relationships
                 for rel_tuple in self.relationships:
                     # Make sure it's the right number of tuples
-                    if len(rel_tuple) != 2:
-                        raise Exception(f'linkNode(): relationship tuples should have two parts "{rel_tuple}"')
+                    if len(rel_tuple) < 2 or len(rel_tuple) > 3:
+                        raise Exception(f'linkNode(): relationship tuples should have two or three parts "{rel_tuple}"')
 
-                    # Flatten out into the groupby array, the fm_flds array, and the to_flds array            
-                    flat    = flattenTuple(rel_tuple)
+                    fm_flds, to_flds = [rel_tuple[0]], [rel_tuple[1]]
+                    gb = self.df.groupby(list(rel_tuple[:2])) if self.rt_self.isPandas(self.df) else self.df.group_by(list(rel_tuple[:2])) if self.rt_self.isPolars(self.df) else None
 
-                    fm_flds = flattenTuple(rel_tuple[0])
-                    if type(fm_flds) != list:
-                        fm_flds = [fm_flds]
-
-                    to_flds = flattenTuple(rel_tuple[1])                
-                    if type(to_flds) != list:
-                        to_flds = [to_flds]
-
-                    # if the df has all of the columns
-                    if len(set(self.df.columns) & set(flat)) == len(set(flat)):
-                        gb = self.df.groupby(flat) if self.rt_self.isPandas(self.df) else self.df.group_by(flat) if self.rt_self.isPolars(self.df) else None
-
-                        if self.rt_self.isPandas(self.df):
-                            if self.count_by is None: 
-                                gb_sz = gb.size()
-                            elif count_by_set:
-                                gb_sz = gb[self.count_by].nunique()
-                            else:
-                                gb_sz = gb[self.count_by].sum()
+                    if self.rt_self.isPandas(self.df):
+                        if self.count_by is None: 
+                            gb_sz = gb.size()
+                        elif count_by_set:
+                            gb_sz = gb[self.count_by].nunique()
                         else:
-                            counter = self.rt_self.polarsCounter(self.df, flat, self.count_by, self.count_by_set)
+                            gb_sz = gb[self.count_by].sum()
+                    else:
+                        counter = self.rt_self.polarsCounter(self.df, list(rel_tuple[:2]), self.count_by, self.count_by_set)
 
-                        gb_sz_i = 0
-                        for k,k_df in gb:
-                            if self.rt_self.isPandas(self.df):
-                                _weight_ =  gb_sz.iloc[gb_sz_i]
-                                gb_sz_i  += 1
+                    gb_sz_i = 0
+                    for k,k_df in gb:
+                        if self.rt_self.isPandas(self.df):
+                            _weight_ =  gb_sz.iloc[gb_sz_i]
+                            gb_sz_i  += 1
+                        else:
+                            if self.count_by is None:
+                                _weight_ = len(k_df)
+                            elif count_by_set:
+                                _weight_ = k_df[self.count_by].n_unique()
                             else:
-                                if self.count_by is None:
-                                    _weight_ = len(k_df)
-                                elif count_by_set:
-                                    _weight_ = k_df[self.count_by].n_unique()
+                                _weight_ = k_df[self.count_by].sum()
+
+                        k_fm   = k[:len(fm_flds)]
+                        k_to   = k[len(fm_flds):]
+
+                        fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
+                        to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
+                        
+                        # Transform the coordinates
+                        x1 = self.xT(self.pos[fm_str][0])
+                        x2 = self.xT(self.pos[to_str][0])
+                        y1 = self.yT(self.pos[fm_str][1])
+                        y2 = self.yT(self.pos[to_str][1])
+                        l  = self.rt_self.segmentLength(((x1,y1),(x2,y2)))
+
+                        # Adjust the coordinates based on the shape and size information information
+                        if self.node_size is not None and self.node_size != 'hidden' and (self.link_arrow == True or self.link_shape == 'arrow'):
+                            node_sz = self.__nodeSize__()
+                            if node_sz > 1 and l > 5+2*node_sz: # node has to be larger than 1... and the distance between the two also needs to be large
+                                if   self.node_shape is None:
+                                    shape1 = 'circle'
+                                elif type(self.node_shape) == str:
+                                    shape1 = self.node_shape
+                                elif type(self.node_shape) == dict and fm_str in self.node_shape.keys():
+                                    shape1 = self.node_shape[fm_str]
                                 else:
-                                    _weight_ = k_df[self.count_by].sum()
+                                    shape1 = None
 
-                            k_fm   = k[:len(fm_flds)]
-                            k_to   = k[len(fm_flds):]
+                                x1_orig, y1_orig = x1, y1
+                                if shape1 is not None:
+                                    x1, y1 = self.rt_self.shapeAttachmentPoint(shape1, x1, y1, node_sz, x2, y2)
 
-                            fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
-                            to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
-                            
-                            # Transform the coordinates
-                            x1 = self.xT(self.pos[fm_str][0])
-                            x2 = self.xT(self.pos[to_str][0])
-                            y1 = self.yT(self.pos[fm_str][1])
-                            y2 = self.yT(self.pos[to_str][1])
-                            l  = self.rt_self.segmentLength(((x1,y1),(x2,y2)))
+                                if   self.node_shape is None:
+                                    shape2 = 'circle'
+                                elif type(self.node_shape) == str:
+                                    shape2 = self.node_shape
+                                elif type(self.node_shape) == dict and to_str in self.node_shape.keys():
+                                    shape2 = self.node_shape[to_str]
+                                else:
+                                    shape2 = None
 
-                            # Adjust the coordinates based on the shape and size information information
-                            if self.node_size is not None and self.node_size != 'hidden' and (self.link_arrow == True or self.link_shape == 'arrow'):
-                                node_sz = self.__nodeSize__()
-                                if node_sz > 1 and l > 5+2*node_sz: # node has to be larger than 1... and the distance between the two also needs to be large
-                                    if   self.node_shape is None:
-                                        shape1 = 'circle'
-                                    elif type(self.node_shape) == str:
-                                        shape1 = self.node_shape
-                                    elif type(self.node_shape) == dict and fm_str in self.node_shape.keys():
-                                        shape1 = self.node_shape[fm_str]
-                                    else:
-                                        shape1 = None
+                                if shape2 is not None:
+                                    x2, y2 = self.rt_self.shapeAttachmentPoint(shape2, x2, y2, node_sz, x1_orig, y1_orig)
 
-                                    x1_orig, y1_orig = x1, y1
-                                    if shape1 is not None:
-                                        x1, y1 = self.rt_self.shapeAttachmentPoint(shape1, x1, y1, node_sz, x2, y2)
-
-                                    if   self.node_shape is None:
-                                        shape2 = 'circle'
-                                    elif type(self.node_shape) == str:
-                                        shape2 = self.node_shape
-                                    elif type(self.node_shape) == dict and to_str in self.node_shape.keys():
-                                        shape2 = self.node_shape[to_str]
-                                    else:
-                                        shape2 = None
-
-                                    if shape2 is not None:
-                                        x2, y2 = self.rt_self.shapeAttachmentPoint(shape2, x2, y2, node_sz, x1_orig, y1_orig)
-
-                            # Determine the size
-                            if _sz is None:
-                                _this_sz = self.min_link_size + self.max_link_size * (_weight_ - _sz_min) / (_sz_max - _sz_min)
-                            else:
-                                if type(self.link_size) == dict:
-                                    if rel_tuple in self.link_size.keys():
-                                        _str_ = self.link_size[rel_tuple]
-                                        if   type(_str_) == int or type(_str_) == float:
-                                            _this_sz = _str_
-                                        elif _str_ == 'small':
-                                            _this_sz = 1
-                                        elif _str_ == 'medium':
-                                            _this_sz = 3
-                                        elif _str_ == 'large':
-                                            _this_sz = 5
-                                        elif _str_ == 'nil':
-                                            _this_sz = 0.2
-                                        else:
-                                            _this_sz = 0.0
+                        # Determine the size
+                        if _sz is None:
+                            _this_sz = self.min_link_size + self.max_link_size * (_weight_ - _sz_min) / (_sz_max - _sz_min)
+                        else:
+                            if type(self.link_size) == dict:
+                                if rel_tuple in self.link_size.keys():
+                                    _str_ = self.link_size[rel_tuple]
+                                    if   type(_str_) == int or type(_str_) == float:
+                                        _this_sz = _str_
+                                    elif _str_ == 'small':
+                                        _this_sz = 1
+                                    elif _str_ == 'medium':
+                                        _this_sz = 3
+                                    elif _str_ == 'large':
+                                        _this_sz = 5
+                                    elif _str_ == 'nil':
+                                        _this_sz = 0.2
                                     else:
                                         _this_sz = 0.0
                                 else:
-                                    _this_sz = _sz
+                                    _this_sz = 0.0
+                            else:
+                                _this_sz = _sz
 
-                            # Vector info
-                            dx, dy = x2 - x1, y2 - y1
-                            l = sqrt((dx*dx)+(dy*dy))
-                            l = 1 if l <= 0.01 else l
-                            dx,  dy  =  dx/l,  dy/l
-                            pdx, pdy =  dy,   -dx
+                        # Vector info
+                        dx, dy = x2 - x1, y2 - y1
+                        l = sqrt((dx*dx)+(dy*dy))
+                        l = 1 if l <= 0.01 else l
+                        dx,  dy  =  dx/l,  dy/l
+                        pdx, pdy =  dy,   -dx
 
-                            # Determine the color
-                            _link_str, _co_set = None, None
-                            if   self.link_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
-                                _co_set = set(k_df[self.color_by])
-                                if len(_co_set) == 1:
-                                    _link_str = _co_set.pop()
-                                    _co = self.rt_self.co_mgr.getColor(_link_str)
-                                else:
-                                    _link_str = '*'
-                                    _co = self.rt_self.co_mgr.getTVColor('data','default')
-                            elif self.link_color is not None and self.link_color.startswith('#'):
-                                _co = self.link_color
+                        # Determine the color
+                        if   self.link_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
+                            _co_set = set(k_df[self.color_by])
+                            if len(_co_set) == 1:
+                                _co = self.rt_self.co_mgr.getColor(_co_set.pop())
                             else:
                                 _co = self.rt_self.co_mgr.getTVColor('data','default')
+                        elif self.link_color is not None and self.link_color.startswith('#'):
+                            _co = self.link_color
+                        else:
+                            _co = self.rt_self.co_mgr.getTVColor('data','default')
 
-                            # Draw the link labels
-                            if self.label_links and self.color_by is not None:
-                                if _link_str is None: # if it wasn't set above already
-                                    _co_set = set(k_df[self.color_by])
-                                    _link_str = '*'
-                                    if len(_co_set) == 1:
-                                        _link_str = _co_set.pop()
-                                # no label set, str is in the label set, or set overlaps with the label set
-                                if (len(self.label_only) == 0)    or \
-                                   (_link_str in self.label_only) or \
-                                   (_link_str == '*' and len(_co_set.intersection(self.label_only)) > 0):                                
-                                    _l_shorter  = (l-10) if l > 15 else l
-                                    _cropped    = self.rt_self.cropText(_link_str, self.txt_h, _l_shorter)
-                                    _label_svg_ = self.rt_self.svgLabelOnLine((x1,y1,x2,y2), _cropped, _co, 2+_this_sz/2, self.txt_h)
-                                    svg.append(_label_svg_)
+                        # Draw the link labels (third part of the relationship tuple or the color_by value)
+                        if self.label_links and ((len(rel_tuple) == 3) or (self.color_by is not None)):
+                            _label_field_ = rel_tuple[2] if len(rel_tuple) == 3 else self.color_by
+                            _label_set_   = set(k_df[_label_field_])
+                            _link_str = _label_set_.pop() if len(_label_set_) == 1 else '*'
+                            # no label set, str is in the label set, or set overlaps with the label set
+                            if (len(self.label_only) == 0)     or \
+                                (_link_str in self.label_only) or \
+                                (_link_str == '*' and len(_label_set_.intersection(self.label_only)) > 0):                                
+                                _l_shorter    = (l-10) if l > 15 else l
+                                _cropped      = self.rt_self.cropText(_link_str, self.txt_h, _l_shorter)
+                                _label_color_ = _co if _label_field_ == self.color_by else self.rt_self.co_mgr.getTVColor('label','defaultfg')
+                                _label_svg_   = self.rt_self.svgLabelOnLine((x1,y1,x2,y2), _cropped, _label_color_, 2+_this_sz/2, self.txt_h)
+                                svg.append(_label_svg_)
 
-                            # Capture the state
-                            if self.track_state:
-                                _line = LineString([[x1,y1],[x2,y2]])
-                                if _line not in self.geom_to_df.keys():
-                                    self.geom_to_df[_line] = []
-                                self.geom_to_df[_line].append(k_df)
-                                                        
-                            # Determine stroke dash
-                            stroke_dash = ''
-                            if self.link_dash is not None:
-                                if   type(self.link_dash) == str:
-                                    stroke_dash = f'stroke-dasharray="{self.link_dash}"'
-                                elif type(self.link_dash) == dict and rel_tuple in self.link_dash:
-                                    stroke_dash = f'stroke-dasharray="{self.link_dash[rel_tuple]}"'
-                                elif callable(self.link_dash):
-                                    _return_value_ = self.link_dash(fm_str, to_str, (x1,y1), (x2,y2))
-                                    if _return_value_ is not None:
-                                        stroke_dash = f'stroke-dasharray="{_return_value_}"'
+                        # Capture the state
+                        if self.track_state:
+                            _line = LineString([[x1,y1],[x2,y2]])
+                            if _line not in self.geom_to_df.keys():
+                                self.geom_to_df[_line] = []
+                            self.geom_to_df[_line].append(k_df)
+                                                    
+                        # Determine stroke dash
+                        stroke_dash = ''
+                        if self.link_dash is not None:
+                            if   type(self.link_dash) == str:
+                                stroke_dash = f'stroke-dasharray="{self.link_dash}"'
+                            elif type(self.link_dash) == dict and rel_tuple in self.link_dash:
+                                stroke_dash = f'stroke-dasharray="{self.link_dash[rel_tuple]}"'
+                            elif callable(self.link_dash):
+                                _return_value_ = self.link_dash(fm_str, to_str, (x1,y1), (x2,y2))
+                                if _return_value_ is not None:
+                                    stroke_dash = f'stroke-dasharray="{_return_value_}"'
 
-                            # Determine the link style
-                            if    self.link_shape == 'line':
-                                svg.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" ')
-                                svg.append(f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />')
+                        # Determine the link style
+                        if    self.link_shape == 'line':
+                            svg.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" ')
+                            svg.append(f'stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />')
 
-                                def _xyLink_(t):
-                                    return x1+(x2-x1)*t, y1+(y2-y1)*t
-                                if fm_str < to_str:
-                                    _xyLinkDir_ = _xyLink_
-                                else:
-                                    def _xyLinkDir_(t):
-                                        return x2+(x1-x2)*t, y2+(y1-y2)*t
-
-                                if self.link_arrow:
-                                    x3 = x2 - dx*self.link_arrow_length - dy*3*self.link_arrow_length/8
-                                    y3 = y2 - dy*self.link_arrow_length + dx*3*self.link_arrow_length/8
-                                    x4 = x2 - dx*self.link_arrow_length + dy*3*self.link_arrow_length/8
-                                    y4 = y2 - dy*self.link_arrow_length - dx*3*self.link_arrow_length/8
-
-                                    svg.append(f'<path d="M {x3} {y3} L {x2} {y2} L {x4} {y4}" ')
-                                    svg.append(f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />')
-                            elif self.link_shape == 'arrow':
-                                x3 = x2 - dx*2*self.link_arrow_length - dy*2*self.link_arrow_length/4
-                                y3 = y2 - dy*2*self.link_arrow_length + dx*2*self.link_arrow_length/4
-                                x4 = x2 - dx*2*self.link_arrow_length + dy*2*self.link_arrow_length/4
-                                y4 = y2 - dy*2*self.link_arrow_length - dx*2*self.link_arrow_length/4
-
-                                x5 = x2 - dx*2*self.link_arrow_length - dy*1.8*self.link_arrow_length/4
-                                y5 = y2 - dy*2*self.link_arrow_length + dx*1.8*self.link_arrow_length/4
-                                x6 = x2 - dx*2*self.link_arrow_length + dy*1.8*self.link_arrow_length/4
-                                y6 = y2 - dy*2*self.link_arrow_length - dx*1.8*self.link_arrow_length/4
-
-                                if   self.link_arrow_style ==  'kite':
-                                    svg.append(f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ')
-                                elif self.link_arrow_style ==  'kite_v2': 
-                                    svg.append(f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x5} {y5} L {x6} {y6} L {x2} {y2} L {x4} {y4} Z" ') # arrow head is not filled
-                                elif self.link_arrow_style ==  'kite_v3':
-                                    svg.append(f'<path d="M {x1} {y1} L {x6} {y6} L {x5} {y5} L {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ') # arrow body is not filled
-                                else:
-                                    raise Exception('link_arrow_style must be "kite" or "kite_v2" or "kite_v3"')
-
-                                svg.append(f'fill-opacity="{self.link_opacity}" fill="{_co}" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />')
-                            elif self.link_shape == 'curve':
-                                # bound the link curvature
-                                _link_curve_ = self.link_max_curvature_px if l > self.link_max_curvature_px else l
-
-                                # calculate the control points
-                                x1p = x1 + self.link_parallel_perc*_link_curve_*dx + self.link_ortho_perc*_link_curve_*pdx
-                                y1p = y1 + self.link_parallel_perc*_link_curve_*dy + self.link_ortho_perc*_link_curve_*pdy
-
-                                x2p = x2 - self.link_parallel_perc*_link_curve_*dx + self.link_ortho_perc*_link_curve_*pdx
-                                y2p = y2 - self.link_parallel_perc*_link_curve_*dy + self.link_ortho_perc*_link_curve_*pdy
-
-                                def _xyLink_(t): # Bezier Curve Formula from Wikipedia
-                                    return (1-t)**3*x1+3*(1-t)**2*t*x1p+3*(1-t)*t**2*x2p+t**3*x2,(1-t)**3*y1+3*(1-t)**2*t*y1p+3*(1-t)*t**2*y2p+t**3*y2
-                                if fm_str < to_str:
-                                    _xyLinkDir_ = _xyLink_
-                                else:
-                                    def _xyLinkDir_(t):
-                                        return (1-t)**3*x2+3*(1-t)**2*t*x2p+3*(1-t)*t**2*x1p+t**3*x1,(1-t)**3*y2+3*(1-t)**2*t*y2p+3*(1-t)*t**2*y1p+t**3*y1
-
-                                edx, edy = _xyLink_(1.0 - 0.05) # Calculate the endpoint derivative
-                                edx, edy = x2 - edx, y2 - edy
-                                l = sqrt((edx*edx)+(edy*edy))
-                                l = 1.0 if l < 0.01 else l
-                                edx, edy = edx/l, edy/l        # As a unit vector
-
-                                x3  = x2 - self.link_arrow_length*edx - (self.link_arrow_length/2) * (-edy)
-                                y3  = y2 - self.link_arrow_length*edy - (self.link_arrow_length/2) * ( edx)
-
-                                x4  = x2 - self.link_arrow_length*edx + (self.link_arrow_length/2) * (-edy)
-                                y4  = y2 - self.link_arrow_length*edy + (self.link_arrow_length/2) * ( edx)
-
-                                if self.link_arrow:
-                                    svg.append(f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} M {x3} {y3} L {x2} {y2} L {x4} {y4}" ')
-                                    svg.append(f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />')
-                                else:
-                                    svg.append(f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2}" ')
-                                    svg.append(f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />')
+                            def _xyLink_(t):
+                                return x1+(x2-x1)*t, y1+(y2-y1)*t
+                            if fm_str < to_str:
+                                _xyLinkDir_ = _xyLink_
                             else:
-                                raise Exception(f'Unknown link_shape "{self.link_shape}"')
-                            
-                            # Small multiples
-                            if self.sm_mode == 'link' and self.sm_type is not None:
-                                link_to_dfs[fm_str + '->' + to_str] = k_df
-                                _x_, _y_ = _xyLink_(self.sm_t)
-                                if self.link_shape == 'line': # For linear version, offset one side a little to make it visible
-                                    if fm_str < to_str:
-                                        _x_ += 2
-                                        _y_ += 2
-                                    else:
-                                        _x_ -= 2
-                                        _y_ -= 2
-                                link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
-                            
-                            # Timing marks
-                            if self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns and self.rt_self.isPandas(k_df):
-                                _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
-                                _side_ = 1.0 if fm_str < to_str else -1.0
-                                k_df[_tfield_] = (k_df[self.ts_field] - self.df[self.ts_field].min()) / (self.df[self.ts_field].max() - self.df[self.ts_field].min())
-                                for row_i, row in k_df.iterrows():
-                                    _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_], 0.0, 1.0)
-                                    _t_box_     = 0.1 + 0.8 * row[_tfield_]
-                                    _x_  , _y_  = _xyLinkDir_(_t_box_)
-                                    _xp_ , _yp_ = _xyLinkDir_(_t_box_+0.01)  # slight offset point
-                                    _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_          # slope at this location
-                                    _l_         = sqrt(_dx_*_dx_ + _dy_*_dy_)
-                                    _l_         = 1.0 if _l_ < 0.001 else _l_
-                                    _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
-                                    _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
-                                    svg.append(f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />')
-                            elif self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns and self.rt_self.isPolars(k_df):
-                                _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
-                                _side_ = 1.0 if fm_str < to_str else -1.0
-                                my_min, my_max = self.df[self.ts_field].min(), self.df[self.ts_field].max()
-                                k_df = k_df.with_columns(((pl.col(self.ts_field)-my_min)/(my_max-my_min)).alias(_tfield_))
-                                for row_i in range(len(k_df)):
-                                    row = k_df[row_i]
-                                    _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_][0], 0.0, 1.0)
-                                    _t_box_     = 0.1 + 0.8 * row[_tfield_][0]
-                                    _x_  , _y_  = _xyLinkDir_(_t_box_)
-                                    _xp_ , _yp_ = _xyLinkDir_(_t_box_+0.01)  # slight offset point
-                                    _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_          # slope at this location
-                                    _l_         = sqrt(_dx_*_dx_ + _dy_*_dy_)
-                                    _l_         = 1.0 if _l_ < 0.001 else _l_
-                                    _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
-                                    _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
-                                    svg.append(f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />')
+                                def _xyLinkDir_(t):
+                                    return x2+(x1-x2)*t, y2+(y1-y2)*t
+
+                            if self.link_arrow:
+                                x3 = x2 - dx*self.link_arrow_length - dy*3*self.link_arrow_length/8
+                                y3 = y2 - dy*self.link_arrow_length + dx*3*self.link_arrow_length/8
+                                x4 = x2 - dx*self.link_arrow_length + dy*3*self.link_arrow_length/8
+                                y4 = y2 - dy*self.link_arrow_length - dx*3*self.link_arrow_length/8
+
+                                svg.append(f'<path d="M {x3} {y3} L {x2} {y2} L {x4} {y4}" ')
+                                svg.append(f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />')
+                        elif self.link_shape == 'arrow':
+                            x3 = x2 - dx*2*self.link_arrow_length - dy*2*self.link_arrow_length/4
+                            y3 = y2 - dy*2*self.link_arrow_length + dx*2*self.link_arrow_length/4
+                            x4 = x2 - dx*2*self.link_arrow_length + dy*2*self.link_arrow_length/4
+                            y4 = y2 - dy*2*self.link_arrow_length - dx*2*self.link_arrow_length/4
+
+                            x5 = x2 - dx*2*self.link_arrow_length - dy*1.8*self.link_arrow_length/4
+                            y5 = y2 - dy*2*self.link_arrow_length + dx*1.8*self.link_arrow_length/4
+                            x6 = x2 - dx*2*self.link_arrow_length + dy*1.8*self.link_arrow_length/4
+                            y6 = y2 - dy*2*self.link_arrow_length - dx*1.8*self.link_arrow_length/4
+
+                            if   self.link_arrow_style ==  'kite':
+                                svg.append(f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ')
+                            elif self.link_arrow_style ==  'kite_v2': 
+                                svg.append(f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x5} {y5} L {x6} {y6} L {x2} {y2} L {x4} {y4} Z" ') # arrow head is not filled
+                            elif self.link_arrow_style ==  'kite_v3':
+                                svg.append(f'<path d="M {x1} {y1} L {x6} {y6} L {x5} {y5} L {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ') # arrow body is not filled
+                            else:
+                                raise Exception('link_arrow_style must be "kite" or "kite_v2" or "kite_v3"')
+
+                            svg.append(f'fill-opacity="{self.link_opacity}" fill="{_co}" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />')
+                        elif self.link_shape == 'curve':
+                            # bound the link curvature
+                            _link_curve_ = self.link_max_curvature_px if l > self.link_max_curvature_px else l
+
+                            # calculate the control points
+                            x1p = x1 + self.link_parallel_perc*_link_curve_*dx + self.link_ortho_perc*_link_curve_*pdx
+                            y1p = y1 + self.link_parallel_perc*_link_curve_*dy + self.link_ortho_perc*_link_curve_*pdy
+
+                            x2p = x2 - self.link_parallel_perc*_link_curve_*dx + self.link_ortho_perc*_link_curve_*pdx
+                            y2p = y2 - self.link_parallel_perc*_link_curve_*dy + self.link_ortho_perc*_link_curve_*pdy
+
+                            def _xyLink_(t): # Bezier Curve Formula from Wikipedia
+                                return (1-t)**3*x1+3*(1-t)**2*t*x1p+3*(1-t)*t**2*x2p+t**3*x2,(1-t)**3*y1+3*(1-t)**2*t*y1p+3*(1-t)*t**2*y2p+t**3*y2
+                            if fm_str < to_str:
+                                _xyLinkDir_ = _xyLink_
+                            else:
+                                def _xyLinkDir_(t):
+                                    return (1-t)**3*x2+3*(1-t)**2*t*x2p+3*(1-t)*t**2*x1p+t**3*x1,(1-t)**3*y2+3*(1-t)**2*t*y2p+3*(1-t)*t**2*y1p+t**3*y1
+
+                            edx, edy = _xyLink_(1.0 - 0.05) # Calculate the endpoint derivative
+                            edx, edy = x2 - edx, y2 - edy
+                            l = sqrt((edx*edx)+(edy*edy))
+                            l = 1.0 if l < 0.01 else l
+                            edx, edy = edx/l, edy/l        # As a unit vector
+
+                            x3  = x2 - self.link_arrow_length*edx - (self.link_arrow_length/2) * (-edy)
+                            y3  = y2 - self.link_arrow_length*edy - (self.link_arrow_length/2) * ( edx)
+
+                            x4  = x2 - self.link_arrow_length*edx + (self.link_arrow_length/2) * (-edy)
+                            y4  = y2 - self.link_arrow_length*edy + (self.link_arrow_length/2) * ( edx)
+
+                            if self.link_arrow:
+                                svg.append(f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2} M {x3} {y3} L {x2} {y2} L {x4} {y4}" ')
+                                svg.append(f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />')
+                            else:
+                                svg.append(f'<path d="M {x1} {y1} C {x1p} {y1p} {x2p} {y2p} {x2} {y2}" ')
+                                svg.append(f'fill-opacity="0.0" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" {stroke_dash} />')
+                        else:
+                            raise Exception(f'Unknown link_shape "{self.link_shape}"')
+                        
+                        # Small multiples
+                        if self.sm_mode == 'link' and self.sm_type is not None:
+                            link_to_dfs[fm_str + '->' + to_str] = k_df
+                            _x_, _y_ = _xyLink_(self.sm_t)
+                            if self.link_shape == 'line': # For linear version, offset one side a little to make it visible
+                                if fm_str < to_str:
+                                    _x_ += 2
+                                    _y_ += 2
+                                else:
+                                    _x_ -= 2
+                                    _y_ -= 2
+                            link_to_xy[fm_str + '->' + to_str]  = (_x_, _y_)
+                        
+                        # Timing marks
+                        if self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns and self.rt_self.isPandas(k_df):
+                            _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
+                            _side_ = 1.0 if fm_str < to_str else -1.0
+                            k_df[_tfield_] = (k_df[self.ts_field] - self.df[self.ts_field].min()) / (self.df[self.ts_field].max() - self.df[self.ts_field].min())
+                            for row_i, row in k_df.iterrows():
+                                _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_], 0.0, 1.0)
+                                _t_box_     = 0.1 + 0.8 * row[_tfield_]
+                                _x_  , _y_  = _xyLinkDir_(_t_box_)
+                                _xp_ , _yp_ = _xyLinkDir_(_t_box_+0.01)  # slight offset point
+                                _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_          # slope at this location
+                                _l_         = sqrt(_dx_*_dx_ + _dy_*_dy_)
+                                _l_         = 1.0 if _l_ < 0.001 else _l_
+                                _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
+                                _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
+                                svg.append(f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />')
+                        elif self.timing_marks and self.ts_field is not None and self.ts_field in k_df.columns and self.rt_self.isPolars(k_df):
+                            _tfield_, _tml_ = '_linknode_tms_', self.timing_mark_length
+                            _side_ = 1.0 if fm_str < to_str else -1.0
+                            my_min, my_max = self.df[self.ts_field].min(), self.df[self.ts_field].max()
+                            k_df = k_df.with_columns(((pl.col(self.ts_field)-my_min)/(my_max-my_min)).alias(_tfield_))
+                            for row_i in range(len(k_df)):
+                                row = k_df[row_i]
+                                _color_ = self.rt_self.co_mgr.spectrumAbridged(row[_tfield_][0], 0.0, 1.0)
+                                _t_box_     = 0.1 + 0.8 * row[_tfield_][0]
+                                _x_  , _y_  = _xyLinkDir_(_t_box_)
+                                _xp_ , _yp_ = _xyLinkDir_(_t_box_+0.01)  # slight offset point
+                                _dx_ , _dy_ = _xp_ - _x_ , _yp_ - _y_          # slope at this location
+                                _l_         = sqrt(_dx_*_dx_ + _dy_*_dy_)
+                                _l_         = 1.0 if _l_ < 0.001 else _l_
+                                _dx_ , _dy_ = _dx_ / _l_ , _dy_ / _l_          # unitize the vector
+                                _xe_ , _ye_ = _x_ - _side_ * _dx_ * _tml_/2 + _side_ * _dy_ * _tml_, _y_ - _side_ * _dy_ * _tml_/2 - _side_ * _dx_ * _tml_
+                                svg.append(f'<line x1="{_x_}" y1="{_y_}" x2="{_xe_}" y2="{_ye_}" stroke="{_color_}" stroke-width="1.5" />')
 
                 # Handle the small multiples
                 if self.sm_mode == 'link' and self.sm_type is not None:
@@ -1371,19 +1323,12 @@ class RTLinkNodeMixin(object):
                 # Iterate over the relationships
                 for rel_tuple in self.relationships:
                     # Make sure it's the right number of tuples
-                    if len(rel_tuple) != 2:
-                        raise Exception(f'linkNode(): relationship tuples should have two parts "{rel_tuple}"')
+                    if len(rel_tuple) < 2 or len(rel_tuple) > 3:
+                        raise Exception(f'linkNode(): relationship tuples should have two or three parts "{rel_tuple}"')
 
-                    # Flatten out into the groupby array, the fm_flds array, and the to_flds array            
-                    flat    = flattenTuple(rel_tuple)
-
-                    fm_flds = flattenTuple(rel_tuple[0])
-                    if type(fm_flds) != list:
-                        fm_flds = [fm_flds]
-
-                    to_flds = flattenTuple(rel_tuple[1])                
-                    if type(to_flds) != list:
-                        to_flds = [to_flds]
+                    # Flatten out into the groupby array, the fm_flds array, and the to_flds array        
+                    fm_flds = [rel_tuple[0]]
+                    to_flds = [rel_tuple[1]]
 
                     # Do the from and to fields separately
                     for flds_i in range(0,2):
@@ -1393,7 +1338,7 @@ class RTLinkNodeMixin(object):
                             flds = to_flds
 
                         if flds_i == 1 and fm_flds == to_flds:
-                            continue
+                            continue # if they are the same thing, don't re-render
                         
                         # if the df has all of the columns
                         if len(set(self.df.columns) & set(flds)) == len(set(flds)):
@@ -1808,23 +1753,3 @@ class RTLinkNodeMixin(object):
                                          self.widget_id)
                  return [rtep]
              return []
-
-# ---------------------------------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------------------------------
-
-#
-# Flatten a Tuple into a one dimensional list
-#
-def flattenTuple(x):
-    _list = list()
-    if type(x) == str:
-        return x
-    else:
-        for i in range(0,len(x)):
-            _recurse = flattenTuple(x[i])
-            if type(_recurse) == str:
-                _list.append(_recurse)
-            else:
-                _list.extend(_recurse)
-    return _list
