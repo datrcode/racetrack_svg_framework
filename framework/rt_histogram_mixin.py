@@ -22,6 +22,7 @@ from shapely.geometry import Polygon
 from math import sqrt, floor, ceil
 
 from rt_component import RTComponent
+from rt_entity_position import RTEntityPosition
 
 __name__ = 'rt_histogram_mixin'
 
@@ -125,7 +126,7 @@ class RTHistogramMixin(object):
 
             # Make a histogram_id if it's not set already
             if kwargs['widget_id'] is None:
-                self.widget_id = "histogram_" + str(random.randint(0,65535))
+                self.widget_id = "histogram_" + str(random.randint(0,2**24))
             else:
                 self.widget_id          = kwargs['widget_id']
 
@@ -243,6 +244,7 @@ class RTHistogramMixin(object):
         # renderSVG() - create the SVG
         #
         def renderSVG(self, just_calc_max=False):
+            self.entity_pos = {}
             if self.track_state:
                 self.geom_to_df = {}
 
@@ -346,6 +348,7 @@ class RTHistogramMixin(object):
 
                 # Render the bar ... next section does the color... but this makes sure it's at least filled in...
                 svg += f'<rect id="{element_id}" width="{px}" height="{self.bar_h}" x="0" y="{y}" fill="{color}" stroke="{color}"/>'
+                self.entity_pos[bin_text] = (y, px, element_id) # for entity positions
                 if self.track_state:
                     self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = k_df
 
@@ -427,6 +430,25 @@ class RTHistogramMixin(object):
                 else:
                     svg += f'<line x1="{2+i*bucket_pixels}" y1="{ybase-h}" x2="{2+(i+1)*bucket_pixels-0.5}" y2="{ybase-h}" stroke="{_color_}" stroke-width="0.5" />'
             return svg
+
+        # <copied from RTComponent.py>
+        # entityPositions() - return information about the entity geometry for rendering
+        # - Empty list means either not implemented... or entity not in view...
+        #
+        # (originally developed in the RTChordDiagram component... probably overkill here //2024-03-31)
+        #
+        # - return the positions of the entity ... rendering had to have happened first
+        def entityPositions(self, entity):
+            _results_ = []
+            if entity in self.entity_pos:
+                _tuple_      = self.entity_pos[entity]
+                x,y          = _tuple_[1]/2.0, _tuple_[0] + self.bar_h/2.0 # point to location
+                xa,ya        = _tuple_[1],     _tuple_[0] + self.bar_h/2.0 # attachment point
+                _svg_markup_ = '<rect x="0" y="{_tuple_[0]}" width="{_tuple_[1]}" height="{self.bar_h}" />'
+                _ep_         = RTEntityPosition(entity, self.rt_self, self, (x,y), (xa,ya,1.0,0.0), _tuple_[2], _svg_markup_, self.widget_id)
+                _ep_.addAttachmentPointVec((0.0,y,-1.0,0.0))
+                _results_.append(_ep_)
+            return _results_
 
         #
         # smallMultipleFeatureVector()
