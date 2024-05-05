@@ -1325,9 +1325,106 @@ class RTChordDiagramMixin(object):
                 fmto_exit[to_pos]   = _closest_[0][1]
 
             return skeleton, skeleton_svg, fmto_entry, fmto_exit
-
+        
         #
         # __renderEdges_createSkeletonHDBSCAN__() - create the skeleton graph using the hdbscan clustering algorithm
+        #
+        def __renderEdges_createSkeletonHDBSCAN_v2__(self, 
+                                                     fmtos,          # array of fmto tuples ('fm','to')
+                                                     fmtos_angles,   # array of fmto angles tuples (fm_angle, to_angle)
+                                                     fmto_fm_angle,  # dictionary [_fmto_] = (min_angle, max_angle) # for the from portion
+                                                     fmto_to_angle,  # dictionary [_fmto_] = (min_angle, max_angle) # for the to portion
+                                                     fmto_fm_pos,    # dictionary -- to be filled in by the method - fmto_fm_pos[_fmto_] = (x,y)
+                                                     fmto_to_pos):   # dictionary -- to be filled in by the method - fmto_to_pos[_fmto_] = (x,y)
+            to_deg = lambda angle: pi*angle/180.0            
+            skeleton_svg, fmto_entry, fmto_exit, skeleton  = [], {}, {}, nx.Graph()
+
+            # Draw the original fmtos
+            fmtos_pos = []
+            for i in range(len(fmtos)):
+                _fmto_                 = fmtos[i]
+                _fm_angle_, _to_angle_ = fmtos_angles[i]
+                _r_                    = self.r - self.node_h
+                fmto_fm_pos[_fmto_]    = (self.cx + _r_*cos(to_deg(_fm_angle_)), self.cy + _r_*sin(to_deg(_fm_angle_)))
+                fmto_to_pos[_fmto_]    = (self.cx + _r_*cos(to_deg(_to_angle_)), self.cy + _r_*sin(to_deg(_to_angle_)))
+                fmtos_pos.append((fmto_fm_pos[_fmto_], fmto_to_pos[_fmto_]))
+                skeleton_svg.append(f'<circle cx="{fmtos_pos[i][0][0]}" cy="{fmtos_pos[i][0][1]}" r="2" fill="black" />')
+                skeleton_svg.append(f'<circle cx="{fmtos_pos[i][1][0]}" cy="{fmtos_pos[i][1][1]}" r="3" fill="none" stroke="red" />')
+
+            l_fmtos_angles, l_fmtos_poses = fmtos_angles, fmtos_pos
+            for _ring_ in range(1, self.skeleton_rings): # ring 0 is the outer ring
+                # Cluster the fm-to angle tuples
+                clusterer = hdbscan.HDBSCAN()
+                clusterer.fit(l_fmtos_angles)
+                _labels_  = clusterer.labels_
+                if len(set(_labels_)) == 1: # stop when there's no way to distance between the clusters
+                    break
+
+                # Calculate the radius of this ring
+                _r_adj_ = (self.r - self.node_h)
+                _r_     = _r_adj_ - _r_adj_ * _ring_ / self.skeleton_rings
+                skeleton_svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="{_r_}" fill="none" stroke="#a0a0a0" />')
+
+                fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos = [], {}, {}, {}, {}
+
+                # For each label, calculate the sum of the angles and the number of samples
+                _last_negative_label_ = -1
+                fm_angle_sum, to_angle_sum, samples, _labels_updated_ = {}, {}, {}, []
+                for i in range(len(_labels_)):
+                    _label_ = _labels_[i]
+                    if _label_ == -1: # -1 means unclustered... just make it its own cluster
+                        _label_ = _last_negative_label_ - 1
+                        _last_negative_label_ -= 1
+                    if _label_ not in fm_angle_sum:
+                        fm_angle_sum[_label_], to_angle_sum[_label_], samples[_label_] = 0, 0, 0
+                    fm_angle_sum[_label_] += l_fmtos_angles[i][0]
+                    to_angle_sum[_label_] += l_fmtos_angles[i][0]
+                    samples[_label_]      += 1
+                    _labels_updated_.append(_label_)
+
+                # Calculate the new positions as the averages of the sums from the last block of code
+                fmtos_angles, fmtos_pos, label_to_i, angle_to_pos = [], [], {}, {}
+                for _label_ in fm_angle_sum.keys():
+                    label_to_i[_label_] = len(fmtos_angles)                    
+                    fm_angle_avg, to_angle_avg = fm_angle_sum[_label_]/samples[_label_], to_angle_sum[_label_]/samples[_label_]
+                    fmtos_angles.append((fm_angle_avg, to_angle_avg))
+                    fmtos_pos.append(((self.cx + _r_*cos(to_deg(fm_angle_avg)), self.cy + _r_*sin(to_deg(fm_angle_avg))),
+                                      (self.cx + _r_*cos(to_deg(to_angle_avg)), self.cy + _r_*sin(to_deg(to_angle_avg)))))
+                    angle_to_pos[fm_angle_avg], angle_to_pos[to_angle_avg] = fmtos_pos[-1][0], fmtos_pos[-1][1]
+                    skeleton_svg.append(f'<circle cx="{fmtos_pos[-1][0][0]}" cy="{fmtos_pos[-1][0][1]}" r="2" fill="black" />')
+                    skeleton_svg.append(f'<circle cx="{fmtos_pos[-1][1][0]}" cy="{fmtos_pos[-1][1][1]}" r="3" fill="none" stroke="red" />')
+                
+                if _ring_ == 1: # setup the fmto_entry and fmto_exit
+                    for i in range(len(l_fmtos_angles)):
+                        _label_        = _labels_updated_[i]
+                        lxy_fm, lxy_to = l_fmtos_poses[i][0], l_fmtos_poses[i][1]
+                        xy_fm,  xy_to  = fmtos_pos[label_to_i[_label_]][0], fmtos_pos[label_to_i[_label_]][1]
+                        fmto_entry[lxy_fm], fmto_exit[lxy_to] = xy_fm, xy_to
+                else:           # connect the spokes
+                    for i in range(len(l_fmtos_angles)):
+                        _label_        = _labels_updated_[i]
+                        lxy_fm, lxy_to = l_fmtos_poses[i][0], l_fmtos_poses[i][1]
+                        xy_fm,  xy_to  = fmtos_pos[label_to_i[_label_]][0], fmtos_pos[label_to_i[_label_]][1]
+                        skeleton_svg.append(f'<line x1="{lxy_fm[0]}" y1="{lxy_fm[1]}" x2="{xy_fm[0]}" y2="{xy_fm[1]}" stroke="black" />')
+                        skeleton.add_edge(lxy_fm, xy_fm, weight=self.rt_self.segmentLength((lxy_fm, xy_fm)))
+                        skeleton.add_edge(lxy_to, xy_to, weight=self.rt_self.segmentLength((lxy_to, xy_to)))
+
+                # connect the ring
+                _sorter_ = list(angle_to_pos.keys())
+                _sorter_.sort()
+                for i in range(len(_sorter_)):
+                    a0,  a1  = _sorter_[i], _sorter_[(i+1)%len(_sorter_)]
+                    xy0, xy1 = angle_to_pos[a0], angle_to_pos[a1]
+                    skeleton_svg.append(f'<line x1="{xy0[0]}" y1="{xy0[1]}" x2="{xy1[0]}" y2="{xy1[1]}" stroke="black" />')
+                    skeleton.add_edge(xy0, xy1, weight=self.rt_self.segmentLength((xy0, xy1)))
+
+                l_fmtos_angles, l_fmtos_poses = fmtos_angles, fmtos_pos
+            
+            return skeleton, skeleton_svg, fmto_entry, fmto_exit
+                
+        #
+        # __renderEdges_createSkeletonHDBSCAN_20240505_() - create the skeleton graph using the hdbscan clustering algorithm
+        # - older version ... failed under some configurations
         #
         def __renderEdges_createSkeletonHDBSCAN__(self, fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos):
             skeleton_svg = []
@@ -1446,6 +1543,7 @@ class RTChordDiagramMixin(object):
                 d, r, ring = d + d_inc, r - r_dec, ring + 1
     
             return skeleton, skeleton_svg, fmto_entry, fmto_exit
+                
         #
         # __renderEdges_bundled__(self) - render the edges (using the edge bundling from Holten 2006)
         #
@@ -1490,9 +1588,12 @@ class RTChordDiagramMixin(object):
             # Skeleton option
             _ts_ = time.time()
             if self.skeleton is None: # if wouldn't be none in the case of small multiples (x-axis dependency)
-                if   self.skeleton_algorithm == 'hdbscan':
+                if   self.skeleton_algorithm == 'hdbscan' or self.skeleton_algorithm == 'hdbscanv2':
                     if len(fmtos) > 8:
-                        skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonHDBSCAN__   (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                        if self.skeleton_algorithm == 'hdbscan':
+                            skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonHDBSCAN__   (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                        else:
+                            skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonHDBSCAN_v2__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
                     else:
                         skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonHexagonal__ (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
                 elif self.skeleton_algorithm == 'hexagonal' or self.skeleton_algorithm == 'simple':
