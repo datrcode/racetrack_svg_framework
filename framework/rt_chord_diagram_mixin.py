@@ -493,7 +493,7 @@ class RTChordDiagramMixin(object):
                      label_only                 = set(),         # label only set
                      equal_size_nodes           = False,         # equal size nodes
                      # ----------------------------------------- # link options
-                     link_color                 = None,          # none means color by source node name, 'vary' by color_by, 'shade_fm_to' to match the hierarchical bundle paper (expensive), or specific color "#xxxxxx"
+                     link_color                 = None,          # None, 'src', 'dst', 'vary' by color_by, 'shade_fm_to' to match the hierarchical bundle paper (expensive), or specific color "#xxxxxx"
                      link_opacity               = 0.5,           # link opacity
                      link_arrow                 = 'subtle',      # None, 'subtle', or 'sharp' - only applies to the "wide" linkstyle
                      arrow_px                   = 16,            # arrow size in pixels
@@ -1144,9 +1144,14 @@ class RTChordDiagramMixin(object):
                                      f'A {self.r-2*self.node_h} {self.r-2*self.node_h} 0 0 0 {xarrow0} {yarrow0} ' + \
                                      f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
                                      f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
-                        
-                        if self.link_color is None or self.color_by is None:
+
+                        # should be refactored                        
+                        if   self.link_color is None or self.color_by is None:
+                            _link_color_ = self.rt_self.co_mgr.getTVColor('data', 'default')
+                        elif self.link_color == 'src':
                             _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
+                        elif self.link_color == 'dst':
+                            _link_color_ = self.rt_self.co_mgr.getColor(str(_to_))
                         elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
                             _link_color_ = self.link_color
                         else: # 'vary'
@@ -1191,8 +1196,13 @@ class RTChordDiagramMixin(object):
                         xarrow0_pt,yarrow0_pt = self.xTarrow(a_avg), self.yTarrow(a_avg)
                         xarrow1_pt,yarrow1_pt = self.xTarrow(b_avg), self.yTarrow(b_avg)
 
-                        if self.link_color is None or self.color_by is None:
+                        # should be refactored (2nd copy)
+                        if   self.link_color is None or self.color_by is None:
+                            _link_color_ = self.rt_self.co_mgr.getTVColor('data', 'default')
+                        elif self.link_color == 'src':
                             _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
+                        elif self.link_color == 'dst':
+                            _link_color_ = self.rt_self.co_mgr.getColor(str(_to_))
                         elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
                             _link_color_ = self.link_color
                         else: # 'vary'
@@ -1537,12 +1547,18 @@ class RTChordDiagramMixin(object):
                                 _link_color_ = self.rt_self.co_mgr.spectrum(i, 0, len(_pts_))
                                 svg.append(f'<line x1="{_pts_[i][0]}" y1="{_pts_[i][1]}" x2="{_pts_[i+1][0]}" y2="{_pts_[i+1][1]}" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
                         else:
-                            if self.link_color is None or self.color_by is None:
+                            # should be refactored (3rd copy)
+                            if   self.link_color is None or self.color_by is None:
+                                _link_color_ = self.rt_self.co_mgr.getTVColor('data', 'default')
+                            elif self.link_color == 'src':
                                 _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
+                            elif self.link_color == 'dst':
+                                _link_color_ = self.rt_self.co_mgr.getColor(str(_to_))
                             elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
                                 _link_color_ = self.link_color
                             else: # 'vary'
-                                _link_color_ = fmto_color_lu[_fm_][_to_]                        
+                                _link_color_ = fmto_color_lu[_fm_][_to_]
+                                
                             svg.append(f'<path d="{self.rt_self.svgPathCubicBSpline(_shortest_)}" fill="none" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
                         ts_edge_render += time.time() - _ts_
 
