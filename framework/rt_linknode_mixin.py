@@ -531,6 +531,80 @@ class RTLinkNodeMixin(object):
         # Create the return graph structure
         nx_g = nx.DiGraph() if use_digraph else nx.Graph()
 
+        # Create concatenated fields for the tuple nodes
+        # ... may be inefficient if there are multiples of the same tuple in different edges...
+        df = self.copyDataFrame(df)
+        new_relationships, i = [], 0
+        for _edge_ in relationships:
+            _fm_ = _edge_[0]
+            _to_ = _edge_[1]
+            if type(_fm_) == tuple or type(_to_) == tuple:
+                new_fm, new_to = _fm_, _to_
+                if type(_fm_) == tuple:
+                    new_fm = f'__fm{i}__'
+                    df = self.createConcatColumn(df, _fm_, new_fm)
+
+                if type(_to_) == tuple:
+                    new_to = f'__to{i}__'
+                    df = self.createConcatColumn(df, _to_, new_to)
+
+                if   len(_edge_) == 2:
+                    new_relationships.append((new_fm, new_to))
+                elif len(_edge_) == 3:
+                    new_relationships.append((new_fm, new_to, _edge_[2]))
+                else:
+                    raise Exception(f'createNetworkXGraph(): relationship tuples should have two or three parts "{_edge_}"')
+            else:
+                if   len(_edge_) == 2:
+                    new_relationships.append((_fm_, _to_))
+                elif len(_edge_) == 3:
+                    new_relationships.append((_fm_, _to_, _edge_[2]))
+                else:
+                    raise Exception(f'createNetworkXGraph(): relationship tuples should have two or three parts "{_edge_}"')
+            i += 1
+
+        # Iterate over the relationships
+        for rel_tuple in new_relationships:
+            if self.isPandas(df):
+                if count_by is None or count_by_set: # count_by_set not implemented...
+                    gb = df.groupby(list(rel_tuple[:2])).size()
+                else:
+                    gb = df.groupby(list(rel_tuple[:2]))[count_by].sum()
+                for i in range(0,len(gb)):
+                    k      = gb.index[i]
+                    k_fm   = k[0]
+                    k_to   = k[1]
+                    nx_g.add_edge(k_fm,k_to,weight=gb.iloc[i])
+            elif self.isPolars(df):
+                counter = self.polarsCounter(df, list(rel_tuple[:2]), count_by, count_by_set)
+                for i in range(len(counter)):
+                    _row_   = counter[i]
+                    nx_g.add_edge(_row_[rel_tuple[0]][0],_row_[rel_tuple[1]][0],weight=_row_['__count__'][0])
+            else:
+                raise Exception('RTLinkNode.createNetworkXGraph() - only pandas and polars supported')
+
+        return nx_g
+    
+    #
+    # createNetworkXGraph()
+    #
+    # Use the same construction technique as linkNode but make a networkx graph instead.
+    #    
+    def createNetworkXGraph_OLD_20240506(self,
+                            df,                       # dataframe for graph creation
+                            relationships,            # list of tuple pairs... pairs can be single strings or tuples of strings
+                            use_digraph     = False,  # use directed graph
+                            count_by        = None):  # edge weight field
+        # Check the count_by column across all the df's...  if any of them
+        # don't work.. then it's count_by_set
+        count_by_set = False
+        if count_by is not None:
+            if self.fieldIsArithmetic(df, count_by) == False:
+                count_by_set = True
+
+        # Create the return graph structure
+        nx_g = nx.DiGraph() if use_digraph else nx.Graph()
+
         # Iterate over the relationships
         for rel_tuple in relationships:
             # Make sure it's the right number of tuples
@@ -540,6 +614,8 @@ class RTLinkNodeMixin(object):
             fm_flds, to_flds = (rel_tuple[0]), (rel_tuple[1])
 
             def stringify(_list_):
+                if type(_list_) == str:
+                    return _list_
                 _str_ = str(_list_[0])
                 for _x_ in _list_[1:]:
                     _str_ += '|' + str(_x_)
@@ -551,9 +627,9 @@ class RTLinkNodeMixin(object):
                 else:
                     gb = df.groupby(list(rel_tuple[:2]))[count_by].sum()
                 for i in range(0,len(gb)):
-                    k = gb.index[i]
-                    k_fm   = k[:len(fm_flds)]
-                    k_to   = k[len(fm_flds):]
+                    k      = gb.index[i]
+                    k_fm   = k[0]
+                    k_to   = k[1]
                     _fm_   = stringify(k_fm)
                     _to_   = stringify(k_to)
                     nx_g.add_edge(_fm_,_to_,weight=gb.iloc[i])
