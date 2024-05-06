@@ -512,19 +512,21 @@ class RTLinkNodeMixin(object):
         return _min_,_max_
 
     #
-    # createNetworkXGraph()
-    #
-    # Use the same construction technique as linkNode but make a networkx graph instead.
+    # createNetworkXGraph() - construct networkx graph as this class would construct the graph
+    # - relationship examples:
+    #   [('fm','to')]
+    #   [('fm','to), ('src','dst')]
+    #   [('fm',('to1','to2'))]
+    #   [('subj','obj','verb')]
     #    
     def createNetworkXGraph(self,
-                            df,                       # dataframe for graph creation
-                            relationships,            # list of tuple pairs... pairs can be single strings or tuples of strings
-                            use_digraph     = False,  # use directed graph
-                            count_by        = None):  # edge weight field
-        # Check the count_by column across all the df's...  if any of them
-        # don't work.. then it's count_by_set
-        count_by_set = False
-        if count_by is not None:
+                            df,                        # dataframe for graph creation
+                            relationships,             # list of tuple pairs... pairs can be single strings or tuples of strings
+                            use_digraph     = False,   # use directed graph
+                            count_by        = None,    # edge weight field
+                            count_by_set    = False):  # count this via set operation
+        # Determine the count by
+        if count_by is not None and count_by_set:
             if self.fieldIsArithmetic(df, count_by) == False:
                 count_by_set = True
 
@@ -566,20 +568,29 @@ class RTLinkNodeMixin(object):
         # Iterate over the relationships
         for rel_tuple in new_relationships:
             if self.isPandas(df):
-                if count_by is None or count_by_set: # count_by_set not implemented...
-                    gb = df.groupby(list(rel_tuple[:2])).size()
+                if count_by is None: # count_by_set not implemented...
+                    gb = df.groupby(list(rel_tuple)).size()
+                elif count_by_set:
+                    gb = df.groupby(list(rel_tuple))[count_by].nunique()
                 else:
-                    gb = df.groupby(list(rel_tuple[:2]))[count_by].sum()
+                    gb = df.groupby(list(rel_tuple))[count_by].sum()
                 for i in range(0,len(gb)):
                     k      = gb.index[i]
                     k_fm   = k[0]
                     k_to   = k[1]
-                    nx_g.add_edge(k_fm,k_to,weight=gb.iloc[i])
+                    params = {}
+                    if len(rel_tuple) == 3:
+                        params[rel_tuple[2]] = k[2]
+                    nx_g.add_edge(k_fm,k_to,weight=gb.iloc[i], **params)
             elif self.isPolars(df):
-                counter = self.polarsCounter(df, list(rel_tuple[:2]), count_by, count_by_set)
+                df_filtered = self.polarsFilterColumnsWithNaNs(df, self.flattenTuple(rel_tuple))
+                counter = self.polarsCounter(df_filtered, list(rel_tuple), count_by, count_by_set)
                 for i in range(len(counter)):
                     _row_   = counter[i]
-                    nx_g.add_edge(_row_[rel_tuple[0]][0],_row_[rel_tuple[1]][0],weight=_row_['__count__'][0])
+                    params = {}
+                    if len(rel_tuple) == 3:
+                        params[rel_tuple[2]] = _row_[rel_tuple[2]][0]
+                    nx_g.add_edge(_row_[rel_tuple[0]][0],_row_[rel_tuple[1]][0],weight=_row_['__count__'][0], **params)
             else:
                 raise Exception('RTLinkNode.createNetworkXGraph() - only pandas and polars supported')
 

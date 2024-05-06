@@ -190,6 +190,21 @@ class RACETrack(RTAnnotationsMixin,
             raise Exception('copyDataFrame() - accepts only pandas or polars dataframes')
 
     #
+    # flattenTuple() - flatten a tuple
+    #   flattenTuple(('fm','to'))                ==> ('fm', 'to')
+    #   flattenTuple(('fm','to','other'))        ==> ('fm', 'to', 'other')
+    #   flattenTuple(('a', ('b','c',('d','e')))) ==> ('a', 'b', 'c', 'd', 'e')
+    #
+    def flattenTuple(self, _tuple_):
+        _ls_ = []
+        for x in _tuple_:
+            if type(x) == tuple:
+                _ls_.extend(self.flattenTuple(x))
+            else:
+                _ls_.append(x)
+        return tuple(_ls_)
+
+    #
     # concatDataFrames() - concatenate dataframes
     #
     def concatDataFrames(self, dfs):
@@ -716,6 +731,16 @@ class RACETrack(RTAnnotationsMixin,
             pass # do nothing
         else:
             raise Exception(f'Unknown type ("{type(something)}") for ("{something}") encountered in identifyColumnsFromParameters()')
+
+    #
+    # polarsFilterColumnsWithNaNs() -- filter specified columns with NaN values
+    #
+    def polarsFilterColumnsWithNaNs(self, df, cols):
+        _eval_ = []
+        for col in cols:
+            _eval_.append(f'(pl.col("{col}").is_not_null())')
+        df = df.filter(eval('&'.join(_eval_)))
+        return df
 
     #
     # polarsCounter() -- return a dataframe with fields and an __count__ column.
