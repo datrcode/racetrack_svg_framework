@@ -1083,7 +1083,14 @@ class RTLinkNodeMixin(object):
                         raise Exception(f'linkNode(): relationship tuples should have two or three parts "{rel_tuple}"')
 
                     fm_flds, to_flds = [rel_tuple[0]], [rel_tuple[1]]
-                    gb = self.df.groupby(list(rel_tuple[:2])) if self.rt_self.isPandas(self.df) else self.df.group_by(list(rel_tuple[:2])) if self.rt_self.isPolars(self.df) else None
+
+                    if   self.rt_self.isPandas(self.df):
+                        gb = self.df.groupby(list(rel_tuple[:2]))
+                    elif self.rt_self.isPolars(self.df):
+                        df_filtered = self.rt_self.polarsFilterColumnsWithNaNs(self.df, self.rt_self.flattenTuple(rel_tuple)[:2])
+                        gb = df_filtered.group_by(list(rel_tuple[:2]))
+                    else:
+                        raise Exception('RTLinkNodeMixin.__renderLinks__() - only pandas and polars supported')
 
                     if self.rt_self.isPandas(self.df):
                         if self.count_by is None: 
@@ -1093,7 +1100,7 @@ class RTLinkNodeMixin(object):
                         else:
                             gb_sz = gb[self.count_by].sum()
                     else:
-                        counter = self.rt_self.polarsCounter(self.df, list(rel_tuple[:2]), self.count_by, self.count_by_set)
+                        counter = self.rt_self.polarsCounter(df_filtered, list(rel_tuple[:2]), self.count_by, self.count_by_set)
 
                     gb_sz_i = 0
                     for k,k_df in gb:
@@ -1434,7 +1441,8 @@ class RTLinkNodeMixin(object):
                             if   self.rt_self.isPandas(self.df):
                                 gb = self.df.groupby(flds[0]) if len(flds)  == 1 else self.df.groupby(flds)
                             elif self.rt_self.isPolars(self.df):
-                                gb = self.df.group_by(flds[0]) if len(flds) == 1 else self.df.group_by(flds)
+                                df_filtered = self.rt_self.polarsFilterColumnsWithNaNs(self.df, self.rt_self.flattenTuple(flds)) # stranded nodes are still possible... 
+                                gb = df_filtered.group_by(flds[0]) if len(flds) == 1 else self.df.group_by(flds)
                             else:
                                 raise Exception('RTLinkNode.__renderNodes__() - only pandas and polars supported')
 
