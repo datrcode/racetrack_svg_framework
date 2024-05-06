@@ -517,9 +517,10 @@ class RTLinkNodeMixin(object):
     # Use the same construction technique as linkNode but make a networkx graph instead.
     #    
     def createNetworkXGraph(self,
-                            df,              # dataframe for graph creation
-                            relationships,   # list of tuple pairs... pairs can be single strings or tuples of strings
-                            count_by=None):  # edge weight field
+                            df,                       # dataframe for graph creation
+                            relationships,            # list of tuple pairs... pairs can be single strings or tuples of strings
+                            use_digraph     = False,  # use directed graph
+                            count_by        = None):  # edge weight field
         # Check the count_by column across all the df's...  if any of them
         # don't work.. then it's count_by_set
         count_by_set = False
@@ -528,7 +529,7 @@ class RTLinkNodeMixin(object):
                 count_by_set = True
 
         # Create the return graph structure
-        nx_g = nx.Graph()
+        nx_g = nx.DiGraph() if use_digraph else nx.Graph()
 
         # Iterate over the relationships
         for rel_tuple in relationships:

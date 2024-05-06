@@ -171,9 +171,9 @@ class RTGraphLayoutsMixin(object):
             for xi in range(0,w):
                 if found_time[yi][xi] is not None:
                     _co = self.co_mgr.spectrum(found_time[yi][xi],0,max_t)
-                    svg += f'<rect x="{xi}" y="{yi}" width="1" height="1" fill="{_co}" stroke-opacity="0.0" />'
+                    svg += f'<rect x="{xi}" y="{yi}" width="1" height="1" fill="{_co}" stroke="none" stroke-opacity="0.0" />'
                     _co = self.co_mgr.getColor(node_info[yi][xi])
-                    svg += f'<rect x="{xi+w}" y="{yi}" width="1" height="1" fill="{_co}" stroke-opacity="0.0" />'
+                    svg += f'<rect x="{xi+w}" y="{yi}" width="1" height="1" fill="{_co}" stroke="none" stroke-opacity="0.0" />'
 
         svg += '</svg>'
         return svg
@@ -546,7 +546,7 @@ class RTGraphLayoutsMixin(object):
     #
     # springLayout()
     # - modeled after the Yet Another Spring Layout java implementation
-    # - probably just a reference implementation...
+    # - probably just a reference implementation...  networkx version works much faster...
     #
     def springLayout(self,
                      _graph,               # networkx graph
@@ -677,6 +677,7 @@ class RTGraphLayoutsMixin(object):
     # springLayout()
     # - modeled after the Yet Another Spring Layout java implementation
     # - probably just a reference implementation...
+    # - threading doesn't really exist unless you want to copy over the complete memory space...
     #
     def springLayoutThreaded(self,
                      _graph,               # networkx graph
