@@ -47,6 +47,37 @@ class RTLinkNodeMixin(object):
             raise Exception('concatDisparateDataFrame() - only supports pandas and polars')
 
     #
+    # filterDataFrameByGraph() - keep only the rows that are in the graph
+    #
+    def filterDataFrameByGraph(self, df, relationships, g):
+        if len(relationships) != 1: raise Exception('graphKeepRowsInGraph() - only supports single relationship')
+        if self.isPandas(df):
+            return self.__filterDataFrameByGraph_pandas__(df, relationships, g)
+        elif self.isPolars(df):
+            return self.__filterDataFrameByGraph_polars__(df, relationships, g)
+        else:
+            raise Exception('graphKeepRowsInGraph() - only supports pandas and polars')
+
+    # __filterDataFrameByGraph_pandas__()
+    def __filterDataFrameByGraph_pandas__(self, df, relationships, g):
+        q_strs = []
+        for _node_ in g:
+            for _nbor_ in g.neighbors(_node_):
+                q0 = '"' if "'" in _node_ else "'"
+                q1 = '"' if "'" in _nbor_ else "'"
+                q_strs.append(f'({relationships[0][0]} == {q0}{_node_}{q0} and {relationships[0][1]} == {q1}{_nbor_}{q1})')
+        return df.query(' or '.join(q_strs))
+
+    # __filterDataFrameByGraph_polars__()
+    def __filterDataFrameByGraph_polars__(self, df, relationships, g):
+        _filter_ = None
+        for _node_ in g:
+            for _nbor_ in g.neighbors(_node_):
+                _expr_   = ((pl.col(relationships[0][0]) == _node_) & (pl.col(relationships[0][1]) == _nbor_))
+                _filter_ = _expr_ if _filter_ is None else _filter_.or_(_expr_)
+        return df.filter(_filter_)
+                
+    #
     # graphDictToDataFrame() - converts a dictionary into a dataframe.
     # - d[fm][to] = ct
     # - fields will be "fm", "to", and "ct"
