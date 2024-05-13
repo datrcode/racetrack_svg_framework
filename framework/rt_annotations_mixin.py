@@ -773,6 +773,7 @@ class RTAnnotationsMixin(object):
                          x_ins               = 10,           # x inset
                          y_ins               = 5,            # y inset
                          draw_text_border    = False,        # Draw a border around the annotation text
+                         draw_background     = True,         # Draw a background behind the entire composition
                          include_common_name = True,         # The annotation description is the common name (possible concatenate)
                          include_description = False):       # The annotation description is the description (possible concatenate)
         # Force a render
@@ -853,6 +854,7 @@ class RTAnnotationsMixin(object):
         # Create the svg
         w_annotated, h_annotated = x, _instance_svg_h_ + 2*y_ins
         svg  = [f'<svg id="entity-annotation-{random.randint(0,2**32)}" x="0" y="0" width="{w_annotated}" height="{h_annotated}" xmlns="http://www.w3.org/2000/svg">']
+        if draw_background: svg.append(f'<rect x="0" y="0" width="{w_annotated}" height="{h_annotated}" fill="{self.co_mgr.getTVColor("background","default")}" />')
         svg.append(f'<svg x="{_instance_x_}" y="{y_ins}" width="{_instance_svg_w_}" height="{_instance_svg_h_}" xmlns="http://www.w3.org/2000/svg">')
         svg.append(_instance_svg_)
         svg.append('</svg>')
