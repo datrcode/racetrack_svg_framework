@@ -321,28 +321,20 @@ class RTGraphLayoutsMixin(object):
                     if possible_root in G:
                         my_root = possible_root
             
-            # Find the best root -- with a balanced tree
-            # ... run by default since we need all the subtree counts calculated...
-            best_root  = None
-            best_score = 0
-            for _node in G.nodes():
-                node_counts = []
-                for x in G[_node]:
-                    node_counts.append(self.__countSubTreeNodes__(G, x, _node, _child_count))
-                if len(node_counts) > 1:
-                    score = np.std(node_counts)
-                    if best_root is None or score < best_score:
-                        best_root,best_score = _node,score
-            # If none were found (e.g., single node graph, etc.)
-            if best_root is None:
-                for x in G.nodes():
-                    best_root = x
-                    break
-
             # Only set my root to the best if it wasn't already set...
             if my_root is None:
-                my_root = best_root
-            
+                f = G.copy()
+                while len(f) > 2: # while there are more than 2 nodes, remove all the leaves
+                    to_be_removed = [x for  x in f.nodes() if f.degree(x) <= 1]
+                    f.remove_nodes_from(to_be_removed)
+                my_root = list(f)[0]
+
+            # Count the number of children
+            for x in G[my_root]: self.__countSubTreeNodes__(G, x, my_root, _child_count)
+            root_children_count = 0
+            for x in G[my_root]: root_children_count += _child_count[x]
+            _child_count[my_root] = root_children_count
+
             # Place root
             _leaf_count = {}
             ht_state = HTState(angle=0.0, angle_inc=2.0*pi/self.__totalLeaves__(G, my_root, my_root, _leaf_count), max_depth=self.__treeDepth__(G,my_root,my_root))
