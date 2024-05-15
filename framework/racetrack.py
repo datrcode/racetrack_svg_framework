@@ -45,6 +45,7 @@ from rt_geomaps_mixin           import RTGeoMapsMixin
 from rt_geometry_mixin          import RTGeometryMixin
 from rt_graph_layouts_mixin     import RTGraphLayoutsMixin
 from rt_histogram_mixin         import RTHistogramMixin
+from rt_json_mixin              import RTJSONMixin
 from rt_layouts_mixin           import RTLayoutsMixin
 from rt_linknode_mixin          import RTLinkNodeMixin
 from rt_panel_mixin             import RTPanelMixin
@@ -71,6 +72,7 @@ class RACETrack(RTAnnotationsMixin,
                 RTGeometryMixin,
                 RTGraphLayoutsMixin,
                 RTHistogramMixin,
+                RTJSONMixin,
                 RTLayoutsMixin,                
                 RTLinkNodeMixin,
                 RTPanelMixin,

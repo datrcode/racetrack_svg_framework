@@ -45,36 +45,22 @@ class RTGraphLayoutsMixin(object):
         if _graph is not None:
             from_structure = set(_graph.nodes())
             in_pos         = set(pos.keys())
-
             if len(in_pos & from_structure) != len(from_structure):
-                print(in_pos)
-                print(from_structure)
+                print(f'{in_pos=}\n{from_structure=}')
                 raise Exception(f'Missing keys in position dictionary | AND={len(in_pos & from_structure)} SUBG={len(from_structure)}')
-
-        else:
-            from_structure = set(pos.keys())
+        else:  from_structure = set(pos.keys())
 
         for _node in from_structure:
             x = pos[_node][0]
             y = pos[_node][1]
-            if x0 is None:
-                x0 = x1 = x
-                y0 = y1 = y
-            else:
-                if x < x0:
-                    x0 = x
-                if x > x1:
-                    x1 = x
-                if y < y0:
-                    y0 = y
-                if y > y1:
-                    y1 = y
+            x0 = x if x0 is None else min(x0, x)
+            y0 = y if y0 is None else min(y0, y)
+            x1 = x if x1 is None else max(x1, x)
+            y1 = y if y1 is None else max(y1, y)
         if x0 == x1:
-            x0 -= 0.5
-            x1 += 0.5
+            x0, x1 = x0 - 0.5, x1 + 0.5
         if y0 == y1:
-            y0 -= 0.5
-            y1 += 0.5
+            y0, y1 = y0 - 0.5, y1 + 0.5
         return x0,y0,x1,y1
 
     #
@@ -292,8 +278,7 @@ class RTGraphLayoutsMixin(object):
                         touch_up_with_springs = False, # touch up the center of the layout with a spring layout
                         bounds_percent        = 0.1):  # for tree map positioning
         # Make sure root is a list
-        if type(roots) != list:
-            roots = [roots]
+        if type(roots) != list: roots = [roots]
 
         # Separate graph into connected components
         _graph = nx.to_undirected(_graph)
@@ -350,10 +335,8 @@ class RTGraphLayoutsMixin(object):
                 # pos = self.springLayout(G, pos, leaves,  iterations=200, spring_exp=0.1, only_sel_adj=True, dists=dists)
 
         # Separate the connected components
-        if len(S) > 1:
-            return self.treeMapGraphComponentPlacement(_graph,pos,bounds_percent)
-        else:
-            return pos
+        if len(S) > 1: return self.treeMapGraphComponentPlacement(_graph,pos,bounds_percent)
+        else:          return pos
 
     #
     # Place children within the hypertree structure
@@ -404,8 +387,7 @@ class RTGraphLayoutsMixin(object):
         # Separate graph into connected components // make sure there are two or more components
         _graph = nx.to_undirected(_graph)
         S = [_graph.subgraph(c).copy() for c in nx.connected_components(_graph)]
-        if len(S) <= 1:
-            return pos
+        if len(S) <= 1: return pos
         
         # Order the graphs from largest to smallest
         my_order = []
