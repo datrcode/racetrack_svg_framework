@@ -94,6 +94,10 @@ class RTLinkNodeMixin(object):
                 for to in d[fm].keys():
                     to_str = to if (type(to) == int or type(to) == float) else str(to)
                     fms.append(fm_str), tos.append(to_str), cts.append(d[fm][to])
+            elif type(d[fm]) == list:
+                for i in range(len(d[fm])):
+                    to_str = str(d[fm][i])
+                    fms.append(fm_str), tos.append(to_str), cts.append(1)
             else:
                 raise Exception('RTLinkNode.graphDictToDataFrame() - only supports dictionary or set keys')
         return pd.DataFrame({'fm':fms,'to':tos,'ct':cts})
@@ -427,6 +431,8 @@ class RTLinkNodeMixin(object):
                  node_opacity      = 1.0,      # fixed node opacity                 
                  node_labels       = None,     # Dictionary of node string to array of strings for additional labeling options
                  node_labels_only  = False,    # Only label based on the node_labels dictionary
+                 label_only        = set(),    # label only set - only label these nodes
+                 node_label_max_w  = 64,       # max label width for a node in pixels -- None means no limit
 
                  max_node_size     = 4,        # for node vary...
                  min_node_size     = 0.3,      # for node vary...
@@ -449,7 +455,6 @@ class RTLinkNodeMixin(object):
 
                  # -----------------------     # label information
 
-                 label_only        = set(),    # label only set
                  label_links       = False,    # label links (by color_by... if link_color is 'vary'... and label only is empty or contains the label)
 
                  # -----------------------     # timing information
@@ -728,6 +733,8 @@ class RTLinkNodeMixin(object):
             self.node_opacity               = kwargs['node_opacity']
             self.node_labels                = kwargs['node_labels']
             self.node_labels_only           = kwargs['node_labels_only']
+            self.node_label_max_w           = kwargs['node_label_max_w']
+            self.label_only                 = kwargs['label_only']
             self.max_node_size              = kwargs['max_node_size']
             self.min_node_size              = kwargs['min_node_size']
             self.link_color                 = kwargs['link_color']
@@ -743,7 +750,6 @@ class RTLinkNodeMixin(object):
             self.link_ortho_perc            = kwargs['link_ortho_perc']
             self.max_link_size              = kwargs['max_link_size']
             self.min_link_size              = kwargs['min_link_size']
-            self.label_only                 = kwargs['label_only']
             self.label_links                = kwargs['label_links']
             self.timing_marks               = kwargs['timing_marks']
             self.ts_field                   = kwargs['ts_field']
@@ -1615,25 +1621,29 @@ class RTLinkNodeMixin(object):
 
                                     # Check for if the conditions are met to render the label
                                     if self.draw_labels and self.node_shape != 'small_multiple' and ((len(self.label_only) == 0) or (k_str in self.label_only)):
-                                        if len(k_str) > 16:
-                                            k_str = k_str[:16] + '...'
-
-                                        if self.node_labels_only == False:
-                                            svg_text = self.rt_self.svgText(str(k_str), x, y+_sz+self.txt_h, self.txt_h, anchor='middle')                                            
+                                        k_render_str = k_str
+                                        if self.node_label_max_w is not None:
+                                            k_render_str = self.rt_self.cropText(k_str, self.txt_h, self.node_label_max_w)
+                                        if self.node_labels_only == False: # flag to indicate that the actual node string is hidden
+                                            svg_text = self.rt_self.svgText(str(k_render_str), x, y+_sz+self.txt_h, self.txt_h, anchor='middle')                                            
                                             self.defer_render.append(svg_text) # Defer render
 
                                         if self.node_labels is not None and k_str in self.node_labels.keys():
-                                            if self.node_labels_only:
-                                                y_label = y + _sz + 1*self.txt_h
-                                            else:
-                                                y_label = y + _sz + 2*self.txt_h
+                                            if self.node_labels_only: y_label = y + _sz + 1*self.txt_h
+                                            else:                     y_label = y + _sz + 2*self.txt_h
                                             _strs_  = self.node_labels[k_str]
                                             if type(_strs_) == str:
-                                                svg_text = self.rt_self.svgText(_strs_, x, y_label, self.txt_h, anchor='middle')
+                                                _str_render_ = _strs_
+                                                if self.node_label_max_w is not None:
+                                                    _str_render_ = self.rt_self.cropText(_strs_, self.txt_h, self.node_label_max_w)
+                                                svg_text = self.rt_self.svgText(_str_render_, x, y_label, self.txt_h, anchor='middle')
                                                 self.defer_render.append(svg_text) # Defer render
                                             else:
                                                 for _str_ in _strs_:
-                                                    svg_text = self.rt_self.svgText(_str_, x, y_label, self.txt_h, anchor='middle')
+                                                    _str_render_ = _str_
+                                                    if self.node_label_max_w is not None:
+                                                        _str_render_ = self.rt_self.cropText(_str_, self.txt_h, self.node_label_max_w)
+                                                    svg_text = self.rt_self.svgText(_str_render_, x, y_label, self.txt_h, anchor='middle')
                                                     self.defer_render.append(svg_text) # Defer render
                                                     y_label += self.txt_h
 
@@ -1653,7 +1663,7 @@ class RTLinkNodeMixin(object):
                                                _small_multiple_svg_[(_svg_index_+4):]
                     svg.append(_small_multiple_svg_)
 
-                    # Copy of the draw labels portion a few lines up...
+                    # Copy of the draw labels portion a few lines up... 2024-05-15 // NEEDS UPDATING
                     if self.draw_labels:
                         node_str = self.rt_self.nodeStringAndFillPos(k)
                         if len(node_str) > 16:
@@ -1665,7 +1675,7 @@ class RTLinkNodeMixin(object):
                         self.defer_render.append(svg_text)
 
                 # Possible that some nodes may not have been rendered due to the nature of the multi-dataframe structure
-                if self.draw_labels:
+                if self.draw_labels: # Copy of the above... 2024-05-15 // NEEDS UPDATING
                     for k in node_to_xy.keys():
                         if k not in sm_lu.keys():
                             node_str = self.rt_self.nodeStringAndFillPos(k)
