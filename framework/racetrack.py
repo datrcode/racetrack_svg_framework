@@ -48,6 +48,7 @@ from rt_histogram_mixin         import RTHistogramMixin
 from rt_json_mixin              import RTJSONMixin
 from rt_layouts_mixin           import RTLayoutsMixin
 from rt_linknode_mixin          import RTLinkNodeMixin
+from rt_ontologies_mixin        import RTOntologiesMixin
 from rt_panel_mixin             import RTPanelMixin
 from rt_periodic_barchart_mixin import RTPeriodicBarChartMixin
 from rt_piechart_mixin          import RTPieChartMixin
@@ -75,6 +76,7 @@ class RACETrack(RTAnnotationsMixin,
                 RTJSONMixin,
                 RTLayoutsMixin,                
                 RTLinkNodeMixin,
+                RTOntologiesMixin,
                 RTPanelMixin,
                 RTPeriodicBarChartMixin,
                 RTPieChartMixin,

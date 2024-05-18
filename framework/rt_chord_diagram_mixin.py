@@ -37,23 +37,49 @@ __name__ = 'rt_chord_diagram_mixin'
 #
 class RTChordDiagramMixin(object):
     # concats two strings in alphabetical order
-    def __den_fromToString__(self, x, fm, to, _connector_ = ' <-|-> '):
+    def __den_fromToString__(self, x, fm, to, _connector_ = ' <-|-> ', _type_sep_ = '|>>>|'):
         _fm_, _to_ = str(x[fm]), str(x[to])
+        if type(x[fm]) != str:
+            _fm_ += _type_sep_+str(type(x[fm]))
+            if x[fm] != self.__den_retyped__(_fm_): raise Exception(f'RTChordDiagramMixin.__den_fromToString__() - type mismatch between "{x[fm]}" and "{_fm_}" [fm]')
+        if type(x[to]) != str: 
+            _to_ += _type_sep_+str(type(x[to]))
+            if x[to] != self.__den_retyped__(_to_): raise Exception(f'RTChordDiagramMixin.__den_fromToString__() - type mismatch between "{x[to]}" and "{_to_}" [to]')
         return (_fm_+_connector_+_to_) if (_fm_<_to_) else (_to_+_connector_+_fm_)
     # separates the concatenated string back into it's two parts
     def __den_fromToStringParts__(self, x, _connector_ = ' <-|-> '):
         i = x.index(_connector_)
-        return x[:i],x[i+len(_connector_):]
+        fm = x[:i]
+        to = x[i+len(_connector_):]
+        return fm, to
     # merges names (which themselves can be merged names)
     def __den_mergedName__(self, a, b, _sep_ = '|||'):
-        #return _sep_.join(sorted(list(set(a.split(_sep_))|set(b.split(_sep_)))))
-        #return _sep_.join(list(set(a.split(_sep_))|set(b.split(_sep_))))
         ls = a.split(_sep_)
         ls.extend(b.split(_sep_))
         return _sep_.join(ls)
     # separates merged names back into parts
     def __den_breakdownMerge__(self, a, _sep_ = '|||'):
         return a.split(_sep_)
+    def __den_retyped__(self, x, _type_sep_ = '|>>>|'):
+        if _type_sep_ in x:
+            x_type = x[x.index(_type_sep_)+len(_type_sep_):]
+            x      = x[:x.index(_type_sep_)]
+            if   x_type == 'int'    or x_type == '<class \'int\'>'   or \
+                 x_type == 'long'   or x_type == '<class \'long\'>'  or \
+                 x_type == '<class \'numpy.int64\'>':                   x = int(x)
+            elif x_type == 'float'  or x_type == '<class \'float\'>'  or \
+                 x_type == 'double' or x_type == '<class \'double\'>' or \
+                 x_type == '<class \'numpy.float64\'>':                 x = float(x)
+            else: raise Exception('RTChordDiagramMixin.__den_retyped__() - unknown x type: ' + x_type + f' for "{x}"')
+        return x
+
+    # fixes the type inclusion for the list
+    def __den_fixType__(self, still_typed, _type_sep_ = '|>>>|'):
+        fixed_typed = []
+        for x in still_typed: 
+            if _type_sep_ in x: fixed_typed.append(self.__den_retyped__(x, _type_sep_))
+            else:               fixed_typed.append(x)
+        return fixed_typed
 
     # __dendrogramHelper_pandas__()
     def __dendrogramHelper_pandas__(self, df, fm, to, count_by, count_by_set):
@@ -190,7 +216,7 @@ class RTChordDiagramMixin(object):
                     _extended_.extend(l)
                     return _extended_
         
-        return leafWalk(_tree_)
+        return self.__den_fixType__(leafWalk(_tree_))
 
     #
     # dendrogramOrdering() - create an order of the fm/to nodes based on hierarchical clustering
@@ -417,7 +443,7 @@ class RTChordDiagramMixin(object):
         _tuple_ = ()
         for k in _graph_.keys():
             _tuple_ += k
-        return list(_tuple_)
+        return self.__den_fixType__(list(_tuple_))
 
     #
     # hierarchicalCIDRParentLookups() - helper method to create parent lookups for CIDR hierarchies
