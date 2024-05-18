@@ -229,6 +229,30 @@ class RACETrack(RTAnnotationsMixin,
             raise Exception('concatDataFrames() - accepts only pandas or polars dataframes')
 
     #
+    # createConcatColumn() - concatenate multiple columns together into a single column
+    #
+    def createConcatColumn(self, df, columns, new_column):
+        def catFields(x, flds):
+            s = str(x[flds[0]])
+            for i in range(1,len(flds)):
+                s += '|' + str(x[flds[i]])
+            return s
+        if self.isPandas(df):
+            df[new_column] = df.apply(lambda x: catFields(x, columns), axis=1)
+        elif self.isPolars(df):
+            to_concat_new, str_casts = [], []
+            for x in columns:
+                if df[x].dtype != pl.String:
+                    str_casts.append(pl.col(x).cast(str).alias('__' + x + '_as_str__'))
+                    to_concat_new.append(pl.col('__' + x + '_as_str__'))
+                else:
+                    to_concat_new.append(pl.col(x))
+            df = df.with_columns(*str_casts).with_columns(pl.concat_str(to_concat_new, separator='|').alias(new_column))
+        else:
+            raise Exception('createConcatColumn() - only pandas and polars supported')
+        return df
+
+    #
     # columnsAreTimestamps()
     # - Helper method to make a column into a suitable timestamp column
     # - ... because apparently the way to make a column into a type continues to evolve :(
