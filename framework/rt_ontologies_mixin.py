@@ -364,7 +364,7 @@ class RTOntology(object):
 
     # fm_files() - read state from several files
     def fm_files(self, _base_name_):
-        self.df_triples = pd.read_parquet(f'{_base_name_}.triples.parquet')
+        self.df_triples = pl.read_parquet(f'{_base_name_}.triples.parquet')
         _lu_ = pd.read_parquet(f'{_base_name_}.uids.parquet')
         uid_v, t0_v, t1_v, t2_v = _lu_['uid'].values, _lu_['t0'].values, _lu_['t1'].values, _lu_['t2'].values
         for i in range(len(uid_v)):
