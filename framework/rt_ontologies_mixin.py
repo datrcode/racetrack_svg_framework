@@ -419,7 +419,7 @@ class RTOntology(object):
         for x in starred_path_values:
             x_until_last_star = x[:x.rindex('[*]')+3] # get the close bracket too
             if longest_by_star_path[:len(x_until_last_star)] != x_until_last_star:
-                raise Exception(f'OntologyForViz.__applyTemplate__() - jsonpath are not subsets "{x}" vs "{longest_by_star_path}"')
+                raise Exception(f'RTOntology.__applyTemplate__() - jsonpath are not subsets "{x}" vs "{longest_by_star_path}"')
 
         # fill in the json values into the filled dict
         if len(starred_path_values) > 0: filled = fillJSONPathElements(starred_path_values, myjson)
@@ -516,8 +516,8 @@ class RTOntology(object):
         t1 = time.time()
         self.time_lu['fill.parse'] += (t1-t0)
 
-        _df_            = pl.DataFrame(for_df)
-        if len(_df_) > 0: self.df_triples = _df_ if self.df_triples is None else pl.concat([_df_, self.df_triples])
+        _df_ = pl.DataFrame(for_df)
+        return _df_
 
     # resolveIdAndUpdateLookups() - resolve id and update lookups
     # self.uid_lu[<interger>] = (id-from-input, type-from-input, disposition-from-input)
@@ -531,73 +531,84 @@ class RTOntology(object):
         return my_uid
 
     # parse() - parse json into ontology via specification
-    def parse(self, j):
-        for l in self.xform_spec_lines:
-            l, lu = literalize(l) # get rid of any literal values so it doesn't mess up the delimiters
-            if '#' in l: l = l[:l.index('#')].strip() # comments... hope the hash symbol doesn't occur anywhere in the template that isn't a comment
-            if len(l) == 0: continue
+    def parse(self, jlist):
+        if type(jlist) != list: jlist = [jlist]
+        _dfs_ = []
+        for j in jlist:
+            for l in self.xform_spec_lines:
+                l, lu = literalize(l) # get rid of any literal values so it doesn't mess up the delimiters
+                if '#' in l: l = l[:l.index('#')].strip() # comments... hope the hash symbol doesn't occur anywhere in the template that isn't a comment
+                if len(l) == 0: continue
 
-            # Sourcing Information
-            src_values = src_children = None
-            if '^^^' in l:
-                src = l[l.index('^^^')+3:]
-                l   = l[:l.index('^^^')].strip()
-                src_values, src_children = parseTree(fillLiterals(src, lu))
+                # Sourcing Information
+                src_values = src_children = None
+                if '^^^' in l:
+                    src = l[l.index('^^^')+3:]
+                    l   = l[:l.index('^^^')].strip()
+                    src_values, src_children = parseTree(fillLiterals(src, lu))
 
-            # Grouping Information
-            g_values = g_children = g_type = g_disp = None
-            if '@@@' in l:
-                grp = l[l.index('@@@')+3:]
-                l   = l[:l.index('@@@')].strip()
-                g_uniq = None
-                if endsWithAny(grp, {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont'}) and '|' in grp:
-                    g_disp = grp[grp.rindex('|')+1:].strip()
-                    grp    = grp[:grp.rindex('|')]
-                else: g_disp = 'ambi'
-                g_type = None
-                if '|' in grp:
-                    g_type = grp[grp.rindex('|')+1:].strip()
-                    grp   = grp[:grp.rindex('|')]
-                g_node = grp
-                g_values, g_children = parseTree(fillLiterals(g_node, lu))
-                
-            svo = [x.strip() for x in l.split('---')]
-            if len(svo) == 3:
-                s, v, o = svo[0], svo[1], svo[2]
+                # Grouping Information
+                g_values = g_children = g_type = g_disp = None
+                if '@@@' in l:
+                    grp = l[l.index('@@@')+3:]
+                    l   = l[:l.index('@@@')].strip()
+                    g_uniq = None
+                    if endsWithAny(grp, {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont'}) and '|' in grp:
+                        g_disp = grp[grp.rindex('|')+1:].strip()
+                        grp    = grp[:grp.rindex('|')]
+                    else: g_disp = 'ambi'
+                    g_type = None
+                    if '|' in grp:
+                        g_type = grp[grp.rindex('|')+1:].strip()
+                        grp   = grp[:grp.rindex('|')]
+                    g_node = grp
+                    g_values, g_children = parseTree(fillLiterals(g_node, lu))
+                    
+                svo = [x.strip() for x in l.split('---')]
+                if len(svo) == 3:
+                    s, v, o = svo[0], svo[1], svo[2]
 
-                # Subject
-                s_uniq = None
-                if endsWithAny(s, {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont'}) and '|' in s:
-                    s_disp = s[s.rindex('|')+1:].strip()
-                    s      = s[:s.rindex('|')]
-                else: s_disp = 'ambi'
-                s_type = None
-                if '|' in s:
-                    s_type = s[s.rindex('|')+1:].strip()
-                    s      = s[:s.rindex('|')]
-                s_node = s
-                s_values, s_children = parseTree(fillLiterals(s_node, lu))
+                    # Subject
+                    s_uniq = None
+                    if endsWithAny(s, {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont'}) and '|' in s:
+                        s_disp = s[s.rindex('|')+1:].strip()
+                        s      = s[:s.rindex('|')]
+                    else: s_disp = 'ambi'
+                    s_type = None
+                    if '|' in s:
+                        s_type = s[s.rindex('|')+1:].strip()
+                        s      = s[:s.rindex('|')]
+                    s_node = s
+                    s_values, s_children = parseTree(fillLiterals(s_node, lu))
 
-                # Verb
-                v_values, v_children = parseTree(fillLiterals(v, lu))
+                    # Verb
+                    v_values, v_children = parseTree(fillLiterals(v, lu))
 
-                # Object
-                o_uniq = None
-                if endsWithAny(o, {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont'}) and '|' in o:
-                    o_disp = o[o.rindex('|')+1:].strip()
-                    o      = o[:o.rindex('|')]
-                else: o_disp = 'ambi'
-                if '|' in o:
-                    o_type = o[o.rindex('|')+1:].strip()
-                    o      = o[:o.rindex('|')]
-                o_node = o
-                o_values, o_children = parseTree(fillLiterals(o_node, lu))
-                self.__applyTemplate__(j, s_values, s_children, s_type, s_disp, 
-                                          v_values, v_children, 
-                                          o_values, o_children, o_type, o_disp,
-                                          g_values, g_children, g_type, g_disp,
-                                          src_values, src_children)
-            else:
-                raise Exception(f'RTOntology.parse() - line "{l}" does not have three parts')
+                    # Object
+                    o_uniq = None
+                    if endsWithAny(o, {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont'}) and '|' in o:
+                        o_disp = o[o.rindex('|')+1:].strip()
+                        o      = o[:o.rindex('|')]
+                    else: o_disp = 'ambi'
+                    if '|' in o:
+                        o_type = o[o.rindex('|')+1:].strip()
+                        o      = o[:o.rindex('|')]
+                    o_node = o
+                    o_values, o_children = parseTree(fillLiterals(o_node, lu))
+                    _df_ = self.__applyTemplate__(j, s_values, s_children, s_type, s_disp, 
+                                                    v_values, v_children, 
+                                                    o_values, o_children, o_type, o_disp,
+                                                    g_values, g_children, g_type, g_disp,
+                                                    src_values, src_children)
+                    if _df_ is not None and len(_df_) > 0: _dfs_.append(_df_)
+                else:
+                    raise Exception(f'RTOntology.parse() - line "{l}" does not have three parts')
 
-
+        # put it all together at once
+        parsed_len = 0
+        if len(_dfs_) > 0:
+            concatted_dfs = pl.concat(_dfs_)
+            parse_len     = concatted_dfs.shape[0]
+            if self.df_triples is None or self.df_triples.shape[0] == 0: self.df_triples = concatted_dfs
+            else:                                                        self.df_triples = pl.concat([self.df_triples, concatted_dfs])
+        return parsed_len
