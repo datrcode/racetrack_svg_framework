@@ -1073,10 +1073,9 @@ class RACETrack(RTAnnotationsMixin,
                 anchor   = 'start',
                 font     = None,
                 rotation = None):
-        if font is None:
-            font = self.default_font
-        if color is None:
-            color = self.co_mgr.getTVColor('label','defaultfg')
+        if font  is None: font = self.default_font
+        if color is None: color = self.co_mgr.getTVColor('label','defaultfg')
+        txt = str(txt)
 
         _html_txt = html.escape(txt)
         # The following breaks JupyterLab in some configs ... 2024-01-04
