@@ -23,6 +23,7 @@ import random
 from math import ceil, floor
 
 from rt_component import RTComponent
+from rt_entity_position import RTEntityPosition
 
 __name__ = 'rt_linknodeshortest_mixin'
 
@@ -165,6 +166,24 @@ class RTLinkNodeShortestMixin(object):
                 self.entity_positions[_node_label_].append(_tuple_)
             return _svg_id_
 
+        #
+        # entityPositions() - return information about the entity geometry for rendering
+        # - Empty list means either not implemented... or entity not in view...
+        # - return the positions of the entity ... rendering had to have happened first
+        def entityPositions(self, entity):
+            results = []
+            if entity in self.entity_positions:
+                for _tuple_ in self.entity_positions[entity]:
+                    rtep = RTEntityPosition(entity,
+                                            self.rt_self,
+                                            self,
+                                            (_tuple_[3], _tuple_[4]),
+                                            (_tuple_[3], _tuple_[4], 0.0, _tuple_[5]),
+                                            _tuple_[0],
+                                            f'<circle cx="{_tuple_[3]}" cy="{_tuple_[4]}" r="{_tuple_[5]}"/>',
+                                            self.widget_id)
+            return results
+
         # _repr_svg_(self):
         def _repr_svg_(self):
             if self.last_render is None:
@@ -300,4 +319,5 @@ class RTLinkNodeShortestMixin(object):
                     y_base = y_bot+self.y_path_gap
                 y_base += self.y_ins
 
-            self.last_render = f'<svg width="{self.w}" height="{y_base}">' + ''.join(svg_edges) + ''.join(svg) + '</svg>'
+            self.h = y_base
+            self.last_render = f'<svg x="0" y="0" width="{self.w}" height="{y_base}">' + ''.join(svg_edges) + ''.join(svg) + '</svg>'
