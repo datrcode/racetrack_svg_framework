@@ -153,9 +153,17 @@ class RTLinkNodeShortestMixin(object):
             self.time_lu['link_labels'] += time.time() - _ts_
             return results
 
-        #  __updateEntityPositions__(self, _node_, _node_label_, _x_, _y_, _r_)
+        #  __updateEntityPositions__()
         def __updateEntityPositions__(self, _node_, _node_label_, _x_, _y_, _r_):
-            return self.rt_self.encSVGID(self.widget_id + '-' + str(_node_))
+            if _node_ not in self.entity_positions: self.entity_positions[_node_] = []
+            _instance_no_ = len(self.entity_positions[_node_])
+            _svg_id_ = self.rt_self.encSVGID(self.widget_id + '-' + str(_node_) + '-' + str(_instance_no_))
+            _tuple_ = (_svg_id_, _node_, _node_label_, _x_, _y_, _r_)
+            self.entity_positions[_node_].append(_tuple_)
+            if _node_label_ != _node_:
+                if _node_label_ not in self.entity_positions: self.entity_positions[_node_label_] = []
+                self.entity_positions[_node_label_].append(_tuple_)
+            return _svg_id_
 
         # _repr_svg_(self):
         def _repr_svg_(self):
@@ -169,6 +177,20 @@ class RTLinkNodeShortestMixin(object):
             self.entity_positions = {}
             svg       = []
             svg_edges = []
+
+            def __renderNode__(_node_, _x_, _y_, _z_):
+                _node_label_ = self.node_labels[_node_] if self.node_labels is not None and _node_ in self.node_labels else _node_
+                _color_ = self.rt_self.co_mgr.getTVColor('data','default')
+                if self.node_color is not None:
+                    if   self.node_color.startswith('#') and len(self.node_color) == 7: _color_ = self.node_color
+                    elif self.node_color == 'label':                                    _color_ = self.rt_self.co_mgr.getColor(_node_label_)
+                self.nodes_rendered.add(_node_label_)
+                _svg_id_ = self.__updateEntityPositions__(_node_, _node_label_, _x_, _y_, _r_)
+                svg.append(f'<circle id="{_svg_id_}" cx="{_x_}" cy="{_y_}" r="{_r_}" stroke="{_color_}" fill="{_color_}" stroke-width="1" />')
+                if self.max_degree_to_show is not None and self.g_orig.degree[_node_] >= self.max_degree_to_show:
+                    _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
+                    svg.append(f'<circle cx="{_x_}" cy="{_y_}" r="{_r_+2}" stroke="{_color_}" fill="none" stroke-width="2" />')
+                return _node_label_
 
             # Create the original graph, find the shortest path and make a version that removes that path
             _ts_ = time.time()
@@ -232,22 +254,8 @@ class RTLinkNodeShortestMixin(object):
 
                     # Render the base path nodes
                     for _node_ in node_to_xy:
-                        _node_label_ = self.node_labels[_node_] if self.node_labels is not None and _node_ in self.node_labels else _node_
-
-                        _color_ = self.rt_self.co_mgr.getTVColor('data','default')
-                        if self.node_color is not None:
-                            if   self.node_color.startswith('#') and len(self.node_color) == 7: _color_ = self.node_color
-                            elif self.node_color == 'label':                                    _color_ = self.rt_self.co_mgr.getColor(_node_label_)
-                        self.nodes_rendered.add(_node_label_)
                         _x_, _y_, _r_ = node_to_xy[_node_][0], node_to_xy[_node_][1], self.node_size_px
-                        _svg_id_ = self.__updateEntityPositions__(_node_, _node_label_, _x_, _y_, _r_)
-                        svg.append(f'<circle id="{_svg_id_}" cx="{_x_}" cy="{_y_}" r="{_r_}" stroke="{_color_}" fill="{_color_}" stroke-width="1" />')
-                        
-                        # Max Degree Annotation
-                        if self.max_degree_to_show is not None and self.g_orig.degree[_node_] >= self.max_degree_to_show:
-                            _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
-                            svg.append(f'<circle cx="{_x_}" cy="{_y_}" r="{_r_+2}" stroke="{_color_}" fill="none" stroke-width="2" />')
-                        
+                        _node_label_ = __renderNode__(_node_, _x_, _y_, _r_)
                         # Render the node labels
                         if self.draw_labels:
                             _cropped_ = self.rt_self.cropText(str(_node_label_), self.txt_h, _label_w_-self.y_ins)
@@ -280,34 +288,12 @@ class RTLinkNodeShortestMixin(object):
                                         my_x_path_gap = (x1-x0)/(len(pp)-3)
                                         for k in range(1, len(pp)-1):
                                             _node_ = pp[k]
-                                            _node_label_ = self.node_labels[_node_] if self.node_labels is not None and _node_ in self.node_labels else _node_
-                                            _color_ = self.rt_self.co_mgr.getTVColor('data','default')
-                                            if self.node_color is not None:
-                                                if   self.node_color.startswith('#') and len(self.node_color) == 7: _color_ = self.node_color
-                                                elif self.node_color == 'label':                                    _color_ = self.rt_self.co_mgr.getColor(_node_label_)
-                                            self.nodes_rendered.add(_node_label_)
                                             _x_, _y_, _r_ = x0+(k-1)*my_x_path_gap, y, self.node_size_px
-                                            _svg_id_ = self.__updateEntityPositions__(_node_, _node_label_, _x_, _y_, _r_)
-                                            svg.append(f'<circle id="{_svg_id_}" cx="{_x_}" cy="{_y_}" r="{_r_}" stroke="{_color_}" fill="{_color_}" stroke-width="1" />')
-                                            # Max Degree Annotation
-                                            if self.max_degree_to_show is not None and self.g_orig.degree[_node_] >= self.max_degree_to_show:
-                                                _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
-                                                svg.append(f'<circle cx="{_x_}" cy="{_y_}" r="{_r_+2}" stroke="{_color_}" fill="none" stroke-width="2" />')
+                                            _node_label_ = __renderNode__(_node_,_x_,_y_,_r_)
                                     else:
                                         _node_ = pp[0]
-                                        _node_label_ = self.node_labels[_node_] if self.node_labels is not None and _node_ in self.node_labels else _node_
-                                        _color_ = self.rt_self.co_mgr.getTVColor('data','default')
-                                        if self.node_color is not None:
-                                            if   self.node_color.startswith('#') and len(self.node_color) == 7: _color_ = self.node_color
-                                            elif self.node_color == 'label':                                    _color_ = self.rt_self.co_mgr.getColor(_node_label_)
-                                        self.nodes_rendered.add(_node_label_)
                                         _x_, _y_, _r_ = x0+x_path_gap/2, y, self.node_size_px
-                                        _svg_id_ = self.__updateEntityPositions__(_node_, _node_label_, _x_, _y_, _r_)
-                                        svg.append(f'<circle id="{_svg_id_}" cx="{_x_}" cy="{_y_}" r="{_r_}" stroke="{_color_}" fill="{_color_}" stroke-width="1" />')
-                                        # Max Degree Annotation
-                                        if self.max_degree_to_show is not None and self.g_orig.degree[_node_] >= self.max_degree_to_show:
-                                            _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
-                                            svg.append(f'<circle cx="{_x_}" cy="{_y_}" r="{_r_+2}" stroke="{_color_}" fill="none" stroke-width="2" />')
+                                        _node_label_ = __renderNode__(_node_,_x_,_y_,_r_)
                                 else:
                                     svg.append(self.rt_self.svgText('∅', node_to_xy[p[_vpi_]][0] + _my_txt_x_offset_, y + self.txt_h/2, self.txt_h, anchor=_my_anchor_))
                         offset += 1
