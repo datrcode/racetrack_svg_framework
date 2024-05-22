@@ -164,9 +164,12 @@ class RTColorManager:
             self.str_to_color_lu[my_strs[i]] = my_colors[i]
 
         # True / False Colors
-        self.str_to_color_lu[False] = '#ff0000'
-        self.str_to_color_lu[True]  = '#0000ff'
+        _false_color_ = '#f8de7e' # mellow yellow
+        for x in [False, 'false', 'False', 'FALSE']: self.str_to_color_lu[x] = _false_color_
 
+        _true_color_ = '#add8e6' # light blue
+        for x in [True, 'true', 'True', 'TRUE']: self.str_to_color_lu[x] = _true_color_
+    
     #
     # __allhex__() - are all the character hex characters?
     #

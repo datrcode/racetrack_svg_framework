@@ -351,6 +351,10 @@ class RTLinkNodeShortestMixin(object):
                     y_base = y_bot+self.y_path_gap
                 y_base += self.y_ins
 
+            _bg_color_ = self.rt_self.co_mgr.getTVColor('background','default')
             self.h = y_base
-            self.last_render = f'<svg x="0" y="0" width="{self.w}" height="{y_base}">' + ''.join(svg_edges) + ''.join(svg_labels) + ''.join(svg) + '</svg>'
+            self.last_render = f'<svg x="0" y="0" width="{self.w}" height="{y_base}">' + \
+                               f'<rect x="0" y="0" width="{self.w}" height="{y_base}" fill="{_bg_color_}" />' + \
+                               ''.join(svg_edges) + ''.join(svg_labels) + ''.join(svg) + \
+                               '</svg>'
             return self.last_render
