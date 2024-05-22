@@ -223,9 +223,18 @@ class RTLinkNodeShortestMixin(object):
             y_base = self.y_ins
             for _pair_ in self.pairs:
                 # Find the base path
-                p      = nx.shortest_path(self.g_orig, _pair_[0], _pair_[1])
-                g      = self.g_orig.copy()
-                for i in range(len(p)-1): g.remove_edge(p[i],p[i+1])
+                p_gen         = nx.all_shortest_paths(self.g_orig, _pair_[0], _pair_[1])
+                g             = self.g_orig.copy()
+                p_gen_list    = []
+                edges_removed = set()
+                for p in p_gen:
+                    p_gen_list.append(p)
+                    for i in range(len(p)-1):
+                        to_remove = (p[i],p[i+1])
+                        if to_remove not in edges_removed:
+                            g.remove_edge(p[i],p[i+1])
+                            edges_removed.add(to_remove)
+                p = p_gen_list[0]
 
                 # Determine the label geometry
                 _label_w_ = self.y_ins + self.y_path_gap
@@ -275,8 +284,13 @@ class RTLinkNodeShortestMixin(object):
                         svg_edges.append(f'<line x1="{x0}" y1="{y_base}" x2="{x1}" y2="{y_base}" stroke="{_color_}" stroke-width="{self.link_size_px}" />')
 
                     # Render the base path nodes
-                    for _node_ in node_to_xy:
+                    for i in range(len(p)):
+                        _node_ = p[i]
                         _x_, _y_, _r_ = node_to_xy[_node_][0], node_to_xy[_node_][1], self.node_size_px
+                        for j in range(len(p_gen_list)-1, 0, -1): # draw in reverse order
+                            _alt_p_ = p_gen_list[j]
+                            _alt_n_ = _alt_p_[i]
+                            __renderNode__(_alt_n_, _x_+j*_r_, _y_+j*_r_, _r_)
                         _node_label_ = __renderNode__(_node_, _x_, _y_, _r_)
                         # Render the node labels
                         if self.draw_labels:
