@@ -1597,14 +1597,14 @@ class RTLinkNodeMixin(object):
                                         svg_markup = self.rt_self.__overwriteSVGOriginPosition__(_shape, (x,y), _svg_w, _svg_h)
                                         svg_markup = self.rt_self.__overwriteSVGID__(_shape, self.nodeSVGID(k))
                                         svg.append(svg_markup)
-                                        self.node_to_svg_markup[k] = svg_markup
+                                        self.node_to_svg_markup[str(k)] = svg_markup
                                         _sz = _svg_h/2 # probably for the label?
 
                                     # Otherwise, call the super class shape renderer...
                                     else:
                                         svg_markup = self.rt_self.renderShape(_shape, x, y, _sz, _co, _co_border, self.node_opacity, self.nodeSVGID(k))
                                         svg.append(svg_markup)
-                                        self.node_to_svg_markup[k] = self.rt_self.renderShape(_shape, x, y, _sz) # unadorned
+                                        self.node_to_svg_markup[str(k)] = self.rt_self.renderShape(_shape, x, y, _sz) # unadorned
 
                                     # Track state
                                     if self.track_state:
@@ -1878,15 +1878,16 @@ class RTLinkNodeMixin(object):
         # - Empty list means either not implemented... or entity not in view...
         # - return the positions of the entity ... rendering had to have happened first
         def entityPositions(self, entity):
-             if entity in self.node_coords:
-                 xy   = self.node_coords[entity]
-                 rtep = RTEntityPosition(entity,
+             entity_str = str(entity)
+             if entity_str in self.node_coords:
+                 xy   = self.node_coords[entity_str]
+                 rtep = RTEntityPosition(entity_str,
                                          self.rt_self,
                                          self,
                                          xy,
                                          (xy[0], xy[1], 0.0, 1.0),
-                                         self.nodeSVGID(entity),
-                                         self.node_to_svg_markup[entity],
+                                         self.nodeSVGID(entity_str),
+                                         self.node_to_svg_markup[entity_str],
                                          self.widget_id)
                  return [rtep]
              return []

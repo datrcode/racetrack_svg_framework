@@ -156,6 +156,8 @@ class RTLinkNodeShortestMixin(object):
 
         #  __updateEntityPositions__()
         def __updateEntityPositions__(self, _node_, _node_label_, _x_, _y_, _r_):
+            if _node_label_ is None: _node_label_ = str(_node_)
+            else:                    _node_label_ = str(_node_label_)
             if _node_ not in self.entity_positions: self.entity_positions[_node_] = []
             _instance_no_ = len(self.entity_positions[_node_])
             _svg_id_ = self.rt_self.encSVGID(self.widget_id + '-' + str(_node_) + '-' + str(_instance_no_))
@@ -182,6 +184,7 @@ class RTLinkNodeShortestMixin(object):
                                             _tuple_[0],
                                             f'<circle cx="{_tuple_[3]}" cy="{_tuple_[4]}" r="{_tuple_[5]}"/>',
                                             self.widget_id)
+                    results.append(rtep)
             return results
 
         # _repr_svg_(self):
@@ -321,3 +324,4 @@ class RTLinkNodeShortestMixin(object):
 
             self.h = y_base
             self.last_render = f'<svg x="0" y="0" width="{self.w}" height="{y_base}">' + ''.join(svg_edges) + ''.join(svg) + '</svg>'
+            return self.last_render
