@@ -46,10 +46,54 @@ class RTLinkNodeMixin(object):
         else:
             raise Exception('concatDisparateDataFrame() - only supports pandas and polars')
 
+
     #
     # filterDataFrameByGraph() - keep only the rows that are in the graph
     #
     def filterDataFrameByGraph(self, df, relationships, g):
+        # Fix up the relationships so that it's one column to one column
+        new_relationships = []
+        for i in range(len(relationships)):
+            _relationship_ = relationships[i]
+            _fm_ , _to_ = _relationship_[0], _relationship_[1]
+            if type(_relationship_[0]) == tuple:
+                if len(_relationship_[0]) == 1: _fm_ = _relationship_[0][0]
+                else:
+                    _fm_ = f'__fm{i}__'
+                    df = self.createConcatColumn(df, _relationship_[0], _fm_)
+            if type(_relationship_[1]) == tuple:
+                if len(_relationship_[1]) == 1: _to_ = _relationship_[1][0]
+                else:
+                    _to_ = f'__to{i}__'
+                    df = self.createConcatColumn(df, _relationship_[1], _to_)                
+            new_relationships.append((_fm_, _to_))
+
+        # Set of all the edges in the graph
+        edges = set()
+        for _node_ in g:
+            for _nbor_ in g.neighbors(_node_):
+                edges.add((_node_, _nbor_))
+
+        # For each relationship, check for the existence of that edge
+        _dfs_ = []
+        for _relationship_ in new_relationships:
+            if   self.isPandas(df): gb = df.groupby(list(_relationship_))
+            elif self.isPolars(df): gb = df.group_by(_relationship_)
+            else: raise Exception('filterDataFrameByGraph() - only supports pandas and polars')
+            
+            for k, k_df in gb:
+                if k in edges: 
+                    _dfs_.append(k_df)
+        
+        # Concatenate them together # may have duplicates...
+        if   self.isPandas(df): return pd.concat(_dfs_)
+        elif self.isPolars(df): return pl.concat(_dfs_)
+        else:                   raise Exception('filterDataFrameByGraph() - only supports pandas and polars')
+        
+    #
+    # filterDataFrameByGraph() - keep only the rows that are in the graph
+    #
+    def REALLYSLOW__filterDataFrameByGraph(self, df, relationships, g):
         if len(relationships) != 1: raise Exception('graphKeepRowsInGraph() - only supports single relationship')
         if self.isPandas(df):
             return self.__filterDataFrameByGraph_pandas__(df, relationships, g)
