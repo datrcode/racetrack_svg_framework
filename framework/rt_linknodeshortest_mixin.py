@@ -197,8 +197,7 @@ class RTLinkNodeShortestMixin(object):
         def renderSVG(self):
             self.nodes_rendered   = set()
             self.entity_positions = {}
-            svg       = []
-            svg_edges = []
+            svg, svg_edges, svg_labels = [], [], []
 
             def __renderNode__(_node_, _x_, _y_, _z_):
                 _node_label_ = self.node_labels[_node_] if self.node_labels is not None and _node_ in self.node_labels else _node_
@@ -222,7 +221,7 @@ class RTLinkNodeShortestMixin(object):
             # Go through the pairs
             y_base = self.y_ins
             for _pair_ in self.pairs:
-                # Find the base path
+                # Find the base path (and all paths of the same length)
                 p_gen         = nx.all_shortest_paths(self.g_orig, _pair_[0], _pair_[1])
                 g             = self.g_orig.copy()
                 p_gen_list    = []
@@ -287,10 +286,13 @@ class RTLinkNodeShortestMixin(object):
                     for i in range(len(p)):
                         _node_ = p[i]
                         _x_, _y_, _r_ = node_to_xy[_node_][0], node_to_xy[_node_][1], self.node_size_px
+                        _node_already_drawn_ = set([_node_])
                         for j in range(len(p_gen_list)-1, 0, -1): # draw in reverse order
                             _alt_p_ = p_gen_list[j]
                             _alt_n_ = _alt_p_[i]
-                            __renderNode__(_alt_n_, _x_+j*_r_, _y_+j*_r_, _r_)
+                            if j == 0 or _alt_n_ not in _node_already_drawn_:
+                                __renderNode__(_alt_n_, _x_+j*_r_, _y_+j*_r_, _r_)
+                                _node_already_drawn_.add(_alt_n_)
                         _node_label_ = __renderNode__(_node_, _x_, _y_, _r_)
                         # Render the node labels
                         if self.draw_labels:
@@ -312,20 +314,33 @@ class RTLinkNodeShortestMixin(object):
                             j = _vpi_ - offset if _side_ == 'backward' else _vpi_ + offset                    
                             y = y_base - self.y_path_gap*offset
                             if j >= 0 and j <= len(p)-1:
-                                try:    pp = nx.shortest_path(g, p[j],p[_vpi_]) if _side_ == 'backward' else nx.shortest_path(g, p[_vpi_],p[j])
+                                _pp_gen_ = []
+                                try:
+                                    _pp_gen_ = nx.all_shortest_paths(g, p[j],p[_vpi_]) if _side_ == 'backward' else nx.all_shortest_paths(g, p[_vpi_],p[j])
+                                    _pps_    = list(_pp_gen_)
+                                    if len(_pps_) > 0: pp = _pps_[0]
+                                    else:              pp = None                                    
                                 except: pp = None
                                 if pp is not None:
                                     x0, x1 = node_to_xy[pp[0]][0]+x_path_gap/4, node_to_xy[pp[-1]][0]-x_path_gap/4
                                     svg_edges.append(f'<line x1="{x0}" y1="{y}" x2="{x1}" y2="{y}" stroke="gray" stroke-width="0.5" />')
                                     svg_edges.append(f'<line x1="{x0}" y1="{y}" x2="{node_to_xy[pp[0]][0]}" y2="{node_to_xy[pp[0]][1]}" stroke="gray" stroke-width="0.5" />')
                                     svg_edges.append(f'<line x1="{x1}" y1="{y}" x2="{node_to_xy[pp[-1]][0]}" y2="{node_to_xy[pp[-1]][1]}" stroke="gray" stroke-width="0.5" />')
-                                    svg.append(self.rt_self.svgText(f'{len(pp)}', node_to_xy[p[_vpi_]][0] + _my_txt_x_offset_, y + self.txt_h/2, self.txt_h, anchor=_my_anchor_))
+                                    if len(_pps_) > 1: _path_len_label_ = f'{len(pp)}/{len(_pps_)}'
+                                    else:              _path_len_label_ = f'{len(pp)}'
+
+                                    svg.append(self.rt_self.svgText(_path_len_label_, node_to_xy[p[_vpi_]][0] + _my_txt_x_offset_, y + self.txt_h/2, self.txt_h, anchor=_my_anchor_))
                                     if len(pp) > 3:
                                         my_x_path_gap = (x1-x0)/(len(pp)-3)
                                         for k in range(1, len(pp)-1):
                                             _node_ = pp[k]
                                             _x_, _y_, _r_ = x0+(k-1)*my_x_path_gap, y, self.node_size_px
                                             _node_label_ = __renderNode__(_node_,_x_,_y_,_r_)
+                                            if self.draw_labels:
+                                                _cropped_ = self.rt_self.cropText(str(_node_label_), self.txt_h-2, _label_w_-self.y_ins)
+                                                svg_labels.append(self.rt_self.svgText(_cropped_, _x_-(self.txt_h-2)/2, _y_+self.txt_h, 
+                                                                                       self.txt_h-2, self.rt_self.co_mgr.getTVColor('context','text'), anchor='start', rotation=90))
+
                                     else:
                                         _node_ = pp[0]
                                         _x_, _y_, _r_ = x0+x_path_gap/2, y, self.node_size_px
@@ -337,5 +352,5 @@ class RTLinkNodeShortestMixin(object):
                 y_base += self.y_ins
 
             self.h = y_base
-            self.last_render = f'<svg x="0" y="0" width="{self.w}" height="{y_base}">' + ''.join(svg_edges) + ''.join(svg) + '</svg>'
+            self.last_render = f'<svg x="0" y="0" width="{self.w}" height="{y_base}">' + ''.join(svg_edges) + ''.join(svg_labels) + ''.join(svg) + '</svg>'
             return self.last_render
