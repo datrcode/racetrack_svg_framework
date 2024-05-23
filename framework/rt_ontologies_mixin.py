@@ -532,10 +532,12 @@ class RTOntology(object):
 
     # parse() - parse json into ontology via specification
     def parse(self, jlist):
+        spec_to_parse_count = {}
         if type(jlist) != list: jlist = [jlist]
         _dfs_ = []
         for j in jlist:
             for l in self.xform_spec_lines:
+                spec_orig = l
                 l, lu = literalize(l) # get rid of any literal values so it doesn't mess up the delimiters
                 if '#' in l: l = l[:l.index('#')].strip() # comments... hope the hash symbol doesn't occur anywhere in the template that isn't a comment
                 if len(l) == 0: continue
@@ -600,9 +602,18 @@ class RTOntology(object):
                                                     o_values, o_children, o_type, o_disp,
                                                     g_values, g_children, g_type, g_disp,
                                                     src_values, src_children)
-                    if _df_ is not None and len(_df_) > 0: _dfs_.append(_df_)
+                    if _df_ is not None:
+                        if len(_df_) > 0: 
+                            _dfs_.append(_df_)
+                        if spec_orig not in spec_to_parse_count: spec_to_parse_count[spec_orig] = []
+                        spec_to_parse_count[spec_orig].append(len(_df_))
                 else:
                     raise Exception(f'RTOntology.parse() - line "{l}" does not have three parts')
+
+        # print out the counts
+        for spec in spec_to_parse_count:
+            counts = spec_to_parse_count[spec]
+            print(f'{" ".join(spec.split())} - sum:{sum(counts)} | min:{min(counts)} | max:{max(counts)} | avg:{sum(counts) / len(counts):0.2f} | files:{len(counts)})')
 
         # put it all together at once
         parsed_len = 0
