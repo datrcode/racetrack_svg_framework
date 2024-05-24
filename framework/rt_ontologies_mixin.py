@@ -280,7 +280,10 @@ def fillJSONPathElements(to_fill, myjson):
     filled_list = list(filled.keys())
     longest_by_star_path  = filled_list[0]
     for i in range(1, len(filled_list)): 
-        if longest_by_star_path.count('[*]') < filled_list[i].count('[*]'): longest_by_star_path = filled_list[i]
+        if longest_by_star_path.count('[*]') <  filled_list[i].count('[*]'): longest_by_star_path = filled_list[i]
+        if longest_by_star_path.count('[*]') == filled_list[i].count('[*]') and \
+           longest_by_star_path.count('.')   <  filled_list[i].count('.'):   longest_by_star_path = filled_list[i]
+
     to_eval, indent, _index_, _loop_vars_, _loop_i_, _path_, _star_path_, vars_set = [], 0, 1, ['i','j','k','l'], 0, '', '$', 0
     while _index_ < len(longest_by_star_path):
         _rest_ = longest_by_star_path[_index_:]
@@ -330,8 +333,10 @@ def fillJSONPathElements(to_fill, myjson):
             break
 
     if to_eval[-1].endswith(':'): to_eval.append(' '*indent+'pass')
-    # print('\n'.join(to_eval))
+    #print('\n'.join(to_eval)) # debug
     exec('\n'.join(to_eval))
+    #print(f'{filled.keys()=}') # debug
+    #for x in filled: print(f'{x=}: {len(filled[x])=}') # debug
     return filled
 
 #
@@ -598,10 +603,10 @@ class RTOntology(object):
                     o_node = o
                     o_values, o_children = parseTree(fillLiterals(o_node, lu))
                     _df_ = self.__applyTemplate__(j, s_values, s_children, s_type, s_disp, 
-                                                    v_values, v_children, 
-                                                    o_values, o_children, o_type, o_disp,
-                                                    g_values, g_children, g_type, g_disp,
-                                                    src_values, src_children)
+                                                     v_values, v_children, 
+                                                     o_values, o_children, o_type, o_disp,
+                                                     g_values, g_children, g_type, g_disp,
+                                                     src_values, src_children)
                     if _df_ is not None:
                         if len(_df_) > 0: 
                             _dfs_.append(_df_)
