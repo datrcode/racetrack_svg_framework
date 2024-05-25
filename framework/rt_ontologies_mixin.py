@@ -152,17 +152,6 @@ def parseTree(x, node_value=None, node_children=None, node_name=None, lit_lu=Non
         node_children[node_name] = None # literals have no children
     return node_value, node_children
 
-# solveParseTree() - evaluate a parse tree
-def solveParseTree(values, children, filled, i, node=None):
-    if node is None: node = 'root'
-    if   children[node] is None and isJsonPath(values[node]):
-        return filled[values[node]][i]  # jsonpath filled in value from the json
-    elif children[node] is None:
-        return values[node]             # constant / literal
-    else:
-        parms = [solveParseTree(values, children, filled, i, x) for x in children[node]]
-        return eval(f'{values[node]}(*parms)')
-
 # upToStar() - upto the cth '[*]'
 def upToStar(x, c):
     i = 0
@@ -344,10 +333,12 @@ def fillJSONPathElements(to_fill, myjson):
 #
 class RTOntology(object):
     # __init__() - prepare transform spec for use and initial instance variables
-    def __init__(self, rt_self, xform_spec=None):
+    def __init__(self, rt_self, xform_spec=None, funcs=None):
         self.rt_self = rt_self
         if xform_spec is not None: self.xform_spec_lines = self.__substituteDefines__(xform_spec)
         else:                      self.xform_spec_lines = []
+        if funcs is not None:      self.funcs = funcs
+        else:                      self.funcs = {}
         self.df_triples = None
         self.uid_lu     = {}
         self.rev_uid_lu = {}
@@ -394,6 +385,19 @@ class RTOntology(object):
                 if len(_line_) > 0:
                     completes.append(_line_)
         return completes
+
+
+    # solveParseTree() - evaluate a parse tree
+    def solveParseTree(self, values, children, filled, i, node=None):
+        if node is None: node = 'root'
+        if   children[node] is None and isJsonPath(values[node]):
+            return filled[values[node]][i]  # jsonpath filled in value from the json
+        elif children[node] is None:
+            return values[node]             # constant / literal
+        else:
+            parms = [self.solveParseTree(values, children, filled, i, x) for x in children[node]]
+            return self.funcs[values[node]](*parms)
+
 
     # __applyTemplate__() - apply templated line in the transform to the json representation
     def __applyTemplate__(self, 
@@ -454,11 +458,11 @@ class RTOntology(object):
             if l is None: l = len(filled[v])
             if len(filled[v]) != l: raise Exception(f'RTOntology.__applyTemplate__() - unequal number of values for {v}')
         pre_df = {}
-        pre_df['sbj']    = [solveParseTree(s_values,   s_children,   filled, i) for i in range(l)]
-        pre_df['vrb']    = [solveParseTree(v_values,   v_children,   filled, i) for i in range(l)]
-        pre_df['obj']    = [solveParseTree(o_values,   o_children,   filled, i) for i in range(l)]
-        if g_values   is not None: pre_df['grp'] = [solveParseTree(g_values,   g_children,   filled, i) for i in range(l)]
-        if src_values is not None: pre_df['src'] = [solveParseTree(src_values, src_children, filled, i) for i in range(l)]
+        pre_df['sbj']    = [self.solveParseTree(s_values,   s_children,   filled, i) for i in range(l)]
+        pre_df['vrb']    = [self.solveParseTree(v_values,   v_children,   filled, i) for i in range(l)]
+        pre_df['obj']    = [self.solveParseTree(o_values,   o_children,   filled, i) for i in range(l)]
+        if g_values   is not None: pre_df['grp'] = [self.solveParseTree(g_values,   g_children,   filled, i) for i in range(l)]
+        if src_values is not None: pre_df['src'] = [self.solveParseTree(src_values, src_children, filled, i) for i in range(l)]
         t1 = time.time()
         self.time_lu['fill.collapse'] += (t1-t0)
 
@@ -528,11 +532,11 @@ class RTOntology(object):
     # self.uid_lu[<interger>] = (id-from-input, type-from-input, disposition-from-input)
     #
     def resolveUniqIdAndUpdateLookups(self, _id_, _type_, _disp_, _occurs_in_):
-        _uniq_key_ = str(_id_)+'|'+str(_type_)
-        if _disp_ == 'uniq' and _uniq_key_ in self.rev_uid_lu: return self.rev_uid_lu[_uniq_key_]
+        _uniq_key_ = str(_id_)+'|'+str(_type_)+'|'+str(_disp_)
+        if _uniq_key_ in self.rev_uid_lu: return self.rev_uid_lu[_uniq_key_]
         my_uid = 100_000 + len(self.uid_lu.keys())
         self.uid_lu[my_uid] = (_id_, _type_, _disp_)
-        if _disp_ == 'uniq':  self.rev_uid_lu[_uniq_key_] = my_uid
+        self.rev_uid_lu[_uniq_key_] = my_uid
         return my_uid
 
     # parse() - parse json into ontology via specification
