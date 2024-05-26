@@ -333,21 +333,33 @@ def fillJSONPathElements(to_fill, myjson):
 #
 class RTOntology(object):
     # __init__() - prepare transform spec for use and initial instance variables
-    def __init__(self, rt_self, xform_spec=None, funcs=None):
-        self.rt_self = rt_self
+    def __init__(self, rt_self, xform_spec=None, labeling_verbs=None, funcs=None):
+        self.rt_self        = rt_self
+        self.labeling_verbs = set() if labeling_verbs is None else labeling_verbs
         if xform_spec is not None: self.xform_spec_lines = self.__substituteDefines__(xform_spec)
         else:                      self.xform_spec_lines = []
         if funcs is not None:      self.funcs = funcs
         else:                      self.funcs = {}
+        # RDF triples
         self.df_triples = None
+        # Unique identifiers lookups and reverse
         self.uid_lu     = {}
         self.rev_uid_lu = {}
+        # Labeling information
+        self.labeling_uids = {}
+        self.labeling_sbjs = {}
+        # Validation errors
+        self.validation_errors = set()
+        # Performance measurements
         self.time_lu    = {}
         for x in ['fill.trace_json_paths', 'fill.collapse', 'fill.parse']: self.time_lu[x] = 0
 
     # to_files() - write state to several files
     def to_files(self, _base_name_):
+        # RDF triples
         self.df_triples.write_parquet(f'{_base_name_}.triples.parquet')
+
+        # uids information
         _lu_ = {'uid':[], 't0':[], 't1':[], 't2':[]}
         for _uid_ in self.uid_lu:
             _lu_['uid'].append(_uid_)
@@ -355,12 +367,30 @@ class RTOntology(object):
             _lu_['t1'].append(self.uid_lu[_uid_][1])
             _lu_['t2'].append(self.uid_lu[_uid_][2])
         pd.DataFrame(_lu_).to_parquet(f'{_base_name_}.uids.parquet')
+
+        # labeling information - two versions of this ... the internal UID version and then the original subject version
+        _lu_ = {'uid':[], 'label':[]}
+        for _uid_ in self.labeling_uids:
+            _lu_['uid'].append(_uid_)
+            _lu_['label'].append(self.labeling_uids[_uid_])
+        pd.DataFrame(_lu_).to_parquet(f'{_base_name_}.labels.parquet')
+
+        _lu_ = {'sbj':[], 'label':[]}
+        for _sbj_ in self.labeling_sbjs:
+            _lu_['sbj'].append(_sbj_)
+            _lu_['label'].append(self.labeling_sbjs[_sbj_])
+        pd.DataFrame(_lu_).to_parquet(f'{_base_name_}.sbjs.parquet')
+
+        # xform spec
         if len(self.xform_spec_lines) > 0:
             with open(f'{_base_name_}.xform_spec', 'wt') as f: f.write('\n'.join(self.xform_spec_lines))
 
     # fm_files() - read state from several files
     def fm_files(self, _base_name_):
+        # RDF triples
         self.df_triples = pl.read_parquet(f'{_base_name_}.triples.parquet')
+
+        # uids information
         _lu_ = pd.read_parquet(f'{_base_name_}.uids.parquet')
         uid_v, t0_v, t1_v, t2_v = _lu_['uid'].values, _lu_['t0'].values, _lu_['t1'].values, _lu_['t2'].values
         for i in range(len(uid_v)):
@@ -368,7 +398,19 @@ class RTOntology(object):
             if t2_v[i] == 'uniq':
                 _key_ = str(t0_v[i]) + '|' + str(t1_v[i])
                 self.rev_uid_lu[_key_] = uid_v[i]
-                
+
+        # labeling information
+        _lu_ = pd.read_parquet(f'{_base_name_}.labels.parquet')
+        uid_v, label_v = _lu_['uid'].values, _lu_['label'].values
+        for i in range(len(uid_v)):
+            self.labeling_uids[uid_v[i]] = label_v[i]
+            
+        _lu_ = pd.read_parquet(f'{_base_name_}.sbjs.parquet')
+        uid_v, label_v = _lu_['sbj'].values, _lu_['label'].values
+        for i in range(len(uid_v)):
+            self.labeling_sbjs[uid_v[i]] = label_v[i]
+
+
     # __substituteDefines__() - subsitute defines
     def __substituteDefines__(self, _txt_):
         lines     = _txt_.split('\n')
@@ -496,6 +538,23 @@ class RTOntology(object):
                 _obj_      = _obj_[0]
             _obj_uid_ = self.resolveUniqIdAndUpdateLookups(_obj_, _obj_type_, _obj_disp_, 'obj')            
             for_df['obj'].append(_obj_uid_), for_df['otype'].append(_obj_type_), for_df['odisp'].append(_obj_disp_)
+
+            #
+            # Labeling bookkeeping
+            #
+            if self.labeling_verbs is not None and _vrb_ in self.labeling_verbs:
+                _label_ = str(_obj_)
+                if _obj_disp_ == 'anon': # anonymous
+                    _label_ += f' [anon{_obj_uid_}]'
+                if _obj_disp_ == 'ambi': # ambiguous
+                    _label_ += f' [ambi{_obj_uid_}]'
+                if _sbj_uid_ in self.labeling_uids and self.labeling_uids[_sbj_uid_] != _label_:
+                    self.validation_errors.add(f'RTOntologies.__applyTemplate__() - label conflict for {_sbj_uid_} - {_label_} vs {self.labeling_uids[_sbj_uid_]}')
+                self.labeling_uids[_sbj_uid_] = _label_
+                if _obj_uid_ in self.labeling_sbjs and self.labeling_sbjs[_obj_uid_] != _label_:
+                    self.validation_errors.add(f'RTOntologies.__applyTemplate__() - label conflict for {_obj_uid_} - {_label_} vs {self.labeling_sbjs[_obj_uid_]}')
+                self.labeling_uids[_obj_uid_] = _label_
+                self.labeling_sbjs[_sbj_]     = _label_
 
             #
             # Grouping (Optional)
