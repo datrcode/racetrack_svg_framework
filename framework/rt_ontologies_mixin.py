@@ -250,7 +250,7 @@ def isLiteral(v):
     if v == '': return False
     for i in range(len(v)):
         if i == 0 and v[i] >= '0' and v[i] <= '9': return False # can't start with a number
-        if (v[i] >= 'a' and v[i] <= 'z') or (v[i] >= 'A' and v[i] <= 'Z') or (v[i] >= '0' and v[i] <= '9') or (v[i] == '_'): pass
+        if (v[i] >= 'a' and v[i] <= 'z') or (v[i] >= 'A' and v[i] <= 'Z') or (v[i] >= '0' and v[i] <= '9') or (v[i] == '_') or (v[i] == '-'): pass
         else: return False
     return True
 
@@ -259,6 +259,34 @@ def isLiteral(v):
 #
 def endsWithAny(_str_, _set_):
     return any(_str_.endswith(x) for x in _set_)
+
+#
+# jsonAbsolutePath() - return the json value at the given path
+# ... has to be an absolute path
+#
+def jsonAbsolutePath(_json_, _path_, _so_far_=None):
+    if len(_path_) == 0:
+        _to_eval_ = '_json_' + ''.join(_so_far_)
+        try:    return eval(_to_eval_)
+        except: return None
+    if _so_far_ is None: _so_far_ = []
+    if _path_.startswith('$'): _path_ = _path_[1:]
+    if _path_.startswith('.'): _path_ = _path_[1:]
+    if _path_.startswith('['):
+        _index_ = _path_[1:_path_.index(']')]
+        _so_far_.append(f'[{_index_}]')
+        return jsonAbsolutePath(_json_, _path_[_path_.index(']')+1:], _so_far_)
+    else:
+        if   '.' in _path_ and '[' in _path_:
+            dot_pos = _path_.index('.')
+            brk_pos = _path_.index('[')
+            if dot_pos < brk_pos: _var_ = _path_[:dot_pos]
+            else:                 _var_ = _path_[:brk_pos]
+        elif '.' in _path_: _var_ = _path_[:_path_.index('.')]
+        elif '[' in _path_: _var_ = _path_[:_path_.index('[')]
+        else:               _var_ = _path_
+        _so_far_.append(f'["{_var_}"]')
+        return jsonAbsolutePath(_json_, _path_[len(_var_):], _so_far_)
 
 #
 # fillJSONPathElements() - uses self modifying code to optimize the filling of the structures based on jsonpath specifications.
@@ -486,7 +514,7 @@ class RTOntology(object):
         # Fix up the filled with either constants or with static json paths
         for v in all_values:
             if isJsonPath(v) and '[*]' in v: continue
-            if    isJsonPath(v): to_fill = [parse(v).find(myjson)[0].value]
+            if    isJsonPath(v): to_fill = [jsonAbsolutePath(myjson, v)]
             else:                to_fill = [v]
             filled[v] = to_fill * fill_len
         t1 = time.time()

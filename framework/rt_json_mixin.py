@@ -44,7 +44,11 @@ class RTJSONMixin(object):
             self.fmto_abs   = {}
             self.absEOL     = {}
             self.starEOL    = {}
-            self.__recursiveParseJSON__('$', '$', _json_)
+            if type(_json_) == list:
+                for i in range(len(_json_)):
+                    self.__recursiveParseJSON__('$', '$', _json_[i])
+            else:
+                self.__recursiveParseJSON__('$', '$', _json_)
 
         #
         # __updateFMTO__()
@@ -93,7 +97,7 @@ class RTJSONMixin(object):
             elif type(_json_) == bool:
                 self.__updateFMTO__(_path_star_, _path_star_+'-<bool>', False), self.__updateFMTO__(_path_abs_, _path_abs_+f'-<bool> {_json_}', True)
                 self.__updateEOL__(_path_abs_, _path_star_, _json_)
-            elif type(_json_) is None:
+            elif _json_ is None:
                 self.__updateFMTO__(_path_star_, _path_star_+'-[NONE]', False), self.__updateFMTO__(_path_abs_, _path_abs_+'-[NONE]', True)
                 self.__updateEOL__(_path_abs_, _path_star_, _json_)
             else:
