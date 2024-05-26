@@ -264,7 +264,7 @@ def endsWithAny(_str_, _set_):
 # jsonAbsolutePath() - return the json value at the given path
 # ... has to be an absolute path
 #
-def jsonAbsolutePath(_json_, _path_, _so_far_=None):
+def jsonAbsolutePath(_path_, _json_, _so_far_=None):
     if len(_path_) == 0:
         _to_eval_ = '_json_' + ''.join(_so_far_)
         try:    return eval(_to_eval_)
@@ -275,7 +275,7 @@ def jsonAbsolutePath(_json_, _path_, _so_far_=None):
     if _path_.startswith('['):
         _index_ = _path_[1:_path_.index(']')]
         _so_far_.append(f'[{_index_}]')
-        return jsonAbsolutePath(_json_, _path_[_path_.index(']')+1:], _so_far_)
+        return jsonAbsolutePath(_path_[_path_.index(']')+1:], _json_, _so_far_)
     else:
         if   '.' in _path_ and '[' in _path_:
             dot_pos = _path_.index('.')
@@ -286,7 +286,7 @@ def jsonAbsolutePath(_json_, _path_, _so_far_=None):
         elif '[' in _path_: _var_ = _path_[:_path_.index('[')]
         else:               _var_ = _path_
         _so_far_.append(f'["{_var_}"]')
-        return jsonAbsolutePath(_json_, _path_[len(_var_):], _so_far_)
+        return jsonAbsolutePath(_path_[len(_var_):], _json_, _so_far_)
 
 #
 # fillJSONPathElements() - uses self modifying code to optimize the filling of the structures based on jsonpath specifications.
@@ -319,7 +319,6 @@ def fillJSONPathElements(to_fill, myjson):
                 if _filled_rest_.count('[*]') == 0 and '.' not in _filled_rest_ and len(_filled_rest_) > 0:
                     to_eval.append(' '*indent+f'_var{i}_ = myjson{_path_}' + _filled_rest_)
                     vars_set += 1
-
         elif _rest_[0] == '.':
             _star_path_ += '.'
             for i in range(len(filled_list)):
@@ -339,8 +338,22 @@ def fillJSONPathElements(to_fill, myjson):
             _path_      += f'["{lit}"]'
             _star_path_ += f'{lit}'
             _index_, indent = _index_+l, indent+4
+        elif _rest_[0] == '[':
+            _json_index_ = _rest_[1:_rest_.index(']')]
+            to_eval.append(' '*indent+f'if len(myjson{_path_}) > {_json_index_}:')
+            _path_      += f'[{_json_index_}]'
+            _star_path_ += f'[{_json_index_}]'
+            _index_, indent = _index_ + _rest_.index(']')+1, indent + 4
+            if _index_ == len(longest_by_star_path):
+                for i in range(len(filled_list)):
+                    if filled_list[i] == _star_path_:
+                        to_eval.append(' '*indent+f'_var{i}_ = myjson{_path_}')
+                        vars_set += 1
         else:
             print('Exception for the following script:\n')
+            print(f'_path_      = "{_path_}"')
+            print(f'_star_path_ = "{_star_path_}"')
+            print(f'_rest_      = "{_rest_}"')
             print('\n'.join(to_eval)) 
             raise Exception(f'RTOntology.fillJSONPathElements() - parse error at {i}')
 
@@ -514,7 +527,7 @@ class RTOntology(object):
         # Fix up the filled with either constants or with static json paths
         for v in all_values:
             if isJsonPath(v) and '[*]' in v: continue
-            if    isJsonPath(v): to_fill = [jsonAbsolutePath(myjson, v)]
+            if    isJsonPath(v): to_fill = [jsonAbsolutePath(v, myjson)]
             else:                to_fill = [v]
             filled[v] = to_fill * fill_len
         t1 = time.time()
