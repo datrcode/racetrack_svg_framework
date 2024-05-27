@@ -834,8 +834,8 @@ class RTChordDiagramMixin(object):
                 rteps = []
                 for entity in self.node_labels:
                     if self.node_labels[entity] == entity_or_label:
-                        rteps = self.__entityPositions__(entity)
-                        for rtep in rteps:
+                        _results_ = self.__entityPositions__(entity)
+                        for rtep in _results_:
                             rtep.entity = entity_or_label
                             rteps.append(rtep)
                 return rteps

@@ -1921,7 +1921,7 @@ class RTLinkNodeMixin(object):
         # entityPositions() - return information about the entity geometry for rendering
         # - Empty list means either not implemented... or entity not in view...
         # - return the positions of the entity ... rendering had to have happened first
-        def entityPositions(self, entity):
+        def __entityPositions__(self, entity):
              entity_str = str(entity)
              if entity_str in self.node_coords:
                  xy   = self.node_coords[entity_str]
@@ -1935,3 +1935,17 @@ class RTLinkNodeMixin(object):
                                          self.widget_id)
                  return [rtep]
              return []
+        
+        def entityPositions(self, entity_or_label):
+            if entity_or_label in self.node_coords:
+                return self.__entityPositions__(entity_or_label)
+            elif len(self.node_labels) > 0:
+                rteps = []
+                for entity in self.node_labels:
+                    if self.node_labels[entity] == entity_or_label:
+                        _results_ = self.__entityPositions__(entity)
+                        for rtep in _results_:
+                            rtep.entity = entity_or_label
+                            rteps.append(rtep)
+                return rteps
+            return []

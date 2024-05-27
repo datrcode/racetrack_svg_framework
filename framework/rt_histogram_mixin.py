@@ -338,7 +338,6 @@ class RTHistogramMixin(object):
                 # Render the bar ... next section does the color... but this makes sure it's at least filled in...
                 svg += f'<rect id="{element_id}" width="{px}" height="{self.bar_h}" x="0" y="{y}" fill="{color}" stroke="{color}"/>'
                 self.entity_pos[bin_text] = (y, px, element_id) # for entity positions
-                if bin_text in self.labels: self.entity_pos[self.labels[bin_text]] = (y, px, element_id) # for entity positions
                 if self.track_state: self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = k_df
 
                 # 'Color By' options
@@ -429,7 +428,7 @@ class RTHistogramMixin(object):
         # (originally developed in the RTChordDiagram component... probably overkill here //2024-03-31)
         #
         # - return the positions of the entity ... rendering had to have happened first
-        def entityPositions(self, entity):
+        def __entityPositions__(self, entity):
             _results_ = []
             if entity in self.entity_pos:
                 _tuple_      = self.entity_pos[entity]
@@ -440,6 +439,20 @@ class RTHistogramMixin(object):
                 _ep_.addAttachmentPointVec((0.0,y,-1.0,0.0))
                 _results_.append(_ep_)
             return _results_
+        
+        def entityPositions(self, entity_or_label):
+            if entity_or_label in self.entity_pos:
+                return self.__entityPositions__(entity_or_label)
+            elif len(self.labels) > 0:
+                rteps = []
+                for entity in self.labels:
+                    if self.labels[entity] == entity_or_label:
+                        _results_ = self.__entityPositions__(entity)
+                        for rtep in _results_:
+                            rtep.entity = entity_or_label
+                            rteps.append(rtep)
+                return rteps
+            return []
 
         #
         # smallMultipleFeatureVector()
