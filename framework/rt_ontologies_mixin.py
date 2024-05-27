@@ -641,6 +641,7 @@ class RTOntology(object):
 
     # parse() - parse json into ontology via specification
     def parse(self, jlist):
+        _dispositions_ = {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont', 'date', 'dttm'}
         spec_to_parse_count = {}
         if type(jlist) != list: jlist = [jlist]
         _dfs_ = []
@@ -664,7 +665,7 @@ class RTOntology(object):
                     grp = l[l.index('@@@')+3:]
                     l   = l[:l.index('@@@')].strip()
                     g_uniq = None
-                    if endsWithAny(grp, {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont'}) and '|' in grp:
+                    if endsWithAny(grp, _dispositions_) and '|' in grp:
                         g_disp = grp[grp.rindex('|')+1:].strip()
                         grp    = grp[:grp.rindex('|')]
                     else: g_disp = 'ambi'
@@ -681,7 +682,7 @@ class RTOntology(object):
 
                     # Subject
                     s_uniq = None
-                    if endsWithAny(s, {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont'}) and '|' in s:
+                    if endsWithAny(s, _dispositions_) and '|' in s:
                         s_disp = s[s.rindex('|')+1:].strip()
                         s      = s[:s.rindex('|')]
                     else: s_disp = 'ambi'
@@ -697,7 +698,7 @@ class RTOntology(object):
 
                     # Object
                     o_uniq = None
-                    if endsWithAny(o, {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont'}) and '|' in o:
+                    if endsWithAny(o, _dispositions_) and '|' in o:
                         o_disp = o[o.rindex('|')+1:].strip()
                         o      = o[:o.rindex('|')]
                     else: o_disp = 'ambi'
