@@ -83,7 +83,8 @@ class RTHistogramMixin(object):
                   just_calc_max      = False,  # forces return of the maximum for this render config...
                                                # ... which will then be used for the global max across bar charts...
                   draw_distribution  = False,  # draw the distribution
-                  # -------------------------- # rendering specific params     
+                  # -------------------------- # rendering specific params
+                  labels             = None,   # labels to be used in place of the dataframe cell values     
                   track_state        = False,  # track state for interactive filtering             
                   x_view             = 0,      # x offset for the view
                   y_view             = 0,      # y offset for the view
@@ -134,6 +135,8 @@ class RTHistogramMixin(object):
             self.global_max         = kwargs['global_max']
             self.global_min         = kwargs['global_min']
             self.draw_distribution  = kwargs['draw_distribution']
+            self.labels             = kwargs['labels']
+            if self.labels is None: self.labels = {}
             self.track_state        = kwargs['track_state']
             self.x_view             = kwargs['x_view']
             self.y_view             = kwargs['y_view']
@@ -245,8 +248,7 @@ class RTHistogramMixin(object):
         #
         def renderSVG(self, just_calc_max=False):
             self.entity_pos = {}
-            if self.track_state:
-                self.geom_to_df = {}
+            if self.track_state: self.geom_to_df = {}
 
             # Leave space for a label
             max_bar_w = self.w - self.bar_h
@@ -256,12 +258,9 @@ class RTHistogramMixin(object):
                 self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
 
             # Determine the bin order (for the bars)
-            if self.rt_self.isPandas(self.df):
-                order, gb = self.__binOrder_pandas__()
-            elif self.rt_self.isPolars(self.df):
-                order, gb = self.__binOrder_polars__()
-            else:
-                raise Exception('RTHistogram.renderSVG() - only pandas and polars dataframes supported')
+            if   self.rt_self.isPandas(self.df): order, gb = self.__binOrder_pandas__()
+            elif self.rt_self.isPolars(self.df): order, gb = self.__binOrder_polars__()
+            else: raise Exception('RTHistogram.renderSVG() - only pandas and polars dataframes supported')
 
             # If the height/width are less than the minimums, turn off labeling... and make the min_bar_w = 1
             # ... for small multiples
@@ -285,29 +284,21 @@ class RTHistogramMixin(object):
 
             # Determine the max bin size... make sure it isn't zero
             if self.global_max is None:
-                if   self.rt_self.isPandas(self.df):
-                    max_group_by = order.iloc[0]
-                elif self.rt_self.isPolars(self.df):
-                    max_group_by = order['__count__'][0]
-                else:
-                    raise Exception('RTHistogram.renderSVG() - only pandas or polars dataframes supported [2]')
+                if   self.rt_self.isPandas(self.df): max_group_by = order.iloc[0]
+                elif self.rt_self.isPolars(self.df): max_group_by = order['__count__'][0]
+                else: raise Exception('RTHistogram.renderSVG() - only pandas or polars dataframes supported [2]')
                 
-                if just_calc_max:
-                    return 0,max_group_by
-                if max_group_by == 0:
-                    max_group_by = 1
-            else:
-                max_group_by = self.global_max
+                if just_calc_max:     return 0,max_group_by
+                if max_group_by == 0: max_group_by = 1
+            else: max_group_by = self.global_max
             
             #
             # Render each bin ... only do the visible ones...
             # ... make sure the first line isn't more than the number of lines...
             #
             i = self.first_line_i
-            if i >= len(order):
-                self.first_line_i = i = len(order) - 1
-            if i <  0:
-                self.first_line_i = i = 0
+            if i >= len(order): self.first_line_i = i = len(order) - 1
+            if i <  0:          self.first_line_i = i = 0
             y = 0
             while y < (self.h - 1.9*self.bar_h) and i < len(order):
                 # Bin label... used for the id... and used for the labeling (if draw_labels is true)
@@ -319,16 +310,14 @@ class RTHistogramMixin(object):
                         bin_text = ' | '.join([str(x) for x in order.index[i]])
 
                     _tuple_ = order.index[i]
-                    if type(_tuple_) != tuple:
-                        _tuple_ = (_tuple_, )
+                    if type(_tuple_) != tuple: _tuple_ = (_tuple_, )
                     k_df = gb.get_group(_tuple_)
 
                     # k_df = gb.get_group(order.index[i]) # 2024-02-07 -- changed due to pandas warning...
                 elif self.rt_self.isPolars(self.df):
                     px = max_bar_w * order['__count__'][i] / max_group_by
                     _list_ = []
-                    for _bin_ in self.bin_by:
-                        _list_.append(order[_bin_][i])
+                    for _bin_ in self.bin_by: _list_.append(order[_bin_][i])
                     _tuple_ = tuple(_list_)
                     bin_text = ' | '.join([str(x) for x in _tuple_])
                     k_df = gb[_tuple_]
@@ -349,8 +338,8 @@ class RTHistogramMixin(object):
                 # Render the bar ... next section does the color... but this makes sure it's at least filled in...
                 svg += f'<rect id="{element_id}" width="{px}" height="{self.bar_h}" x="0" y="{y}" fill="{color}" stroke="{color}"/>'
                 self.entity_pos[bin_text] = (y, px, element_id) # for entity positions
-                if self.track_state:
-                    self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = k_df
+                if bin_text in self.labels: self.entity_pos[self.labels[bin_text]] = (y, px, element_id) # for entity positions
+                if self.track_state: self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = k_df
 
                 # 'Color By' options
                 if self.color_by is not None:
@@ -358,7 +347,10 @@ class RTHistogramMixin(object):
 
                 # Render the label
                 if self.draw_labels:
-                    cropped_bin_text = self.rt_self.cropText(str(bin_text), self.bar_h-2, max_bar_w)
+                    _label_ = str(bin_text)
+                    if bin_text      is self.labels: _label_ = self.labels[bin_text]
+                    if str(bin_text) in self.labels: _label_ = self.labels[str(bin_text)]
+                    cropped_bin_text = self.rt_self.cropText(_label_, self.bar_h-2, max_bar_w)
                     defer_labels.append(self.rt_self.svgText(cropped_bin_text, 2, y+self.bar_h-1, self.bar_h-2))
                 
                 i += 1
@@ -375,8 +367,7 @@ class RTHistogramMixin(object):
             # Draws the maximum amount of the histogram
             if self.draw_labels:
                 # Draw deferred labels
-                for _label in defer_labels:
-                    svg += _label
+                for _label in defer_labels: svg += _label
 
                 # Draw axes
                 axis_co = self.rt_self.co_mgr.getTVColor('axis', 'default')
