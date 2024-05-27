@@ -514,6 +514,7 @@ class RTChordDiagramMixin(object):
                      node_color                 = None,          # none means color by node name, 'vary' by color_by, or specific color "#xxxxxx"
                      node_h                     = 10,            # height of node from circle edge
                      node_gap                   = 5,             # node gap in pixels (gap between the arcs)
+                     node_labels                = None,          # node labels (substitutes for dataframe node values)
                      order                      = None,          # override calculated ordering... "None" in the list means user-specified gaps
                      parent_lu                  = None,          # parent lookup (if filled in & order is None, it will be calculated)
                      label_only                 = set(),         # label only set
@@ -602,6 +603,8 @@ class RTChordDiagramMixin(object):
             self.node_color             = kwargs['node_color']                # done! (maybe)
             self.node_h                 = kwargs['node_h']                    # done!
             self.node_gap               = kwargs['node_gap']                  # done!
+            self.node_labels            = kwargs['node_labels']
+            if self.node_labels is None: self.node_labels = {}
             self.order                  = kwargs['order']                     # done!
             self.parent_lu              = kwargs['parent_lu']                 # done!
             self.label_only             = kwargs['label_only']                # done!
@@ -672,12 +675,9 @@ class RTChordDiagramMixin(object):
             self.time_lu['concat_columns'] = time.time() - _ts_
 
             # Get rid of self references
-            if   self.rt_self.isPandas(self.df):
-                self.df = self.df[self.df[_fm_] != self.df[_to_]]
-            elif self.rt_self.isPolars(self.df):
-                self.df = self.df.filter(pl.col(self.fm).cast(pl.Utf8) != pl.col(self.to).cast(pl.Utf8))
-            else:
-                raise Exception('RTChordDiagram() - only pandas and polars supported [3]')
+            if   self.rt_self.isPandas(self.df): self.df = self.df[self.df[_fm_] != self.df[_to_]]
+            elif self.rt_self.isPolars(self.df): self.df = self.df.filter(pl.col(self.fm).cast(pl.Utf8) != pl.col(self.to).cast(pl.Utf8))
+            else: raise Exception('RTChordDiagram() - only pandas and polars supported [3]')
 
             # Check the count_by column
             if self.count_by_set == False:
@@ -782,7 +782,7 @@ class RTChordDiagramMixin(object):
                     
             return new_order
 
-        # entityPositions() - return information about the entity geometry for rendering
+        # __entityPositions__() - return information about the entity geometry for rendering
         # - return the positions of the entity ... rendering had to have happened first
         # - list with the following tuples:
         #   (entity, xy_point_to, xy_attachment, svg_entity_id, svg_markup)
@@ -791,7 +791,7 @@ class RTChordDiagramMixin(object):
         #    ... where xv,yv is the unit vector for exiting from this entity (zeros indicate any direction works)
         #    ... svg_entity_id = the svg entity id w/in the current markup
         #    ... svg_markup    = the (unadorned) svg markup for the entity (which may differ from the svg_entity_id)
-        def entityPositions(self, entity):
+        def __entityPositions__(self, entity):
             if entity in self.node_to_arc or entity in self.hierarchical_to_arc:
                 to_rad = lambda a: a * pi/180
                 if entity in self.node_to_arc:
@@ -824,6 +824,22 @@ class RTChordDiagramMixin(object):
                 return [rtep]
             else:
                 return []
+
+        # entityPositions() - return information about the entity geometry for rendering
+        # - return the positions of the entity ... rendering had to have happened first
+        def entityPositions(self, entity_or_label):
+            if entity_or_label in self.node_to_arc or entity_or_label in self.hierarchical_to_arc:
+                return self.__entityPositions__(entity_or_label)
+            elif len(self.node_labels) > 0:
+                rteps = []
+                for entity in self.node_labels:
+                    if self.node_labels[entity] == entity_or_label:
+                        rteps = self.__entityPositions__(entity)
+                        for rtep in rteps:
+                            rtep.entity = entity_or_label
+                            rteps.append(rtep)
+                return rteps
+            return []
 
         #
         # applyViewConfiguration()
@@ -1957,29 +1973,31 @@ class RTChordDiagramMixin(object):
             # Draw the labels
             if self.draw_labels:
                 for node in self.node_to_arc.keys():
-                    if len(self.label_only) == 0 or node in self.label_only:
+                    _label_ = self.node_labels[node] if node in self.node_labels else node
+                    if len(self.label_only) == 0 or node in self.label_only or _label_ in self.label_only:
                         if self.label_style == 'circular':
                             _id_ = self.rt_self.encSVGID(node)
                             txt_offset = -3 - self.txt_offset
                             svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" dy="{txt_offset}" >''')
-                            svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{node}</textPath></text>''')
+                            svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{_label_}</textPath></text>''')
                         elif self.label_style == 'radial':                            
                             angle_avg  = (self.node_to_arc[node][0] + self.node_to_arc[node][1])/2.0
                             txt_offset = self.txt_offset + self.txt_h/3
                             x_text    = self.cx + (self.r+txt_offset) * cos(pi*angle_avg/180.0)
                             y_text    = self.cy + (self.r+txt_offset) * sin(pi*angle_avg/180.0)
                             if angle_avg >= 270.0 or angle_avg < 90.0:
-                                svg.append(self.rt_self.svgText(node, x_text, y_text, self.txt_h, anchor = 'start', rotation=angle_avg))
+                                svg.append(self.rt_self.svgText(_label_, x_text, y_text, self.txt_h, anchor = 'start', rotation=angle_avg))
                             else:
-                                svg.append(self.rt_self.svgText(node, x_text, y_text, self.txt_h, anchor = 'end',   rotation=angle_avg-180.0))
+                                svg.append(self.rt_self.svgText(_label_, x_text, y_text, self.txt_h, anchor = 'end',   rotation=angle_avg-180.0))
                         else:
                             raise Exception(f'RTChordDiagram.renderSVG() -- unknown label_style "{self.label_style}"')
                 if self.label_style == 'circular' and len(self.hierarchical_labels) > 0:
                     for node in self.hierarchical_labels:
+                        _label_ = self.node_labels[node] if node in self.node_labels else node
                         _id_ = self.rt_self.encSVGID(node)
                         txt_offset = -3 - self.txt_offset
                         svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" dy="{txt_offset}" >''')
-                        svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{node}</textPath></text>''')
+                        svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{_label_}</textPath></text>''')
 
             # Draw the border
             if self.draw_border:
