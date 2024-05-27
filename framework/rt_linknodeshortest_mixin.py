@@ -156,23 +156,19 @@ class RTLinkNodeShortestMixin(object):
 
         #  __updateEntityPositions__()
         def __updateEntityPositions__(self, _node_, _node_label_, _x_, _y_, _r_):
-            if _node_label_ is None: _node_label_ = str(_node_)
-            else:                    _node_label_ = str(_node_label_)
+            _node_label_ = str(_node_)
             if _node_ not in self.entity_positions: self.entity_positions[_node_] = []
             _instance_no_ = len(self.entity_positions[_node_])
             _svg_id_ = self.rt_self.encSVGID(self.widget_id + '-' + str(_node_) + '-' + str(_instance_no_))
             _tuple_ = (_svg_id_, _node_, _node_label_, _x_, _y_, _r_)
             self.entity_positions[_node_].append(_tuple_)
-            if _node_label_ != _node_:
-                if _node_label_ not in self.entity_positions: self.entity_positions[_node_label_] = []
-                self.entity_positions[_node_label_].append(_tuple_)
             return _svg_id_
 
         #
         # entityPositions() - return information about the entity geometry for rendering
         # - Empty list means either not implemented... or entity not in view...
         # - return the positions of the entity ... rendering had to have happened first
-        def entityPositions(self, entity):
+        def __entityPositions__(self, entity):
             results = []
             if entity in self.entity_positions:
                 for _tuple_ in self.entity_positions[entity]:
@@ -186,6 +182,22 @@ class RTLinkNodeShortestMixin(object):
                                             self.widget_id)
                     results.append(rtep)
             return results
+
+        def entityPositions(self, entity_or_label):
+            if entity_or_label in self.entity_positions:
+                return self.__entityPositions__(entity_or_label)
+            elif str(entity_or_label) in self.entity_positions:
+                return self.__entityPositions__(str(entity_or_label))
+            elif len(self.node_labels) > 0:
+                rteps = []
+                for entity in self.node_labels:
+                    if self.node_labels[entity] == entity_or_label:
+                        _results_ = self.__entityPositions__(entity)
+                        for rtep in _results_:
+                            rtep.entity = entity_or_label
+                            rteps.append(rtep)
+                return rteps
+            return []
 
         # _repr_svg_(self):
         def _repr_svg_(self):
