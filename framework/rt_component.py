@@ -86,7 +86,7 @@ class RTComponent(object):
         #
         # overlappingEntities() - Determine which entity geometrics overlap with a specific region
         # - to_intersect should be a shapely shape (in screen coordinates... assuming no viewbox is active)
-        # - return value is a list of entities (possibly an empty list) or None
+        # - return value is a set of entities (possibly an empty set) or None
         # - it's up to the svg instance to determine what's in vs what's out -- may not be polygon exact
         #
         def overlappingEntities(self, to_intersect):

@@ -481,6 +481,8 @@ class RTLinkNodeMixin(object):
                  max_node_size     = 4,        # for node vary...
                  min_node_size     = 0.3,      # for node vary...
 
+                 selected_entities = None,     # list of selected node names
+
                  link_color        = None,     # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
                  link_size         = 'small',  # 'nil', 'small', 'medium', 'large', 'vary', 'hidden' / None
                  link_opacity      = '1.0',    # link opacity
@@ -781,6 +783,8 @@ class RTLinkNodeMixin(object):
             self.label_only                 = kwargs['label_only']
             self.max_node_size              = kwargs['max_node_size']
             self.min_node_size              = kwargs['min_node_size']
+            self.selected_entities          = kwargs['selected_entities']
+            if self.selected_entities is None: self.selected_entities = set()
             self.link_color                 = kwargs['link_color']
             self.link_size                  = kwargs['link_size']
             self.link_opacity               = kwargs['link_opacity']
@@ -1475,7 +1479,7 @@ class RTLinkNodeMixin(object):
         # __renderNodes__() - render the nodes
         #
         def __renderNodes__(self):
-            svg = []
+            svg, selected_svg = [], []
             node_already_rendered = set()
 
             # Small multiple structures
@@ -1532,8 +1536,7 @@ class RTLinkNodeMixin(object):
                                 node_str = self.rt_self.nodeStringAndFillPos(k, self.pos)
 
                                 # Prevents duplicate renderings
-                                if node_str in node_already_rendered:
-                                    continue
+                                if node_str in node_already_rendered: continue
                                 node_already_rendered.add(node_str)
                                 
                                 # Transform the coordinates
@@ -1649,7 +1652,9 @@ class RTLinkNodeMixin(object):
                                         svg_markup = self.rt_self.renderShape(_shape, x, y, _sz, _co, _co_border, self.node_opacity, self.nodeSVGID(k))
                                         svg.append(svg_markup)
                                         self.node_to_svg_markup[str(k)] = self.rt_self.renderShape(_shape, x, y, _sz) # unadorned
-
+                                        if self.selected_entities is not None and node_str in self.selected_entities:
+                                            selected_svg.append(self.node_to_svg_markup[str(k)])
+                                        
                                     # Track state
                                     if self.track_state:
                                         _poly = Polygon([[x-_sz,y-_sz],
@@ -1732,7 +1737,7 @@ class RTLinkNodeMixin(object):
                                 x, y = node_to_xy[k]
                                 svg_text = self.rt_self.svgText(node_str, x, y+self.txt_h/2, self.txt_h, anchor='middle')
                                 self.defer_render.append(svg_text)
-            return ''.join(svg)
+            return ''.join(svg) + '<g stroke="#ff0000">' + ''.join(selected_svg) + '</g>'
 
         #
         # __renderBackgroundShapes__() - render background shapes
@@ -1763,8 +1768,7 @@ class RTLinkNodeMixin(object):
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
-            if self.last_render is None:
-                self.renderSVG()
+            if self.last_render is None: self.renderSVG()
             return self.last_render
         
         #
@@ -1838,8 +1842,7 @@ class RTLinkNodeMixin(object):
         # renderSVG() - render as SVG
         #
         def renderSVG(self, just_calc_max=False):
-            if self.track_state:
-                self.geom_to_df = {}
+            if self.track_state: self.geom_to_df = {}
             self.node_to_svg_markup = {}
 
             # Determine geometry
@@ -1909,13 +1912,25 @@ class RTLinkNodeMixin(object):
         # - return value is a list of entities (possibly an empty list) or None
         #
         def overlappingEntities(self, to_intersect):
-            node_strs = []
+            node_strs = set()
             for node_str in self.node_coords:
                 xy = self.node_coords[node_str]
                 if to_intersect.contains(Point(xy[0],xy[1])):
-                    node_strs.append(node_str)
+                    node_strs.add(node_str)
             return node_strs
 
+        #
+        # selectedEntities() - return the set of selected entities
+        #
+        def selectedEntities(self):
+            return self.selected_entities
+
+        #
+        # selectEntities() - set the set of selected entities
+        #
+        def selectEntities(self, selection):
+            self.selected_entities = selection
+            self.last_render = None # invalidate the render
 
         #
         # entityPositions() - return information about the entity geometry for rendering
