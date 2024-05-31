@@ -213,6 +213,24 @@ class RTGraphLayoutsMixin(object):
         top_ten = _degrees[:int(len(_degrees)*0.1)]
         return top_ten
 
+
+    #
+    # sunflowerSeedArrangement() - arrange a list of nodes in a sunflower arrangement
+    #
+    def sunflowerSeedArrangement(self, nodes, pos=None, xy=None, r_max=1.0):
+        if type(nodes) is not list: nodes = list(nodes)
+        if xy is None: xy = (0,0)
+        n = len(nodes)
+        if pos is None:  pos = {}
+        r_max_formula = np.sqrt(n)
+        _golden_ratio_ = (1 + np.sqrt(5)) / 2
+        for i in range(n):
+            _angle_  = i * 2 * np.pi / _golden_ratio_
+            _radius_ = r_max * np.sqrt(i) / r_max_formula
+            pos[nodes[i]] = (xy[0] + _radius_ * np.cos(_angle_), 
+                             xy[1] + _radius_ * np.sin(_angle_))
+        return pos
+
     #
     # circularLayout() - from the java version
     #
@@ -226,6 +244,7 @@ class RTGraphLayoutsMixin(object):
             center_angle[_node] = _angle_
             pos[_node] = (_radius_*cos(_angle_),_radius_*sin(_angle_))
 
+        outer_rings   = {}
         _plus_        = _radius_ * 0.2
         _radius_plus_ = _radius_ + _plus_ + _plus_
         for _node in g.nodes():
@@ -240,11 +259,8 @@ class RTGraphLayoutsMixin(object):
                     pos[_node] = (0,0)
                 elif len(attachments) == 1:
                     center      = attachments.pop()
-                    _angle_     = center_angle[center]
-                    _subangle_  = 2*pi*random.random()
-                    _subradius_ = _plus_ * random.random()
-                    pos[_node] = (_radius_plus_*cos(_angle_) + _subradius_*cos(_subangle_),
-                                  _radius_plus_*sin(_angle_) + _subradius_*sin(_subangle_))
+                    if center not in outer_rings: outer_rings[center] = set()
+                    outer_rings[center].add(_node)
                 else:
                     x_sum, y_sum = 0, 0
                     for xy in attachments_coords:
@@ -254,6 +270,12 @@ class RTGraphLayoutsMixin(object):
                     _subradius_ = _plus_ * random.random()
                     pos[_node] = (x_sum/len(attachments_coords) + _subradius_*cos(_subangle_), 
                                   y_sum/len(attachments_coords) + _subradius_*sin(_subangle_))
+
+        # Layout the outer rings using a sunflower arrangement
+        for center in outer_rings.keys():
+            _angle_  = center_angle[center]
+            xy       = (_radius_plus_*cos(_angle_), _radius_plus_*sin(_angle_))
+            pos      = self.sunflowerSeedArrangement(outer_rings[center], pos, xy, _plus_)
 
         return pos
     
