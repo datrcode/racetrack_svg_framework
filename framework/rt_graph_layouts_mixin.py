@@ -200,6 +200,62 @@ class RTGraphLayoutsMixin(object):
             new_pos[x] = pos[x]
 
         return new_pos
+
+    #
+    # __highDegreeNodes__() - returns higher degree nodes.. could've done better...
+    #
+    def __highDegreeNodes__(self, _graph):
+        _nodes   = _graph.nodes()
+        _degrees = []
+        for _node in _nodes: _degrees.append(_graph.degree(_node))
+        _degrees.sort()
+        _degrees.reverse()
+        top_ten = _degrees[:int(len(_degrees)*0.1)]
+        return top_ten
+
+    #
+    # circularLayout() - from the java version
+    #
+    def circularLayout(self, g, selection=None, _radius_=100):
+        if selection is None: selection = self.__highDegreeNodes__(g)
+
+        pos, center_angle = {}, {}
+        for i in range(len(selection)):
+            _node = selection[i]
+            _angle_ = i*2*pi/len(selection)
+            center_angle[_node] = _angle_
+            pos[_node] = (_radius_*cos(_angle_),_radius_*sin(_angle_))
+
+        _plus_        = _radius_ * 0.2
+        _radius_plus_ = _radius_ + _plus_ + _plus_
+        for _node in g.nodes():
+            if _node not in pos.keys():
+                attachments        = set()
+                attachments_coords = set()
+                for _center in selection:
+                    if _center in g[_node]:
+                        attachments.add(_center)
+                        attachments_coords.add(pos[_center])
+                if   len(attachments) == 0:
+                    pos[_node] = (0,0)
+                elif len(attachments) == 1:
+                    center      = attachments.pop()
+                    _angle_     = center_angle[center]
+                    _subangle_  = 2*pi*random.random()
+                    _subradius_ = _plus_ * random.random()
+                    pos[_node] = (_radius_plus_*cos(_angle_) + _subradius_*cos(_subangle_),
+                                  _radius_plus_*sin(_angle_) + _subradius_*sin(_subangle_))
+                else:
+                    x_sum, y_sum = 0, 0
+                    for xy in attachments_coords:
+                        x_sum += xy[0]
+                        y_sum += xy[1]
+                    _subangle_  = 2*pi*random.random()
+                    _subradius_ = _plus_ * random.random()
+                    pos[_node] = (x_sum/len(attachments_coords) + _subradius_*cos(_subangle_), 
+                                  y_sum/len(attachments_coords) + _subradius_*sin(_subangle_))
+
+        return pos
     
     #
     # Count the nodes in a subtree of a tree
