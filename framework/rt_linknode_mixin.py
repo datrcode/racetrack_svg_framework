@@ -1737,7 +1737,7 @@ class RTLinkNodeMixin(object):
                                 x, y = node_to_xy[k]
                                 svg_text = self.rt_self.svgText(node_str, x, y+self.txt_h/2, self.txt_h, anchor='middle')
                                 self.defer_render.append(svg_text)
-            return ''.join(svg) + '<g stroke="#ff0000">' + ''.join(selected_svg) + '</g>'
+            return ''.join(svg) + '<g stroke="#ff0000" stroke-width="2.5" fill="none">' + ''.join(selected_svg) + '</g>'
 
         #
         # __renderBackgroundShapes__() - render background shapes
@@ -1918,6 +1918,50 @@ class RTLinkNodeMixin(object):
                 if to_intersect.contains(Point(xy[0],xy[1])):
                     node_strs.add(node_str)
             return node_strs
+
+        #
+        # __createPathDescriptionOfSelectedEntities__() - create an svg path description of the selected entities
+        # - for prototyping the graph interact panel application
+        #
+        def __createPathDescriptionOfSelectedEntities__(self, my_selection=None):
+            if my_selection is None: my_selection = self.selected_entities
+            if my_selection is None or len(my_selection) == 0: return ''
+            d = []
+            for node_str in my_selection:
+                if node_str in self.node_coords:
+                    xy = self.node_coords[node_str]
+                    sx = xy[0]
+                    sy = xy[1]
+                    d.append(f'M {sx-5} {sy-5} l 10 0 l 0 10 l -10 0 l 0 -10 z')
+            return ' '.join(d)
+
+        #
+        # __createPathDescriptionForAllEntities__() - create an svg path description of all entities
+        # - for prototyping the graph interact panel application
+        #
+        def __createPathDescriptionForAllEntities__(self):
+            d = []
+            for node_str in self.node_coords:
+                if node_str in self.node_coords:
+                    xy = self.node_coords[node_str]
+                    sx = xy[0]
+                    sy = xy[1]
+                    d.append(f'M {sx-5} {sy-5} l 10 0 l 0 10 l -10 0 l 0 -10 z')
+            return ' '.join(d)
+
+        #
+        #  __adjustSelectedEntities__() - adjust the selected entities
+        # - for prototyping the graph interact panel application
+        #
+        def __moveSelectedEntities__(self, dxy, my_selection=None):
+            if my_selection is None: my_selection = self.selected_entities
+            if my_selection is None or len(my_selection) == 0: return
+            for node_str in my_selection:
+                if node_str in self.node_coords:
+                    xy                 = self.node_coords[node_str]
+                    xy_new             = (self.xT_inv(xy[0] + dxy[0]), self.yT_inv(xy[1] + dxy[1]))
+                    self.pos[node_str] = xy_new
+            self.last_render = None # force a re-render
 
         #
         # selectedEntities() - return the set of selected entities
