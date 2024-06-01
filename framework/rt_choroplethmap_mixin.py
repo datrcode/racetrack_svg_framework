@@ -237,7 +237,7 @@ class RTChoroplethMapMixin(object):
         # __renderChoroplethMap__() - render the choropleth map
         #
         def __renderChoroplethMap__(self):
-            _svg_, _labels_ = '', ''
+            _svg_, _labels_ = [],[]
 
             # Render all shape outlines
             _label_co_ , _co_ = self.rt_self.co_mgr.getTVColor('label','defaultfg'), self.rt_self.co_mgr.getTVColor('axis','default')
@@ -246,18 +246,14 @@ class RTChoroplethMapMixin(object):
                 for k in to_render:
                     _shape_svg_, _label_svg_ = self.rt_self.__transformBackgroundShapes__(k, self.shape_lu[k], self.xT, self.yT, 
                                                                                           _label_co_, 1.0, 'none', 1.0, _co_, self.txt_h)
-                    _svg_    += _shape_svg_
-                    if self.label_only is None or k in self.label_only:
-                        _labels_ += _label_svg_
+                    _svg_.append(_shape_svg_)
+                    if self.label_only is None or k in self.label_only: _labels_.append(_label_svg_)
 
             # Calculate the intensity
             if   self.rt_self.isPandas(self.df):
-                if   self.count_by is None:
-                    _ = self.df.groupby(self.shape_field).size().reset_index().rename({0:'_count_'},axis=1)
-                elif self.count_by_set:
-                    _ = self.df.groupby(self.shape_field)[self.count_by].nunique().reset_index().rename({self.count_by:'_count_'},axis=1)
-                else:
-                    _ = self.df.groupby(self.shape_field)[self.count_by].sum().reset_index().rename({self.count_by:'_count_'},axis=1)
+                if   self.count_by is None: _ = self.df.groupby(self.shape_field).size().reset_index().rename({0:'_count_'},axis=1)
+                elif self.count_by_set:     _ = self.df.groupby(self.shape_field)[self.count_by].nunique().reset_index().rename({self.count_by:'_count_'},axis=1)
+                else:                       _ = self.df.groupby(self.shape_field)[self.count_by].sum().reset_index().rename({self.count_by:'_count_'},axis=1)
                 _min_,_max_  = _['_count_'].min(),_['_count_'].max()
                 if self.global_max is not None and self.global_min is not None:
                     _max_ = self.global_max
@@ -267,12 +263,9 @@ class RTChoroplethMapMixin(object):
                     _max_ += 0.5
                 _['_count_'] = (_['_count_'] - _min_) / (_max_ - _min_)
             elif self.rt_self.isPolars(self.df):
-                if self.count_by is None:
-                    _ = self.df.group_by(self.shape_field).agg(pl.count().alias('_count_'))
-                elif self.count_by_set:
-                    _ = self.df.group_by(self.shape_field).agg(pl.col(self.count_by).n_unique().alias('_count_'))
-                else:
-                    _ = self.df.group_by(self.shape_field).agg(pl.col(self.count_by).sum().alias('_count_'))
+                if self.count_by is None: _ = self.df.group_by(self.shape_field).agg(pl.count().alias('_count_'))
+                elif self.count_by_set:   _ = self.df.group_by(self.shape_field).agg(pl.col(self.count_by).n_unique().alias('_count_'))
+                else:                     _ = self.df.group_by(self.shape_field).agg(pl.col(self.count_by).sum().alias('_count_'))
                 _min_,_max_ = _['_count_'].min(), _['_count_'].max()
                 if self.global_max is not None and self.global_min is not None:
                     _max_ = self.global_max
@@ -286,10 +279,8 @@ class RTChoroplethMapMixin(object):
 
             # Render the shapes
             if self.track_state:
-                if self.rt_self.isPandas(self.df):
-                    gb = self.df.groupby(self.shape_field)
-                elif self.rt_self.isPolars(self.df):
-                    gb = self.df.partition_by(self.shape_field, as_dict=True)
+                if self.rt_self.isPandas(self.df):   gb = self.df.groupby(self.shape_field)
+                elif self.rt_self.isPolars(self.df): gb = self.df.partition_by(self.shape_field, as_dict=True)
 
             for i in range(len(_)):
                 if _[self.shape_field][i] in self.shape_lu.keys():
@@ -297,20 +288,20 @@ class RTChoroplethMapMixin(object):
                     _co_ = 'none' if not self.draw_outlines else _co_
                     _shape_svg_, _label_svg_ = self.rt_self.__transformBackgroundShapes__(_[self.shape_field][i], self.shape_lu[_[self.shape_field][i]], self.xT, self.yT, 
                                                                                           _label_co_, 1.0, _intensity_co_, 1.0, _co_, self.txt_h)
-                    _svg_    += _shape_svg_
+                    _svg_.append(_shape_svg_)
                     if self.label_only is None or _[self.shape_field][i] in self.label_only:                        
-                        _labels_ += _label_svg_
+                        _labels_.append(_label_svg_)
                     if self.track_state:
                         self.geom_to_df[self.shape_lu[_[self.shape_field][i]]] = gb.get_group(_[self.shape_field][i]) if self.rt_self.isPandas(self.df) else gb[_[self.shape_field][i]]
 
-            return _svg_, _labels_, _min_, _max_
+            return ''.join(_svg_), ''.join(_labels_), _min_, _max_
 
         #
         # __renderBackgroundShapes__() - render background shapes
         # - mostly a copy of the xy implementation
         #
         def __renderBackgroundShapes__(self):
-            _svg_ = ''
+            _svg_ = []
             # Draw the background shapes
             if self.bg_shape_lu is not None:
                 _bg_shape_labels = []
@@ -321,21 +312,19 @@ class RTChoroplethMapMixin(object):
                                                                                 self.bg_shape_label_color, self.bg_shape_opacity,
                                                                                 self.bg_shape_fill,        self.bg_shape_stroke_w,
                                                                                 self.bg_shape_stroke,      self.txt_h)
-                    _svg_ += _shape_svg
+                    _svg_.append(_shape_svg)
                     _bg_shape_labels.append(_label_svg) # Defer render
 
                 # Render the labels
-                for _label_svg in _bg_shape_labels:
-                    _svg_ += _label_svg
+                for _label_svg in _bg_shape_labels: _svg_.append(_label_svg)
             
-            return _svg_
+            return ''.join(_svg_)
 
         #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
-            if self.last_render is None:
-                self.renderSVG()
+            if self.last_render is None: self.renderSVG()
             return self.last_render
         
         #
@@ -421,29 +410,27 @@ class RTChoroplethMapMixin(object):
             self.yT_inv = lambda __sy__: -1.0 * (__sy__ - (self.h - self.y_ins)) * (self.wy1-self.wy0) / (self.h - 2*self.y_ins) + self.wy0
 
             # Start the SVG Frame
-            svg = f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
+            svg = [f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">']
             background_color = self.rt_self.co_mgr.getTVColor('background','default')
-            svg += f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />'
+            svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
 
             # Render background shapes, convex hulls, links, and then nodes
             _svg_, _labels_, _min_, _max_ = self.__renderChoroplethMap__()
-            if just_calc_max:
-                return _min_, _max_
-            svg += _svg_
-            svg += self.__renderBackgroundShapes__()
+            if just_calc_max: return _min_, _max_
+            svg.append(_svg_)
+            svg.append(self.__renderBackgroundShapes__())
 
             # Defer label render
-            if self.draw_labels:
-                svg += _labels_
+            if self.draw_labels: svg.append(_labels_)
 
             # Draw the border
             if self.draw_border:
                 border_color = self.rt_self.co_mgr.getTVColor('border','default')
-                svg += f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />'
+                svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />')
 
-            svg += '</svg>'
-            self.last_render = svg
-            return svg
+            svg.append('</svg>')
+            self.last_render = ''.join(svg)
+            return self.last_render
 
         #
         # Determine which dataframe geometries overlap with a specific
