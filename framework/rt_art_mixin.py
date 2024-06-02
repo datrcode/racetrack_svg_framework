@@ -202,3 +202,31 @@ class RTArtMixin(object):
                f'<text x="48" y="28" font-size="28px" stroke="#000000" fill="#202020">3</text>' + \
                f'</svg>'
 
+align_view_to_selection = '''
+
+<svg x="0" y="0" width="600" height="600" viewbox="-50 -50 200 200" xmlns="http://www.w3.org/2000/svg">
+<line x1="40"  y1="0"    x2="50" y2="30" stroke="#a0a0a0" stroke-width="4"/>
+<line x1="70"  y1="0"    x2="50" y2="30" stroke="#a0a0a0" stroke-width="4"/>
+<line x1="0"   y1="90"   x2="30" y2="70" stroke="#a0a0a0" stroke-width="4"/>
+<line x1="0"   y1="70"   x2="30" y2="70" stroke="#a0a0a0" stroke-width="4"/>
+<line x1="0"   y1="50"   x2="30" y2="70" stroke="#a0a0a0" stroke-width="4"/>
+<line x1="100" y1="60"   x2="70" y2="70" stroke="#a0a0a0" stroke-width="4"/>
+<line x1="80"  y1="100"  x2="70" y2="70" stroke="#a0a0a0" stroke-width="4"/>
+<line x1="30"  y1="70"   x2="50" y2="30" stroke="#a0a0a0" stroke-width="4"/>
+<line x1="70"  y1="70"   x2="50" y2="30" stroke="#a0a0a0" stroke-width="4"/>
+<line x1="70"  y1="70"   x2="30" y2="70" stroke="#a0a0a0" stroke-width="4"/>
+<circle cx="50" cy="30" r="10" stroke="#000000" stroke-width="4" fill="#ff0000" />
+<circle cx="30" cy="70" r="10" stroke="#000000" stroke-width="4" fill="#ff0000" />
+<circle cx="70" cy="70" r="10" stroke="#000000" stroke-width="4" fill="#ffffff" />
+<path d="M 15 12 L 65 12 C 70 12 70 12 70 20  
+                 L 70 77 C 70 87 70 87 65 87       
+                 L 15 87 C 10 87 10 87 10 77
+                 L 10 20 C 10 12 10 12 15 12
+         " fill="none" stroke="#000000" stroke-width="2.0" />
+<path d="M 10 0 L  90   0  C   95   0   100   5   100   10
+                L 100  90  C  100  95    95 100    90  100
+                L  10 100  C    5 100     0  95     0   90
+                L  0   10  C    0   5     5   0    10    0" fill="none" stroke="#000000" stroke-width="4.0" />
+</svg>
+
+'''
