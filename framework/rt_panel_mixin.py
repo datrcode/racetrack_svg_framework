@@ -19,8 +19,13 @@ import polars as pl
 import threading
 
 import panel as pn
-from panel.reactive import ReactiveHTML
 import param
+
+from panel.reactive import ReactiveHTML
+
+from math import pi, sqrt, sin, cos
+
+from shapely import Polygon
 
 from rt_layouts_mixin import RTComponentsLayout
 
@@ -700,3 +705,464 @@ class LayoutPanel(ReactiveHTML):
             data.export_string = s;
         '''
     }
+
+
+
+#
+# ReactiveHTML Class for Panel Implementation
+#
+class RTGraphInteractiveLayout(ReactiveHTML):
+    #
+    # Inner Modification for RT SVG Render
+    #
+    mod_inner = param.String(default="""<circle cx="300" cy="200" r="10" fill="red" />""")
+
+    #
+    # Selection Path
+    #
+    selectionpath = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
+
+    #
+    # Panel Template
+    #
+    _template = """
+<svg id="svgparent" width="600" height="400" tabindex="0" onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
+    <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
+    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="#ffffff" opacity="0.6" />
+    <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
+    <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />
+    <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />
+    <circle id="layoutsunflower" cx="-10" cy="-10" r="5"                   stroke="#000000" stroke-width="2" />
+    <rect id="screen" x="0" y="0" width="600" height="400" opacity="0.05"
+          onmousedown="${script('downSelect')}"
+          onmousemove="${script('moveEverything')}"
+          onmouseup="${script('upEverything')}"
+          onmousewheel="${script('mouseWheel')}" />
+    <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform=""
+          onmousedown="${script('downMove')}"
+          onmousemove="${script('moveEverything')}"
+          onmouseup="${script('upEverything')}" 
+          onmousewheel="${script('mouseWheel')}" />
+</svg>
+"""
+
+    #
+    # Constructor
+    #
+    def __init__(self,
+                 rt_self,   # RACETrack instance
+                 df,        # data frame
+                 ln_params, # linknode params
+                 pos,       # position dictionary
+                 **kwargs):
+        # Setup specific instance information
+        # - Copy the member variables
+        self.rt_self      = rt_self
+        self.ln_params    = ln_params
+        self.pos          = pos
+        self.w            = 600
+        self.h            = 400
+        self.kwargs       = kwargs
+        self.df           = self.rt_self.copyDataFrame(df)
+        self.df_level     = 0
+        self.dfs          = [df]
+
+        self.dfs_layout    = [self.__renderView__(self.df)]
+        self.mod_inner     = self.dfs_layout[0]._repr_svg_()
+
+        # - Create a lock for threading
+        self.lock = threading.Lock()
+
+        # Execute the super initialization
+        super().__init__(**kwargs)
+
+        # Watch for callbacks
+        self.param.watch(self.applyDragOp,     'drag_op_finished')
+        self.param.watch(self.applyMoveOp,     'move_op_finished')
+        self.param.watch(self.applyWheelOp,    'wheel_op_finished')
+        self.param.watch(self.applyMiddleOp,   'middle_op_finished')
+        self.param.watch(self.applyKeyOp,      'key_op_finished')
+        self.param.watch(self.applyLayoutOp,   'layout_shape')
+    
+    #
+    # __renderView__() - render the view
+    #
+    def __renderView__(self, __df__):
+        _ln_ = self.rt_self.linkNode(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
+        return _ln_
+
+    #
+    # applyLayoutOp() - apply layout operation to the selected entities.
+    #
+    def applyLayoutOp(self, event):
+        #self.lock.acquire()
+        try:
+            x0, y0, x1, y1 = self.drag_x0, self.drag_y0, self.drag_x1, self.drag_y1
+            as_list = list(self.selected_entities)
+            if len(as_list) > 0:
+                _ln_ = self.dfs_layout[self.df_level]
+                if   self.layout_shape == "rect":
+                    pass
+                elif self.layout_shape == "circle":
+                    r = sqrt((x0 - x1)**2 + (y0 - y1)**2)
+                    if r < 1.0: r = 1.0
+                    inc = 2 * pi / len(as_list)
+                    for i in range(len(as_list)):
+                        _x_, _y_ = x0 + r * cos(i * inc), y0 + r * sin(i * inc)
+                        _ln_.pos[as_list[i]] = (_ln_.xT_inv(_x_), _ln_.yT_inv(_y_))
+                    self.mod_inner     = self.dfs_layout[self.df_level].renderSVG() # Re-render current
+                    self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                elif self.layout_shape == "sunflower":
+                    pass
+                elif self.layout_shape == "line":
+                    dx, dy = x1 - x0, y1 - y0
+                    l      = sqrt(dx * dx + dy * dy)
+                    if l < 0.001: l = 1.0
+                    ux, uy = dx / l, dy / l
+                    inc = l/(len(as_list) - 1) if len(as_list) > 1 else 1.0
+                    for i in range(len(as_list)):
+                        _x_, _y_ = x0 + ux * i * inc, y0 + uy * i * inc
+                        _ln_.pos[as_list[i]] = (_ln_.xT_inv(_x_), _ln_.yT_inv(_y_))
+                self.mod_inner     = self.dfs_layout[self.df_level].renderSVG() # Re-render current
+                self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+        finally:
+            self.layout_shape = ""
+            #self.lock.release()
+
+    #
+    # Middle button state & method
+    #
+    x0_middle          = param.Integer(default=0)
+    y0_middle          = param.Integer(default=0)
+    x1_middle          = param.Integer(default=0)
+    y1_middle          = param.Integer(default=0)
+    middle_op_finished = param.Boolean(default=False)
+
+    #
+    # applyMiddleOp() - apply middle operation -- either pan view or reset view
+    #
+    async def applyMiddleOp(self,event):
+        self.lock.acquire()
+        try:
+            if self.middle_op_finished:
+                x0, y0, x1, y1 = self.x0_middle, self.y0_middle, self.x1_middle, self.y1_middle
+                dx, dy         = x1 - x0, y1 - y0
+                _comp_ , _adj_coordinate_ = self.dfs_layout[self.df_level], (x0,y0)
+                if _comp_ is not None:
+                    if (abs(self.x0_middle - self.x1_middle) <= 1) and (abs(self.y0_middle - self.y1_middle) <= 1):
+                        if _comp_.applyMiddleClick(_adj_coordinate_):
+                            self.mod_inner     = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
+                            self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)                            
+                    else:
+                        if _comp_.applyMiddleDrag(_adj_coordinate_, (dx,dy)):
+                            self.mod_inner     = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
+                            self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+        finally:
+            self.middle_op_finished = False
+            self.lock.release()
+
+    #
+    # Wheel operation state & method
+    #
+    wheel_x           = param.Integer(default=0)
+    wheel_y           = param.Integer(default=0)
+    wheel_rots        = param.Integer(default=0) # Mult by 10 and rounded...
+    wheel_op_finished = param.Boolean(default=False)
+
+    #
+    # applyWheelOp() - apply mouse wheel operation (zoom in & out)
+    #
+    async def applyWheelOp(self,event):
+        self.lock.acquire()
+        try:
+            if self.wheel_op_finished:
+                x, y, rots = self.wheel_x, self.wheel_y, self.wheel_rots
+                if rots != 0:
+                    # Find the compnent where the scroll event occurred
+                    _comp_ , _adj_coordinate_ = self.dfs_layout[self.df_level], (x,y)
+                    if _comp_ is not None:
+                        if _comp_.applyScrollEvent(rots, _adj_coordinate_):
+                            # Re-render current
+                            self.mod_inner      = self.dfs_layout[self.df_level]._repr_svg_()
+                            self.selectionpath  = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)                            
+                            # Propagate the view configuration to the same component across the dataframe stack
+                            for i in range(len(self.dfs_layout)):
+                                if i != self.df_level:
+                                    self.dfs_layout[i].applyViewConfiguration(_comp_)
+        finally:
+            self.wheel_op_finished = False
+            self.wheel_rots        = 0            
+            self.lock.release()
+
+    #
+    # applyKeyOp() - apply specified key operation
+    #
+    async def applyKeyOp(self,event):
+        self.lock.acquire()
+        try:
+            _ln_ = self.dfs_layout[self.df_level]
+            if self.selected_entities != [] and self.key_op_finished == 't':
+                if   self.shiftkey: # y's are all the same
+                    for _entity_ in self.selected_entities:
+                        xy = _ln_.pos[_entity_]
+                        _ln_.pos[_entity_] = (xy[0], _ln_.yT_inv(self.y_mouse))
+                elif self.ctrlkey:  # x's are all the same
+                    for _entity_ in self.selected_entities:
+                        xy = _ln_.pos[_entity_]
+                        _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), xy[1])
+                else:               # x and y's are all the same
+                    for _entity_ in self.selected_entities:
+                        xy = _ln_.pos[_entity_]
+                        _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), _ln_.yT_inv(self.y_mouse))
+                self.mod_inner     = _ln_.renderSVG() # Re-render current
+                self.selectionpath = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+        finally:
+            self.key_op_finished = ''
+            self.lock.release()
+
+    #
+    # Drag operation state
+    #
+    drag_op_finished  = param.Boolean(default=False)
+    drag_x0           = param.Integer(default=0)
+    drag_y0           = param.Integer(default=0)
+    drag_x1           = param.Integer(default=10)
+    drag_y1           = param.Integer(default=10)
+    last_drag_box     = (0,0,1,1)
+
+    #
+    # Move operation state
+    #
+    move_op_finished = param.Boolean(default=False)
+
+    #
+    # Shape operation state
+    #
+    layout_shape     = param.String(default="")
+
+    # Key States
+    shiftkey         = param.Boolean(default=False)
+    ctrlkey          = param.Boolean(default=False)
+    last_key         = param.String(default='')
+    key_op_finished  = param.String(default='')
+
+    # Mouse States
+    x_mouse          = param.Integer(default=0)
+    y_mouse          = param.Integer(default=0)
+
+    #
+    # Selected Entities
+    #
+    selected_entities = []
+
+    #
+    # applyDragOp()
+    #
+    async def applyDragOp(self,event):
+        self.lock.acquire()
+        try:
+            if self.drag_op_finished:
+                _x0,_y0,_x1,_y1 = min(self.drag_x0, self.drag_x1), min(self.drag_y0, self.drag_y1), max(self.drag_x1, self.drag_x0), max(self.drag_y1, self.drag_y0)
+                if _x0 == _x1: _x1 += 1
+                if _y0 == _y1: _y1 += 1
+                self.last_drag_box     = (_x0,_y0,_x1-_x0,_y1-_y0)
+                _rect_ = Polygon([(_x0,_y0), (_x0,_y1), (_x1,_y1), (_x1,_y0)])
+                _overlapping_entities_  = self.dfs_layout[self.df_level].overlappingEntities(_rect_)
+
+                if   self.shiftkey and self.ctrlkey: self.selected_entities = list(set(self.selected_entities) & set(_overlapping_entities_))
+                elif self.shiftkey:                  self.selected_entities = list(set(self.selected_entities) - set(_overlapping_entities_))
+                elif self.ctrlkey:                   self.selected_entities = list(set(self.selected_entities) | set(_overlapping_entities_))
+                else:                                self.selected_entities = _overlapping_entities_
+                
+                self.selectionpath      = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+        finally:
+            self.drag_op_finished = False
+            self.lock.release()
+
+    async def applyMoveOp(self,event):
+        self.lock.acquire()
+        try:
+            if self.move_op_finished:
+                self.dfs_layout[self.df_level].__moveSelectedEntities__((self.drag_x1 - self.drag_x0, self.drag_y1 - self.drag_y0), my_selection=self.selected_entities)
+                self.mod_inner = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
+                self.drag_x0   = self.drag_y0 = self.drag_x1 = self.drag_y1 = 0
+                self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+        finally:
+            self.move_op_finished = False
+            self.lock.release()
+
+    #
+    # Panel Javascript Definitions
+    #
+    _scripts = {
+        'render':"""
+            mod.innerHTML           = data.mod_inner;
+            state.x0_drag           = state.y0_drag = -10;
+            state.x1_drag           = state.y1_drag =  -5;
+            data.shiftkey           = false;
+            data.ctrlkey            = false;
+            state.drag_op           = false;
+            state.move_op           = false;
+            state.layout_op         = false;
+            state.layout_op_shape   = "";
+            data.middle_op_finished = false;
+            data.move_op_finished   = false;
+        """,
+        'keyPress':"""
+        """,
+        'keyDown':"""
+            data.ctrlkey  = event.ctrlKey;
+            data.shiftkey = event.shiftKey;
+            if      (event.key == "t" || event.key == "T") { data.key_op_finished = 't'; }
+            else if (event.key == "c" || event.key == "C") { state.layout_op      = true; }
+            data.last_key = event.key;
+        """,
+        'keyUp':"""
+            data.ctrlkey  = event.ctrlKey;
+            data.shiftkey = event.shiftKey;
+            if (event.key == "c" || event.key == "C") { state.layout_op = false; }
+        """,
+        'moveEverything':"""
+            data.ctrlkey   = event.ctrlKey;
+            data.shiftkey  = event.shiftKey;
+            data.x_mouse   = event.offsetX; 
+            data.y_mouse   = event.offsetY;
+            state.x1_drag  = event.offsetX; 
+            state.y1_drag  = event.offsetY; 
+            if (state.drag_op)               { self.myUpdateDragRect(); }
+            if (state.move_op)               { selectionlayer.setAttribute("transform", "translate(" + (state.x1_drag - state.x0_drag) + "," + (state.y1_drag - state.y0_drag) + ")"); }
+            if (state.layout_op_shape != "") { 
+                var new_shape_maybe = "";
+                if      (data.ctrlkey && data.shiftkey) new_shape_maybe = "circle"
+                else if (data.ctrlkey)                  new_shape_maybe = "sunflower"
+                else if                 (data.shiftkey) new_shape_maybe = "line"
+                else                                    new_shape_maybe = "rect"
+                if (new_shape_maybe != state.layout_op_shape) { state.layout_op_shape = new_shape_maybe; }
+                self.myUpdateLayoutOp(); 
+            }
+        """,
+        'downSelect':"""
+            if (event.button == 0) {
+                state.x0_drag  = event.offsetX;                
+                state.y0_drag  = event.offsetY;                
+                state.x1_drag  = event.offsetX+1;                
+                state.y1_drag  = event.offsetY+1;            
+                if (state.layout_op) {
+                    if      (data.ctrlkey && data.shiftkey) state.layout_op_shape = "circle"
+                    else if (data.ctrlkey)                  state.layout_op_shape = "sunflower"
+                    else if                 (data.shiftkey) state.layout_op_shape = "line"
+                    else                                    state.layout_op_shape = "rect"
+                    self.myUpdateLayoutOp();
+                } else {
+                    state.drag_op  = true;
+                    self.myUpdateDragRect();
+                }
+            } else if (event.button == 1) {
+                data.x0_middle = data.x1_middle = event.offsetX;
+                data.y0_middle = data.y1_middle = event.offsetY;
+            }
+        """,
+        'downMove':"""
+            if (event.button == 0) {
+                state.x0_drag  = state.x1_drag  = event.offsetX;
+                state.y0_drag  = state.y1_drag  = event.offsetY;
+                state.move_op  = true;
+            } else if (event.button == 1) {
+                data.x0_middle = data.x1_middle = event.offsetX; 
+                data.y0_middle = data.y1_middle = event.offsetY;
+            }
+        """,
+        'myUpdateLayoutOp':"""
+            var dx = state.x1_drag - state.x0_drag,
+                dy = state.y1_drag - state.y0_drag;
+            var reset_circle = true, reset_sunflower = true, reset_rect = true, reset_line = true;
+            if        (state.layout_op_shape == "circle")    { reset_circle = false;
+                layoutcircle.setAttribute("cx", state.x0_drag);
+                layoutcircle.setAttribute("cy", state.y0_drag);
+                layoutcircle.setAttribute("r",  Math.sqrt(dx*dx + dy*dy));
+            } else if (state.layout_op_shape == "sunflower") { reset_sunflower = false;
+                layoutsunflower.setAttribute("cx", state.x0_drag);
+                layoutsunflower.setAttribute("cy", state.y0_drag);
+                layoutsunflower.setAttribute("r",  Math.sqrt(dx*dx + dy*dy));            
+            } else if (state.layout_op_shape == "rect")      { reset_rect = false;
+                layoutrect.setAttribute("x", Math.min(state.x0_drag, state.x1_drag));
+                layoutrect.setAttribute("y", Math.min(state.y0_drag, state.y1_drag));
+                layoutrect.setAttribute("width",  Math.abs(dx));
+                layoutrect.setAttribute("height", Math.abs(dy));
+            } else if (state.layout_op_shape == "line")      { reset_line = false;
+                layoutline.setAttribute("x1", state.x0_drag);
+                layoutline.setAttribute("y1", state.y0_drag);
+                layoutline.setAttribute("x2", state.x1_drag);
+                layoutline.setAttribute("y2", state.y1_drag);
+            } else { state.layout_op_shape == ""; }
+            if (reset_circle)    { layoutcircle   .setAttribute("cx", -10); layoutcircle   .setAttribute("cy", -10); layoutcircle   .setAttribute("r",      5); }
+            if (reset_sunflower) { layoutsunflower.setAttribute("cx", -10); layoutsunflower.setAttribute("cy", -10); layoutsunflower.setAttribute("r",      5); }
+            if (reset_rect)      { layoutrect     .setAttribute("x",  -10); layoutrect     .setAttribute("y",  -10); layoutrect     .setAttribute("width",  5);  layoutrect.setAttribute("height",  5); }
+            if (reset_line)      { layoutline     .setAttribute("x1", -10); layoutline     .setAttribute("y1", -10); layoutline     .setAttribute("x2",    -5);  layoutline.setAttribute("y2",     -5); }
+        """,
+        'upEverything':"""
+            if (event.button == 0) {
+                state.x1_drag         = event.offsetX; 
+                state.y1_drag         = event.offsetY;
+                if (state.drag_op) {
+                    state.shiftkey        = event.shiftKey;
+                    state.drag_op         = false;
+                    self.myUpdateDragRect();
+                    data.drag_x0          = state.x0_drag; 
+                    data.drag_y0          = state.y0_drag; 
+                    data.drag_x1          = state.x1_drag; 
+                    data.drag_y1          = state.y1_drag;
+                    data.drag_op_finished = true;
+                } else if (state.move_op) {
+                    state.move_op         = false;
+                    data.drag_x0          = state.x0_drag; 
+                    data.drag_y0          = state.y0_drag; 
+                    data.drag_x1          = state.x1_drag; 
+                    data.drag_y1          = state.y1_drag;
+                    data.move_op_finished = true;                    
+                } else if (state.layout_op_shape != "") {
+                    data.drag_x0          = state.x0_drag; 
+                    data.drag_y0          = state.y0_drag; 
+                    data.drag_x1          = state.x1_drag; 
+                    data.drag_y1          = state.y1_drag;
+                    data.layout_shape     = state.layout_op_shape; // ERROR OCCURS HERE
+                    state.layout_op_shape = "";
+                    self.myUpdateLayoutOp();
+                }
+            } else if (event.button == 1) {
+                data.x1_middle          = event.offsetX; 
+                data.y1_middle          = event.offsetY;
+                data.middle_op_finished = true;                
+            }
+        """,
+        'mouseWheel':"""
+            event.preventDefault();
+            data.wheel_x = event.offsetX; data.wheel_y = event.offsetY; data.wheel_rots  = Math.round(10*event.deltaY);
+            data.wheel_op_finished = true;
+        """,
+        'mod_inner':"""
+            mod.innerHTML = data.mod_inner;
+            svgparent.focus(); // else it loses focus on every render...
+        """,
+        'selectionpath':"""
+            selectionlayer.setAttribute("d", data.selectionpath);
+        """,
+        'myUpdateDragRect':"""
+            if (state.drag_op) {
+                x = Math.min(state.x0_drag, state.x1_drag); 
+                y = Math.min(state.y0_drag, state.y1_drag);
+                w = Math.abs(state.x1_drag - state.x0_drag)
+                h = Math.abs(state.y1_drag - state.y0_drag)
+                drag.setAttribute('x',x);     drag.setAttribute('y',y);
+                drag.setAttribute('width',w); drag.setAttribute('height',h);
+                if      (data.shiftkey && data.ctrlkey) drag.setAttribute('stroke','#0000ff');
+                else if (data.shiftkey)                 drag.setAttribute('stroke','#ff0000');
+                else if                  (data.ctrlkey) drag.setAttribute('stroke','#00ff00');
+                else                                    drag.setAttribute('stroke','#000000');
+            } else {
+                drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
+                drag.setAttribute('width',5); drag.setAttribute('height',5);
+            }
+        """
+    }
+
