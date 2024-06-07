@@ -757,17 +757,17 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                  **kwargs):
         # Setup specific instance information
         # - Copy the member variables
-        self.rt_self      = rt_self
-        self.ln_params    = ln_params
-        self.pos          = pos
-        self.w            = 600
-        self.h            = 400
-        self.kwargs       = kwargs
-        self.df           = self.rt_self.copyDataFrame(df)
-        self.df_level     = 0
-        self.dfs          = [df]
-
+        self.rt_self       = rt_self
+        self.ln_params     = ln_params
+        self.pos           = pos
+        self.w             = 600
+        self.h             = 400
+        self.kwargs        = kwargs
+        self.df            = self.rt_self.copyDataFrame(df)
+        self.df_level      = 0
+        self.dfs           = [self.df]
         self.dfs_layout    = [self.__renderView__(self.df)]
+        self.graphs        = [self.rt_self.createNetworkXGraph(self.df, ln_params['relationships'])]
         self.mod_inner     = self.dfs_layout[0]._repr_svg_()
 
         # - Create a lock for threading
@@ -912,6 +912,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.lock.acquire()
         try:
             _ln_ = self.dfs_layout[self.df_level]
+            #
+            # "T" - Collapse or Align Nodes
+            #
             if self.selected_entities != [] and self.key_op_finished == 't':
                 if   self.shiftkey: # y's are all the same
                     for _entity_ in self.selected_entities:
@@ -926,6 +929,39 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         xy = _ln_.pos[_entity_]
                         _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), _ln_.yT_inv(self.y_mouse))
                 self.mod_inner     = _ln_.renderSVG() # Re-render current
+                self.selectionpath = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+            #
+            # "E" - Expand / Invert / Grown / Intersect Selection
+            #
+            elif self.key_op_finished == 'e':
+                if   self.shiftkey and self.ctrlkey:  # common neighbors
+                    inter_set = None
+                    for _node_ in self.selected_entities:
+                        nbor_set = set()
+                        for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
+                            nbor_set.add(_nbor_)
+                        if inter_set is None: inter_set = nbor_set             # first time, it gets the nbors
+                        else:                 inter_set = inter_set & nbor_set # all other times it's and'ed
+                    self.selected_entities = inter_set
+                elif self.shiftkey:                   # invert selection
+                    _new_set_ = set()
+                    for _node_ in self.graphs[self.df_level]:
+                        if _node_ not in self.selected_entities:
+                            _new_set_.add(_node_)
+                    self.selected_entities = _new_set_
+                elif                   self.ctrlkey:  # expand only in direction of the edges ... not efficient but rarely used
+                    _digraph_ = self.rt_self.createNetworkXGraph(self.dfs[self.df_level], self.ln_params['relationships'], use_digraph=True)
+                    _new_set_ = set(self.selected_entities)
+                    for _node_ in self.selected_entities:
+                        for _nbor_ in _digraph_.neighbors(_node_):
+                            _new_set_.add(_nbor_)
+                    self.selected_entities = _new_set_
+                else:                                 # expand
+                    _new_set_ = set(self.selected_entities)
+                    for _node_ in self.selected_entities:
+                        for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
+                            _new_set_.add(_nbor_)
+                    self.selected_entities = _new_set_
                 self.selectionpath = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.key_op_finished = ''
@@ -1024,7 +1060,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         'keyDown':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
-            if      (event.key == "t" || event.key == "T") { data.key_op_finished = 't'; }
+            if      (event.key == "t" || event.key == "T") { data.key_op_finished = 't';  }
+            else if (event.key == "e" || event.key == "E") { data.key_op_finished = 'e';  }
             else if (event.key == "c" || event.key == "C") { state.layout_op      = true; }
             data.last_key = event.key;
         """,
