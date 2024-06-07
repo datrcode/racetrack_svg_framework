@@ -769,6 +769,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.dfs_layout    = [self.__renderView__(self.df)]
         self.graphs        = [self.rt_self.createNetworkXGraph(self.df, ln_params['relationships'])]
         self.mod_inner     = self.dfs_layout[0]._repr_svg_()
+        self.label_mode    = 'all labels'
+        self.sticky_labels = set()
 
         # - Create a lock for threading
         self.lock = threading.Lock()
@@ -915,7 +917,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             #
             # "T" - Collapse or Align Nodes
             #
-            if self.selected_entities != [] and self.key_op_finished == 't':
+            if len(self.selected_entities) > 0 and self.key_op_finished == 't':
                 if   self.shiftkey: # y's are all the same
                     for _entity_ in self.selected_entities:
                         xy = _ln_.pos[_entity_]
@@ -942,27 +944,53 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                             nbor_set.add(_nbor_)
                         if inter_set is None: inter_set = nbor_set             # first time, it gets the nbors
                         else:                 inter_set = inter_set & nbor_set # all other times it's and'ed
-                    self.selected_entities = inter_set
+                    self.selected_entities = list(inter_set)
                 elif self.shiftkey:                   # invert selection
                     _new_set_ = set()
                     for _node_ in self.graphs[self.df_level]:
                         if _node_ not in self.selected_entities:
                             _new_set_.add(_node_)
-                    self.selected_entities = _new_set_
+                    self.selected_entities = list(_new_set_)
                 elif                   self.ctrlkey:  # expand only in direction of the edges ... not efficient but rarely used
                     _digraph_ = self.rt_self.createNetworkXGraph(self.dfs[self.df_level], self.ln_params['relationships'], use_digraph=True)
                     _new_set_ = set(self.selected_entities)
                     for _node_ in self.selected_entities:
                         for _nbor_ in _digraph_.neighbors(_node_):
                             _new_set_.add(_nbor_)
-                    self.selected_entities = _new_set_
+                    self.selected_entities = list(_new_set_)
                 else:                                 # expand
                     _new_set_ = set(self.selected_entities)
                     for _node_ in self.selected_entities:
                         for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
                             _new_set_.add(_nbor_)
-                    self.selected_entities = _new_set_
+                    self.selected_entities = list(_new_set_)
                 self.selectionpath = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+            #
+            # "S" - Sticky Labels & Label Toggles
+            #
+            elif self.key_op_finished == 's':
+                if   self.shiftkey and self.ctrlkey: # toggle "all labels" -> "sticky labels" -> "no labels"
+                    if   self.label_mode == 'all labels':    
+                        self.label_mode = 'sticky labels'
+                        _ln_.labelOnly(self.sticky_labels)
+                        _ln_.drawLabels(True)
+                    elif self.label_mode == 'sticky labels':
+                        self.label_mode = 'no labels'
+                        _ln_.drawLabels(False)
+                    else:                                    
+                        self.label_mode = 'all labels'
+                        _ln_.drawLabels(True)
+                        _ln_.labelOnly(set())
+                elif self.shiftkey:                  # remove selected nodes from sticky labels
+                    self.sticky_labels = self.sticky_labels - set(self.selected_entities)
+                elif                   self.ctrlkey: # add selected nodes to sticky labels
+                    self.sticky_labels = self.sticky_labels | set(self.selected_entities)
+                else:                                # set selected nodes to sticky labels
+                    self.sticky_labels = set(self.selected_entities)
+
+                if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
+
+                self.mod_inner = _ln_.renderSVG() # Re-render current
         finally:
             self.key_op_finished = ''
             self.lock.release()
@@ -1062,6 +1090,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             data.shiftkey = event.shiftKey;
             if      (event.key == "t" || event.key == "T") { data.key_op_finished = 't';  }
             else if (event.key == "e" || event.key == "E") { data.key_op_finished = 'e';  }
+            else if (event.key == "s" || event.key == "S") { data.key_op_finished = 's';  }
             else if (event.key == "c" || event.key == "C") { state.layout_op      = true; }
             data.last_key = event.key;
         """,

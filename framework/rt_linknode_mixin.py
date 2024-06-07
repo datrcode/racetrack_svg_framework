@@ -780,7 +780,7 @@ class RTLinkNodeMixin(object):
             self.node_labels                = kwargs['node_labels']
             self.node_labels_only           = kwargs['node_labels_only']
             self.node_label_max_w           = kwargs['node_label_max_w']
-            self.label_only                 = kwargs['label_only']
+            self.label_only                 = kwargs['label_only']             # tied with labelOnly() method
             self.max_node_size              = kwargs['max_node_size']
             self.min_node_size              = kwargs['min_node_size']
             self.selected_entities          = kwargs['selected_entities']
@@ -830,7 +830,7 @@ class RTLinkNodeMixin(object):
             self.x_ins                      = kwargs['x_ins']
             self.y_ins                      = kwargs['y_ins']
             self.txt_h                      = kwargs['txt_h']
-            self.draw_labels                = kwargs['draw_labels']
+            self.draw_labels                = kwargs['draw_labels']  # tied with drawLabels() method
             self.draw_border                = kwargs['draw_border']
 
             # Copy dataframe            
@@ -961,6 +961,17 @@ class RTLinkNodeMixin(object):
                 in_y = (self.wy1-self.wy0)*self.bounds_percent
                 self.wy0 -= in_y
                 self.wy1 += in_y
+
+        #
+        # labelOnly() - set the label only set
+        # - this controls which labels will be shown
+        #
+        def labelOnly(self,  label_set):   self.label_only  = label_set
+
+        #
+        # drawLabels() - set the draw labels flag
+        #
+        def drawLabels(self, draw_labels): self.draw_labels = draw_labels
 
         #
         # __renderConvexHull__() - render the convex hull
