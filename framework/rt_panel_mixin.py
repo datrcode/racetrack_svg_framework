@@ -798,9 +798,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         #self.lock.acquire()
         try:
             x0, y0, x1, y1 = self.drag_x0, self.drag_y0, self.drag_x1, self.drag_y1
-            as_list = list(self.selected_entities)
-            if len(as_list) > 0:
-                _ln_ = self.dfs_layout[self.df_level]
+            as_list     = list(self.selected_entities)
+            nodes_moved = False
+            _ln_        = self.dfs_layout[self.df_level]
+            if len(as_list) > 1:
                 if   self.layout_shape == "rect":
                     pass
                 elif self.layout_shape == "circle":
@@ -810,8 +811,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     for i in range(len(as_list)):
                         _x_, _y_ = x0 + r * cos(i * inc), y0 + r * sin(i * inc)
                         _ln_.pos[as_list[i]] = (_ln_.xT_inv(_x_), _ln_.yT_inv(_y_))
-                    self.mod_inner     = self.dfs_layout[self.df_level].renderSVG() # Re-render current
-                    self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                    nodes_moved = True
                 elif self.layout_shape == "sunflower":
                     pass
                 elif self.layout_shape == "line":
@@ -823,6 +823,13 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     for i in range(len(as_list)):
                         _x_, _y_ = x0 + ux * i * inc, y0 + uy * i * inc
                         _ln_.pos[as_list[i]] = (_ln_.xT_inv(_x_), _ln_.yT_inv(_y_))
+                    nodes_moved = True
+            elif len(as_list) == 1:
+                _ln_.pos[as_list[0]] = (_ln_.xT_inv((x0+x1)/2), _ln_.yT_inv((y0+y1)/2))
+                nodes_moved = True
+
+            # Reposition if the nodes moved
+            if nodes_moved:
                 self.mod_inner     = self.dfs_layout[self.df_level].renderSVG() # Re-render current
                 self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
