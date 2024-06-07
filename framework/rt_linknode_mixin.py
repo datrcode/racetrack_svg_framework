@@ -915,7 +915,7 @@ class RTLinkNodeMixin(object):
         #
         # __calculateGeometry__() - determine the geometry for the view
         #
-        def __calculateGeometry__(self):
+        def __calculateGeometry__(self, for_entities=None):
             # Calculate world coordinates
             self.wx0 =  math.inf
             self.wy0 =  math.inf
@@ -925,7 +925,14 @@ class RTLinkNodeMixin(object):
             # And possibly the max node size
             self.max_node_value = 1
 
-            if self.use_pos_for_bounds:
+            if   for_entities is not None and len(for_entities) > 0:
+                for k in for_entities:
+                    v = self.pos[k]
+                    self.wx0 = min(v[0], self.wx0)
+                    self.wy0 = min(v[1], self.wy0)
+                    self.wx1 = max(v[0], self.wx1)
+                    self.wy1 = max(v[1], self.wy1)
+            elif self.use_pos_for_bounds:
                 for k in self.pos.keys():
                     v = self.pos[k]
                     self.wx0 = min(v[0], self.wx0)
@@ -961,6 +968,8 @@ class RTLinkNodeMixin(object):
                 in_y = (self.wy1-self.wy0)*self.bounds_percent
                 self.wy0 -= in_y
                 self.wy1 += in_y
+            
+            return self.wx0, self.wy0, self.wx1, self.wy1
 
         #
         # labelOnly() - set the label only set

@@ -991,6 +991,40 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
 
                 self.mod_inner = _ln_.renderSVG() # Re-render current
+            #
+            # 'Z' - Zoom Related Functionality
+            #
+            elif self.key_op_finished == 'z':
+                _rerender_ = False
+                if    self.shiftkey and self.ctrlkey:   # selected & neighbors of selected
+                    if len(self.selected_entities) > 0:
+                        _new_set_ = set(self.selected_entities)
+                        for _node_ in self.selected_entities:
+                            for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
+                                _new_set_.add(_nbor_)
+                                _view_ = _ln_.__calculateGeometry__(for_entities=_new_set_)
+                                _ln_.setViewWindow(_view_)
+                                _rerender_ = True
+                elif  self.shiftkey:                    # Recenter complete view
+                    _view_ = _ln_.__calculateGeometry__()
+                    _ln_.setViewWindow(_view_)
+                    _rerender_ = True
+                elif                    self.ctrlkey:
+                    pass
+                else:
+                    if len(self.selected_entities) > 0: # Zoom to selected entities
+                        _view_ = _ln_.__calculateGeometry__(for_entities=self.selected_entities)
+                        _ln_.setViewWindow(_view_)
+                        _rerender_ = True
+                    else:                               # Recenter complete view
+                        _view_ = _ln_.__calculateGeometry__()
+                        _ln_.setViewWindow(_view_)
+                        _rerender_ = True
+                
+                if _rerender_:
+                    self.mod_inner     = _ln_.renderSVG() # Re-render current
+                    self.selectionpath = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+
         finally:
             self.key_op_finished = ''
             self.lock.release()
@@ -1092,6 +1126,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             else if (event.key == "e" || event.key == "E") { data.key_op_finished = 'e';  }
             else if (event.key == "s" || event.key == "S") { data.key_op_finished = 's';  }
             else if (event.key == "c" || event.key == "C") { state.layout_op      = true; }
+            else if (event.key == "z" || event.key == "Z") { data.key_op_finished = 'z';  }
             data.last_key = event.key;
         """,
         'keyUp':"""
