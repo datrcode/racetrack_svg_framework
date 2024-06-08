@@ -419,10 +419,11 @@ class RTGraphLayoutsMixin(object):
             G = nx.to_undirected(nx.minimum_spanning_tree(_subgraph))
 
             # Process small graphs separately
-            if len(G) <= 2:
-                # Make sure positions are set
-                for _node in G.nodes():
-                    pos[_node] = [random.random(),random.random()]
+            if len(G) <= 3:
+                as_list = list(G.nodes())
+                if len(G) >= 1: pos[as_list[0]] = (0,0)
+                if len(G) >= 2: pos[as_list[1]] = (1,0)
+                if len(G) >= 3: pos[as_list[2]] = (1,1)
                 continue
 
             # Determine the root if not set
