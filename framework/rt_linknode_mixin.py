@@ -1940,6 +1940,18 @@ class RTLinkNodeMixin(object):
             return node_strs
 
         #
+        # entitiesAtPoint() - Determine all the entities under a specific point
+        #
+        def entitiesAtPoint(self, xy):
+            node_strs = set()
+            for node_str in self.node_coords:
+                node_xy = self.node_coords[node_str]
+                if (xy[0] >= node_xy[0]-5) and (xy[0] <= node_xy[0]+5) and \
+                   (xy[1] >= node_xy[1]-5) and (xy[1] <= node_xy[1]+5):
+                    node_strs.add(node_str)
+            return node_strs
+
+        #
         # __createPathDescriptionOfSelectedEntities__() - create an svg path description of the selected entities
         # - for prototyping the graph interact panel application
         #

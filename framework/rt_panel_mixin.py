@@ -1058,7 +1058,6 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     drag_y0           = param.Integer(default=0)
     drag_x1           = param.Integer(default=10)
     drag_y1           = param.Integer(default=10)
-    last_drag_box     = (0,0,1,1)
 
     #
     # Unselected move operation state
@@ -1102,7 +1101,6 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 _x0,_y0,_x1,_y1 = min(self.drag_x0, self.drag_x1), min(self.drag_y0, self.drag_y1), max(self.drag_x1, self.drag_x0), max(self.drag_y1, self.drag_y0)
                 if _x0 == _x1: _x1 += 1
                 if _y0 == _y1: _y1 += 1
-                self.last_drag_box     = (_x0,_y0,_x1-_x0,_y1-_y0)
                 _rect_ = Polygon([(_x0,_y0), (_x0,_y1), (_x1,_y1), (_x1,_y0)])
                 _overlapping_entities_  = self.dfs_layout[self.df_level].overlappingEntities(_rect_)
 
@@ -1133,8 +1131,19 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.lock.acquire()
         try:
             if self.unselected_move_op_finished:
-                print(self.allentities_x0, self.allentities_y0)
-                print(self.drag_x0, self.drag_y0, self.drag_x1, self.drag_y1)
+                _x_,_y_ = self.allentities_x0, self.allentities_y0
+                _overlapping_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((_x_,_y_))
+
+                if   self.ctrlkey:   self.selected_entities = list(set(self.selected_entities) | set(_overlapping_entities_))
+                else:                self.selected_entities = list(_overlapping_entities_)
+
+                if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1:
+                    pass # just do the selection operation
+                else: # and do a move operation
+                    self.dfs_layout[self.df_level].__moveSelectedEntities__((self.drag_x1 - self.drag_x0, self.drag_y1 - self.drag_y0), my_selection=self.selected_entities)
+                    self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
+                    self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+                self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.unselected_move_op_finished = False
             self.lock.release()
@@ -1195,6 +1204,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             }
         """,
         'downAllEntities':"""
+            data.ctrlkey  = event.ctrlKey;
+            data.shiftkey = event.shiftKey;
             if (event.button == 0) {
                     data.allentities_x0      = event.offsetX; 
                     data.allentities_y0      = event.offsetY; 
@@ -1293,10 +1304,12 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     state.layout_op_shape = "";
                     self.myUpdateLayoutOp();
                 } else if (state.unselected_move_op) {
-                    data.drag_x0 = state.x0_drag;
-                    data.drag_y0 = state.y0_drag;
-                    data.drag_x1 = state.x1_drag;
-                    data.drag_y1 = state.y1_drag;
+                    data.ctrlkey  = event.ctrlKey;
+                    data.shiftkey = event.shiftKey;
+                    data.drag_x0  = state.x0_drag;
+                    data.drag_y0  = state.y0_drag;
+                    data.drag_x1  = state.x1_drag;
+                    data.drag_y1  = state.y1_drag;
                     data.unselected_move_op_finished = true;
                     state.unselected_move_op = false;
                 }
