@@ -21,7 +21,7 @@ import numpy as np
 import squarify # treemaps
 import random
 
-from math import sqrt, pi, cos, sin
+from math import sqrt, pi, cos, sin, ceil, floor, inf
 from dataclasses import dataclass
 
 from multiprocessing import Pool
@@ -213,6 +213,55 @@ class RTGraphLayoutsMixin(object):
         top_ten = _degrees[:int(len(_degrees)*0.1)]
         return top_ten
 
+    #
+    # rectangularArrangement() - arrange a list of nodes in a rectangular shape.
+    # - bounds = (x0,y0,x1,y1) where x0 < x1 and y0 < y1
+    #
+    def rectangularArrangement(self, nodes, pos=None, bounds=(0,0,1,1)):
+        x0, y0, x1, y1 = bounds
+        if type(nodes) is not list: nodes = list(nodes)
+        if pos is None: pos = {}
+        if   len(nodes) == 1:
+            pos[nodes[0]] = ((x0+x1)/2, (y0+y1)/2)
+        elif len(nodes) == 2:
+            pos[nodes[0]], pos[nodes[1]] = (1*(x0+x1)/3, (y0+y1)/2), (2*(x0+x1)/3, (y0+y1)/2) 
+        elif len(nodes) == 3:
+            pos[nodes[0]], pos[nodes[1]], pos[nodes[2]] = (1*(x0+x1)/3, 1*(y0+y1)/3), (2*(x0+x1)/3, 1*(y0+y1)/3), ((x0+x1)/2, 2*(y0+y1)/3)
+        elif len(nodes) == 4 or len(nodes) == 5:
+            pos[nodes[0]], pos[nodes[1]] = (x0,y0),(x1,y0)
+            pos[nodes[2]], pos[nodes[3]] = (x0,y1),(x1,y1)
+            if len(nodes) == 5: pos[nodes[4]] = ((x0+x1)/2, (y0+y1)/2)
+        else:
+            if x0 >= x1: x1 = x0 + 1.0
+            if y0 >= y1: y1 = y0 + 1.0
+            dx, dy = x1 - x0, y1 - y0
+            n = ceil(sqrt(len(nodes)))
+            if (dx/dy) > 1.5 or (dy/dx) > 1.5: # rectangular
+                closest_d = inf
+                for i in range(1,n+1):
+                    other = len(nodes)/i
+                    ratio = other/i
+                    d     = abs(ratio - dx/dy)
+                    if d < closest_d:
+                        max_x_i = i     if (i > other) else other
+                        max_y_i = other if (i > other) else i
+                    else:
+                        max_x_i = other if (i > other) else i
+                        max_y_i = i     if (i > other) else other
+            else:                              # roughly square
+                max_x_i = max_y_i = n
+
+            x_i, y_i = 0, 0
+            for i in range(len(nodes)):
+                _x_ = x0 + x_i * (dx/max_x_i)
+                _y_ = y0 + y_i * (dy/max_y_i)
+                pos[nodes[i]] = (_x_,_y_)
+                x_i += 1
+                if x_i >= max_x_i:
+                    y_i += 1
+                    x_i  = 0
+
+        return pos
 
     #
     # sunflowerSeedArrangement() - arrange a list of nodes in a sunflower arrangement

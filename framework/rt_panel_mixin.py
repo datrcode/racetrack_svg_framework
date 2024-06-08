@@ -805,7 +805,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             _ln_        = self.dfs_layout[self.df_level]
             if len(as_list) > 1:
                 if   self.layout_shape == "rect":
-                    pass
+                    pos_adj = self.rt_self.rectangularArrangement(as_list, bounds=(x0,y0,x1,y1))
+                    for _node_ in pos_adj:
+                        _ln_.pos[_node_] = (_ln_.xT_inv(pos_adj[_node_][0]),_ln_.yT_inv(pos_adj[_node_][1]))
+                    nodes_moved = True
                 elif self.layout_shape == "circle":
                     r = sqrt((x0 - x1)**2 + (y0 - y1)**2)
                     if r < 1.0: r = 1.0
