@@ -718,6 +718,11 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     mod_inner = param.String(default="""<circle cx="300" cy="200" r="10" fill="red" />""")
 
     #
+    # All Entities Path
+    #
+    allentitiespath = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
+
+    #
     # Selection Path
     #
     selectionpath = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
@@ -738,6 +743,11 @@ class RTGraphInteractiveLayout(ReactiveHTML):
           onmousemove="${script('moveEverything')}"
           onmouseup="${script('upEverything')}"
           onmousewheel="${script('mouseWheel')}" />
+    <path id="allentitieslayer" d="${allentitiespath}" fill="#ffffff" transform="" stroke="#000000" stroke-width="3.0"
+          onmousedown="${script('downAllEntities')}"
+          onmousemove="${script('moveEverything')}"
+          onmouseup="${script('upEverything')}" 
+          onmousewheel="${script('mouseWheel')}" />
     <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform=""
           onmousedown="${script('downMove')}"
           onmousemove="${script('moveEverything')}"
@@ -757,20 +767,21 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                  **kwargs):
         # Setup specific instance information
         # - Copy the member variables
-        self.rt_self       = rt_self
-        self.ln_params     = ln_params
-        self.pos           = pos
-        self.w             = 600
-        self.h             = 400
-        self.kwargs        = kwargs
-        self.df            = self.rt_self.copyDataFrame(df)
-        self.df_level      = 0
-        self.dfs           = [self.df]
-        self.dfs_layout    = [self.__renderView__(self.df)]
-        self.graphs        = [self.rt_self.createNetworkXGraph(self.df, ln_params['relationships'])]
-        self.mod_inner     = self.dfs_layout[0]._repr_svg_()
-        self.label_mode    = 'all labels'
-        self.sticky_labels = set()
+        self.rt_self         = rt_self
+        self.ln_params       = ln_params
+        self.pos             = pos
+        self.w               = 600
+        self.h               = 400
+        self.kwargs          = kwargs
+        self.df              = self.rt_self.copyDataFrame(df)
+        self.df_level        = 0
+        self.dfs             = [self.df]
+        self.dfs_layout      = [self.__renderView__(self.df)]
+        self.graphs          = [self.rt_self.createNetworkXGraph(self.df, ln_params['relationships'])]
+        self.mod_inner       = self.dfs_layout[0]._repr_svg_()
+        self.allentitiespath = self.dfs_layout[0].__createPathDescriptionForAllEntities__()
+        self.label_mode      = 'all labels'
+        self.sticky_labels   = set()
 
         # - Create a lock for threading
         self.lock = threading.Lock()
@@ -779,12 +790,13 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         super().__init__(**kwargs)
 
         # Watch for callbacks
-        self.param.watch(self.applyDragOp,     'drag_op_finished')
-        self.param.watch(self.applyMoveOp,     'move_op_finished')
-        self.param.watch(self.applyWheelOp,    'wheel_op_finished')
-        self.param.watch(self.applyMiddleOp,   'middle_op_finished')
-        self.param.watch(self.applyKeyOp,      'key_op_finished')
-        self.param.watch(self.applyLayoutOp,   'layout_shape')
+        self.param.watch(self.applyDragOp,      'drag_op_finished')
+        self.param.watch(self.applyMoveOp,      'move_op_finished')
+        self.param.watch(self.applyWheelOp,     'wheel_op_finished')
+        self.param.watch(self.applyMiddleOp,    'middle_op_finished')
+        self.param.watch(self.applyKeyOp,       'key_op_finished')
+        self.param.watch(self.applyLayoutOp,    'layout_shape')
+        self.param.watch(self.unselectedMoveOp, 'unselected_move_op_finished')
     
     #
     # __renderView__() - render the view
@@ -839,8 +851,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
 
             # Reposition if the nodes moved
             if nodes_moved:
-                self.mod_inner     = self.dfs_layout[self.df_level].renderSVG() # Re-render current
-                self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                self.mod_inner       = self.dfs_layout[self.df_level].renderSVG() # Re-render current
+                self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+                self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.layout_shape = ""
             #self.lock.release()
@@ -867,12 +880,14 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 if _comp_ is not None:
                     if (abs(self.x0_middle - self.x1_middle) <= 1) and (abs(self.y0_middle - self.y1_middle) <= 1):
                         if _comp_.applyMiddleClick(_adj_coordinate_):
-                            self.mod_inner     = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
-                            self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)                            
+                            self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
+                            self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+                            self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)                            
                     else:
                         if _comp_.applyMiddleDrag(_adj_coordinate_, (dx,dy)):
-                            self.mod_inner     = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
-                            self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                            self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
+                            self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+                            self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.middle_op_finished = False
             self.lock.release()
@@ -899,8 +914,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     if _comp_ is not None:
                         if _comp_.applyScrollEvent(rots, _adj_coordinate_):
                             # Re-render current
-                            self.mod_inner      = self.dfs_layout[self.df_level]._repr_svg_()
-                            self.selectionpath  = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)                            
+                            self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
+                            self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+                            self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)                            
                             # Propagate the view configuration to the same component across the dataframe stack
                             for i in range(len(self.dfs_layout)):
                                 if i != self.df_level:
@@ -933,8 +949,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     for _entity_ in self.selected_entities:
                         xy = _ln_.pos[_entity_]
                         _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), _ln_.yT_inv(self.y_mouse))
-                self.mod_inner     = _ln_.renderSVG() # Re-render current
-                self.selectionpath = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                self.mod_inner       = _ln_.renderSVG() # Re-render current
+                self.allentitiespath = _ln_.__createPathDescriptionForAllEntities__()
+                self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
             # "E" - Expand / Invert / Grown / Intersect Selection
             #
@@ -1025,8 +1042,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         _rerender_ = True
                 
                 if _rerender_:
-                    self.mod_inner     = _ln_.renderSVG() # Re-render current
-                    self.selectionpath = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                    self.mod_inner       = _ln_.renderSVG() # Re-render current
+                    self.allentitiespath = _ln_.__createPathDescriptionForAllEntities__()
+                    self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
 
         finally:
             self.key_op_finished = ''
@@ -1041,6 +1059,13 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     drag_x1           = param.Integer(default=10)
     drag_y1           = param.Integer(default=10)
     last_drag_box     = (0,0,1,1)
+
+    #
+    # Unselected move operation state
+    #
+    allentities_x0              = param.Integer(default=10)
+    allentities_y0              = param.Integer(default=10)
+    unselected_move_op_finished = param.Boolean(default=False)
 
     #
     # Move operation state
@@ -1098,9 +1123,20 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 self.dfs_layout[self.df_level].__moveSelectedEntities__((self.drag_x1 - self.drag_x0, self.drag_y1 - self.drag_y0), my_selection=self.selected_entities)
                 self.mod_inner = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
                 self.drag_x0   = self.drag_y0 = self.drag_x1 = self.drag_y1 = 0
-                self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+                self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.move_op_finished = False
+            self.lock.release()
+
+    async def unselectedMoveOp(self, event):
+        self.lock.acquire()
+        try:
+            if self.unselected_move_op_finished:
+                print(self.allentities_x0, self.allentities_y0)
+                print(self.drag_x0, self.drag_y0, self.drag_x1, self.drag_y1)
+        finally:
+            self.unselected_move_op_finished = False
             self.lock.release()
 
     #
@@ -1108,17 +1144,18 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     #
     _scripts = {
         'render':"""
-            mod.innerHTML           = data.mod_inner;
-            state.x0_drag           = state.y0_drag = -10;
-            state.x1_drag           = state.y1_drag =  -5;
-            data.shiftkey           = false;
-            data.ctrlkey            = false;
-            state.drag_op           = false;
-            state.move_op           = false;
-            state.layout_op         = false;
-            state.layout_op_shape   = "";
-            data.middle_op_finished = false;
-            data.move_op_finished   = false;
+            mod.innerHTML            = data.mod_inner;
+            state.x0_drag            = state.y0_drag = -10;
+            state.x1_drag            = state.y1_drag =  -5;
+            data.shiftkey            = false;
+            data.ctrlkey             = false;
+            state.drag_op            = false;
+            state.move_op            = false;
+            state.unselected_move_op = false;
+            state.layout_op          = false;
+            state.layout_op_shape    = "";
+            data.middle_op_finished  = false;
+            data.move_op_finished    = false;
         """,
         'keyPress':"""
         """,
@@ -1146,6 +1183,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             state.y1_drag  = event.offsetY; 
             if (state.drag_op)               { self.myUpdateDragRect(); }
             if (state.move_op)               { selectionlayer.setAttribute("transform", "translate(" + (state.x1_drag - state.x0_drag) + "," + (state.y1_drag - state.y0_drag) + ")"); }
+            if (state.unselected_move_op)    { }
             if (state.layout_op_shape != "") { 
                 var new_shape_maybe = "";
                 if      (data.ctrlkey && data.shiftkey) new_shape_maybe = "circle"
@@ -1154,6 +1192,17 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 else                                    new_shape_maybe = "rect"
                 if (new_shape_maybe != state.layout_op_shape) { state.layout_op_shape = new_shape_maybe; }
                 self.myUpdateLayoutOp(); 
+            }
+        """,
+        'downAllEntities':"""
+            if (event.button == 0) {
+                    data.allentities_x0      = event.offsetX; 
+                    data.allentities_y0      = event.offsetY; 
+                    state.x0_drag            = event.offsetX;                
+                    state.y0_drag            = event.offsetY;                
+                    state.x1_drag            = event.offsetX;                
+                    state.y1_drag            = event.offsetY;
+                    state.unselected_move_op = true;
             }
         """,
         'downSelect':"""
@@ -1243,6 +1292,13 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     data.layout_shape     = state.layout_op_shape; // ERROR OCCURS HERE
                     state.layout_op_shape = "";
                     self.myUpdateLayoutOp();
+                } else if (state.unselected_move_op) {
+                    data.drag_x0 = state.x0_drag;
+                    data.drag_y0 = state.y0_drag;
+                    data.drag_x1 = state.x1_drag;
+                    data.drag_y1 = state.y1_drag;
+                    data.unselected_move_op_finished = true;
+                    state.unselected_move_op = false;
                 }
             } else if (event.button == 1) {
                 data.x1_middle          = event.offsetX; 
