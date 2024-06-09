@@ -24,6 +24,7 @@ import param
 from panel.reactive import ReactiveHTML
 
 from math import pi, sqrt, sin, cos
+import copy
 
 from shapely import Polygon
 
@@ -1058,6 +1059,37 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
                     for i in range(len(self.dfs_layout)):
                         if i != self.df_level: self.dfs_layout[i].applyViewConfiguration(_ln_)
+            #
+            # Spacebar - filter nodes in / out of view
+            #
+            elif self.key_op_finished == ' ':
+                if   self.shiftkey and self.ctrlkey:
+                    pass
+                elif                   self.ctrlkey   and self.df_level < len(self.dfs_layout)-1:
+                    self.df_level += 1
+                elif self.shiftkey                    and self.df_level > 0: # pop the stack
+                    self.df_level -= 1
+                elif len(self.selected_entities) > 0: # push the stack
+                    _g_ = copy.deepcopy(self.graphs[self.df_level])
+                    for _entity_ in self.selected_entities: _g_.remove_node(_entity_)
+                    _df_ = self.rt_self.filterDataFrameByGraph(self.dfs[self.df_level], self.ln_params['relationships'], _g_)
+                    if len(_df_) > 0:
+                        _ln_ = self.__renderView__(_df_)
+                        _ln_.applyViewConfiguration(self.dfs_layout[self.df_level])
+                        if len(self.dfs_layout) > (self.df_level+1):
+                            new_dfs, new_dfs_layout, new_graphs = [], [], []
+                            for i in range(self.df_level+1):
+                                new_dfs.append(self.dfs[i]), new_dfs_layout.append(self.dfs_layout[i]), new_graphs.append(self.graphs[i])
+                            self.dfs, self.dfs_layout, self.graphs = new_dfs, new_dfs_layout, new_graphs
+                        self.dfs        .append(_df_)
+                        self.dfs_layout .append(_ln_)
+                        self.graphs     .append(_g_)
+                        self.df_level += 1
+                        self.selected_entities = []
+                self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
+                self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+                self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+
         finally:
             self.key_op_finished = ''
             self.lock.release()
@@ -1104,7 +1136,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     selected_entities = []
 
     #
-    # applyDragOp()
+    # applyDragOp() - select the nodes within the drag operations bounding box.
     #
     async def applyDragOp(self,event):
         self.lock.acquire()
@@ -1126,6 +1158,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             self.drag_op_finished = False
             self.lock.release()
 
+    #
+    # applyMoveOp() - apply a move operation to the selected node(s)
+    # - may also be used to de-select a selected node when the shift key is pressed and no drag occurs
+    #
     async def applyMoveOp(self,event):
         self.lock.acquire()
         try:
@@ -1146,6 +1182,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             self.move_op_finished = False
             self.lock.release()
 
+    #
+    # unselectedMoveOp() - occurs when user clicks directly on an unselected node.
+    #
     async def unselectedMoveOp(self, event):
         self.lock.acquire()
         try:
@@ -1196,6 +1235,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             else if (event.key == "s" || event.key == "S") { data.key_op_finished = 's';  }
             else if (event.key == "c" || event.key == "C") { state.layout_op      = true; }
             else if (event.key == "z" || event.key == "Z") { data.key_op_finished = 'z';  }
+            else if (event.key == " ")                     { data.key_op_finished = ' ';  }
             data.last_key = event.key;
         """,
         'keyUp':"""

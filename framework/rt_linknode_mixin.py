@@ -39,13 +39,9 @@ class RTLinkNodeMixin(object):
     # - replaces the multiple dataframes used before...
     #
     def concatDisparateDataFrames(self, dfs):
-        if   self.isPandas(dfs[0]):
-            return pd.concat(dfs)
-        elif self.isPolars(dfs[0]):
-            return pl.concat(dfs, how='diagonal')
-        else:
-            raise Exception('concatDisparateDataFrame() - only supports pandas and polars')
-
+        if   self.isPandas(dfs[0]): return pd.concat(dfs)
+        elif self.isPolars(dfs[0]): return pl.concat(dfs, how='diagonal')
+        else:                       raise Exception('concatDisparateDataFrame() - only supports pandas and polars')
 
     #
     # filterDataFrameByGraph() - keep only the rows that are in the graph
@@ -86,7 +82,11 @@ class RTLinkNodeMixin(object):
                     _dfs_.append(k_df)
         
         # Concatenate them together # may have duplicates...
-        if   self.isPandas(df): return pd.concat(_dfs_)
+        if   len(_dfs_)   == 0:
+            if   self.isPandas(df): return pd.DataFrame(columns=df.columns)
+            elif self.isPolars(df): return pl.DataFrame(schema=df.schema)
+            else:                   raise Exception('filterDataFrameByGraph() - only supports pandas and polars [empty dataframe]')
+        elif self.isPandas(df): return pd.concat(_dfs_)
         elif self.isPolars(df): return pl.concat(_dfs_)
         else:                   raise Exception('filterDataFrameByGraph() - only supports pandas and polars')
         
