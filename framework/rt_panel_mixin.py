@@ -778,8 +778,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.dfs             = [self.df]
         self.dfs_layout      = [self.__renderView__(self.df)]
         self.graphs          = [self.rt_self.createNetworkXGraph(self.df, ln_params['relationships'])]
-        self.mod_inner       = self.dfs_layout[0]._repr_svg_()
-        self.allentitiespath = self.dfs_layout[0].__createPathDescriptionForAllEntities__()
+        self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
+        self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
         self.label_mode      = 'all labels'
         self.sticky_labels   = set()
 
@@ -851,7 +851,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
 
             # Reposition if the nodes moved
             if nodes_moved:
-                self.mod_inner       = self.dfs_layout[self.df_level].renderSVG() # Re-render current
+                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
+                self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
                 self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
                 self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
@@ -880,14 +881,22 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 if _comp_ is not None:
                     if (abs(self.x0_middle - self.x1_middle) <= 1) and (abs(self.y0_middle - self.y1_middle) <= 1):
                         if _comp_.applyMiddleClick(_adj_coordinate_):
-                            self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
-                            self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
-                            self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)                            
-                    else:
-                        if _comp_.applyMiddleDrag(_adj_coordinate_, (dx,dy)):
-                            self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
+                            self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
                             self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
                             self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                            for i in range(len(self.dfs_layout)):
+                                if i != self.df_level:
+                                    self.dfs_layout[i].invalidateRender()
+                                    self.dfs_layout[i].applyViewConfiguration(self.dfs_layout[self.df_level])
+                    else:
+                        if _comp_.applyMiddleDrag(_adj_coordinate_, (dx,dy)):
+                            self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
+                            self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+                            self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                            for i in range(len(self.dfs_layout)): 
+                                if i != self.df_level:
+                                    self.dfs_layout[i].invalidateRender()
+                                    self.dfs_layout[i].applyViewConfiguration(self.dfs_layout[self.df_level])
         finally:
             self.middle_op_finished = False
             self.lock.release()
@@ -949,7 +958,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     for _entity_ in self.selected_entities:
                         xy = _ln_.pos[_entity_]
                         _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), _ln_.yT_inv(self.y_mouse))
-                self.mod_inner       = _ln_.renderSVG() # Re-render current
+                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
+                self.mod_inner       = _ln_._repr_svg_()
                 self.allentitiespath = _ln_.__createPathDescriptionForAllEntities__()
                 self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
@@ -1042,10 +1052,12 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         _rerender_ = True
                 
                 if _rerender_:
-                    self.mod_inner       = _ln_.renderSVG() # Re-render current
+                    for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
+                    self.mod_inner       = _ln_._repr_svg_()
                     self.allentitiespath = _ln_.__createPathDescriptionForAllEntities__()
                     self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
-
+                    for i in range(len(self.dfs_layout)):
+                        if i != self.df_level: self.dfs_layout[i].applyViewConfiguration(_ln_)
         finally:
             self.key_op_finished = ''
             self.lock.release()
@@ -1125,9 +1137,11 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 else:
                     self.dfs_layout[self.df_level].__moveSelectedEntities__((self.drag_x1 - self.drag_x0, self.drag_y1 - self.drag_y0), my_selection=self.selected_entities)
                     self.mod_inner = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
-                    self.drag_x0   = self.drag_y0 = self.drag_x1 = self.drag_y1 = 0
                     self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
                     self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                    for i in range(len(self.dfs_layout)):
+                        if i != self.df_level:  self.dfs_layout[i].invalidateRender()
+
         finally:
             self.move_op_finished = False
             self.lock.release()
@@ -1146,6 +1160,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     pass # just do the selection operation
                 else: # and do a move operation
                     self.dfs_layout[self.df_level].__moveSelectedEntities__((self.drag_x1 - self.drag_x0, self.drag_y1 - self.drag_y0), my_selection=self.selected_entities)
+                    for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
                     self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
                     self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
                 self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)

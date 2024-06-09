@@ -36,6 +36,12 @@ class RTComponent(object):
             pass
 
         #
+        # invalidateRender() - invalidate the last render forcing the component to re-render
+        #
+        def invalidateRender(self):
+             self.last_render = None
+
+        #
         # widgetId() - return the SVG widget id
         #
         def widgetId(self):
