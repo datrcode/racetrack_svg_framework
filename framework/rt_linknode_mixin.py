@@ -328,18 +328,22 @@ class RTLinkNodeMixin(object):
         return node_str
 
     #
-    # Calculate Information About the Nodes
+    # calculateNodeInformation() - calculate information about the nodes from the specified dataframe
+    # ... needed to know the overall info about the nodes for rendering
     # ... mostly a copy of the node render loop... should probably be refactored
     #
     def calculateNodeInformation(self, df, relationships, pos, count_by, count_by_set):
         # Boundary
-        wx0 = math.inf
-        wy0 = math.inf
+        wx0 =  math.inf
+        wy0 =  math.inf
         wx1 = -math.inf
         wy1 = -math.inf
 
         # Maximum node value
         max_node_value = 0
+
+        # Nodes found
+        nodes_in_df = set()
 
         # Iterate over the relationships
         for rel_tuple in relationships:
@@ -357,19 +361,16 @@ class RTLinkNodeMixin(object):
 
                 # create the edge table
                 if len(flds) == 1:
-                    if self.isPandas(df):
-                        gb = df.groupby(flds[0])
-                    elif self.isPolars(df):
-                        gb = df.group_by(flds[0])
+                    if   self.isPandas(df): gb = df.groupby(flds[0])
+                    elif self.isPolars(df): gb = df.group_by(flds[0])
                 else:
-                    if self.isPandas(df):
-                        gb = df.groupby(flds)
-                    elif self.isPolars(df):
-                        gb = df.group_by(flds)
+                    if   self.isPandas(df): gb = df.groupby(flds)
+                    elif self.isPolars(df): gb = df.group_by(flds)
 
                 # iterate over the edges
                 for k,k_df in gb:
                     node_str = self.nodeStringAndFillPos(k, pos)
+                    nodes_in_df.add(node_str)
 
                     # Perform the comparison for the bounds
                     v = pos[node_str]
@@ -392,10 +393,9 @@ class RTLinkNodeMixin(object):
                             max_node_value = summation
 
         # Make sure the max node value is not zero
-        if max_node_value == 0:
-            max_node_value = 1
+        if max_node_value == 0: max_node_value = 1
 
-        return max_node_value, wx0, wy0, wx1, wy1
+        return max_node_value, wx0, wy0, wx1, wy1, nodes_in_df
 
     #
     # linkNodePreferredDimensions()
@@ -940,9 +940,9 @@ class RTLinkNodeMixin(object):
                     self.wx1 = max(v[0], self.wx1)
                     self.wy1 = max(v[1], self.wy1)
                 if self.node_size == 'vary':
-                    self.max_node_value,ignore0,ignore1,ignore2,ignore3 = self.rt_self.calculateNodeInformation(self.df, self.relationships, self.pos, self.count_by, self.count_by_set)
+                    self.max_node_value,ignore0,ignore1,ignore2,ignore3,nodes_in_df = self.rt_self.calculateNodeInformation(self.df, self.relationships, self.pos, self.count_by, self.count_by_set)
             else:
-                self.max_node_value,self.wx0,self.wy0,self.wx1,self.wy1 = self.rt_self.calculateNodeInformation(self.df, self.relationships, self.pos, self.count_by, self.count_by_set)
+                self.max_node_value,self.wx0,self.wy0,self.wx1,self.wy1,nodes_in_df = self.rt_self.calculateNodeInformation(self.df, self.relationships, self.pos, self.count_by, self.count_by_set)
 
             # Make it sane
             if math.isinf(self.wx0):
@@ -1474,8 +1474,7 @@ class RTLinkNodeMixin(object):
                                                               self.count_by, self.count_by_set, self.color_by, None, self.widget_id,
                                                               self.sm_type, self.sm_params, self.sm_x_axis_independent, self.sm_y_axis_independent,
                                                               self.sm_w, self.sm_h)
-                    for node_str in sm_lu.keys():
-                        svg.append(sm_lu[node_str])
+                    for node_str in sm_lu.keys(): svg.append(sm_lu[node_str])
 
             return ''.join(svg)
 
@@ -1526,19 +1525,16 @@ class RTLinkNodeMixin(object):
                     if len(rel_tuple) < 2 or len(rel_tuple) > 3:
                         raise Exception(f'linkNode(): relationship tuples should have two or three parts "{rel_tuple}"')
 
-                    # Flatten out into the groupby array, the fm_flds array, and the to_flds array        
+                    # Flatten out into the groupby array, the fm_flds array, and the to_flds array
+                    # ... not necessary anymore since the columns are getting concat'ed in the constructor
                     fm_flds = [rel_tuple[0]]
                     to_flds = [rel_tuple[1]]
 
                     # Do the from and to fields separately
                     for flds_i in range(0,2):
-                        if flds_i == 0:
-                            flds = fm_flds
-                        else:
-                            flds = to_flds
-
-                        if flds_i == 1 and fm_flds == to_flds:
-                            continue # if they are the same thing, don't re-render
+                        if flds_i == 0:  flds = fm_flds
+                        else:            flds = to_flds
+                        if flds_i == 1 and fm_flds == to_flds: continue # if they are the same thing, don't re-render
                         
                         # if the df has all of the columns
                         if len(set(self.df.columns) & set(flds)) == len(set(flds)):
@@ -1548,8 +1544,7 @@ class RTLinkNodeMixin(object):
                             elif self.rt_self.isPolars(self.df):
                                 df_filtered = self.rt_self.polarsFilterColumnsWithNaNs(self.df, self.rt_self.flattenTuple(flds)) # stranded nodes are still possible... 
                                 gb = df_filtered.group_by(flds[0]) if len(flds) == 1 else self.df.group_by(flds)
-                            else:
-                                raise Exception('RTLinkNode.__renderNodes__() - only pandas and polars supported')
+                            else: raise Exception('RTLinkNode.__renderNodes__() - only pandas and polars supported')
 
                             # iterate over the nodes
                             for k,k_df in gb:
@@ -1565,17 +1560,16 @@ class RTLinkNodeMixin(object):
                                 self.node_coords[node_str] = (x,y)
 
                                 if self.node_shape == 'small_multiple':
-                                    if k not in node_to_dfs.keys():
-                                        node_to_dfs[k] = []
+                                    if k not in node_to_dfs.keys(): node_to_dfs[k] = []
 
                                     node_to_dfs[k].append(k_df)
                                     node_to_xy[k] = (x,y)
 
                                     if self.track_state:
                                         _poly = Polygon([[x-self.sm_w/2,y-self.sm_h/2],
-                                                            [x+self.sm_w/2,y-self.sm_h/2],
-                                                            [x+self.sm_w/2,y+self.sm_h/2],
-                                                            [x-self.sm_w/2,y+self.sm_h/2]])
+                                                         [x+self.sm_w/2,y-self.sm_h/2],
+                                                         [x+self.sm_w/2,y+self.sm_h/2],
+                                                         [x-self.sm_w/2,y+self.sm_h/2]])
                                         if _poly not in self.geom_to_df.keys():
                                             self.geom_to_df[_poly] = []
                                         self.geom_to_df[_poly].append(k_df)
@@ -1608,10 +1602,8 @@ class RTLinkNodeMixin(object):
                                             _co_border = _co
                                     elif self.node_color is not None and self.node_color.startswith('#'):
                                         _co        = self.node_color
-                                        if self.node_border_color is not None:
-                                            _co_border = self.node_border_color
-                                        else:
-                                            _co_border = self.node_color
+                                        if self.node_border_color is not None:  _co_border = self.node_border_color
+                                        else:                                   _co_border = self.node_color
                                     else:
                                         _co        = self.rt_self.co_mgr.getTVColor('data','default')
                                         _co_border = self.rt_self.co_mgr.getTVColor('data','default_border')
@@ -1634,10 +1626,8 @@ class RTLinkNodeMixin(object):
                                     if type(self.node_shape) == dict:
                                         # Create the Node Shape Key ... complicated by tuples... // field (column) version
                                         _node_shape_key = flds
-                                        if type(_node_shape_key) == list and len(_node_shape_key) == 1:
-                                            _node_shape_key = _node_shape_key[0]
-                                        if type(_node_shape_key) == list and len(_node_shape_key) > 1:
-                                            _node_shape_key = tuple(_node_shape_key)
+                                        if type(_node_shape_key) == list and len(_node_shape_key) == 1: _node_shape_key = _node_shape_key[0]
+                                        if type(_node_shape_key) == list and len(_node_shape_key) >  1: _node_shape_key = tuple(_node_shape_key)
 
                                         # Retrieve the node shape key
                                         if _node_shape_key in self.node_shape.keys():
@@ -1678,9 +1668,9 @@ class RTLinkNodeMixin(object):
                                     # Track state
                                     if self.track_state:
                                         _poly = Polygon([[x-_sz,y-_sz],
-                                                            [x+_sz,y-_sz],
-                                                            [x+_sz,y+_sz],
-                                                            [x-_sz,y+_sz]])
+                                                         [x+_sz,y-_sz],
+                                                         [x+_sz,y+_sz],
+                                                         [x-_sz,y+_sz]])
                                         if _poly not in self.geom_to_df.keys():
                                             self.geom_to_df[_poly] = []
                                         self.geom_to_df[_poly].append(k_df)
@@ -1877,12 +1867,6 @@ class RTLinkNodeMixin(object):
             self.yT     = lambda __wy__: self.h - self.h * (__wy__ - self.wy0)/(self.wy1-self.wy0)
             self.xT_inv = lambda __sx__: self.wx0 + ((__sx__ * (self.wx1 - self.wx0))/self.w)
             self.yT_inv = lambda __sy__: self.wy0 + ((self.h - __sy__) * (self.wy1 - self.wy0))/self.h
-
-            # 2023-12-22 19:50 TO_DELETE
-            #self.xT     = lambda __x__: self.x_ins + (self.w - 2*self.x_ins) * (__x__ - self.wx0)/(self.wx1-self.wx0)
-            #self.yT     = lambda __y__: (self.h + self.y_ins) - (self.h - 2*self.y_ins) * (__y__ - self.wy0)/(self.wy1-self.wy0)
-            #self.xT_inv = lambda __sx__: self.wx0 + (self.wx1 - self.wx0) * (__sx__ - self.x_ins)/(self.w - 2*self.x_ins)
-            #self.yT_inv = lambda __sy__: self.wy0 + (self.wy1 - self.wy0) * ((self.h + self.y_ins) - __sy__)/(self.h - 2*self.y_ins)
 
             # Start the SVG Frame
             svg = f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'

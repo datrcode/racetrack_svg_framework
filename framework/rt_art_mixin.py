@@ -230,3 +230,16 @@ align_view_to_selection = '''
 </svg>
 
 '''
+
+#
+# Source: https://www.svgrepo.com/svg/520637/cloud
+# License:  CC Attribution License
+# COLLECTION: Xnix Circular Interface Icons
+# AUTHOR: Ankush Syal
+# Modified To Remove Bottom Path (Second Path)
+# -- will be further modified for scaling purposes
+cloud_symbol = '''
+<svg width="30px" height="30px" viewBox="0 -0.5 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M14.091 7.00151C14.9928 6.9746 15.8684 7.30725 16.5249 7.9262C17.1813 8.54515 17.5649 9.39965 17.591 10.3015C17.5914 10.6221 17.5425 10.9408 17.446 11.2465C18.6091 11.4334 19.4729 12.4239 19.5 13.6015C19.4586 14.9664 18.32 16.0402 16.955 16.0015H8.045C6.67999 16.0402 5.54137 14.9664 5.5 13.6015C5.52293 12.4783 6.31258 11.5171 7.41 11.2765C7.41 11.2512 7.41 11.2262 7.41 11.2015C7.45137 9.83659 8.58999 8.76283 9.955 8.80151C10.2738 8.80108 10.5901 8.85764 10.889 8.96851C11.4867 7.74927 12.7333 6.98347 14.091 7.00151Z" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+'''
