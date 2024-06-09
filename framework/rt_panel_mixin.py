@@ -743,7 +743,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
           onmousemove="${script('moveEverything')}"
           onmouseup="${script('upEverything')}"
           onmousewheel="${script('mouseWheel')}" />
-    <path id="allentitieslayer" d="${allentitiespath}" fill="#ffffff" transform="" stroke="#000000" stroke-width="3.0"
+    <path id="allentitieslayer" d="${allentitiespath}" fill="#ffffff" fill-opacity="0.05" stroke="#000000" stroke-width="0.1"
           onmousedown="${script('downAllEntities')}"
           onmousemove="${script('moveEverything')}"
           onmouseup="${script('upEverything')}" 
@@ -1118,11 +1118,16 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.lock.acquire()
         try:
             if self.move_op_finished:
-                self.dfs_layout[self.df_level].__moveSelectedEntities__((self.drag_x1 - self.drag_x0, self.drag_y1 - self.drag_y0), my_selection=self.selected_entities)
-                self.mod_inner = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
-                self.drag_x0   = self.drag_y0 = self.drag_x1 = self.drag_y1 = 0
-                self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
-                self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1 and self.shiftkey:
+                    _point_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((self.drag_x0,self.drag_y0))
+                    self.selected_entities = list(set(self.selected_entities) - set(_point_entities_))
+                    self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                else:
+                    self.dfs_layout[self.df_level].__moveSelectedEntities__((self.drag_x1 - self.drag_x0, self.drag_y1 - self.drag_y0), my_selection=self.selected_entities)
+                    self.mod_inner = self.dfs_layout[self.df_level]._repr_svg_() # Re-render current
+                    self.drag_x0   = self.drag_y0 = self.drag_x1 = self.drag_y1 = 0
+                    self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+                    self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.move_op_finished = False
             self.lock.release()
@@ -1218,10 +1223,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         """,
         'downSelect':"""
             if (event.button == 0) {
-                state.x0_drag  = event.offsetX;                
-                state.y0_drag  = event.offsetY;                
-                state.x1_drag  = event.offsetX+1;                
-                state.y1_drag  = event.offsetY+1;            
+                state.x0_drag  = event.offsetX;
+                state.y0_drag  = event.offsetY;
+                state.x1_drag  = event.offsetX;
+                state.y1_drag  = event.offsetY;
                 if (state.layout_op) {
                     if      (data.ctrlkey && data.shiftkey) state.layout_op_shape = "circle"
                     else if (data.ctrlkey)                  state.layout_op_shape = "sunflower"
