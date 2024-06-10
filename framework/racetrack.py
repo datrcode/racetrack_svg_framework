@@ -47,6 +47,7 @@ from rt_graph_layouts_mixin     import RTGraphLayoutsMixin
 from rt_histogram_mixin         import RTHistogramMixin
 from rt_json_mixin              import RTJSONMixin
 from rt_layouts_mixin           import RTLayoutsMixin
+from rt_link_mixin              import RTLinkMixin
 from rt_linknode_mixin          import RTLinkNodeMixin
 from rt_linknodeshortest_mixin  import RTLinkNodeShortestMixin
 from rt_ontologies_mixin        import RTOntologiesMixin
@@ -75,7 +76,8 @@ class RACETrack(RTAnnotationsMixin,
                 RTGraphLayoutsMixin,
                 RTHistogramMixin,
                 RTJSONMixin,
-                RTLayoutsMixin,                
+                RTLayoutsMixin,   
+                RTLinkMixin,             
                 RTLinkNodeMixin,
                 RTLinkNodeShortestMixin,
                 RTOntologiesMixin,
