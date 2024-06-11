@@ -419,15 +419,15 @@ class RTGraphLayoutsMixin(object):
             G = nx.to_undirected(nx.minimum_spanning_tree(_subgraph))
 
             # Process small graphs separately
-            if len(G) <= 3:
+            if len(G) <= 4:
                 as_list = list(G.nodes())
                 if len(G) >= 1: pos[as_list[0]] = (0,0)
                 if len(G) >= 2: pos[as_list[1]] = (1,0)
                 if len(G) >= 3: pos[as_list[2]] = (1,1)
+                if len(G) >= 4: pos[as_list[3]] = (0,1)
                 continue
 
             # Determine the root if not set
-            _child_count = {}
             my_root = None
             if roots is not None:
                 for possible_root in roots:
@@ -443,9 +443,10 @@ class RTGraphLayoutsMixin(object):
                 my_root = list(f)[0]
 
             # Count the number of children
+            _child_count = {}
             for x in G[my_root]: self.__countSubTreeNodes__(G, x, my_root, _child_count)
             root_children_count = 0
-            for x in G[my_root]: root_children_count += _child_count[x]
+            for x in G[my_root]: root_children_count += 1 + _child_count[x]
             _child_count[my_root] = root_children_count
 
             # Place root
@@ -454,6 +455,10 @@ class RTGraphLayoutsMixin(object):
             for x in G[my_root]:
                 self.__hyperTreePlaceChildren__(pos, G, my_root, my_root, 0, ht_state, 0, 0, _child_count, _leaf_count)
             
+            print(_child_count)
+            print(G.nodes())
+            print(pos)
+
             # Touch up center w/ spring layout
             if touch_up_with_springs:
                 dists   = dict(nx.all_pairs_shortest_path_length(G))
@@ -483,8 +488,8 @@ class RTGraphLayoutsMixin(object):
         _R_ = 8.0
         # Place Leaves Directly
         if _child_count[_node] == 0:
-            pos[_node] = [cen_x + _depth * _R_ * cos(ht_state.angle) / ht_state.max_depth,
-                          cen_y + _depth * _R_ * sin(ht_state.angle) / ht_state.max_depth]
+            pos[_node] = (cen_x + _depth * _R_ * cos(ht_state.angle) / ht_state.max_depth,
+                          cen_y + _depth * _R_ * sin(ht_state.angle) / ht_state.max_depth)
             ht_state.angle += ht_state.angle_inc
 
         # Interior Node...
@@ -500,8 +505,8 @@ class RTGraphLayoutsMixin(object):
                                                 cen_x, cen_y, _child_count, _leaf_count)
             end_angle = ht_state.angle
             half_angle = (begin_angle + end_angle)/2
-            pos[_node] = [cen_x + _depth * _R_ * cos(half_angle) / ht_state.max_depth,
-                          cen_y + _depth * _R_ * sin(half_angle) / ht_state.max_depth]
+            pos[_node] = (cen_x + _depth * _R_ * cos(half_angle) / ht_state.max_depth,
+                          cen_y + _depth * _R_ * sin(half_angle) / ht_state.max_depth)
 
 
     #
