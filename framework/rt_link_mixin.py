@@ -433,12 +433,12 @@ class RTLinkMixin(object):
         # - one limitationis that you can't have mixed types in the columns...
         # -- all strings... all ints... all <whatever> ... but mixed types will fail
         #
-        def __calculateGeometry__(self):
+        def __calculateGeometry__(self, for_entities=None):
             # Determine all possible nodes
             self.all_nodes = set()
             for _relationship_ in self.relationships:
-                self.all_nodes.add(_relationship_[0])
-                self.all_nodes.add(_relationship_[1])
+                self.all_nodes |= set(self.df[_relationship_[0]])
+                self.all_nodes |= set(self.df[_relationship_[1]])
 
             # Fill in any positions that aren't set
             for _node_ in self.all_nodes - self.pos.keys(): self.pos[_node_] = (random.random(),random.random())
@@ -474,6 +474,44 @@ class RTLinkMixin(object):
                 self.wx1 = max(self.wx1, self.df[self.xcols[i]].max())
                 self.wy1 = max(self.wy1, self.df[self.ycols[i]].max())
 
+            # Edge cases
+            if   for_entities is not None and len(for_entities) > 0:
+                self.wx0 = self.wy0 = self.wx1 = self.wy1 = None
+                for _entity_ in for_entities:
+                    v = self.pos[_entity_]
+                    if self.wx0 is None:
+                        self.wx0 = self.wx1 = v[0]
+                        self.wy0 = self.wy1 = v[1]
+                    else:
+                        self.wx0 = min(v[0], self.wx0)
+                        self.wy0 = min(v[1], self.wy0)
+                        self.wx1 = max(v[0], self.wx1)
+                        self.wy1 = max(v[1], self.wy1)
+
+            # This is the default... cost should be O(nodes)
+            elif self.use_pos_for_bounds:
+                for k in self.pos.keys():
+                    v = self.pos[k]
+                    self.wx0 = min(v[0], self.wx0)
+                    self.wy0 = min(v[1], self.wy0)
+                    self.wx1 = max(v[0], self.wx1)
+                    self.wy1 = max(v[1], self.wy1)
+            
+            # Ensure that they aren't equal
+            if self.wx0 == self.wx1: self.wx0, self.wx1 = self.wx0 - 0.5, self.wx1 + 0.5
+            if self.wy0 == self.wy1: self.wy0, self.wy1 = self.wy0 - 0.5, self.wy1 + 0.5
+
+            # Give some air around the boundaries
+            if self.bounds_percent != 0:
+                in_x = (self.wx1-self.wx0)*self.bounds_percent
+                self.wx0 -= in_x
+                self.wx1 += in_x
+                in_y = (self.wy1-self.wy0)*self.bounds_percent
+                self.wy0 -= in_y
+                self.wy1 += in_y
+            
+            return self.wx0, self.wy0, self.wx1, self.wy1
+        
         #
         # __calculateScreenCoordinates__() - add columns for the screen coordinates
         # - make the screen coordinates into integers for dataframe accumulation
@@ -524,7 +562,29 @@ class RTLinkMixin(object):
         # __renderNodes__()
         #
         def __renderNodes__(self):
-            return []
+            # Create the node df by concatenating all fm/to columns into a common column
+            _dfs_ = []
+            for i in range(len(self.relationships)):
+                for j in range(2):
+                    if j == 0:
+                        _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_fm_sx__', f'__rel{i}_fm_sy__', self.relationships[i][0]
+                    else:
+                        _sxfld_, _syfld_, _fmfld_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__', self.relationships[i][1]
+                    _operations_ = [pl.col(_sxfld_).alias('__sx__'),
+                                    pl.col(_syfld_).alias('__sy__'),
+                                    pl.col(_nmfld_).alias('__nm__')]
+                    _dfs_.append(self.df.with_columns(*_operations_))
+            self.df_node = pl.concat(_dfs_)
+
+            # Create a simple svg node via concatenation
+            _str_op_ = [pl.lit('<circle cx="'),
+                        pl.col('__sx__'),
+                        pl.lit('" cy="'),
+                        pl.col('__sy__'),
+                        pl.lit('" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
+            self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
+
+            return list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
 
         #
         # renderSVG() - render as SVG
