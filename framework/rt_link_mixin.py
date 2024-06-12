@@ -555,7 +555,7 @@ class RTLinkMixin(object):
 
         #
         # __renderNodes__()
-        # - baseline... but very primitive
+        # - baseline... very primitive
         #
         def __renderNodes__(self):
             # Create the node df by concatenating all fm/to columns into a common column
@@ -595,23 +595,34 @@ class RTLinkMixin(object):
                     _dfs_.append(self.df.with_columns(*_operations_))
             self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']).agg(pl.len()/2.0, pl.col('__nm__').unique())
 
+            # Create the node SVG
             if    self.node_size is None: _svg_strs_ = []
             elif  self.node_size in self.node_size_lu or type(self.node_size) == int or type(self.node_size) == float:
                 _sz_ = self.node_size_lu[self.node_size] if self.node_size in self.node_size_lu else self.node_size
+                self.df_node = self.df_node.with_columns(pl.lit(_sz_).alias('__sz__'))
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
                             pl.lit(f'" r="{_sz_}" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
                 self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_ = list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
             elif self.node_size == 'vary':
+                self.df_node = self.df_node.with_columns((self.min_node_size + (self.max_node_size - self.min_node_size) * (pl.col('len') - pl.col('len').min()) / (0.01 + pl.col('len').max() - pl.col('len').min())).alias('__sz__'))
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
-                            pl.lit('" r="'), 
-                            self.min_node_size + (self.max_node_size - self.min_node_size) * (pl.col('len') - pl.col('len').min()) / (0.01 + pl.col('len').max() - pl.col('len').min()),
-                            pl.lit('" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
+                            pl.lit('" r="'), pl.col('__sz__'), pl.lit('" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
                 self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_ = list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
-            else:
-                _svg_strs_ = []
+            else: _svg_strs_ = []
 
+            # Add labels
+            if self.draw_labels and len(_svg_strs_) > 0:
+                df_node_labels = self.df_node
+                if self.label_only  is not None and len(self.label_only)  > 0: df_node_labels = self.df_node.filter(pl.col('__nm__').is_in(self.label_only)) # Filter
+                df_node_labels = df_node_labels.with_columns(pl.col('__nm__').cast(pl.List(pl.Utf8)).list.join(', ').alias('__label__'))
+                if self.node_labels is not None and len(self.node_labels) > 0: df_node_labels = df_node_labels.with_columns(pl.col('__nm__').replace(self.node_labels).alias('__label__'))
+                _str_op_ = [pl.lit('<text x="'), pl.col('__sx__'), pl.lit('" y="'), pl.col('__sy__') + pl.col('__sz__') + self.txt_h,
+                            pl.lit(f'" font-size="{self.txt_h}px" text-anchor="middle">'), pl.col('__label__'),
+                            pl.lit('</text>')]
+                df_node_labels = df_node_labels.with_columns(pl.concat_str(_str_op_).alias('__label_svg__'))                
+                _svg_strs_.extend(list(set(df_node_labels['__label_svg__'].unique())))
             return _svg_strs_
 
         #
