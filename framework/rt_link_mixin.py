@@ -594,6 +594,8 @@ class RTLinkMixin(object):
                     _operations_ = [pl.col(_sxfld_).alias('__sx__'), pl.col(_syfld_).alias('__sy__'), pl.col(_nmfld_).alias('__nm__')]
                     _dfs_.append(self.df.with_columns(*_operations_))
             self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']).agg(pl.len()/2.0, pl.col('__nm__').unique())
+            self.df_node = self.df_node.with_columns(pl.col('__nm__').list.len().alias('__nodes__'))
+            self.df_node = self.df_node.with_columns(pl.col('__nm__').list.get(0).alias('__first__'))
 
             # Create the node SVG
             if    self.node_size is None: _svg_strs_ = []
@@ -614,10 +616,10 @@ class RTLinkMixin(object):
 
             # Add labels
             if self.draw_labels and len(_svg_strs_) > 0:
-                df_node_labels = self.df_node
-                if self.label_only  is not None and len(self.label_only)  > 0: df_node_labels = self.df_node.filter(pl.col('__nm__').is_in(self.label_only)) # Filter
-                df_node_labels = df_node_labels.with_columns(pl.col('__nm__').cast(pl.List(pl.Utf8)).list.join(', ').alias('__label__'))
-                if self.node_labels is not None and len(self.node_labels) > 0: df_node_labels = df_node_labels.with_columns(pl.col('__nm__').replace(self.node_labels).alias('__label__'))
+                df_node_labels = self.df_node.filter(pl.col('__nodes__') == 1)
+                if self.label_only  is not None and len(self.label_only)  > 0: df_node_labels = self.df_node.filter(pl.col('__first__').is_in(self.label_only)) # Filter
+                df_node_labels = df_node_labels.with_columns(pl.col('__first__').cast(pl.Utf8).alias('__label__'))
+                if self.node_labels is not None and len(self.node_labels) > 0: df_node_labels = df_node_labels.with_columns(pl.col('__first__').replace(self.node_labels).alias('__label__'))
                 _str_op_ = [pl.lit('<text x="'), pl.col('__sx__'), pl.lit('" y="'), pl.col('__sy__') + pl.col('__sz__') + self.txt_h,
                             pl.lit(f'" font-size="{self.txt_h}px" text-anchor="middle">'), pl.col('__label__'),
                             pl.lit('</text>')]
