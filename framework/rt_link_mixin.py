@@ -569,12 +569,12 @@ class RTLinkMixin(object):
                     if j == 0:
                         _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_fm_sx__', f'__rel{i}_fm_sy__', self.relationships[i][0]
                     else:
-                        _sxfld_, _syfld_, _fmfld_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__', self.relationships[i][1]
+                        _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__', self.relationships[i][1]
                     _operations_ = [pl.col(_sxfld_).alias('__sx__'),
                                     pl.col(_syfld_).alias('__sy__'),
                                     pl.col(_nmfld_).alias('__nm__')]
                     _dfs_.append(self.df.with_columns(*_operations_))
-            self.df_node = pl.concat(_dfs_)
+            self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']).agg(pl.len()/2.0, pl.col('__nm__').unique())
 
             # Create a simple svg node via concatenation
             _str_op_ = [pl.lit('<circle cx="'),
