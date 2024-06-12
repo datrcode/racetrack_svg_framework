@@ -526,7 +526,7 @@ class RTLinkMixin(object):
         #
         # __renderLinks__()
         #
-        def __renderLinks__(self):
+        def __renderLinks_ORIG__(self):
             # Create the string operations
             _operations_ = []
             self.linkcols = []
@@ -557,7 +557,34 @@ class RTLinkMixin(object):
             for i in range(len(self.linkcols)): _set_ |= set(self.df.drop_nulls(subset=[self.linkcols[i]])[self.linkcols[i]].unique())
 
             return list(_set_)
-        
+
+        #
+        # __renderLinks__()
+        #
+        def __renderLinks__(self):
+            _operations_  = []
+            self.linkcols = []
+            _gb_str_      = []
+            for i in range(len(self.relationships)):
+                _link_  = f'__rel{i}_link__'
+                _fm_sx_, _fm_sy_ = f'__rel{i}_fm_sx__', f'__rel{i}_fm_sy__'
+                _to_sx_, _to_sy_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__'
+                _gb_str_.extend([_fm_sx_, _fm_sy_, _to_sx_, _to_sy_])
+                _str_ops_ = [pl.lit('<line x1="'), pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
+                             pl.lit('" x2="'),     pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
+                             pl.lit('" stroke="#000000" stroke-width="2" />')]
+                _operations_.append(pl.concat_str(_str_ops_).alias(_link_))
+                self.linkcols.append(_link_)
+
+            # Uniquify the x0,y0 -> x1,y1 coordinates ... then format it into svg lines
+            self.df_link = self.df.group_by(_gb_str_).agg(pl.len()).with_columns(*_operations_)
+
+            # Return the list of links
+            _set_ = set()
+            for i in range(len(self.linkcols)): _set_ |= set(self.df_link.drop_nulls(subset=[self.linkcols[i]])[self.linkcols[i]].unique())
+
+            return list(_set_)
+
         #
         # __renderNodes__()
         #
