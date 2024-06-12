@@ -602,10 +602,15 @@ class RTLinkMixin(object):
             elif  self.node_size in self.node_size_lu or type(self.node_size) == int or type(self.node_size) == float:
                 _sz_ = self.node_size_lu[self.node_size] if self.node_size in self.node_size_lu else self.node_size
                 self.df_node = self.df_node.with_columns(pl.lit(_sz_).alias('__sz__'))
+                # Single nodes
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
                             pl.lit(f'" r="{_sz_}" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
-                self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
-                _svg_strs_ = list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
+                df_node_singles = self.df_node.filter(pl.col('__nodes__')==1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
+                _svg_strs_ = list(set(df_node_singles.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
+                # Multi nodes // nodes that are collapsed into a single pixel
+                _str_op_ = [pl.lit('<use href="#cloud" x="'), pl.col('__sx__'), pl.lit('" y="'), pl.col('__sy__'), pl.lit('" />')]
+                df_node_multis  = self.df_node.filter(pl.col('__nodes__')>1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
+                _svg_strs_.extend(list(set(df_node_multis.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique())))
             elif self.node_size == 'vary':
                 self.df_node = self.df_node.with_columns((self.min_node_size + (self.max_node_size - self.min_node_size) * (pl.col('len') - pl.col('len').min()) / (0.01 + pl.col('len').max() - pl.col('len').min())).alias('__sz__'))
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
@@ -651,6 +656,7 @@ class RTLinkMixin(object):
 
             # Start the SVG Frame
             svg = [f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">']
+            svg.append(self.rt_self.iconCloud(id="cloud"))
             background_color = self.rt_self.co_mgr.getTVColor('background','default')
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
 
