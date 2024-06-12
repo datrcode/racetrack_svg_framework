@@ -526,41 +526,6 @@ class RTLinkMixin(object):
         #
         # __renderLinks__()
         #
-        def __renderLinks_ORIG__(self):
-            # Create the string operations
-            _operations_ = []
-            self.linkcols = []
-            for i in range(len(self.relationships)):
-                _rel_   = self.relationships[i]
-                _link_  = f'__rel{i}_link__'
-                self.linkcols.append(_link_)
-                _fm_sx_ = f'__rel{i}_fm_sx__'
-                _fm_sy_ = f'__rel{i}_fm_sy__'
-                _to_sx_ = f'__rel{i}_to_sx__'
-                _to_sy_ = f'__rel{i}_to_sy__'
-                _str_ops_ = [pl.lit('<line x1="'), 
-                             pl.col(_fm_sx_), 
-                             pl.lit('" y1="'), 
-                             pl.col(_fm_sy_), 
-                             pl.lit('" x2="'), 
-                             pl.col(_to_sx_), 
-                             pl.lit('" y2="'), 
-                             pl.col(_to_sy_), 
-                             pl.lit('" stroke="#000000" stroke-width="2" />')]
-                _operations_.append(pl.concat_str(_str_ops_).alias(_link_))
-            
-            # Executate the operations
-            self.df = self.df.with_columns(*_operations_)
-
-            # Return the list of links
-            _set_ = set()
-            for i in range(len(self.linkcols)): _set_ |= set(self.df.drop_nulls(subset=[self.linkcols[i]])[self.linkcols[i]].unique())
-
-            return list(_set_)
-
-        #
-        # __renderLinks__()
-        #
         def __renderLinks__(self):
             _operations_  = []
             self.linkcols = []
@@ -604,10 +569,35 @@ class RTLinkMixin(object):
             self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']).agg(pl.len()/2.0, pl.col('__nm__').unique())
 
             # Create a simple svg node via concatenation
-            _str_op_ = [pl.lit('<circle cx="'),
-                        pl.col('__sx__'),
-                        pl.lit('" cy="'),
-                        pl.col('__sy__'),
+            _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'),
+                        pl.lit('" cy="'),       pl.col('__sy__'),
+                        pl.lit('" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
+            self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
+
+            return list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
+
+        #
+        # __renderNodesFully__()
+        # - richer, more expensive renderer
+        #
+        def __renderNodesFully__(self):
+            # Create the node df by concatenating all fm/to columns into a common column
+            _dfs_ = []
+            for i in range(len(self.relationships)):
+                for j in range(2):
+                    if j == 0:
+                        _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_fm_sx__', f'__rel{i}_fm_sy__', self.relationships[i][0]
+                    else:
+                        _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__', self.relationships[i][1]
+                    _operations_ = [pl.col(_sxfld_).alias('__sx__'),
+                                    pl.col(_syfld_).alias('__sy__'),
+                                    pl.col(_nmfld_).alias('__nm__')]
+                    _dfs_.append(self.df.with_columns(*_operations_))
+            self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']).agg(pl.len()/2.0, pl.col('__nm__').unique())
+
+            # Create a simple svg node via concatenation
+            _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'),
+                        pl.lit('" cy="'),       pl.col('__sy__'),
                         pl.lit('" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
             self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
 
