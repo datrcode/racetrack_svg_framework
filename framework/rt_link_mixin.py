@@ -339,7 +339,10 @@ class RTLinkMixin(object):
             # Check the count_by column across all the df's...  if any of them
             # don't work.. then it's count_by_set
             if self.count_by_set == False: self.count_by_set = rt_self.countBySet(self.df, self.count_by)
-            
+
+            # Configuration lookups
+            self.node_size_lu = {'small':3, 'medium':5, 'large':7, 'nil':0.5}
+
             # Tracking state
             self.geom_to_df  = {}
             self.last_render = None
@@ -552,6 +555,7 @@ class RTLinkMixin(object):
 
         #
         # __renderNodes__()
+        # - baseline... but very primitive
         #
         def __renderNodes__(self):
             # Create the node df by concatenating all fm/to columns into a common column
@@ -577,31 +581,38 @@ class RTLinkMixin(object):
             return list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
 
         #
-        # __renderNodesFully__()
-        # - richer, more expensive renderer
+        # __renderNodesTest__()
+        # - expands capability to determine performance impact
         #
-        def __renderNodesFully__(self):
+        def __renderNodesTest__(self):
             # Create the node df by concatenating all fm/to columns into a common column
             _dfs_ = []
             for i in range(len(self.relationships)):
                 for j in range(2):
-                    if j == 0:
-                        _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_fm_sx__', f'__rel{i}_fm_sy__', self.relationships[i][0]
-                    else:
-                        _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__', self.relationships[i][1]
-                    _operations_ = [pl.col(_sxfld_).alias('__sx__'),
-                                    pl.col(_syfld_).alias('__sy__'),
-                                    pl.col(_nmfld_).alias('__nm__')]
+                    if j == 0: _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_fm_sx__', f'__rel{i}_fm_sy__', self.relationships[i][0]
+                    else:      _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__', self.relationships[i][1]
+                    _operations_ = [pl.col(_sxfld_).alias('__sx__'), pl.col(_syfld_).alias('__sy__'), pl.col(_nmfld_).alias('__nm__')]
                     _dfs_.append(self.df.with_columns(*_operations_))
             self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']).agg(pl.len()/2.0, pl.col('__nm__').unique())
 
-            # Create a simple svg node via concatenation
-            _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'),
-                        pl.lit('" cy="'),       pl.col('__sy__'),
-                        pl.lit('" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
-            self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
+            if    self.node_size is None: _svg_strs_ = []
+            elif  self.node_size in self.node_size_lu or type(self.node_size) == int or type(self.node_size) == float:
+                _sz_ = self.node_size_lu[self.node_size] if self.node_size in self.node_size_lu else self.node_size
+                _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
+                            pl.lit(f'" r="{_sz_}" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
+                self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
+                _svg_strs_ = list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
+            elif self.node_size == 'vary':
+                _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
+                            pl.lit('" r="'), 
+                            self.min_node_size + (self.max_node_size - self.min_node_size) * (pl.col('len') - pl.col('len').min()) / (0.01 + pl.col('len').max() - pl.col('len').min()),
+                            pl.lit('" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
+                self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
+                _svg_strs_ = list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
+            else:
+                _svg_strs_ = []
 
-            return list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
+            return _svg_strs_
 
         #
         # renderSVG() - render as SVG
@@ -631,7 +642,7 @@ class RTLinkMixin(object):
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
 
             svg.extend(self.__renderLinks__())
-            svg.extend(self.__renderNodes__())
+            svg.extend(self.__renderNodesTest__())
 
             # Draw the border
             if self.draw_border:
