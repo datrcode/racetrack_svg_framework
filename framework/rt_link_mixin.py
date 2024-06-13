@@ -342,6 +342,7 @@ class RTLinkMixin(object):
 
             # Configuration lookups
             self.node_size_lu = {'small':3, 'medium':5, 'large':7, 'nil':0.5}
+            self.link_size_lu = {'small':1, 'medium':3, 'large':5, 'nil':0.2}
 
             # Tracking state
             self.geom_to_df  = {}
@@ -528,6 +529,7 @@ class RTLinkMixin(object):
 
         #
         # __renderLinks__()
+        # - baseline... very primitive
         #
         def __renderLinks__(self):
             _operations_  = []
@@ -553,6 +555,44 @@ class RTLinkMixin(object):
 
             return list(_set_)
 
+        #
+        # __renderLinks__()
+        #
+        def __renderLinksTest__(self):
+            _sz_ = self.link_size_lu[self.link_size] if self.link_size in self.link_size_lu else 1.0
+            if type(self.link_size) == int or type(self.link_size) == float: _sz_ = self.link_size
+
+            _operations_, self.linkcols, _gb_str_  = [], [], []
+            for i in range(len(self.relationships)):
+                _link_  = f'__rel{i}_link__'
+                _fm_sx_, _fm_sy_ = f'__rel{i}_fm_sx__', f'__rel{i}_fm_sy__'
+                _to_sx_, _to_sy_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__'
+                _gb_str_.extend([_fm_sx_, _fm_sy_, _to_sx_, _to_sy_])
+                if self.link_size == 'vary':
+                    _str_ops_ = [pl.lit('<line x1="'), pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
+                                 pl.lit('" x2="'),     pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
+                                 pl.lit('" stroke="#000000" stroke-width="'),
+                                 self.min_link_size + (self.max_link_size - self.min_link_size)*(pl.col('__count__') - pl.col('__count__').min())/(0.01 + pl.col('__count__').max() - pl.col('__count__').min()),
+                                 pl.lit('" />')]
+                else:
+                    _str_ops_ = [pl.lit('<line x1="'), pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
+                                 pl.lit('" x2="'),     pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
+                                 pl.lit(f'" stroke="#000000" stroke-width="{_sz_}" />')]
+
+                _operations_.append(pl.concat_str(_str_ops_).alias(_link_))
+                self.linkcols.append(_link_)
+
+            # Uniquify the x0,y0 -> x1,y1 coordinates ... then format it into svg lines
+            self.df_link = self.df.group_by(_gb_str_).agg(pl.len().alias('__count__')).with_columns(*_operations_)
+
+            # Return the list of links
+            _set_ = set()
+            if self.link_size is not None:
+                for i in range(len(self.linkcols)): 
+                    _set_ |= set(self.df_link.drop_nulls(subset=[self.linkcols[i]])[self.linkcols[i]].unique())
+
+            return list(_set_)
+        
         #
         # __renderNodes__()
         # - baseline... very primitive
@@ -593,7 +633,7 @@ class RTLinkMixin(object):
                     else:      _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__', self.relationships[i][1]
                     _operations_ = [pl.col(_sxfld_).alias('__sx__'), pl.col(_syfld_).alias('__sy__'), pl.col(_nmfld_).alias('__nm__')]
                     _dfs_.append(self.df.with_columns(*_operations_))
-            self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']).agg(pl.len()/2.0, pl.col('__nm__').unique())
+            self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']).agg((pl.len()/2.0).alias('__count__'), pl.col('__nm__').unique())
             self.df_node = self.df_node.with_columns(pl.col('__nm__').list.len().alias('__nodes__'))
             self.df_node = self.df_node.with_columns(pl.col('__nm__').list.get(0).alias('__first__'))
 
@@ -612,7 +652,7 @@ class RTLinkMixin(object):
                 df_node_multis  = self.df_node.filter(pl.col('__nodes__')>1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_.extend(list(set(df_node_multis.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique())))
             elif self.node_size == 'vary':
-                self.df_node = self.df_node.with_columns((self.min_node_size + (self.max_node_size - self.min_node_size) * (pl.col('len') - pl.col('len').min()) / (0.01 + pl.col('len').max() - pl.col('len').min())).alias('__sz__'))
+                self.df_node = self.df_node.with_columns((self.min_node_size + (self.max_node_size - self.min_node_size) * (pl.col('__count__') - pl.col('__count__').min()) / (0.01 + pl.col('__count__').max() - pl.col('__count__').min())).alias('__sz__'))
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
                             pl.lit('" r="'), pl.col('__sz__'), pl.lit('" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
                 self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
@@ -660,7 +700,7 @@ class RTLinkMixin(object):
             background_color = self.rt_self.co_mgr.getTVColor('background','default')
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
 
-            svg.extend(self.__renderLinks__())
+            svg.extend(self.__renderLinksTest__())
             svg.extend(self.__renderNodesTest__())
 
             # Draw the border
