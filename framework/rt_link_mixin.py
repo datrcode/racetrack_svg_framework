@@ -661,6 +661,7 @@ class RTLinkMixin(object):
 
             # Add labels
             if self.draw_labels and len(_svg_strs_) > 0:
+                # Uncollapse Nodes
                 df_node_labels = self.df_node.filter(pl.col('__nodes__') == 1)
                 if self.label_only  is not None and len(self.label_only)  > 0: df_node_labels = self.df_node.filter(pl.col('__first__').is_in(self.label_only)) # Filter
                 df_node_labels = df_node_labels.with_columns(pl.col('__first__').cast(pl.Utf8).alias('__label__'))
@@ -668,6 +669,14 @@ class RTLinkMixin(object):
                 _str_op_ = [pl.lit('<text x="'), pl.col('__sx__'), pl.lit('" y="'), pl.col('__sy__') + pl.col('__sz__') + self.txt_h,
                             pl.lit(f'" font-size="{self.txt_h}px" text-anchor="middle">'), pl.col('__label__'),
                             pl.lit('</text>')]
+                df_node_labels = df_node_labels.with_columns(pl.concat_str(_str_op_).alias('__label_svg__'))                
+                _svg_strs_.extend(list(set(df_node_labels['__label_svg__'].unique())))
+
+                # Collapsed nodes
+                df_node_labels = self.df_node.filter(pl.col('__nodes__') > 1)
+                _str_op_ = [pl.lit('<text x="'), pl.col('__sx__'), pl.lit('" y="'), pl.col('__sy__') + self.txt_h + 5,
+                            pl.lit(f'" font-size="{self.txt_h}px" text-anchor="middle">['), pl.col('__nodes__'),
+                            pl.lit(']</text>')]
                 df_node_labels = df_node_labels.with_columns(pl.concat_str(_str_op_).alias('__label_svg__'))                
                 _svg_strs_.extend(list(set(df_node_labels['__label_svg__'].unique())))
             return _svg_strs_
