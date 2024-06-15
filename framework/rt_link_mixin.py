@@ -745,13 +745,18 @@ class RTLinkMixin(object):
         # - return value is a list of entities (possibly an empty list) or None
         #
         def overlappingEntities(self, to_intersect):
-            return set()
+            _point_check_ = lambda d: Point(d['__sx__'],d['__sy__']).within(to_intersect)
+            _series_      = self.df_node.filter([pl.struct(['__sx__','__sy__']).map_elements(_point_check_)])['__nm__']
+            _set_ = set()
+            for x in _series_: _set_ = _set_ | set(x)
+            return list(_set_)
 
         #
         # entitiesAtPoint() - Determine all the entities under a specific point
         #
         def entitiesAtPoint(self, xy):
-            return set()
+            _poly_ = Polygon([(xy[0]-5,xy[1]-5),(xy[0]-5,xy[1]+5),(xy[0]+5,xy[1]+5),(xy[0]+5,xy[1]-5)])
+            return self.overlappingEntities(_poly_)
 
         #
         # __createPathDescriptionOfSelectedEntities__() - create an svg path description of the selected entities
