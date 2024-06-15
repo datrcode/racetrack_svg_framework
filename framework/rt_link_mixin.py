@@ -639,8 +639,10 @@ class RTLinkMixin(object):
                 for j in range(2):
                     if j == 0: _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_fm_sx__', f'__rel{i}_fm_sy__', self.relationships[i][0]
                     else:      _sxfld_, _syfld_, _nmfld_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__', self.relationships[i][1]
-                    _operations_ = [pl.col(_sxfld_).alias('__sx__'), pl.col(_syfld_).alias('__sy__'), pl.col(_nmfld_).alias('__nm__')]
-                    _dfs_.append(self.df.with_columns(*_operations_))
+                    _operations_ = [pl.col(_sxfld_).alias('__sx__'), 
+                                    pl.col(_syfld_).alias('__sy__'), 
+                                    pl.col(_nmfld_).alias('__nm__')]
+                    _dfs_.append(self.df.with_columns(*_operations_).drop_nulls(subset=['__sx__','__sy__','__nm__']))
             self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']).agg((pl.len()/2.0).alias('__count__'), pl.col('__nm__').unique())
             self.df_node = self.df_node.with_columns(pl.col('__nm__').list.len().alias('__nodes__'))
             self.df_node = self.df_node.with_columns(pl.col('__nm__').list.get(0).alias('__first__'))
@@ -713,7 +715,7 @@ class RTLinkMixin(object):
 
             # Start the SVG Frame
             svg = [f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">']
-            svg.append(self.rt_self.iconCloud(id="cloud"))
+            svg.append(self.rt_self.iconCloud(id="cloud")) # behind the background...
             background_color = self.rt_self.co_mgr.getTVColor('background','default')
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
 
