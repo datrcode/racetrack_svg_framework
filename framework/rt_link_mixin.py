@@ -587,7 +587,7 @@ class RTLinkMixin(object):
             if self.link_size == 'vary' and self.count_by_set == False and self.count_by in self.df:
                 self.df_link = self.df.group_by(_gb_str_).agg(pl.sum(self.count_by).alias('__count__')).with_columns(*_operations_)
             # count by a field (set-based)
-            elif self.link_size == 'vary' and self.count_by_set == False and self.count_by in self.df:
+            elif self.link_size == 'vary' and self.count_by_set == True and self.count_by in self.df:
                 self.df_link = self.df.group_by(_gb_str_).agg(pl.col(self.count_by).n_unique().alias('__count__')).with_columns(*_operations_)
             # else either no counting or by the number of rows
             else:
