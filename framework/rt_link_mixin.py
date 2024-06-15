@@ -790,11 +790,12 @@ class RTLinkMixin(object):
         def __moveSelectedEntities__(self, dxy, my_selection=None):
             if my_selection is None: my_selection = self.selected_entities
             if my_selection is None or len(my_selection) == 0: return
-            for node_str in my_selection:
-                if node_str in self.node_coords:
-                    xy                 = self.node_coords[node_str]
-                    xy_new             = (self.xT_inv(xy[0] + dxy[0]), self.yT_inv(xy[1] + dxy[1]))
-                    self.pos[node_str] = xy_new
+            _df_ = self.df_node.explode('__nm__').filter(pl.col('__nm__').is_in(my_selection))
+            for i in range(len(_df_)):
+                __nm__ = _df_['__nm__'][i]
+                xy     = (_df_['__sx__'][i], _df_['__sy__'][i])
+                xy_new = (self.xT_inv(xy[0] + dxy[0]), self.yT_inv(xy[1] + dxy[1]))
+                self.pos[__nm__] = xy_new
             self.last_render = None # force a re-render
 
         #

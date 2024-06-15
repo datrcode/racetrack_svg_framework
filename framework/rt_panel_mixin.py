@@ -803,7 +803,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     # __renderView__() - render the view
     #
     def __renderView__(self, __df__):
-        _ln_ = self.rt_self.linkNode(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
+        # _ln_ = self.rt_self.linkNode(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
+        _ln_ = self.rt_self.link(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
         return _ln_
 
     #
