@@ -746,7 +746,7 @@ class RTLinkMixin(object):
         #
         def overlappingEntities(self, to_intersect):
             _point_check_ = lambda d: Point(d['__sx__'],d['__sy__']).within(to_intersect)
-            _series_      = self.df_node.filter([pl.struct(['__sx__','__sy__']).map_elements(_point_check_)])['__nm__']
+            _series_      = self.df_node.filter([pl.struct(['__sx__','__sy__']).map_elements(_point_check_, return_dtype=pl.Boolean)])['__nm__']
             _set_ = set()
             for x in _series_: _set_ = _set_ | set(x)
             return list(_set_)
@@ -763,14 +763,25 @@ class RTLinkMixin(object):
         # - for prototyping the graph interact panel application
         #
         def __createPathDescriptionOfSelectedEntities__(self, my_selection=None):
-            return ''
+            if my_selection is None: my_selection = self.selected_entities
+            _df_ = self.df_node.explode('__nm__').filter(pl.col('__nm__').is_in(my_selection))
+            if len(_df_) == 0: return ''
+            _str_ops_ = [pl.lit('M '), pl.col('__sx__')-5, 
+                         pl.lit(' '),  pl.col('__sy__')-5,
+                         pl.lit(' l 10 0 l 0 10 l -10 0 z')]
+            _df_ = _df_.unique(['__sx__','__sy__']).with_columns(pl.concat_str(*_str_ops_).alias('__svg__'))
+            return ' '.join(_df_['__svg__'])
 
         #
         # __createPathDescriptionForAllEntities__() - create an svg path description of all entities
         # - for prototyping the graph interact panel application
         #
         def __createPathDescriptionForAllEntities__(self):
-            return ''
+            _str_ops_ = [pl.lit('M '), pl.col('__sx__')-5, 
+                         pl.lit(' '),  pl.col('__sy__')-5,
+                         pl.lit(' l 10 0 l 0 10 l -10 0 z')]
+            _df_ = self.df_node.with_columns(pl.concat_str(*_str_ops_).alias('__svg__'))
+            return ' '.join(_df_['__svg__'])
 
         #
         #  __adjustSelectedEntities__() - adjust the selected entities
