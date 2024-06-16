@@ -353,7 +353,11 @@ class RTLinkMixin(object):
         # labelOnly() - set the label only set
         # - this controls which labels will be shown
         #
-        def labelOnly(self,  label_set):   self.label_only  = label_set
+        def labelOnly(self,  label_set):
+            if label_set is None:        label_set = set()
+            if type(label_set) == list:  label_set = set(label_set)
+            if type(label_set) == str:   label_set = set([label_set])
+            self.label_only  = label_set
 
         #
         # drawLabels() - set the draw labels flag
@@ -729,7 +733,7 @@ class RTLinkMixin(object):
 
             svg.append('</svg>')
             self.last_render = ''.join(svg)
-            return svg
+            return self.last_render
 
         #
         # overlappingDataFrames() - Determine which dataframe geometries overlap with a specific region

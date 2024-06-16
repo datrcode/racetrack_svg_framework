@@ -804,8 +804,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     # __renderView__() - render the view
     #
     def __renderView__(self, __df__):
-        _ln_ = self.rt_self.linkNode(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
-        # _ln_ = self.rt_self.link(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
+        # _ln_ = self.rt_self.linkNode(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
+        _ln_ = self.rt_self.link(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
         return _ln_
 
     #
@@ -986,10 +986,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             # "S" - Set Sticky Labels & Remove Sticky Labels
             #
             elif self.key_op_finished == 's':
-                if self.shiftkey:
-                    self.sticky_labels = self.sticky_labels - self.selected_entities
-                else:
-                    self.sticky_labels = set(self.selected_entities) # make a new set object
+                if self.shiftkey: self.sticky_labels = self.sticky_labels - self.selected_entities
+                else:             self.sticky_labels = set(self.selected_entities) # make a new set object
                 if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
                 self.mod_inner = _ln_.renderSVG() # Re-render current
             #
