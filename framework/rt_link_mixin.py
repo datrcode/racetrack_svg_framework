@@ -577,11 +577,11 @@ class RTLinkMixin(object):
                                  pl.lit('" x2="'),     pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
                                  pl.lit('" stroke="#000000" stroke-width="'),
                                  self.min_link_size + (self.max_link_size - self.min_link_size)*(pl.col('__count__') - pl.col('__count__').min())/(0.01 + pl.col('__count__').max() - pl.col('__count__').min()),
-                                 pl.lit('" />')]
+                                 pl.lit(f'" opacity="{self.link_opacity}" />')]
                 else:
                     _str_ops_ = [pl.lit('<line x1="'), pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
                                  pl.lit('" x2="'),     pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
-                                 pl.lit(f'" stroke="#000000" stroke-width="{_sz_}" />')]
+                                 pl.lit(f'" stroke="#000000" stroke-width="{_sz_}" opacity="{self.link_opacity}" />')]
 
                 _operations_.append(pl.concat_str(_str_ops_).alias(_link_))
                 self.linkcols.append(_link_)
