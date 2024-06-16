@@ -768,21 +768,22 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                  **kwargs):
         # Setup specific instance information
         # - Copy the member variables
-        self.rt_self         = rt_self
-        self.ln_params       = ln_params
-        self.pos             = pos
-        self.w               = 600
-        self.h               = 400
-        self.kwargs          = kwargs
-        self.df              = self.rt_self.copyDataFrame(df)
-        self.df_level        = 0
-        self.dfs             = [self.df]
-        self.dfs_layout      = [self.__renderView__(self.df)]
-        self.graphs          = [self.rt_self.createNetworkXGraph(self.df, ln_params['relationships'])]
-        self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
-        self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
-        self.label_mode      = 'all labels'
-        self.sticky_labels   = set()
+        self.rt_self           = rt_self
+        self.ln_params         = ln_params
+        self.pos               = pos
+        self.w                 = 600
+        self.h                 = 400
+        self.kwargs            = kwargs
+        self.df                = self.rt_self.copyDataFrame(df)
+        self.df_level          = 0
+        self.dfs               = [self.df]
+        self.dfs_layout        = [self.__renderView__(self.df)]
+        self.graphs            = [self.rt_self.createNetworkXGraph(self.df, ln_params['relationships'])]
+        self.mod_inner         = self.dfs_layout[self.df_level]._repr_svg_()
+        self.allentitiespath   = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+        self.label_mode        = 'all labels'
+        self.sticky_labels     = set()
+        self.selected_entities = set()        
 
         # - Create a lock for threading
         self.lock = threading.Lock()
@@ -803,8 +804,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     # __renderView__() - render the view
     #
     def __renderView__(self, __df__):
-        # _ln_ = self.rt_self.linkNode(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
-        _ln_ = self.rt_self.link(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
+        _ln_ = self.rt_self.linkNode(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
+        # _ln_ = self.rt_self.link(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
         return _ln_
 
     #
@@ -945,30 +946,28 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         try:
             _ln_ = self.dfs_layout[self.df_level]
             #
-            # "T" - Collapse or Align Nodes
+            # "E" - Expand / Expand w/ Directed
             #
-            if len(self.selected_entities) > 0 and self.key_op_finished == 't':
-                if   self.shiftkey: # y's are all the same
-                    for _entity_ in self.selected_entities:
-                        xy = _ln_.pos[_entity_]
-                        _ln_.pos[_entity_] = (xy[0], _ln_.yT_inv(self.y_mouse))
-                elif self.ctrlkey:  # x's are all the same
-                    for _entity_ in self.selected_entities:
-                        xy = _ln_.pos[_entity_]
-                        _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), xy[1])
-                else:               # x and y's are all the same
-                    for _entity_ in self.selected_entities:
-                        xy = _ln_.pos[_entity_]
-                        _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), _ln_.yT_inv(self.y_mouse))
-                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
-                self.mod_inner       = _ln_._repr_svg_()
-                self.allentitiespath = _ln_.__createPathDescriptionForAllEntities__()
-                self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+            if self.key_op_finished == 'e':
+                if self.shiftkey:
+                    _digraph_ = self.rt_self.createNetworkXGraph(self.dfs[self.df_level], self.ln_params['relationships'], use_digraph=True)
+                    _new_set_ = set(self.selected_entities)
+                    for _node_ in self.selected_entities:
+                        for _nbor_ in _digraph_.neighbors(_node_):
+                            _new_set_.add(_nbor_)
+                    self.selected_entities = _new_set_
+                else:
+                    _new_set_ = set(self.selected_entities)
+                    for _node_ in self.selected_entities:
+                        for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
+                            _new_set_.add(_nbor_)
+                    self.selected_entities = _new_set_
+                self.selectionpath = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
-            # "E" - Expand / Invert / Grown / Intersect Selection
-            #
-            elif self.key_op_finished == 'e':
-                if   self.shiftkey and self.ctrlkey:  # common neighbors
+            # "Q" - Invert Selection / Common Neighbors
+            #            
+            elif self.key_op_finished == 'q':
+                if   self.shiftkey:     # common neighbors
                     inter_set = None
                     for _node_ in self.selected_entities:
                         nbor_set = set()
@@ -976,32 +975,39 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                             nbor_set.add(_nbor_)
                         if inter_set is None: inter_set = nbor_set             # first time, it gets the nbors
                         else:                 inter_set = inter_set & nbor_set # all other times it's and'ed
-                    self.selected_entities = list(inter_set)
-                elif self.shiftkey:                   # invert selection
+                    self.selected_entities = inter_set
+                else:                   # invert selection
                     _new_set_ = set()
                     for _node_ in self.graphs[self.df_level]:
                         if _node_ not in self.selected_entities:
                             _new_set_.add(_node_)
-                    self.selected_entities = list(_new_set_)
-                elif                   self.ctrlkey:  # expand only in direction of the edges ... not efficient but rarely used
-                    _digraph_ = self.rt_self.createNetworkXGraph(self.dfs[self.df_level], self.ln_params['relationships'], use_digraph=True)
-                    _new_set_ = set(self.selected_entities)
-                    for _node_ in self.selected_entities:
-                        for _nbor_ in _digraph_.neighbors(_node_):
-                            _new_set_.add(_nbor_)
-                    self.selected_entities = list(_new_set_)
-                else:                                 # expand
-                    _new_set_ = set(self.selected_entities)
-                    for _node_ in self.selected_entities:
-                        for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
-                            _new_set_.add(_nbor_)
-                    self.selected_entities = list(_new_set_)
-                self.selectionpath = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                    self.selected_entities = _new_set_
             #
-            # "S" - Sticky Labels & Label Toggles
+            # "S" - Set Sticky Labels & Remove Sticky Labels
             #
             elif self.key_op_finished == 's':
-                if   self.shiftkey and self.ctrlkey: # toggle "all labels" -> "sticky labels" -> "no labels"
+                if self.shiftkey:
+                    self.sticky_labels = self.sticky_labels - self.selected_entities
+                else:
+                    self.sticky_labels = set(self.selected_entities) # make a new set object
+                if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
+                self.mod_inner = _ln_.renderSVG() # Re-render current
+            #
+            # "T" - Collapse or Align Nodes
+            #
+            elif len(self.selected_entities) > 0 and self.key_op_finished == 't':
+                for _entity_ in self.selected_entities:
+                    xy = _ln_.pos[_entity_]
+                    _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), _ln_.yT_inv(self.y_mouse))
+                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
+                self.mod_inner       = _ln_._repr_svg_()
+                self.allentitiespath = _ln_.__createPathDescriptionForAllEntities__()
+                self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+            #
+            # "W" - Remove Sticky Labels & Label Toggles
+            #
+            elif self.key_op_finished == 'w':
+                if self.shiftkey:
                     if   self.label_mode == 'all labels':    
                         self.label_mode = 'sticky labels'
                         _ln_.labelOnly(self.sticky_labels)
@@ -1013,22 +1019,32 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         self.label_mode = 'all labels'
                         _ln_.drawLabels(True)
                         _ln_.labelOnly(set())
-                elif self.shiftkey:                  # remove selected nodes from sticky labels
-                    self.sticky_labels = self.sticky_labels - set(self.selected_entities)
-                elif                   self.ctrlkey: # add selected nodes to sticky labels
-                    self.sticky_labels = self.sticky_labels | set(self.selected_entities)
-                else:                                # set selected nodes to sticky labels
-                    self.sticky_labels = set(self.selected_entities)
-
-                if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
-
+                else:
+                    self.sticky_labels = self.sticky_labels | self.selected_entities
+                    if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
                 self.mod_inner = _ln_.renderSVG() # Re-render current
             #
-            # 'Z' - Zoom Related Functionality
+            # "Y" - Organize Selected into a Vertical or Horizontal Line
+            #
+            elif self.key_op_finished == 'y':
+                if self.shiftkey:
+                    for _entity_ in self.selected_entities:
+                        xy = _ln_.pos[_entity_]
+                        _ln_.pos[_entity_] = (xy[0], _ln_.yT_inv(self.y_mouse))
+                else:
+                    for _entity_ in self.selected_entities:
+                        xy = _ln_.pos[_entity_]
+                        _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), xy[1])
+                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
+                self.mod_inner       = _ln_._repr_svg_()
+                self.allentitiespath = _ln_.__createPathDescriptionForAllEntities__()
+                self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+            #
+            # 'Z' - Center on Selected (if selected) or Reset View (if not selected) / Selected + Neighbors
             #
             elif self.key_op_finished == 'z':
                 _rerender_ = False
-                if    self.shiftkey and self.ctrlkey:   # selected & neighbors of selected
+                if self.shiftkey:
                     if len(self.selected_entities) > 0:
                         _new_set_ = set(self.selected_entities)
                         for _node_ in self.selected_entities:
@@ -1037,12 +1053,6 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                                 _view_ = _ln_.__calculateGeometry__(for_entities=_new_set_)
                                 _ln_.setViewWindow(_view_)
                                 _rerender_ = True
-                elif  self.shiftkey:                    # Recenter complete view
-                    _view_ = _ln_.__calculateGeometry__()
-                    _ln_.setViewWindow(_view_)
-                    _rerender_ = True
-                elif                    self.ctrlkey:
-                    pass
                 else:
                     if len(self.selected_entities) > 0: # Zoom to selected entities
                         _view_ = _ln_.__calculateGeometry__(for_entities=self.selected_entities)
@@ -1086,11 +1096,28 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         self.dfs_layout .append(_ln_)
                         self.graphs     .append(_g_)
                         self.df_level += 1
-                        self.selected_entities = []
+                        self.selected_entities = set()
                 self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
                 self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
                 self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+            #
+            # Degree Related Operations
+            #
+            elif len(self.key_op_finished) == 1 and self.key_op_finished in '0123456789':
+                _match_ = set()
+                if self.key_op_finished == '0':
+                    for _node_ in self.graphs[self.df_level]:
+                        if self.graphs[self.df_level].degree(_node_) >= 10: _match_.add(_node_)
+                else:
+                    _degree_ = int(self.key_op_finished)
+                    for _node_ in self.graphs[self.df_level]:
+                        if self.graphs[self.df_level].degree(_node_) == _degree_: _match_.add(_node_)
 
+                if   self.shiftkey:               self.selected_entities = self.selected_entities - _match_
+                elif len(self.selected_entities): self.selected_entities = self.selected_entities & _match_
+                else:                             self.selected_entities = _match_
+
+                self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.key_op_finished = ''
             self.lock.release()
@@ -1132,11 +1159,6 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     y_mouse          = param.Integer(default=0)
 
     #
-    # Selected Entities
-    #
-    selected_entities = []
-
-    #
     # applyDragOp() - select the nodes within the drag operations bounding box.
     #
     async def applyDragOp(self,event):
@@ -1147,11 +1169,11 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 if _x0 == _x1: _x1 += 1
                 if _y0 == _y1: _y1 += 1
                 _rect_ = Polygon([(_x0,_y0), (_x0,_y1), (_x1,_y1), (_x1,_y0)])
-                _overlapping_entities_  = self.dfs_layout[self.df_level].overlappingEntities(_rect_)
+                _overlapping_entities_  = set(self.dfs_layout[self.df_level].overlappingEntities(_rect_))
 
-                if   self.shiftkey and self.ctrlkey: self.selected_entities = list(set(self.selected_entities) & set(_overlapping_entities_))
-                elif self.shiftkey:                  self.selected_entities = list(set(self.selected_entities) - set(_overlapping_entities_))
-                elif self.ctrlkey:                   self.selected_entities = list(set(self.selected_entities) | set(_overlapping_entities_))
+                if   self.shiftkey and self.ctrlkey: self.selected_entities = set(self.selected_entities) & set(_overlapping_entities_)
+                elif self.shiftkey:                  self.selected_entities = set(self.selected_entities) - set(_overlapping_entities_)
+                elif self.ctrlkey:                   self.selected_entities = set(self.selected_entities) | set(_overlapping_entities_)
                 else:                                self.selected_entities = _overlapping_entities_
                 
                 self.selectionpath      = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
@@ -1169,7 +1191,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             if self.move_op_finished:
                 if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1 and self.shiftkey:
                     _point_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((self.drag_x0,self.drag_y0))
-                    self.selected_entities = list(set(self.selected_entities) - set(_point_entities_))
+                    self.selected_entities = set(self.selected_entities) - set(_point_entities_)
                     self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
                 else:
                     self.dfs_layout[self.df_level].__moveSelectedEntities__((self.drag_x1 - self.drag_x0, self.drag_y1 - self.drag_y0), my_selection=self.selected_entities)
@@ -1193,8 +1215,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 _x_,_y_ = self.allentities_x0, self.allentities_y0
                 _overlapping_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((_x_,_y_))
 
-                if   self.ctrlkey:   self.selected_entities = list(set(self.selected_entities) | set(_overlapping_entities_))
-                else:                self.selected_entities = list(_overlapping_entities_)
+                if   self.ctrlkey:   self.selected_entities = (set(self.selected_entities) | set(_overlapping_entities_))
+                else:                self.selected_entities = set(_overlapping_entities_)
 
                 if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1:
                     pass # just do the selection operation
@@ -1231,18 +1253,34 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         'keyDown':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
-            if      (event.key == "t" || event.key == "T") { data.key_op_finished = 't';  }
+
+            if      (event.key == "c" || event.key == "C") { state.layout_op      = true; }
             else if (event.key == "e" || event.key == "E") { data.key_op_finished = 'e';  }
+            else if (event.key == "g" || event.key == "G") { state.layout_op      = true; }
+            else if (event.key == "q" || event.key == "Q") { data.key_op_finished = 'q';  }
             else if (event.key == "s" || event.key == "S") { data.key_op_finished = 's';  }
-            else if (event.key == "c" || event.key == "C") { state.layout_op      = true; }
+            else if (event.key == "t" || event.key == "T") { data.key_op_finished = 't';  }
+            else if (event.key == "w" || event.key == "W") { data.key_op_finished = 'w';  }            
+            else if (event.key == "y" || event.key == "Y") { data.key_op_finished = 'y';  }
             else if (event.key == "z" || event.key == "Z") { data.key_op_finished = 'z';  }
             else if (event.key == " ")                     { data.key_op_finished = ' ';  }
+            else if (event.key == "1" || event.key == "!") { data.key_op_finished = '1';  }
+            else if (event.key == "2" || event.key == "@") { data.key_op_finished = '2';  }
+            else if (event.key == "3" || event.key == "#") { data.key_op_finished = '3';  }
+            else if (event.key == "4" || event.key == "$") { data.key_op_finished = '4';  }
+            else if (event.key == "5" || event.key == "%") { data.key_op_finished = '5';  }
+            else if (event.key == "6" || event.key == "^") { data.key_op_finished = '6';  }
+            else if (event.key == "7" || event.key == "&") { data.key_op_finished = '7';  }
+            else if (event.key == "8" || event.key == "*") { data.key_op_finished = '8';  }
+            else if (event.key == "9" || event.key == "(") { data.key_op_finished = '9';  }
+            else if (event.key == "0" || event.key == ")") { data.key_op_finished = '0';  }
             data.last_key = event.key;
         """,
         'keyUp':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
             if (event.key == "c" || event.key == "C") { state.layout_op = false; }
+            if (event.key == "g" || event.key == "G") { state.layout_op = false; }
         """,
         'moveEverything':"""
             data.ctrlkey   = event.ctrlKey;
