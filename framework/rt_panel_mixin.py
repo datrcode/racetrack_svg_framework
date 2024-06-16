@@ -819,7 +819,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             nodes_moved = False
             _ln_        = self.dfs_layout[self.df_level]
             if len(as_list) > 1:
-                if   self.layout_shape == "rect":
+                if   self.layout_shape == "grid":
                     pos_adj = self.rt_self.rectangularArrangement(as_list, bounds=(x0,y0,x1,y1))
                     for _node_ in pos_adj:
                         _ln_.pos[_node_] = (_ln_.xT_inv(pos_adj[_node_][0]),_ln_.yT_inv(pos_adj[_node_][1]))
@@ -982,6 +982,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         if _node_ not in self.selected_entities:
                             _new_set_.add(_node_)
                     self.selected_entities = _new_set_
+                self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
             # "S" - Set Sticky Labels & Remove Sticky Labels
             #
@@ -1241,8 +1242,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             state.drag_op            = false;
             state.move_op            = false;
             state.unselected_move_op = false;
-            state.layout_op          = false;
-            state.layout_op_shape    = "";
+            state.layout_op          = false; // true if next mouse button 1 press is the begin of a layout
+            state.layout_mode        = "";    // the layout shape that will be generated
+            state.layout_op_shape    = "";    // trigger field for python to peform the layout operation
             data.middle_op_finished  = false;
             data.move_op_finished    = false;
         """,
@@ -1252,9 +1254,11 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
 
-            if      (event.key == "c" || event.key == "C") { state.layout_op      = true; }
+            if      (event.key == "c")                     { state.layout_op      = true; state.layout_mode = "circle";    }
+            else if (event.key == "C")                     { state.layout_op      = true; state.layout_mode = "sunflower"; }
             else if (event.key == "e" || event.key == "E") { data.key_op_finished = 'e';  }
-            else if (event.key == "g" || event.key == "G") { state.layout_op      = true; }
+            else if (event.key == "g")                     { state.layout_op      = true; state.layout_mode = "grid";      }
+            else if (event.key == "G")                     { state.layout_op      = true; state.layout_mode = "line";      }
             else if (event.key == "q" || event.key == "Q") { data.key_op_finished = 'q';  }
             else if (event.key == "s" || event.key == "S") { data.key_op_finished = 's';  }
             else if (event.key == "t" || event.key == "T") { data.key_op_finished = 't';  }
@@ -1277,8 +1281,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         'keyUp':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
-            if (event.key == "c" || event.key == "C") { state.layout_op = false; }
-            if (event.key == "g" || event.key == "G") { state.layout_op = false; }
+            if (event.key == "c" || event.key == "C" || event.key == "g" || event.key == "G") { state.layout_op = false; }
         """,
         'moveEverything':"""
             data.ctrlkey   = event.ctrlKey;
@@ -1290,15 +1293,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             if (state.drag_op)               { self.myUpdateDragRect(); }
             if (state.move_op)               { selectionlayer.setAttribute("transform", "translate(" + (state.x1_drag - state.x0_drag) + "," + (state.y1_drag - state.y0_drag) + ")"); }
             if (state.unselected_move_op)    { }
-            if (state.layout_op_shape != "") { 
-                var new_shape_maybe = "";
-                if      (data.ctrlkey && data.shiftkey) new_shape_maybe = "circle"
-                else if (data.ctrlkey)                  new_shape_maybe = "sunflower"
-                else if                 (data.shiftkey) new_shape_maybe = "line"
-                else                                    new_shape_maybe = "rect"
-                if (new_shape_maybe != state.layout_op_shape) { state.layout_op_shape = new_shape_maybe; }
-                self.myUpdateLayoutOp(); 
-            }
+            if (state.layout_op_shape != "") { self.myUpdateLayoutOp(); }
         """,
         'downAllEntities':"""
             data.ctrlkey  = event.ctrlKey;
@@ -1319,16 +1314,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 state.y0_drag  = event.offsetY;
                 state.x1_drag  = event.offsetX;
                 state.y1_drag  = event.offsetY;
-                if (state.layout_op) {
-                    if      (data.ctrlkey && data.shiftkey) state.layout_op_shape = "circle"
-                    else if (data.ctrlkey)                  state.layout_op_shape = "sunflower"
-                    else if                 (data.shiftkey) state.layout_op_shape = "line"
-                    else                                    state.layout_op_shape = "rect"
-                    self.myUpdateLayoutOp();
-                } else {
-                    state.drag_op  = true;
-                    self.myUpdateDragRect();
-                }
+                if (state.layout_op) { state.layout_op_shape = state.layout_mode; self.myUpdateLayoutOp();
+                } else               { state.drag_op         = true;              self.myUpdateDragRect(); }
             } else if (event.button == 1) {
                 data.x0_middle = data.x1_middle = event.offsetX;
                 data.y0_middle = data.y1_middle = event.offsetY;
@@ -1356,7 +1343,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 layoutsunflower.setAttribute("cx", state.x0_drag);
                 layoutsunflower.setAttribute("cy", state.y0_drag);
                 layoutsunflower.setAttribute("r",  Math.sqrt(dx*dx + dy*dy));            
-            } else if (state.layout_op_shape == "rect")      { reset_rect = false;
+            } else if (state.layout_op_shape == "grid")      { reset_rect = false;
                 layoutrect.setAttribute("x", Math.min(state.x0_drag, state.x1_drag));
                 layoutrect.setAttribute("y", Math.min(state.y0_drag, state.y1_drag));
                 layoutrect.setAttribute("width",  Math.abs(dx));
@@ -1397,7 +1384,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     data.drag_y0          = state.y0_drag; 
                     data.drag_x1          = state.x1_drag; 
                     data.drag_y1          = state.y1_drag;
-                    data.layout_shape     = state.layout_op_shape; // ERROR OCCURS HERE
+                    data.layout_shape     = state.layout_op_shape;
                     state.layout_op_shape = "";
                     self.myUpdateLayoutOp();
                 } else if (state.unselected_move_op) {
