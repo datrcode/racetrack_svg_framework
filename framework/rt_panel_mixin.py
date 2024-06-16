@@ -729,12 +729,18 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     selectionpath = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
 
     #
+    # Information String
+    #
+    info_str              = param.String(default="Info Goes Here")
+
+    #
     # Panel Template
     #
     _template = """
 <svg id="svgparent" width="600" height="400" tabindex="0" onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
     <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="#ffffff" opacity="0.6" />
+    <text id="info" x="5" y="398" font-size="12px"> ${info_str} </text>
     <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
     <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />
     <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />
@@ -962,7 +968,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
                             _new_set_.add(_nbor_)
                     self.selected_entities = _new_set_
-                self.selectionpath = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.selectionpath    = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
             # "Q" - Invert Selection / Common Neighbors
             #            
@@ -982,7 +989,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         if _node_ not in self.selected_entities:
                             _new_set_.add(_node_)
                     self.selected_entities = _new_set_
-                self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+
+                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.selectionpath    = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
             # "S" - Set Sticky Labels & Remove Sticky Labels
             #
@@ -1096,9 +1105,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         self.graphs     .append(_g_)
                         self.df_level += 1
                         self.selected_entities = set()
-                self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
-                self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
-                self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                self.mod_inner        = self.dfs_layout[self.df_level]._repr_svg_()
+                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+                self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
             # Degree Related Operations
             #
@@ -1116,7 +1126,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 elif len(self.selected_entities): self.selected_entities = self.selected_entities & _match_
                 else:                             self.selected_entities = _match_
 
-                self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.selectionpath    = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.key_op_finished = ''
             self.lock.release()
@@ -1175,7 +1186,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 elif self.ctrlkey:                   self.selected_entities = set(self.selected_entities) | set(_overlapping_entities_)
                 else:                                self.selected_entities = _overlapping_entities_
                 
-                self.selectionpath      = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.drag_op_finished = False
             self.lock.release()
@@ -1224,7 +1236,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
                     self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
                     self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
-                self.selectionpath = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+
+                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.unselected_move_op_finished = False
             self.lock.release()
@@ -1409,11 +1423,17 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             data.wheel_op_finished = true;
         """,
         'mod_inner':"""
-            mod.innerHTML = data.mod_inner;
+            mod.innerHTML  = data.mod_inner;
+            info.innerHTML = data.info_str;
             svgparent.focus(); // else it loses focus on every render...
         """,
         'selectionpath':"""
             selectionlayer.setAttribute("d", data.selectionpath);
+            svgparent.focus(); // else it loses focus on every render...
+        """,
+        'info_str': """
+            info.innerHTML = data.info_str;
+            svgparent.focus(); // else it loses focus on every render...
         """,
         'myUpdateDragRect':"""
             if (state.drag_op) {
