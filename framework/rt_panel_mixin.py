@@ -52,8 +52,8 @@ class RTPanelMixin(object):
     #
     # interactiveGraphLayout()
     #
-    def interactiveGraphLayout(self, df, ln_params, pos, w=600, h=400, **kwargs):
-        return RTGraphInteractiveLayout(self, df, ln_params, pos, w, h, **kwargs)
+    def interactiveGraphLayout(self, df, ln_params, w=600, h=400, **kwargs):
+        return RTGraphInteractiveLayout(self, df, ln_params, w, h, **kwargs)
 
     #
     # interactivePanel() - coordinated views with configurable components.
@@ -771,7 +771,6 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                  rt_self,           # RACETrack instance
                  df,                # data frame
                  ln_params,         # linknode params
-                 pos,               # position dictionary
                  w           =600,  # width
                  h           =400,  # height
                  **kwargs):
@@ -779,7 +778,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         # - Copy the member variables
         self.rt_self           = rt_self
         self.ln_params         = ln_params
-        self.pos               = pos
+        if 'pos' not in ln_params.keys(): ln_params['pos'] = {}
+        self.pos               = ln_params['pos']
         self.w                 = w
         self.h                 = h
         self.kwargs            = kwargs
@@ -838,8 +838,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     # __renderView__() - render the view
     #
     def __renderView__(self, __df__):
-        # _ln_ = self.rt_self.linkNode(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
-        _ln_ = self.rt_self.link(__df__, pos=self.pos, w=self.w, h=self.h, **self.ln_params)
+        # _ln_ = self.rt_self.linkNode(__df__, w=self.w, h=self.h, **self.ln_params)
+        _ln_ = self.rt_self.link(__df__, w=self.w, h=self.h, **self.ln_params)
         return _ln_
 
     #
