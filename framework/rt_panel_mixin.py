@@ -735,6 +735,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
 
     #
     # Panel Template
+    # - rewritten in constructor with width and height filled in
     #
     _template = """
 <svg id="svgparent" width="600" height="400" tabindex="0" onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
@@ -767,18 +768,20 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     # Constructor
     #
     def __init__(self,
-                 rt_self,   # RACETrack instance
-                 df,        # data frame
-                 ln_params, # linknode params
-                 pos,       # position dictionary
+                 rt_self,           # RACETrack instance
+                 df,                # data frame
+                 ln_params,         # linknode params
+                 pos,               # position dictionary
+                 w           =600,  # width
+                 h           =400,  # height
                  **kwargs):
         # Setup specific instance information
         # - Copy the member variables
         self.rt_self           = rt_self
         self.ln_params         = ln_params
         self.pos               = pos
-        self.w                 = 600
-        self.h                 = 400
+        self.w                 = w
+        self.h                 = h
         self.kwargs            = kwargs
         self.df                = self.rt_self.copyDataFrame(df)
         self.df_level          = 0
@@ -790,6 +793,31 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.label_mode        = 'all labels'
         self.sticky_labels     = set()
         self.selected_entities = set()        
+
+        self._template = '''<svg id="svgparent" width="'''+str(w)+'''" height="'''+str(h)+'''" tabindex="0" onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">''' + \
+                         '''<svg id="mod" width="'''+str(w)+'''" height="'''+str(h)+'''"> ${mod_inner} </svg>''' + \
+                         '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="#ffffff" opacity="0.6" />''' + \
+                         '''<text id="info" x="5" y="'''+str(h-4)+'''" font-size="12px"> ${info_str} </text>''' + \
+                         '''<line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />''' + \
+                         '''<rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />''' + \
+                         '''<circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />''' + \
+                         '''<circle id="layoutsunflower" cx="-10" cy="-10" r="5"                   stroke="#000000" stroke-width="2" />''' + \
+                         '''<rect id="screen" x="0" y="0" width="'''+str(w)+'''" height="'''+str(h)+'''" opacity="0.05"''' + \
+                         '''      onmousedown="${script('downSelect')}"''' + \
+                         '''      onmousemove="${script('moveEverything')}"''' + \
+                         '''      onmouseup="${script('upEverything')}"''' + \
+                         '''      onmousewheel="${script('mouseWheel')}" />''' + \
+                         '''<path id="allentitieslayer" d="${allentitiespath}" fill="#ffffff" fill-opacity="0.05" stroke="#000000" stroke-width="0.1"''' + \
+                         '''      onmousedown="${script('downAllEntities')}"''' + \
+                         '''      onmousemove="${script('moveEverything')}"''' + \
+                         '''      onmouseup="${script('upEverything')}" ''' + \
+                         '''      onmousewheel="${script('mouseWheel')}" />''' + \
+                         '''<path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform=""''' + \
+                         '''      onmousedown="${script('downMove')}"''' + \
+                         '''      onmousemove="${script('moveEverything')}"''' + \
+                         '''      onmouseup="${script('upEverything')}" ''' + \
+                         '''      onmousewheel="${script('mouseWheel')}" />''' + \
+                         '''</svg>'''
 
         # - Create a lock for threading
         self.lock = threading.Lock()
