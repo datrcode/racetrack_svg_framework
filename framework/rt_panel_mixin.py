@@ -43,16 +43,34 @@ class RTPanelMixin(object):
     def __panel_mixin_init__(self):
         pn.extension(inline=False)
 
-    # ------------------------------------------------------------------------------------------------------------------------------
-    # ------------------------------------------------------------------------------------------------------------------------------
-    # ------------------------------------------------------------------------------------------------------------------------------
-
+    #
+    # layoutPanel() - helps with the constructions of the layout
+    #
     def layoutPanel(self):
         return LayoutPanel()
 
-    # ------------------------------------------------------------------------------------------------------------------------------
-    # ------------------------------------------------------------------------------------------------------------------------------
-    # ------------------------------------------------------------------------------------------------------------------------------
+    #
+    # interactiveGraphLayout()
+    #
+    def interactiveGraphLayout(self, df, ln_params, pos, w=600, h=400, **kwargs):
+        return RTGraphInteractiveLayout(self, df, ln_params, pos, w, h, **kwargs)
+
+    #
+    # interactivePanel() - coordinated views with configurable components.
+    #
+    def interactivePanel(self,
+                         df,
+                         spec,                  # Layout specification
+                         w,                     # Width of the panel
+                         h,                     # Heght of the panel
+                         rt_params      = {},   # Racetrack params -- dictionary of param:value
+                         # -------------------- #
+                         h_gap          = 0,    # Horizontal left/right gap
+                         v_gap          = 0,    # Verticate top/bottom gap
+                         widget_h_gap   = 1,    # Horizontal gap between widgets
+                         widget_v_gap   = 1,    # Vertical gap between widgets
+                         **kwargs):             # Other arguments to pass to the layout instance
+        return RTReactiveHTML(df, self, spec, w, h, rt_params, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
 
     #
     # RTFontMetricsPanel - determine the font metrics for a specific
@@ -107,22 +125,6 @@ class RTPanelMixin(object):
     # ------------------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------------------
     
-    #
-    # Create an interactive panel
-    #
-    def interactivePanel(self,
-                         df,
-                         spec,                  # Layout specification
-                         w,                     # Width of the panel
-                         h,                     # Heght of the panel
-                         rt_params      = {},   # Racetrack params -- dictionary of param:value
-                         # -------------------- #
-                         h_gap          = 0,    # Horizontal left/right gap
-                         v_gap          = 0,    # Verticate top/bottom gap
-                         widget_h_gap   = 1,    # Horizontal gap between widgets
-                         widget_v_gap   = 1,    # Vertical gap between widgets
-                         **kwargs):             # Other arguments to pass to the layout instance
-        return RTReactiveHTML(df, self, spec, w, h, rt_params, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
 
 #
 # ReactiveHTML Class for Panel Implementation
@@ -706,8 +708,6 @@ class LayoutPanel(ReactiveHTML):
             data.export_string = s;
         '''
     }
-
-
 
 #
 # ReactiveHTML Class for Panel Implementation
