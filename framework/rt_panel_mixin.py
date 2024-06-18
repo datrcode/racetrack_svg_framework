@@ -741,7 +741,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
 <svg id="svgparent" width="600" height="400" tabindex="0" onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
     <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="#ffffff" opacity="0.6" />
-    <text id="info" x="5" y="398" font-size="12px"> ${info_str} </text>
+    <text id="info" x="5" y="398" font-size="10px"> ${info_str} </text>
     <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
     <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />
     <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />
@@ -797,7 +797,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self._template = '''<svg id="svgparent" width="'''+str(w)+'''" height="'''+str(h)+'''" tabindex="0" onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">''' + \
                          '''<svg id="mod" width="'''+str(w)+'''" height="'''+str(h)+'''"> ${mod_inner} </svg>''' + \
                          '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="#ffffff" opacity="0.6" />''' + \
-                         '''<text id="info" x="5" y="'''+str(h-4)+'''" font-size="12px"> ${info_str} </text>''' + \
+                         '''<text id="info" x="5" y="'''+str(h-4)+'''" font-size="10px"> ${info_str} </text>''' + \
                          '''<line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />''' + \
                          '''<rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />''' + \
                          '''<circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />''' + \
@@ -996,7 +996,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
                             _new_set_.add(_nbor_)
                     self.selected_entities = _new_set_
-                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
                 self.selectionpath    = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
             # "Q" - Invert Selection / Common Neighbors
@@ -1018,7 +1018,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                             _new_set_.add(_node_)
                     self.selected_entities = _new_set_
 
-                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
                 self.selectionpath    = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
             # "S" - Set Sticky Labels & Remove Sticky Labels
@@ -1027,6 +1027,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 if self.shiftkey: self.sticky_labels = self.sticky_labels - self.selected_entities
                 else:             self.sticky_labels = set(self.selected_entities) # make a new set object
                 if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
+                self.ln_params['label_only']  = self.sticky_labels
                 self.mod_inner = _ln_.renderSVG() # Re-render current
             #
             # "T" - Collapse or Align Nodes
@@ -1048,16 +1049,21 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         self.label_mode = 'sticky labels'
                         _ln_.labelOnly(self.sticky_labels)
                         _ln_.drawLabels(True)
+                        self.ln_params['draw_labels'] = True
                     elif self.label_mode == 'sticky labels':
                         self.label_mode = 'no labels'
                         _ln_.drawLabels(False)
+                        self.ln_params['draw_labels'] = False                        
                     else:                                    
                         self.label_mode = 'all labels'
                         _ln_.drawLabels(True)
+                        self.ln_params['draw_labels'] = True
                         _ln_.labelOnly(set())
                 else:
                     self.sticky_labels = self.sticky_labels | self.selected_entities
                     if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
+                    self.ln_params['label_only'] = self.sticky_labels
+                self.info_str  = f'{len(self.selected_entities)} Selected | {self.label_mode}'
                 self.mod_inner = _ln_.renderSVG() # Re-render current
             #
             # "Y" - Organize Selected into a Vertical or Horizontal Line
@@ -1134,7 +1140,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         self.df_level += 1
                         self.selected_entities = set()
                 self.mod_inner        = self.dfs_layout[self.df_level]._repr_svg_()
-                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
                 self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
                 self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
@@ -1154,7 +1160,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 elif len(self.selected_entities): self.selected_entities = self.selected_entities & _match_
                 else:                             self.selected_entities = _match_
 
-                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
                 self.selectionpath    = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.key_op_finished = ''
@@ -1214,7 +1220,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 elif self.ctrlkey:                   self.selected_entities = set(self.selected_entities) | set(_overlapping_entities_)
                 else:                                self.selected_entities = _overlapping_entities_
                 
-                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
                 self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.drag_op_finished = False
@@ -1265,7 +1271,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
                     self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
 
-                self.info_str         = f'{len(self.selected_entities)} Selected'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
                 self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.unselected_move_op_finished = False
@@ -1291,6 +1297,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             data.move_op_finished    = false;
         """,
         'keyPress':"""
+            svgparent.focus(); // else it loses focus on every render...
         """,
         'keyDown':"""
             data.ctrlkey  = event.ctrlKey;
@@ -1319,11 +1326,13 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             else if (event.key == "9" || event.key == "(") { data.key_op_finished = '9';  }
             else if (event.key == "0" || event.key == ")") { data.key_op_finished = '0';  }
             data.last_key = event.key;
+            svgparent.focus(); // else it loses focus on every render...
         """,
         'keyUp':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
             if (event.key == "c" || event.key == "C" || event.key == "g" || event.key == "G") { state.layout_op = false; }
+            svgparent.focus(); // else it loses focus on every render...
         """,
         'moveEverything':"""
             data.ctrlkey   = event.ctrlKey;
