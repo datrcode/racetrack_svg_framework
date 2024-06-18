@@ -1296,14 +1296,14 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
 
-            if      (event.key == "c")                     { state.layout_op      = true; state.layout_mode = "circle";    }
-            else if (event.key == "C")                     { state.layout_op      = true; state.layout_mode = "sunflower"; }
+            if      (event.key == "c")                     { state.layout_op      = true; state.layout_mode = "circle";    }            
             else if (event.key == "e" || event.key == "E") { data.key_op_finished = 'e';  }
             else if (event.key == "g")                     { state.layout_op      = true; state.layout_mode = "grid";      }
-            else if (event.key == "G")                     { state.layout_op      = true; state.layout_mode = "line";      }
+            else if (event.key == "h")                     { state.layout_op      = true; state.layout_mode = "sunflower"; }            
             else if (event.key == "q" || event.key == "Q") { data.key_op_finished = 'q';  }
             else if (event.key == "s" || event.key == "S") { data.key_op_finished = 's';  }
             else if (event.key == "t" || event.key == "T") { data.key_op_finished = 't';  }
+            else if (event.key == "u")                     { state.layout_op      = true; state.layout_mode = "line";      }            
             else if (event.key == "w" || event.key == "W") { data.key_op_finished = 'w';  }            
             else if (event.key == "y" || event.key == "Y") { data.key_op_finished = 'y';  }
             else if (event.key == "z" || event.key == "Z") { data.key_op_finished = 'z';  }
