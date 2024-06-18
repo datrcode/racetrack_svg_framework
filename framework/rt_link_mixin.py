@@ -532,10 +532,31 @@ class RTLinkMixin(object):
             self.df = self.df.with_columns(*_operations_)
 
         #
-        # __renderLinks__()
+        # __renderBackgroundShapes__() - render background shapes
+        # - mostly a copy of the xy implementation
+        #
+        def __renderBackgroundShapes__(self):
+            _svg_ = []
+            # Draw the background shapes
+            if self.bg_shape_lu is not None:
+                _bg_shape_labels = []
+                for k in self.bg_shape_lu.keys():
+                    shape_desc = self.bg_shape_lu[k]
+                    _shape_svg, _label_svg = self.rt_self.__transformBackgroundShapes__(k,                         shape_desc,
+                                                                                        self.xT,                   self.yT,
+                                                                                        self.bg_shape_label_color, self.bg_shape_opacity,
+                                                                                        self.bg_shape_fill,        self.bg_shape_stroke_w,
+                                                                                        self.bg_shape_stroke,      self.txt_h)
+                    _svg_.append(_shape_svg)
+                    _bg_shape_labels.append(_label_svg) # Defer render
+                _svg_.extend(_bg_shape_labels)            
+            return ''.join(_svg_)
+
+        #
+        # __renderLinksBasic__()
         # - baseline... very primitive
         #
-        def __renderLinks__(self):
+        def __renderLinksBasic__(self):
             _operations_  = []
             self.linkcols = []
             _gb_str_      = []
@@ -562,7 +583,7 @@ class RTLinkMixin(object):
         #
         # __renderLinks__()
         #
-        def __renderLinksTest__(self):
+        def __renderLinks__(self):
             _sz_ = self.link_size_lu[self.link_size] if self.link_size in self.link_size_lu else 1.0
             if type(self.link_size) == int or type(self.link_size) == float: _sz_ = self.link_size
 
@@ -606,10 +627,10 @@ class RTLinkMixin(object):
             return list(_set_)
         
         #
-        # __renderNodes__()
+        # __renderNodesBasic__()
         # - baseline... very primitive
         #
-        def __renderNodes__(self):
+        def __renderNodesBasic__(self):
             # Create the node df by concatenating all fm/to columns into a common column
             _dfs_ = []
             for i in range(len(self.relationships)):
@@ -633,10 +654,10 @@ class RTLinkMixin(object):
             return list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
 
         #
-        # __renderNodesTest__()
+        # __renderNodes__()
         # - expands capability to determine performance impact
         #
-        def __renderNodesTest__(self):
+        def __renderNodes__(self):
             # Create the node df by concatenating all fm/to columns into a common column
             _dfs_ = []
             for i in range(len(self.relationships)):
@@ -723,8 +744,12 @@ class RTLinkMixin(object):
             background_color = self.rt_self.co_mgr.getTVColor('background','default')
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
 
-            svg.extend(self.__renderLinksTest__())
-            svg.extend(self.__renderNodesTest__())
+            # Add background shapes
+            svg.append(self.__renderBackgroundShapes__())
+
+            # Links and Nodes
+            svg.extend(self.__renderLinks__())
+            svg.extend(self.__renderNodes__())
 
             # Draw the border
             if self.draw_border:
