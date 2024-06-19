@@ -40,7 +40,7 @@ class RTOntologiesMixin(object):
             rt_ontology = RTOntology(self)
             rt_ontology.fm_files(kwargs['base_filename'])
             return rt_ontology
-        else: raise Exception('RTOntology.ontologyFrameworkInstance() - missing required arguments -- either "xform_spec" or "base_filename"')
+        else: return RTOntology(self)
     
 # scanForward() - finds the next unescaped version of character c in x starting at i
 def scanForward(x, i, c):
@@ -382,13 +382,44 @@ class RTOntology(object):
         if funcs is not None:      self.funcs = funcs
         else:                      self.funcs = {}
         # RDF triples
-        self.df_triples = None
+        self.df_triples = pl.DataFrame(schema={'sbj':    pl.Int64,
+                                               'stype':  pl.String,
+                                               'sdisp':  pl.String,
+                                               'vrb':    pl.String,
+                                               'obj':    pl.Int64,
+                                               'otype':  pl.String,
+                                               'odisp':  pl.String,
+                                               'grp':    pl.Int64,
+                                               'gdisp':  pl.String,
+                                               'src':    pl.String})
+        self.buffered_triples = {'sbj':  [],
+                                'stype': [],
+                                'sdisp': [],
+                                'vrb':   [],
+                                'obj':   [],
+                                'otype': [],
+                                'odisp': [],
+                                'grp':   [],
+                                'gdisp': [],
+                                'src':   []}
         # Unique identifiers lookups and reverse
         self.uid_lu     = {}
         self.rev_uid_lu = {}
         # Labeling information
         self.labeling_uids = {}
         self.labeling_sbjs = {}
+        # Dispositions
+        self._dispositions_ = {'uniq', # unique entity
+                               'ambi', # ambiguous entity
+                               'anon', # anonymous entity
+                               'yyyy', # year                  - xsd:date
+                               'dura', # duration              - xsd:duration
+                               'cata', # categorical
+                               'valu', # value (ints, floats)  - xsd:integer, xsd:float
+                               'cont', # content (e.g., text)  - xsd:string
+                               'date', # yyyy-mm-dd            - xsd:date
+                               'dttm'} # timestamp             - xsd:dateTime
+
         # Validation errors
         self.validation_errors = set()
         # Performance measurements
@@ -630,6 +661,7 @@ class RTOntology(object):
 
     # resolveIdAndUpdateLookups() - resolve id and update lookups
     # self.uid_lu[<interger>] = (id-from-input, type-from-input, disposition-from-input)
+    # _occurs_in_ == 'sbj' or 'obj' or 'sbj,obj'
     #
     def resolveUniqIdAndUpdateLookups(self, _id_, _type_, _disp_, _occurs_in_):
         _uniq_key_ = str(_id_)+'|'+str(_type_)+'|'+str(_disp_)
@@ -639,9 +671,63 @@ class RTOntology(object):
         self.rev_uid_lu[_uniq_key_] = my_uid
         return my_uid
 
+    #
+    # createId() - create an id
+    # - used to create reference non-named unique nodes
+    #
+    def createId(self, _type_):
+        my_uid = 100_000 + len(self.uid_lu.keys())
+        _uniq_key_ = str(my_uid)+'|'+str(_type_)+'|'+str('uniq')        
+        self.uid_lu[my_uid] = (my_uid, _type_, 'uniq')
+        self.rev_uid_lu[_uniq_key_] = my_uid
+        return my_uid
+
+    #
+    # bufferTripleToAddLater() - add triple to an intermediate buffer...
+    # - all values should have been created by the resolveUniqIdAndUpdateLookups()
+    # - only three are required -- sbj, vrb, obj
+    #
+    def bufferTripleToAddLater(self, sbj, vrb, obj, grp=None, src=None):
+        # Resolve the ids
+        sbj_tuple = self.uid_lu[sbj]
+        obj_tuple = self.uid_lu[obj]
+        self.buffered_triples['sbj'].   append(sbj)
+        self.buffered_triples['stype']. append(sbj_tuple[1])
+        self.buffered_triples['sdisp']. append(sbj_tuple[2])
+        self.buffered_triples['vrb'].   append(vrb)
+        self.buffered_triples['obj'].   append(obj)
+        self.buffered_triples['otype']. append(obj_tuple[1])
+        self.buffered_triples['odisp']. append(obj_tuple[2])
+        self.buffered_triples['grp'].   append(grp)
+        if grp is not None:
+            grp_tuple = self.uid_lu[grp]
+            grp_disp  = grp_tuple[2]
+        else: grp_disp = None
+        self.buffered_triples['gdisp']. append(grp_disp)
+        self.buffered_triples['src'].   append(src)
+
+    #
+    # appendBufferedTriplesAndClearBuffer() - append buffered triples and clear buffers
+    #
+    def appendBufferedTriplesAndClearBuffer(self):
+        # Add the triples
+        df_buffered     = pl.DataFrame(self.buffered_triples, schema=self.df_triples.schema)
+        self.df_triples = pl.concat([self.df_triples, df_buffered])
+
+        # Clear the buffer
+        self.buffered_triples = {'sbj':   [],
+                                 'stype': [],
+                                 'sdisp': [],
+                                 'vrb':   [],
+                                 'obj':   [],
+                                 'otype': [],
+                                 'odisp': [],
+                                 'grp':   [],
+                                 'gdisp': [],
+                                 'src':   []}
+
     # parse() - parse json into ontology via specification
     def parse(self, jlist):
-        _dispositions_ = {'uniq', 'ambi', 'anon', 'yyyy', 'dura', 'cata', 'valu', 'cont', 'date', 'dttm'}
         spec_to_parse_count = {}
         if type(jlist) != list: jlist = [jlist]
         _dfs_ = []
@@ -665,7 +751,7 @@ class RTOntology(object):
                     grp = l[l.index('@@@')+3:]
                     l   = l[:l.index('@@@')].strip()
                     g_uniq = None
-                    if endsWithAny(grp, _dispositions_) and '|' in grp:
+                    if endsWithAny(grp, self._dispositions_) and '|' in grp:
                         g_disp = grp[grp.rindex('|')+1:].strip()
                         grp    = grp[:grp.rindex('|')]
                     else: g_disp = 'ambi'
@@ -682,7 +768,7 @@ class RTOntology(object):
 
                     # Subject
                     s_uniq = None
-                    if endsWithAny(s, _dispositions_) and '|' in s:
+                    if endsWithAny(s, self._dispositions_) and '|' in s:
                         s_disp = s[s.rindex('|')+1:].strip()
                         s      = s[:s.rindex('|')]
                     else: s_disp = 'ambi'
@@ -698,7 +784,7 @@ class RTOntology(object):
 
                     # Object
                     o_uniq = None
-                    if endsWithAny(o, _dispositions_) and '|' in o:
+                    if endsWithAny(o, self._dispositions_) and '|' in o:
                         o_disp = o[o.rindex('|')+1:].strip()
                         o      = o[:o.rindex('|')]
                     else: o_disp = 'ambi'
