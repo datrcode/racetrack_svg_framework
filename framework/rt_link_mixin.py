@@ -506,8 +506,8 @@ class RTLinkMixin(object):
                     self.wy1 = max(v[1], self.wy1)
             
             # Ensure that they aren't equal
-            if self.wx0 == self.wx1: self.wx0, self.wx1 = self.wx0 - 0.5, self.wx1 + 0.5
-            if self.wy0 == self.wy1: self.wy0, self.wy1 = self.wy0 - 0.5, self.wy1 + 0.5
+            if abs(self.wx0 - self.wx1) < 0.001: self.wx0, self.wx1 = self.wx0 - 0.5, self.wx1 + 0.5
+            if abs(self.wy0 - self.wy1) < 0.001: self.wy0, self.wy1 = self.wy0 - 0.5, self.wy1 + 0.5
 
             # Give some air around the boundaries
             if self.bounds_percent != 0:
