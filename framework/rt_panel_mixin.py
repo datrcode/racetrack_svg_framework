@@ -1113,9 +1113,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     for i in range(len(self.dfs_layout)):
                         if i != self.df_level: self.dfs_layout[i].applyViewConfiguration(_ln_)
             #
-            # Spacebar - filter nodes in / out of view
+            # 'p' - filter nodes in / out of view
             #
-            elif self.key_op_finished == ' ':
+            elif self.key_op_finished == 'p':
                 if   self.shiftkey and self.ctrlkey:
                     pass
                 elif                   self.ctrlkey   and self.df_level < len(self.dfs_layout)-1:
@@ -1314,7 +1314,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             else if (event.key == "w" || event.key == "W") { data.key_op_finished = 'w';  }            
             else if (event.key == "y" || event.key == "Y") { data.key_op_finished = 'y';  }
             else if (event.key == "z" || event.key == "Z") { data.key_op_finished = 'z';  }
-            else if (event.key == " ")                     { data.key_op_finished = ' ';  }
+            else if (event.key == "p" || event.key == "P") { data.key_op_finished = 'p';  }
             else if (event.key == "1" || event.key == "!") { data.key_op_finished = '1';  }
             else if (event.key == "2" || event.key == "@") { data.key_op_finished = '2';  }
             else if (event.key == "3" || event.key == "#") { data.key_op_finished = '3';  }
