@@ -1148,9 +1148,12 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             #
             elif len(self.key_op_finished) == 1 and self.key_op_finished in '0123456789':
                 _match_ = set()
-                if self.key_op_finished == '0':
+                c       = self.key_op_finished
+                min_degree = 10 if c == '7' else 20 if c == '8' else 50 if c == '9' else 100 if c == '0' else None
+
+                if min_degree is not None:
                     for _node_ in self.graphs[self.df_level]:
-                        if self.graphs[self.df_level].degree(_node_) >= 10: _match_.add(_node_)
+                        if self.graphs[self.df_level].degree(_node_) >= min_degree: _match_.add(_node_)
                 else:
                     _degree_ = int(self.key_op_finished)
                     for _node_ in self.graphs[self.df_level]:
