@@ -124,17 +124,17 @@ class RTJSONMixin(object):
                 elif _node_ == '$':             _labels_[_node_] = 'ROOT'
             return _labels_
         #
-        # absolutePathGraphDataframe()
+        # absolutePathGraphDataFrame()
         #
-        def absolutePathGraphDataframe(self):
+        def absolutePathGraphDataFrame(self):
             _df_     = self.rt_self.graphDictToDataFrame(self.fmto_abs)
             _labels_ = self.__nodeLabels__(_df_)
             return _df_, [('fm','to')], _labels_
 
         #
-        # starGraphDataframe()
+        # starGraphDataFrame()
         #
-        def starPathGraphDataframe(self):
+        def starPathGraphDataFrame(self):
             _df_     = self.rt_self.graphDictToDataFrame(self.fmto_stars)
             _labels_ = self.__nodeLabels__(_df_)
             return _df_, [('fm','to')], _labels_

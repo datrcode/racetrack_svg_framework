@@ -24,7 +24,7 @@ print(f'{len(_jsons_)=}')
 print('Analyzing json structure...')
 _json_repr_ = rt.jsonRepr(_jsons_)
 print('Making graph representation...')
-df, relates, labels = _json_repr_.starPathGraphDataframe()
+df, relates, labels = _json_repr_.starPathGraphDataFrame()
 
 xform_spec = """
 __id__          = '$.id'         | PaperID   | uniq
