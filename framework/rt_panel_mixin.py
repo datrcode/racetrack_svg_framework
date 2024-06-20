@@ -833,7 +833,41 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.param.watch(self.applyKeyOp,       'key_op_finished')
         self.param.watch(self.applyLayoutOp,    'layout_shape')
         self.param.watch(self.unselectedMoveOp, 'unselected_move_op_finished')
-    
+
+
+    #
+    # selectEntities() - set the selected entities
+    #
+    def selectEntities(self, selection):
+        all_nodes = set(self.graphs[self.df_level].nodes())
+        if 'node_labels' in self.ln_params:
+            _set_ = set()
+            for _node_ in self.ln_params['node_labels'].keys():
+                _label_ = self.ln_params['node_labels'][_node_]
+                if _node_ in all_nodes and (_node_ in selection or _label_ in selection): _set_.add(_node_)
+            for _node_ in all_nodes:
+                if _node_ in selection: _set_.add(_node_)
+            self.selected_entities = _set_
+        else:
+            self.selected_entities = selection & all_nodes
+
+        self.info_str          = f'{len(selection)} Selected | {self.label_mode}'        
+        self.allentitiespath   = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+        self.selectionpath     = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+
+    #
+    # selectedEntities() - return the selected entities
+    #
+    def selectedEntities(self):
+        _set_ = set()
+        if 'node_labels' in self.ln_params:
+            for _node_ in self.selected_entities:
+                if _node_ in self.ln_params['node_labels']: _set_.add(self.ln_params['node_labels'][_node_])
+                else:                                       _set_.add(_node_)
+        else:
+            _set_ = self.selected_entities
+        return _set_
+
     #
     # __renderView__() - render the view
     #
