@@ -834,6 +834,26 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.param.watch(self.applyLayoutOp,    'layout_shape')
         self.param.watch(self.unselectedMoveOp, 'unselected_move_op_finished')
 
+    #
+    # saveLayout() - save the current layout
+    #
+    def saveLayout(self, filename):
+        _lu_ = {'node':[], 'x':[], 'y':[]}
+        for _node_ in self.pos:
+            _lu_['node'].append(_node_)
+            _lu_['x'].append(self.pos[_node_][0])
+            _lu_['y'].append(self.pos[_node_][1])
+        pd.DataFrame(_lu_).to_csv(filename, index=False)
+
+    #
+    # loadLayout() - load a layout
+    #
+    def loadLayout(self, filename):
+        _df_ = pd.read_csv(filename)
+        for row_i, row in _df_.iterrows(): self.pos[row['node']] = (row['x'], row['y'])
+        self.mod_inner         = self.dfs_layout[self.df_level].renderSVG()
+        self.allentitiespath   = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+        self.selectionpath     = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
 
     #
     # selectEntities() - set the selected entities
