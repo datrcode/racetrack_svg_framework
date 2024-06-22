@@ -731,12 +731,17 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     #
     # Information String
     #
-    info_str              = param.String(default="Info Goes Here")
+    info_str              = param.String(default=" | | grid")
 
     #
     # Operation String
     #
     op_str                = param.String(default="Select")
+
+    #
+    # Layout Mode String
+    #
+    layout_mode           = param.String(default="grid")
 
     #
     # Panel Template
@@ -853,7 +858,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         else:
             self.selected_entities = selection & all_nodes
 
-        self.info_str          = f'{len(selection)} Selected | {self.label_mode}'        
+        self.info_str          = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
         self.allentitiespath   = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
         self.selectionpath     = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
 
@@ -908,8 +913,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     for _node_ in pos_adj:
                         _ln_.pos[_node_] = (_ln_.xT_inv(pos_adj[_node_][0]),_ln_.yT_inv(pos_adj[_node_][1]))
                     nodes_moved = True
-                elif self.layout_shape == "line":
+                elif self.layout_shape == "line" or self.layout_shape == "v-line" or self.layout_shape == "h-line":
                     dx, dy = x1 - x0, y1 - y0
+                    if   self.layout_shape == "v-line": x0, x1, dx = x1, x1, 0
+                    elif self.layout_shape == "h-line": y0, y1, dy = y1, y1, 0
                     l      = sqrt(dx * dx + dy * dy)
                     if l < 0.001: l = 1.0
                     ux, uy = dx / l, dy / l
@@ -1032,7 +1039,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
                             _new_set_.add(_nbor_)
                     self.selected_entities = _new_set_
-                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
                 self.selectionpath    = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
             # "Q" - Invert Selection / Common Neighbors
@@ -1054,7 +1061,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                             _new_set_.add(_node_)
                     self.selected_entities = _new_set_
 
-                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
                 self.selectionpath    = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
             # "S" - Set Sticky Labels & Remove Sticky Labels
@@ -1099,24 +1106,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     self.sticky_labels = self.sticky_labels | self.selected_entities
                     if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
                     self.ln_params['label_only'] = self.sticky_labels
-                self.info_str  = f'{len(self.selected_entities)} Selected | {self.label_mode}'
+                self.info_str = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
                 self.mod_inner = _ln_.renderSVG() # Re-render current
-            #
-            # "Y" - Organize Selected into a Vertical or Horizontal Line
-            #
-            elif self.key_op_finished == 'y':
-                if self.shiftkey:
-                    for _entity_ in self.selected_entities:
-                        xy = _ln_.pos[_entity_]
-                        _ln_.pos[_entity_] = (xy[0], _ln_.yT_inv(self.y_mouse))
-                else:
-                    for _entity_ in self.selected_entities:
-                        xy = _ln_.pos[_entity_]
-                        _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), xy[1])
-                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
-                self.mod_inner       = _ln_._repr_svg_()
-                self.allentitiespath = _ln_.__createPathDescriptionForAllEntities__()
-                self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
             # 'Z' - Center on Selected (if selected) or Reset View (if not selected) / Selected + Neighbors
             #
@@ -1176,7 +1167,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         self.df_level += 1
                         self.selected_entities = set()
                 self.mod_inner        = self.dfs_layout[self.df_level]._repr_svg_()
-                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
                 self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
                 self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
@@ -1199,17 +1190,32 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 elif len(self.selected_entities): self.selected_entities = self.selected_entities & _match_
                 else:                             self.selected_entities = _match_
 
-                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
                 self.selectionpath    = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             
             #
             # Next Selection Op Settings...
             # ... this replaces the shift and ctrl and ctrl-shift operators -- those aren't reliabel across IDE's...
             #
-            elif self.key_op_finished == 'n': self.op_str = 'Select' if self.op_str == 'Add'       else 'Add'
-            elif self.key_op_finished == 'N': self.op_str = 'Select' if self.op_str == 'Subtract'  else 'Subtract'
-            elif self.key_op_finished == 'i': self.op_str = 'Select' if self.op_str == 'Intersect' else 'Intersect'
+            elif self.key_op_finished == 'n':
+                if   self.op_str == 'Select':   self.op_str = 'Add'
+                elif self.op_str == 'Add':      self.op_str = 'Subtract'
+                elif self.op_str == 'Subtract': self.op_str = 'Intersect'
+                else:                           self.op_str = 'Select'
             
+            #
+            # Next Layout Option
+            #
+            elif self.key_op_finished == 'g':
+                if   self.layout_mode == 'grid':      self.layout_mode = 'circle'
+                elif self.layout_mode == 'circle':    self.layout_mode = 'sunflower'
+                elif self.layout_mode == 'sunflower': self.layout_mode = 'line'
+                elif self.layout_mode == 'line':      self.layout_mode = 'h-line'
+                elif self.layout_mode == 'h-line':    self.layout_mode = 'v-line'
+                else:                                 self.layout_mode = 'grid'
+
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
+
         finally:
             self.key_op_finished = ''
             self.lock.release()
@@ -1268,7 +1274,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 elif self.op_str == 'Add':       self.selected_entities = set(self.selected_entities) | set(_overlapping_entities_)
                 else:                            self.selected_entities = _overlapping_entities_
                 
-                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
                 self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.drag_op_finished = False
@@ -1320,7 +1326,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     self.mod_inner       = self.dfs_layout[self.df_level]._repr_svg_()
                     self.allentitiespath = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
 
-                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
+                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
                 self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
         finally:
             self.unselected_move_op_finished = False
@@ -1340,7 +1346,6 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             state.move_op            = false;
             state.unselected_move_op = false;
             state.layout_op          = false; // true if next mouse button 1 press is the begin of a layout
-            state.layout_mode        = "";    // the layout shape that will be generated
             state.layout_op_shape    = "";    // trigger field for python to peform the layout operation
             data.middle_op_finished  = false;
             data.move_op_finished    = false;
@@ -1353,16 +1358,13 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
 
-            if      (event.key == "c")                     { state.layout_op      = true; state.layout_mode = "circle";    }            
-            else if (event.key == "e" || event.key == "E") { data.key_op_finished = 'e';  }
-            else if (event.key == "g")                     { state.layout_op      = true; state.layout_mode = "grid";      }
-            else if (event.key == "h")                     { state.layout_op      = true; state.layout_mode = "sunflower"; }            
+            if      (event.key == "e" || event.key == "E") { data.key_op_finished = 'e';  }
+            else if (event.key == "g")                     { state.layout_op      = true; }
+            else if (event.key == "G")                     { data.key_op_finished = 'g';  } 
             else if (event.key == "q" || event.key == "Q") { data.key_op_finished = 'q';  }
             else if (event.key == "s" || event.key == "S") { data.key_op_finished = 's';  }
             else if (event.key == "t" || event.key == "T") { data.key_op_finished = 't';  }
-            else if (event.key == "u")                     { state.layout_op      = true; state.layout_mode = "line";      }            
             else if (event.key == "w" || event.key == "W") { data.key_op_finished = 'w';  }            
-            else if (event.key == "y" || event.key == "Y") { data.key_op_finished = 'y';  }
             else if (event.key == "z" || event.key == "Z") { data.key_op_finished = 'z';  }
             else if (event.key == "p" || event.key == "P") { data.key_op_finished = 'p';  }
             else if (event.key == "1" || event.key == "!") { data.key_op_finished = '1';  }
@@ -1376,9 +1378,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             else if (event.key == "9" || event.key == "(") { data.key_op_finished = '9';  }
             else if (event.key == "0" || event.key == ")") { data.key_op_finished = '0';  }
 
-            else if (event.key == "n") { data.key_op_finished = 'n'; } // Add For Next Op
-            else if (event.key == "N") { data.key_op_finished = 'N'; } // Subtract For Next Op
-            else if (event.key == "i") { data.key_op_finished = 'i'; } // Intersect For Next Op
+            else if (event.key == "n") { data.key_op_finished = 'n'; } // Iterate through selection methdology
 
             data.last_key = event.key;
             svgparent.focus(); // else it loses focus on every render...
@@ -1386,10 +1386,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         'keyUp':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
-            if (event.key == "c" || event.key == "C" ||
-                event.key == "h" || event.key == "H" ||
-                event.key == "g" || event.key == "G" ||
-                event.key == "u" || event.key == "U") { state.layout_op = false; }
+            if (event.key == "g") { state.layout_op = false; }
             svgparent.focus(); // else it loses focus on every render...
         """,
         'moveEverything':"""
@@ -1423,8 +1420,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 state.y0_drag  = event.offsetY;
                 state.x1_drag  = event.offsetX;
                 state.y1_drag  = event.offsetY;
-                if (state.layout_op) { state.layout_op_shape = state.layout_mode; self.myUpdateLayoutOp();
-                } else               { state.drag_op         = true;              self.myUpdateDragRect(); }
+                if (state.layout_op) { state.layout_op_shape = data.layout_mode; self.myUpdateLayoutOp();
+                } else               { state.drag_op         = true;             self.myUpdateDragRect(); }
             } else if (event.button == 1) {
                 data.x0_middle = data.x1_middle = event.offsetX;
                 data.y0_middle = data.y1_middle = event.offsetY;
@@ -1457,8 +1454,18 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 layoutrect.setAttribute("y", Math.min(state.y0_drag, state.y1_drag));
                 layoutrect.setAttribute("width",  Math.abs(dx));
                 layoutrect.setAttribute("height", Math.abs(dy));
-            } else if (state.layout_op_shape == "line")      { reset_line = false;
+            } else if (state.layout_op_shape == "line")    { reset_line = false;
                 layoutline.setAttribute("x1", state.x0_drag);
+                layoutline.setAttribute("y1", state.y0_drag);
+                layoutline.setAttribute("x2", state.x1_drag);
+                layoutline.setAttribute("y2", state.y1_drag);
+            } else if (state.layout_op_shape == "h-line")  { reset_line = false;
+                layoutline.setAttribute("x1", state.x0_drag);
+                layoutline.setAttribute("y1", state.y1_drag);
+                layoutline.setAttribute("x2", state.x1_drag);
+                layoutline.setAttribute("y2", state.y1_drag);
+            } else if (state.layout_op_shape == "v-line")  { reset_line = false;
+                layoutline.setAttribute("x1", state.x1_drag);
                 layoutline.setAttribute("y1", state.y0_drag);
                 layoutline.setAttribute("x2", state.x1_drag);
                 layoutline.setAttribute("y2", state.y1_drag);
