@@ -19,6 +19,7 @@ import numpy as np
 import networkx as nx
 import random
 import math
+import time
 import re
 
 from math import sqrt
@@ -705,7 +706,8 @@ class RTLinkMixin(object):
                 _str_op_ = [pl.lit('<text x="'), pl.col('__sx__'), pl.lit('" y="'), pl.col('__sy__') + pl.col('__sz__') + self.txt_h,
                             pl.lit(f'" font-size="{self.txt_h}px" text-anchor="middle">'), pl.col('__label__'),
                             pl.lit('</text>')]
-                df_node_labels = df_node_labels.with_columns(pl.concat_str(_str_op_).alias('__label_svg__'))                
+                df_node_labels = df_node_labels.with_columns(pl.concat_str(_str_op_).alias('__label_svg__'))
+                df_node_labels = df_node_labels.filter(pl.col('__label_svg__').is_not_null())
                 _svg_strs_.extend(list(set(df_node_labels['__label_svg__'].unique())))
 
                 # Collapsed nodes
@@ -723,6 +725,7 @@ class RTLinkMixin(object):
         def renderSVG(self, just_calc_max=False):
             if self.track_state: self.geom_to_df = {}
             self.node_to_svg_markup = {}
+            t_svg_0 = time.time()
 
             # Determine geometry and fill in the word coordinates into the dataframe
             self.__calculateGeometry__()
@@ -757,6 +760,10 @@ class RTLinkMixin(object):
                 border_color = self.rt_self.co_mgr.getTVColor('border','default')
                 svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />')
 
+            t_svg_1 = time.time()
+            t_svg   = t_svg_1 - t_svg_0
+            _color_ = '#8B0000' if t_svg > 0.2 else '#013220'
+            svg.append(self.rt_self.svgText(f'{t_svg:.2f}s', self.w-self.y_ins, self.h-self.y_ins, 10, color=_color_, anchor='end'))
             svg.append('</svg>')
             self.last_render = ''.join(svg)
             return self.last_render
