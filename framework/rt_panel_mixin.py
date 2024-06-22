@@ -734,6 +734,11 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     info_str              = param.String(default="Info Goes Here")
 
     #
+    # Operation String
+    #
+    op_str                = param.String(default="Select")
+
+    #
     # Panel Template
     # - rewritten in constructor with width and height filled in
     #
@@ -742,7 +747,6 @@ class RTGraphInteractiveLayout(ReactiveHTML):
      onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
     <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
-    <text id="info" x="5" y="398" font-size="10px"> ${info_str} </text>
     <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
     <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />
     <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />
@@ -752,6 +756,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
           onmousemove="${script('moveEverything')}"
           onmouseup="${script('upEverything')}"
           onmousewheel="${script('mouseWheel')}" />
+    <text id="op"   x="598" y="12"  font-size="10px" text-anchor="end"> ${op_str} </text>
+    <text id="info" x="5"   y="398" font-size="10px"> ${info_str} </text>
     <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"
           onmousedown="${script('downAllEntities')}"
           onmousemove="${script('moveEverything')}"
@@ -781,8 +787,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.ln_params         = ln_params
         if 'pos' not in ln_params.keys(): ln_params['pos'] = {}
         self.pos               = ln_params['pos']
-        self.w                 = w
-        self.h                 = h
+        self.w                 = 600 # w
+        self.h                 = 400 # h
         self.kwargs            = kwargs
         self.df                = self.rt_self.copyDataFrame(df)
         self.df_level          = 0
@@ -793,33 +799,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.allentitiespath   = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
         self.label_mode        = 'all labels'
         self.sticky_labels     = set()
-        self.selected_entities = set()        
-
-        self._template = '''<svg id="svgparent" width="'''+str(w)+'''" height="'''+str(h)+'''" tabindex="0" ''' +\
-                         '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">''' + \
-                         '''<svg id="mod" width="'''+str(w)+'''" height="'''+str(h)+'''"> ${mod_inner} </svg>''' + \
-                         '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />''' + \
-                         '''<text id="info" x="5" y="'''+str(h-4)+'''" font-size="10px"> ${info_str} </text>''' + \
-                         '''<line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />''' + \
-                         '''<rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />''' + \
-                         '''<circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />''' + \
-                         '''<circle id="layoutsunflower" cx="-10" cy="-10" r="5"                   stroke="#000000" stroke-width="2" />''' + \
-                         '''<rect id="screen" x="0" y="0" width="'''+str(w)+'''" height="'''+str(h)+'''" opacity="0.05"''' + \
-                         '''      onmousedown="${script('downSelect')}"''' + \
-                         '''      onmousemove="${script('moveEverything')}"''' + \
-                         '''      onmouseup="${script('upEverything')}"''' + \
-                         '''      onmousewheel="${script('mouseWheel')}" />''' + \
-                         '''<path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none" ''' + \
-                         '''      onmousedown="${script('downAllEntities')}"''' + \
-                         '''      onmousemove="${script('moveEverything')}"''' + \
-                         '''      onmouseup="${script('upEverything')}" ''' + \
-                         '''      onmousewheel="${script('mouseWheel')}" />''' + \
-                         '''<path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none" ''' + \
-                         '''      onmousedown="${script('downMove')}"''' + \
-                         '''      onmousemove="${script('moveEverything')}"''' + \
-                         '''      onmouseup="${script('upEverything')}" ''' + \
-                         '''      onmousewheel="${script('mouseWheel')}" />''' + \
-                         '''</svg>'''
+        self.selected_entities = set()
 
         # - Create a lock for threading
         self.lock = threading.Lock()
@@ -1221,6 +1201,15 @@ class RTGraphInteractiveLayout(ReactiveHTML):
 
                 self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
                 self.selectionpath    = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+            
+            #
+            # Next Selection Op Settings...
+            # ... this replaces the shift and ctrl and ctrl-shift operators -- those aren't reliabel across IDE's...
+            #
+            elif self.key_op_finished == 'n': self.op_str = 'Select' if self.op_str == 'Add'       else 'Add'
+            elif self.key_op_finished == 'N': self.op_str = 'Select' if self.op_str == 'Subtract'  else 'Subtract'
+            elif self.key_op_finished == 'i': self.op_str = 'Select' if self.op_str == 'Intersect' else 'Intersect'
+            
         finally:
             self.key_op_finished = ''
             self.lock.release()
@@ -1274,10 +1263,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 _rect_ = Polygon([(_x0,_y0), (_x0,_y1), (_x1,_y1), (_x1,_y0)])
                 _overlapping_entities_  = set(self.dfs_layout[self.df_level].overlappingEntities(_rect_))
 
-                if   self.shiftkey and self.ctrlkey: self.selected_entities = set(self.selected_entities) & set(_overlapping_entities_)
-                elif self.shiftkey:                  self.selected_entities = set(self.selected_entities) - set(_overlapping_entities_)
-                elif self.ctrlkey:                   self.selected_entities = set(self.selected_entities) | set(_overlapping_entities_)
-                else:                                self.selected_entities = _overlapping_entities_
+                if   self.op_str == 'Intersect': self.selected_entities = set(self.selected_entities) & set(_overlapping_entities_)
+                elif self.op_str == 'Subtract':  self.selected_entities = set(self.selected_entities) - set(_overlapping_entities_)
+                elif self.op_str == 'Add':       self.selected_entities = set(self.selected_entities) | set(_overlapping_entities_)
+                else:                            self.selected_entities = _overlapping_entities_
                 
                 self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode}'
                 self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
@@ -1287,13 +1276,13 @@ class RTGraphInteractiveLayout(ReactiveHTML):
 
     #
     # applyMoveOp() - apply a move operation to the selected node(s)
-    # - may also be used to de-select a selected node when the shift key is pressed and no drag occurs
+    # - may also be used to de-select a selected node when the op string is "Subtract" and no drag occurs
     #
     async def applyMoveOp(self,event):
         self.lock.acquire()
         try:
             if self.move_op_finished:
-                if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1 and self.shiftkey:
+                if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1 and self.op_str == 'Subtract':
                     _point_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((self.drag_x0,self.drag_y0))
                     self.selected_entities = set(self.selected_entities) - set(_point_entities_)
                     self.selectionpath   = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
@@ -1319,8 +1308,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 _x_,_y_ = self.allentities_x0, self.allentities_y0
                 _overlapping_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((_x_,_y_))
 
-                if   self.ctrlkey:   self.selected_entities = (set(self.selected_entities) | set(_overlapping_entities_))
-                else:                self.selected_entities = set(_overlapping_entities_)
+                if   self.op_str == 'Add':      self.selected_entities = (set(self.selected_entities) | set(_overlapping_entities_))
+                elif self.op_str == 'Subtract': self.selected_entities = (set(self.selected_entities) - set(_overlapping_entities_))
+                else:                           self.selected_entities = set(_overlapping_entities_)
 
                 if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1:
                     pass # just do the selection operation
@@ -1354,6 +1344,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             state.layout_op_shape    = "";    // trigger field for python to peform the layout operation
             data.middle_op_finished  = false;
             data.move_op_finished    = false;
+            svgparent.focus(); // else it loses focus on every render...
         """,
         'keyPress':"""
             svgparent.focus(); // else it loses focus on every render...
@@ -1384,6 +1375,11 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             else if (event.key == "8" || event.key == "*") { data.key_op_finished = '8';  }
             else if (event.key == "9" || event.key == "(") { data.key_op_finished = '9';  }
             else if (event.key == "0" || event.key == ")") { data.key_op_finished = '0';  }
+
+            else if (event.key == "n") { data.key_op_finished = 'n'; } // Add For Next Op
+            else if (event.key == "N") { data.key_op_finished = 'N'; } // Subtract For Next Op
+            else if (event.key == "i") { data.key_op_finished = 'i'; } // Intersect For Next Op
+
             data.last_key = event.key;
             svgparent.focus(); // else it loses focus on every render...
         """,
@@ -1524,6 +1520,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         'mod_inner':"""
             mod.innerHTML  = data.mod_inner;
             info.innerHTML = data.info_str;
+            op.innerHTML   = data.op_str;
+
             svgparent.focus(); // else it loses focus on every render...
         """,
         'selectionpath':"""
@@ -1532,6 +1530,12 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         """,
         'info_str': """
             info.innerHTML = data.info_str;
+            op.innerHTML   = data.op_str;
+            svgparent.focus(); // else it loses focus on every render...
+        """,
+        'op_str': """
+            info.innerHTML = data.info_str;
+            op.innerHTML   = data.op_str;
             svgparent.focus(); // else it loses focus on every render...
         """,
         'myUpdateDragRect':"""
@@ -1542,10 +1546,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 h = Math.abs(state.y1_drag - state.y0_drag)
                 drag.setAttribute('x',x);     drag.setAttribute('y',y);
                 drag.setAttribute('width',w); drag.setAttribute('height',h);
-                if      (data.shiftkey && data.ctrlkey) drag.setAttribute('stroke','#0000ff');
-                else if (data.shiftkey)                 drag.setAttribute('stroke','#ff0000');
-                else if                  (data.ctrlkey) drag.setAttribute('stroke','#00ff00');
-                else                                    drag.setAttribute('stroke','#000000');
+                if      (data.op_str == "Intersect")  drag.setAttribute('stroke','#0000ff');
+                else if (data.op_str == "Subtract")   drag.setAttribute('stroke','#ff0000');
+                else if (data.op_str == "Add")        drag.setAttribute('stroke','#00ff00');
+                else                                  drag.setAttribute('stroke','#000000');
             } else {
                 drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
                 drag.setAttribute('width',5); drag.setAttribute('height',5);
