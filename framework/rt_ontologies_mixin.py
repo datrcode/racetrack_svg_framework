@@ -726,6 +726,17 @@ class RTOntology(object):
                                  'gdisp': [],
                                  'src':   []}
 
+    #
+    # nodeLabels() - return node labels for the sbj, obj in the df_triples structure
+    #
+    def nodeLabels(self, subset=None):
+        if subset is None: subset = set(self.df_triples['sbj']) | set(self.df_triples['obj'])
+        _node_labels_ = {}
+        for _node_ in subset: 
+            if self.uid_lu[_node_][0] is not None:
+                _node_labels_[_node_] = self.uid_lu[_node_][0]
+        return _node_labels_
+
     # parse() - parse json into ontology via specification
     def parse(self, jlist):
         spec_to_parse_count = {}
