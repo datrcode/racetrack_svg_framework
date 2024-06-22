@@ -41,7 +41,7 @@ class RTPanelMixin(object):
     # - may need to modify inline=True...
     #
     def __panel_mixin_init__(self):
-        pn.extension(inline=False)
+        pn.extension(inline=True)
 
     #
     # layoutPanel() - helps with the constructions of the layout
@@ -738,9 +738,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     # - rewritten in constructor with width and height filled in
     #
     _template = """
-<svg id="svgparent" width="600" height="400" tabindex="0" onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
+<svg id="svgparent" width="600" height="400" tabindex="0" 
+     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
     <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
-    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="#ffffff" opacity="0.6" />
+    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
     <text id="info" x="5" y="398" font-size="10px"> ${info_str} </text>
     <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
     <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />
@@ -751,12 +752,12 @@ class RTGraphInteractiveLayout(ReactiveHTML):
           onmousemove="${script('moveEverything')}"
           onmouseup="${script('upEverything')}"
           onmousewheel="${script('mouseWheel')}" />
-    <path id="allentitieslayer" d="${allentitiespath}" fill="#ffffff" fill-opacity="0.05" stroke="#000000" stroke-width="0.1"
+    <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"
           onmousedown="${script('downAllEntities')}"
           onmousemove="${script('moveEverything')}"
           onmouseup="${script('upEverything')}" 
           onmousewheel="${script('mouseWheel')}" />
-    <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform=""
+    <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none"
           onmousedown="${script('downMove')}"
           onmousemove="${script('moveEverything')}"
           onmouseup="${script('upEverything')}" 
@@ -794,9 +795,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.sticky_labels     = set()
         self.selected_entities = set()        
 
-        self._template = '''<svg id="svgparent" width="'''+str(w)+'''" height="'''+str(h)+'''" tabindex="0" onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">''' + \
+        self._template = '''<svg id="svgparent" width="'''+str(w)+'''" height="'''+str(h)+'''" tabindex="0" ''' +\
+                         '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">''' + \
                          '''<svg id="mod" width="'''+str(w)+'''" height="'''+str(h)+'''"> ${mod_inner} </svg>''' + \
-                         '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="#ffffff" opacity="0.6" />''' + \
+                         '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />''' + \
                          '''<text id="info" x="5" y="'''+str(h-4)+'''" font-size="10px"> ${info_str} </text>''' + \
                          '''<line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />''' + \
                          '''<rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />''' + \
@@ -807,12 +809,12 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                          '''      onmousemove="${script('moveEverything')}"''' + \
                          '''      onmouseup="${script('upEverything')}"''' + \
                          '''      onmousewheel="${script('mouseWheel')}" />''' + \
-                         '''<path id="allentitieslayer" d="${allentitiespath}" fill="#ffffff" fill-opacity="0.05" stroke="#000000" stroke-width="0.1"''' + \
+                         '''<path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none" ''' + \
                          '''      onmousedown="${script('downAllEntities')}"''' + \
                          '''      onmousemove="${script('moveEverything')}"''' + \
                          '''      onmouseup="${script('upEverything')}" ''' + \
                          '''      onmousewheel="${script('mouseWheel')}" />''' + \
-                         '''<path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform=""''' + \
+                         '''<path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none" ''' + \
                          '''      onmousedown="${script('downMove')}"''' + \
                          '''      onmousemove="${script('moveEverything')}"''' + \
                          '''      onmouseup="${script('upEverything')}" ''' + \
@@ -1388,7 +1390,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         'keyUp':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
-            if (event.key == "c" || event.key == "C" || event.key == "g" || event.key == "G") { state.layout_op = false; }
+            if (event.key == "c" || event.key == "C" ||
+                event.key == "h" || event.key == "H" ||
+                event.key == "g" || event.key == "G" ||
+                event.key == "u" || event.key == "U") { state.layout_op = false; }
             svgparent.focus(); // else it loses focus on every render...
         """,
         'moveEverything':"""
