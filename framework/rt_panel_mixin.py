@@ -757,22 +757,16 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />
     <circle id="layoutsunflower" cx="-10" cy="-10" r="5"                   stroke="#000000" stroke-width="2" />
     <rect id="screen" x="0" y="0" width="600" height="400" opacity="0.05"
-          onmousedown="${script('downSelect')}"
-          onmousemove="${script('moveEverything')}"
-          onmouseup="${script('upEverything')}"
-          onmousewheel="${script('mouseWheel')}" />
-    <text id="op"   x="598" y="12"  font-size="10px" text-anchor="end"> ${op_str} </text>
-    <text id="info" x="5"   y="398" font-size="10px"> ${info_str} </text>
+          onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"
+          onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />
+    <text id="opstr"   x="598" y="12"  fill="#000000" font-size="10px" text-anchor="end"> ${op_str} </text>
+    <text id="infostr" x="5"   y="398" fill="#000000" font-size="10px"> ${info_str} </text>
     <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"
-          onmousedown="${script('downAllEntities')}"
-          onmousemove="${script('moveEverything')}"
-          onmouseup="${script('upEverything')}" 
-          onmousewheel="${script('mouseWheel')}" />
+          onmousedown="${script('downAllEntities')}" onmousemove="${script('moveEverything')}" 
+          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />
     <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none"
-          onmousedown="${script('downMove')}"
-          onmousemove="${script('moveEverything')}"
-          onmouseup="${script('upEverything')}" 
-          onmousewheel="${script('mouseWheel')}" />
+          onmousedown="${script('downMove')}"        onmousemove="${script('moveEverything')}"
+          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />
 </svg>
 """
 
@@ -802,9 +796,11 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.graphs            = [self.rt_self.createNetworkXGraph(self.df, ln_params['relationships'])]
         self.mod_inner         = self.dfs_layout[self.df_level]._repr_svg_()
         self.allentitiespath   = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
-        self.label_mode        = 'all labels'
-        self.sticky_labels     = set()
-        self.selected_entities = set()
+        if 'draw_labels' in ln_params and ln_params['draw_labels']: self.label_mode    = 'all labels'
+        else:                                                       self.label_mode    = 'no labels'
+        if 'label_only' in ln_params:                               self.sticky_labels = set(ln_params['label_only'])
+        else:                                                       self.sticky_labels = set()
+        self.selected_entities = set(self.sticky_labels) # if there are set labels, select them by default
 
         # - Create a lock for threading
         self.lock = threading.Lock()
@@ -1353,6 +1349,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     _scripts = {
         'render':"""
             mod.innerHTML            = data.mod_inner;
+            opstr.innerHTML          = data.op_str;
+            infostr.innerHTML        = data.info_str;
             state.x0_drag            = state.y0_drag = -10;
             state.x1_drag            = state.y1_drag =  -5;
             data.shiftkey            = false;
@@ -1547,10 +1545,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             data.wheel_op_finished = true;
         """,
         'mod_inner':"""
-            mod.innerHTML  = data.mod_inner;
-            info.innerHTML = data.info_str;
-            op.innerHTML   = data.op_str;
-
+            mod.innerHTML     = data.mod_inner;
+            infostr.innerHTML = data.info_str;
+            opstr.innerHTML   = data.op_str;
             svgparent.focus(); // else it loses focus on every render...
         """,
         'selectionpath':"""
@@ -1558,13 +1555,13 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             svgparent.focus(); // else it loses focus on every render...
         """,
         'info_str': """
-            info.innerHTML = data.info_str;
-            op.innerHTML   = data.op_str;
+            infostr.innerHTML = data.info_str;
+            opstr.innerHTML   = data.op_str;
             svgparent.focus(); // else it loses focus on every render...
         """,
         'op_str': """
-            info.innerHTML = data.info_str;
-            op.innerHTML   = data.op_str;
+            infostr.innerHTML = data.info_str;
+            opstr.innerHTML   = data.op_str;
             svgparent.focus(); // else it loses focus on every render...
         """,
         'myUpdateDragRect':"""
