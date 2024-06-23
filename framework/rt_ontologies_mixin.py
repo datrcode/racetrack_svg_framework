@@ -734,7 +734,9 @@ class RTOntology(object):
         _node_labels_ = {}
         for _node_ in subset: 
             if self.uid_lu[_node_][0] is not None:
-                _node_labels_[_node_] = self.uid_lu[_node_][0]
+                _tuple_ = self.uid_lu[_node_]
+                if type(_tuple_[0]) == int and _tuple_[2] == 'uniq': _node_labels_[_node_] = str(_tuple_[1])
+                else:                                                _node_labels_[_node_] = str(_tuple_[0])
         return _node_labels_
 
     # parse() - parse json into ontology via specification

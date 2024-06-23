@@ -863,19 +863,49 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     #
     # selectEntities() - set the selected entities
     #
-    def selectEntities(self, selection):
-        if selection is None: selection = set()
+    def selectEntities(self, 
+                       selection,              # string or set
+                       set_op     = 'replace', # "replace", "add", "subtract", "intersect"
+                       method     = 'exact'):  # "exact", "substring", "regex"
+        # Get all nodes in the current graph // these are the non-labeled variants
         all_nodes = set(self.graphs[self.df_level].nodes())
-        if 'node_labels' in self.ln_params:
+
+        # Perform either substring or regex matching if selected
+        if   method == 'substring': # SUBSTRING MATCHES
+            if type(selection) == str: _substrings_ = set([selection])
+            else:                      _substrings_ = set(selection)
             _set_ = set()
-            for _node_ in self.ln_params['node_labels'].keys():
-                _label_ = self.ln_params['node_labels'][_node_]
-                if _node_ in all_nodes and (_node_ in selection or _label_ in selection): _set_.add(_node_)
-            for _node_ in all_nodes:
-                if _node_ in selection: _set_.add(_node_)
-            self.selected_entities = _set_
-        else:
-            self.selected_entities = selection & all_nodes
+            for _substring_ in _substrings_:
+                if 'node_labels' in self.ln_params:
+                    for _node_ in self.ln_params['node_labels'].keys():
+                        if _node_ in all_nodes and _substring_ in str(self.ln_params['node_labels'][_node_]): _set_.add(_node_)
+                for _node_ in all_nodes:
+                    if _substring_ in str(_node_): _set_.add(_node_)
+        elif method == 'regex':     # REGEX MATCHES
+            _set_ = set() # Not Implemented Yet
+        else:                            # EXACT MATCHES
+            # Fix up the selection so that it's definitely a set...
+            if    selection is None:                                 selection_as_set = set()
+            elif  type(selection) == list or type(selection) == set: selection_as_set = set(selection)
+            elif  type(selection) == dict:                           selection_as_set = set(selection.keys())
+            else:                                                    selection_as_set = set([selection])
+
+            # Iterate through the nodes...
+            if 'node_labels' in self.ln_params: # node labels handled a little differently
+                _set_ = set()
+                for _node_ in self.ln_params['node_labels'].keys():
+                    _label_ = self.ln_params['node_labels'][_node_]
+                    if _node_ in all_nodes and (_node_ in selection_as_set or _label_ in selection_as_set): _set_.add(_node_)
+                for _node_ in all_nodes:
+                    if _node_ in selection_as_set: _set_.add(_node_)
+                self.selected_entities = _set_
+            else: # just use the selection
+                _set_ = selection_as_set & all_nodes
+
+        if   set_op == 'replace':   self.selected_entities  = _set_
+        elif set_op == 'add':       self.selected_entities |= _set_
+        elif set_op == 'subtract':  self.selected_entities -= _set_
+        elif set_op == 'intersect': self.selected_entities &= _set_
 
         self.info_str          = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
         self.allentitiespath   = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
