@@ -1,4 +1,4 @@
-# Copyright 2023 David Trimm
+# Copyright 2024 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -846,6 +846,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     # selectEntities() - set the selected entities
     #
     def selectEntities(self, selection):
+        if selection is None: selection = set()
         all_nodes = set(self.graphs[self.df_level].nodes())
         if 'node_labels' in self.ln_params:
             _set_ = set()
@@ -1025,8 +1026,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             #
             # "E" - Expand / Expand w/ Directed
             #
-            if self.key_op_finished == 'e':
-                if self.shiftkey:
+            if self.key_op_finished == 'e' or self.key_op_finished == 'E':
+                if self.key_op_finished == 'E':
                     _digraph_ = self.rt_self.createNetworkXGraph(self.dfs[self.df_level], self.ln_params['relationships'], use_digraph=True)
                     _new_set_ = set(self.selected_entities)
                     for _node_ in self.selected_entities:
@@ -1044,8 +1045,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             #
             # "Q" - Invert Selection / Common Neighbors
             #            
-            elif self.key_op_finished == 'q':
-                if   self.shiftkey:     # common neighbors
+            elif self.key_op_finished == 'q' or self.key_op_finished == 'Q':
+                if   self.key_op_finished == 'Q': # common neighbors
                     inter_set = None
                     for _node_ in self.selected_entities:
                         nbor_set = set()
@@ -1053,7 +1054,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                             nbor_set.add(_nbor_)
                         if inter_set is None: inter_set = nbor_set             # first time, it gets the nbors
                         else:                 inter_set = inter_set & nbor_set # all other times it's and'ed
-                    self.selected_entities = inter_set
+                    if inter_set is not None: self.selected_entities = inter_set
                 else:                   # invert selection
                     _new_set_ = set()
                     for _node_ in self.graphs[self.df_level]:
@@ -1066,14 +1067,14 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             #
             # "S" - Set Sticky Labels & Remove Sticky Labels
             #
-            elif self.key_op_finished == 's':
-                if self.shiftkey: self.sticky_labels = self.sticky_labels - self.selected_entities
-                else:             self.sticky_labels = set(self.selected_entities) # make a new set object
+            elif self.key_op_finished == 's' or self.key_op_finished == 'S':
+                if self.key_op_finished == 'S': self.sticky_labels = self.sticky_labels - self.selected_entities
+                else:                           self.sticky_labels = set(self.selected_entities) # make a new set object
                 if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
                 self.ln_params['label_only']  = self.sticky_labels
                 self.mod_inner = _ln_.renderSVG() # Re-render current
             #
-            # "T" - Collapse or Align Nodes
+            # "T" - Collapse
             #
             elif len(self.selected_entities) > 0 and self.key_op_finished == 't':
                 for _entity_ in self.selected_entities:
@@ -1084,10 +1085,26 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 self.allentitiespath = _ln_.__createPathDescriptionForAllEntities__()
                 self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
             #
+            # "Y" - Organize Selected into a Vertical or Horizontal Line
+            #
+            elif self.key_op_finished == 'y' or self.key_op_finished == 'Y':
+                if self.key_op_finished == 'Y':
+                    for _entity_ in self.selected_entities:
+                        xy = _ln_.pos[_entity_]
+                        _ln_.pos[_entity_] = (xy[0], _ln_.yT_inv(self.y_mouse))
+                else:
+                    for _entity_ in self.selected_entities:
+                        xy = _ln_.pos[_entity_]
+                        _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), xy[1])
+                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
+                self.mod_inner       = _ln_._repr_svg_()
+                self.allentitiespath = _ln_.__createPathDescriptionForAllEntities__()
+                self.selectionpath   = _ln_.__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)                
+            #
             # "W" - Remove Sticky Labels & Label Toggles
             #
-            elif self.key_op_finished == 'w':
-                if self.shiftkey:
+            elif self.key_op_finished == 'w' or self.key_op_finished == 'W':
+                if self.key_op_finished == 'W':
                     if   self.label_mode == 'all labels':    
                         self.label_mode = 'sticky labels'
                         _ln_.labelOnly(self.sticky_labels)
@@ -1111,9 +1128,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             #
             # 'Z' - Center on Selected (if selected) or Reset View (if not selected) / Selected + Neighbors
             #
-            elif self.key_op_finished == 'z':
+            elif self.key_op_finished == 'z' or self.key_op_finished == 'Z':
                 _rerender_ = False
-                if self.shiftkey:
+                if self.key_op_finished == 'Z':
                     if len(self.selected_entities) > 0:
                         _new_set_ = set(self.selected_entities)
                         for _node_ in self.selected_entities:
@@ -1142,12 +1159,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             #
             # 'p' - filter nodes in / out of view
             #
-            elif self.key_op_finished == 'p':
-                if   self.shiftkey and self.ctrlkey:
-                    pass
-                elif                   self.ctrlkey   and self.df_level < len(self.dfs_layout)-1:
-                    self.df_level += 1
-                elif self.shiftkey                    and self.df_level > 0: # pop the stack
+            elif self.key_op_finished == 'p' or self.key_op_finished == 'P':
+                if self.key_op_finished == 'P' and self.df_level > 0: # pop the stack
                     self.df_level -= 1
                 elif len(self.selected_entities) > 0: # push the stack
                     _g_ = copy.deepcopy(self.graphs[self.df_level])
@@ -1206,7 +1219,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             #
             # Next Layout Option
             #
-            elif self.key_op_finished == 'g':
+            elif self.key_op_finished == 'G':
                 if   self.layout_mode == 'grid':      self.layout_mode = 'circle'
                 elif self.layout_mode == 'circle':    self.layout_mode = 'sunflower'
                 elif self.layout_mode == 'sunflower': self.layout_mode = 'line'
@@ -1268,6 +1281,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 if _y0 == _y1: _y1 += 1
                 _rect_ = Polygon([(_x0,_y0), (_x0,_y1), (_x1,_y1), (_x1,_y0)])
                 _overlapping_entities_  = set(self.dfs_layout[self.df_level].overlappingEntities(_rect_))
+                if _overlapping_entities_ is None: _overlapping_entities_ = set()
 
                 if   self.op_str == 'Intersect': self.selected_entities = set(self.selected_entities) & set(_overlapping_entities_)
                 elif self.op_str == 'Subtract':  self.selected_entities = set(self.selected_entities) - set(_overlapping_entities_)
@@ -1313,6 +1327,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             if self.unselected_move_op_finished:
                 _x_,_y_ = self.allentities_x0, self.allentities_y0
                 _overlapping_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((_x_,_y_))
+                if _overlapping_entities_ is None: _overlapping_entities_ = set()
 
                 if   self.op_str == 'Add':      self.selected_entities = (set(self.selected_entities) | set(_overlapping_entities_))
                 elif self.op_str == 'Subtract': self.selected_entities = (set(self.selected_entities) - set(_overlapping_entities_))
@@ -1358,15 +1373,24 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
 
-            if      (event.key == "e" || event.key == "E") { data.key_op_finished = 'e';  }
-            else if (event.key == "g")                     { state.layout_op      = true; }
-            else if (event.key == "G")                     { data.key_op_finished = 'g';  } 
-            else if (event.key == "q" || event.key == "Q") { data.key_op_finished = 'q';  }
-            else if (event.key == "s" || event.key == "S") { data.key_op_finished = 's';  }
-            else if (event.key == "t" || event.key == "T") { data.key_op_finished = 't';  }
-            else if (event.key == "w" || event.key == "W") { data.key_op_finished = 'w';  }            
-            else if (event.key == "z" || event.key == "Z") { data.key_op_finished = 'z';  }
-            else if (event.key == "p" || event.key == "P") { data.key_op_finished = 'p';  }
+            if      (event.key == "e") { data.key_op_finished = 'e';  } // Expand
+            else if (event.key == "E") { data.key_op_finished = 'E';  } // Expand (w/ digraph)
+            else if (event.key == "g") { state.layout_op      = true; } // Mouse press is layout shape
+            else if (event.key == "G") { data.key_op_finished = 'G';  } // Iterate through layout shapes
+            else if (event.key == "n") { data.key_op_finished = 'n';  } // Iterate through selection methdology
+            else if (event.key == "q") { data.key_op_finished = 'q';  } // Invert selection
+            else if (event.key == "Q") { data.key_op_finished = 'Q';  } // Select common neighbors to selected nodes
+            else if (event.key == "s") { data.key_op_finished = 's';  } // Set sticky labels
+            else if (event.key == "S") { data.key_op_finished = 'S';  } // Subtract selected from sticky labels
+            else if (event.key == "t") { data.key_op_finished = 't';  } // Collapse selected to a single point
+            else if (event.key == "w") { data.key_op_finished = 'w';  } // Add to sticky labels (it's right above 's')
+            else if (event.key == "W") { data.key_op_finished = 'W';  } // Iterate through label settings
+            else if (event.key == "y") { data.key_op_finished = 'y';  } // Arrange selected into a verticle line at mouse
+            else if (event.key == "Y") { data.key_op_finished = 'Y';  } // Arrange selected into a horizontal line at mouse
+            else if (event.key == "z") { data.key_op_finished = 'z';  } // (if selected) zoom to selected, else zoom to entire view
+            else if (event.key == "Z") { data.key_op_finished = 'Z';  } // Zoom to selected + neighbors
+            else if (event.key == "p") { data.key_op_finished = 'p';  } // push the stack (remove the selected from the current graph)
+            else if (event.key == "P") { data.key_op_finished = 'P';  } // pop the stack (add removed nodes back in)
             else if (event.key == "1" || event.key == "!") { data.key_op_finished = '1';  }
             else if (event.key == "2" || event.key == "@") { data.key_op_finished = '2';  }
             else if (event.key == "3" || event.key == "#") { data.key_op_finished = '3';  }
@@ -1377,8 +1401,6 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             else if (event.key == "8" || event.key == "*") { data.key_op_finished = '8';  }
             else if (event.key == "9" || event.key == "(") { data.key_op_finished = '9';  }
             else if (event.key == "0" || event.key == ")") { data.key_op_finished = '0';  }
-
-            else if (event.key == "n") { data.key_op_finished = 'n'; } // Iterate through selection methdology
 
             data.last_key = event.key;
             svgparent.focus(); // else it loses focus on every render...
