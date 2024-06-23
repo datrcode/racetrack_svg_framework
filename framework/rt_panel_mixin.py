@@ -786,8 +786,8 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.ln_params         = ln_params
         if 'pos' not in ln_params.keys(): ln_params['pos'] = {}
         self.pos               = ln_params['pos']
-        self.w                 = 600 # w
-        self.h                 = 400 # h
+        self.w                 = w
+        self.h                 = h
         self.kwargs            = kwargs
         self.df                = self.rt_self.copyDataFrame(df)
         self.df_level          = 0
@@ -801,6 +801,28 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         if 'label_only' in ln_params:                               self.sticky_labels = set(ln_params['label_only'])
         else:                                                       self.sticky_labels = set()
         self.selected_entities = set(self.sticky_labels) # if there are set labels, select them by default
+
+        # Recast the template with the width's and height's
+        self._template = '''<svg id="svgparent" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" tabindex="0" ''' + \
+                         '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}"> ''' + \
+                         '''    <svg id="mod" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''"> ${mod_inner} </svg> ''' + \
+                         '''    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" /> ''' + \
+                         '''    <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" /> ''' + \
+                         '''    <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" /> ''' + \
+                         '''    <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" /> ''' + \
+                         '''    <circle id="layoutsunflower" cx="-10" cy="-10" r="5"                   stroke="#000000" stroke-width="2" /> ''' + \
+                         '''    <rect id="screen" x="0" y="0" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" opacity="0.05" ''' + \
+                         '''          onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}" ''' + \
+                         '''          onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" /> ''' + \
+                         '''    <text id="opstr"   x="''' + str(self.w-2) + '''" y="12"  fill="#000000" font-size="10px" text-anchor="end"> ${op_str} </text> ''' + \
+                         '''    <text id="infostr" x="5"   y="''' + str(self.h-4) + '''" fill="#000000" font-size="10px"> ${info_str} </text> ''' + \
+                         '''    <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none" ''' + \
+                         '''          onmousedown="${script('downAllEntities')}" onmousemove="${script('moveEverything')}"  ''' + \
+                         '''          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" /> ''' + \
+                         '''    <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none" ''' + \
+                         '''          onmousedown="${script('downMove')}"        onmousemove="${script('moveEverything')}" ''' + \
+                         '''          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" /> ''' + \
+                         '''</svg>'''
 
         # - Create a lock for threading
         self.lock = threading.Lock()
