@@ -392,6 +392,8 @@ class RTOntology(object):
                                                'grp':    pl.Int64,
                                                'gdisp':  pl.String,
                                                'src':    pl.String})
+        # Needs to match the df_triples schema
+        # Needs to be the same as what is cleared later in the appendBufferedTriplesAndClearBuffer()
         self.buffered_triples = {'sbj':  [],
                                 'stype': [],
                                 'sdisp': [],
@@ -714,7 +716,7 @@ class RTOntology(object):
         df_buffered     = pl.DataFrame(self.buffered_triples, schema=self.df_triples.schema)
         self.df_triples = pl.concat([self.df_triples, df_buffered])
 
-        # Clear the buffer
+        # Clear the buffer / needs to be the same as the initialization
         self.buffered_triples = {'sbj':   [],
                                  'stype': [],
                                  'sdisp': [],

@@ -864,9 +864,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     # selectEntities() - set the selected entities
     #
     def selectEntities(self, 
-                       selection,              # string or set
-                       set_op     = 'replace', # "replace", "add", "subtract", "intersect"
-                       method     = 'exact'):  # "exact", "substring", "regex"
+                       selection,                # string or set
+                       set_op       = 'replace', # "replace", "add", "subtract", "intersect"
+                       method       = 'exact',   # "exact", "substring", "regex"
+                       ignore_case  = True):     # ignore the case when performing the match
         # Get all nodes in the current graph // these are the non-labeled variants
         all_nodes = set(self.graphs[self.df_level].nodes())
 
@@ -876,31 +877,51 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             else:                      _substrings_ = set(selection)
             _set_ = set()
             for _substring_ in _substrings_:
+                if ignore_case: _substring_ = _substring_.lower()
                 if 'node_labels' in self.ln_params:
                     for _node_ in self.ln_params['node_labels'].keys():
-                        if _node_ in all_nodes and _substring_ in str(self.ln_params['node_labels'][_node_]): _set_.add(_node_)
+                        if _node_ in all_nodes: # only match nodes in the graph
+                            if   ignore_case:
+                                if _substring_ in str(self.ln_params['node_labels'][_node_]).lower(): _set_.add(_node_)
+                            elif _substring_ in str(self.ln_params['node_labels'][_node_]): _set_.add(_node_)
                 for _node_ in all_nodes:
-                    if _substring_ in str(_node_): _set_.add(_node_)
+                    if   ignore_case:
+                        if _substring_ in str(_node_).lower(): _set_.add(_node_)
+                    elif _substring_ in str(_node_): _set_.add(_node_)
         elif method == 'regex':     # REGEX MATCHES
             _set_ = set() # Not Implemented Yet
-        else:                            # EXACT MATCHES
+        else:                       # EXACT MATCHES
             # Fix up the selection so that it's definitely a set...
             if    selection is None:                                 selection_as_set = set()
             elif  type(selection) == list or type(selection) == set: selection_as_set = set(selection)
             elif  type(selection) == dict:                           selection_as_set = set(selection.keys())
             else:                                                    selection_as_set = set([selection])
 
+            # Fix the case...
+            if ignore_case: selection_as_set = {x.lower() for x in selection_as_set}
+
             # Iterate through the nodes...
             if 'node_labels' in self.ln_params: # node labels handled a little differently
                 _set_ = set()
                 for _node_ in self.ln_params['node_labels'].keys():
                     _label_ = self.ln_params['node_labels'][_node_]
-                    if _node_ in all_nodes and (_node_ in selection_as_set or _label_ in selection_as_set): _set_.add(_node_)
+
+                    if ignore_case: _label_, _node_cased_ = _label_.lower(), _node_.lower()
+                    else:           _label_, _node_cased_ = _label_, _node_
+
+                    if _node_ in all_nodes and (_node_cased_ in selection_as_set or _label_ in selection_as_set): _set_.add(_node_)
                 for _node_ in all_nodes:
-                    if _node_ in selection_as_set: _set_.add(_node_)
+                    _node_cased_ = str(_node_).lower() if ignore_case else _node_
+                    if _node_cased_ in selection_as_set: _set_.add(_node_)
                 self.selected_entities = _set_
             else: # just use the selection
-                _set_ = selection_as_set & all_nodes
+                if ignore_case:
+                    _set_ = set()
+                    for _node_ in all_nodes:
+                        _node_cased_ = str(_node_).lower()
+                        if _node_cased_ in selection_as_set: _set_.add(_node_)
+                else:
+                    _set_ = selection_as_set & all_nodes
 
         if   set_op == 'replace':   self.selected_entities  = _set_
         elif set_op == 'add':       self.selected_entities |= _set_
