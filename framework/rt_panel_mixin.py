@@ -319,6 +319,58 @@ class RTReactiveHTML(ReactiveHTML):
             self.lock.release()
 
     #
+    # popStack() - as long as there are items on the stack, go up the stack
+    #
+    def popStack(self, callers=None):
+        if self.df_level == 0: return
+        if callers is not None and self in callers: return
+        if callers is None: callers = set([self])
+        else:               callers.add(self)
+        # ascend this panel's stack
+        self.df_level   = self.df_level - 1
+        self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_()
+        # ascend stack for all registered companion vizs
+        for c in self.companions:
+            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.popStack(callers=callers)
+
+    #
+    # setStackPosition() - set to a specific position
+    #
+    def setStackPostion(self, i_found, callers=None):
+        if i_found < 0 or i_found >= len(self.dfs_layout): return
+        if callers is not None and self in callers: return
+        if callers is None: callers = set([self])
+        else:               callers.add(self)
+        # set the specific stack level
+        self.df_level   = i_found
+        self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_()
+        # do the same for the companions
+        for c in self.companions:
+            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.setStackPostion(i_found, callers=callers)
+
+    #
+    # pushStack() - push a dataframe onto the stack
+    #
+    def pushStack(self, df, callers=None):
+        if callers is not None and self in callers: return
+        if callers is None: callers = set([self])
+        else:               callers.add(self)
+
+        # Re-layout w/ new dataframe
+        self.dfs         = self.dfs       [:(self.df_level+1)]
+        self.dfs_layout  = self.dfs_layout[:(self.df_level+1)]
+        self.df_level   += 1
+        _layout = self.__createLayout__(df)
+        # Update the stack
+        self.dfs       .append(df)
+        self.dfs_layout.append(_layout)
+        self.mod_inner = _layout._repr_svg_()
+
+        # adjust layout for all registered companion vizs
+        for c in self.companions:
+            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.pushStack(df, callers=callers)
+
+    #
     # Drag operation state & method
     #
     drag_op_finished = param.Boolean(default=False)
@@ -339,15 +391,7 @@ class RTReactiveHTML(ReactiveHTML):
                 _df = self.dfs_layout[self.df_level].overlappingDataFrames((_x0,_y0,_x1,_y1))
                 # Go back up the stack...
                 if _df is None or len(_df) == 0:
-                    if self.df_level > 0:
-                        self.df_level   = self.df_level - 1
-                        self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_()
-                        # ascend stack for all registered companion vizs
-                        for c in self.companions:
-                            if isinstance(c, RTReactiveHTML):
-                                if c.df_level > 0:
-                                    c.df_level   = c.df_level - 1
-                                    c.mod_inner  = c.dfs_layout[c.df_level]._repr_svg_()
+                    if self.df_level > 0: self.popStack()
                 # Filter and go down the stack
                 else:
                     # Align the dataframes if necessary
@@ -383,37 +427,11 @@ class RTReactiveHTML(ReactiveHTML):
                                     break
 
                         # Dataframe already in the stack...  go to that stack position
-                        if i_found is not None:
-                            self.df_level   = i_found
-                            self.mod_inner  = self.dfs_layout[self.df_level]._repr_svg_()
-                            for c in self.companions:
-                                if isinstance(c, RTReactiveHTML):
-                                    c.df_level   = i_found
-                                    c.mod_inner  = c.dfs_layout[c.df_level]._repr_svg_()
+                        if i_found is not None: 
+                            self.setStackPosition(i_found)
                         # Push a new dataframe onto the stack
                         else:
-                            # Re-layout w/ new dataframe
-                            self.dfs         = self.dfs       [:(self.df_level+1)]
-                            self.dfs_layout  = self.dfs_layout[:(self.df_level+1)]
-                            self.df_level   += 1
-                            _layout = self.__createLayout__(_df)
-                            # Update the stack
-                            self.dfs       .append(_df)
-                            self.dfs_layout.append(_layout)
-                            self.mod_inner = _layout._repr_svg_()
-
-                            # adjust layout for all registered companion vizs
-                            for c in self.companions:
-                                if isinstance(c, RTReactiveHTML):
-                                    # Re-layout w/ new dataframe
-                                    c.dfs         = c.dfs       [:(c.df_level+1)]
-                                    c.dfs_layout  = c.dfs_layout[:(c.df_level+1)]
-                                    c.df_level   += 1
-                                    _clayout      = c.__createLayout__(_df) 
-                                    # Update the stack
-                                    c.dfs       .append(_df)
-                                    c.dfs_layout.append(_clayout)
-                                    c.mod_inner = _clayout._repr_svg_()
+                            self.pushStack(_df)
 
                 # Mark operation as finished
                 self.drag_op_finished = False
@@ -1098,6 +1116,79 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             self.wheel_rots        = 0            
             self.lock.release()
 
+
+
+    #
+    # popStack() - as long as there are items on the stack, go up the stack
+    #
+    def popStack(self, callers=None):
+        if self.df_level == 0: return
+        if callers is not None and self in callers: return
+        if callers is None: callers = set([self])
+        else:               callers.add(self)
+
+        self.df_level -= 1
+
+        self.mod_inner        = self.dfs_layout[self.df_level]._repr_svg_()
+        self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
+        self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+        self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+
+        for c in self.companions:
+            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.popStack(callers=callers)
+
+    #
+    # setStackPosition() - set to a specific position
+    #
+    def setStackPostion(self, i_found, callers=None):
+        if i_found < 0 or i_found >= len(self.dfs_layout): return
+        if callers is not None and self in callers: return
+        if callers is None: callers = set([self])
+        else:               callers.add(self)
+
+        if i_found < 0 or i_found >= len(self.dfs_layout): return
+
+        self.df_level = i_found
+
+        self.mod_inner        = self.dfs_layout[self.df_level]._repr_svg_()
+        self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
+        self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+        self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+
+        for c in self.companions:
+            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.setStackPosition(i_found, callers=callers)
+
+    #
+    # pushStack() - push a dataframe onto the stack
+    #
+    def pushStack(self, df, g=None, callers=None):
+        if callers is not None and self in callers: return
+        if callers is None: callers = set([self])
+        else:               callers.add(self)
+
+        if g is None: g = self.rt_self.createNetworkXGraph(df, self.ln_params['relationships'])
+
+        _ln_ = self.__renderView__(df)
+        _ln_.applyViewConfiguration(self.dfs_layout[self.df_level])
+        if len(self.dfs_layout) > (self.df_level+1):
+            new_dfs, new_dfs_layout, new_graphs = [], [], []
+            for i in range(self.df_level+1):
+                new_dfs.append(self.dfs[i]), new_dfs_layout.append(self.dfs_layout[i]), new_graphs.append(self.graphs[i])
+            self.dfs, self.dfs_layout, self.graphs = new_dfs, new_dfs_layout, new_graphs
+        self.dfs        .append(df)
+        self.dfs_layout .append(_ln_)
+        self.graphs     .append(g)
+        self.df_level += 1
+        self.selected_entities = set()
+
+        self.mod_inner        = self.dfs_layout[self.df_level]._repr_svg_()
+        self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
+        self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+        self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+
+        for c in self.companions:
+            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.pushStack(df, callers=callers)
+
     #
     # applyKeyOp() - apply specified key operation
     #
@@ -1243,28 +1334,14 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             #
             elif self.key_op_finished == 'p' or self.key_op_finished == 'P':
                 if self.key_op_finished == 'P' and self.df_level > 0: # pop the stack
-                    self.df_level -= 1
+                    self.popStack()
+
                 elif len(self.selected_entities) > 0: # push the stack
                     _g_ = copy.deepcopy(self.graphs[self.df_level])
                     for _entity_ in self.selected_entities: _g_.remove_node(_entity_)
                     _df_ = self.rt_self.filterDataFrameByGraph(self.dfs[self.df_level], self.ln_params['relationships'], _g_)
-                    if len(_df_) > 0:
-                        _ln_ = self.__renderView__(_df_)
-                        _ln_.applyViewConfiguration(self.dfs_layout[self.df_level])
-                        if len(self.dfs_layout) > (self.df_level+1):
-                            new_dfs, new_dfs_layout, new_graphs = [], [], []
-                            for i in range(self.df_level+1):
-                                new_dfs.append(self.dfs[i]), new_dfs_layout.append(self.dfs_layout[i]), new_graphs.append(self.graphs[i])
-                            self.dfs, self.dfs_layout, self.graphs = new_dfs, new_dfs_layout, new_graphs
-                        self.dfs        .append(_df_)
-                        self.dfs_layout .append(_ln_)
-                        self.graphs     .append(_g_)
-                        self.df_level += 1
-                        self.selected_entities = set()
-                self.mod_inner        = self.dfs_layout[self.df_level]._repr_svg_()
-                self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
-                self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
-                self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+                    if len(_df_) > 0: self.pushStack(_df_, _g_)
+
             #
             # Degree Related Operations
             #
