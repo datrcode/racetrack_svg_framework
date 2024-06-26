@@ -336,7 +336,7 @@ class RTReactiveHTML(ReactiveHTML):
     #
     # setStackPosition() - set to a specific position
     #
-    def setStackPostion(self, i_found, callers=None):
+    def setStackPosition(self, i_found, callers=None):
         if i_found < 0 or i_found >= len(self.dfs_layout): return
         if callers is not None and self in callers: return
         if callers is None: callers = set([self])
