@@ -839,6 +839,19 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         self.param.watch(self.applyLayoutOp,    'layout_shape')
         self.param.watch(self.unselectedMoveOp, 'unselected_move_op_finished')
 
+        # For companion visualizations
+        self.companions = []
+
+
+    # register companion visualizations
+    def register_companion_viz(self, viz):
+        self.companions.append(viz)
+    
+    # unregister companion visualizations
+    def unregister_companion_viz(self, viz):
+        if viz in self.companions:
+            self.companions.remove(viz)
+
     #
     # saveLayout() - save the current layout
     #
