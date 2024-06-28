@@ -18,21 +18,34 @@ def promptModel(prompt, max_tokens=64, temperature=0.0):
     return result
 
 import os
+from os.path import exists
+
 _base_dir_ = '../../../data/2014_vast/MC1/News Articles'
 
 import pandas as pd
 import numpy as np
 import time
 
+_lu_       = {'file':[], 'article':[], 'mistral_7b_response':[], 'mistral_7b_time':[]}
+
+done = set()
+if exists('mistral_7b_2014_vast.csv.partial'):
+    _df_ = pd.read_csv('mistral_7b_2014_vast.csv.partial')
+    _lu_['file'].extend(_df_['file'])
+    _lu_['article'].extend(_df_['article'])
+    _lu_['mistral_7b_response'].extend(_df_['mistral_7b_response'])
+    _lu_['mistral_7b_time'].extend(_df_['mistral_7b_time'])
+    done = set(_df_['article'])
+
 ts0 = time.time()
 files_processed = 0
 
-_lu_       = {'file':[], 'article':[], 'mistral_7b_response':[], 'mistral_7b_time':[]}
 _prompt_   = 'Parse the following text into an ontology of people, places, things, and events.  Extract the relationships betwen entities.  Return just the JSON structure.'
 for _dir_ in os.listdir(_base_dir_):
     for _file_ in os.listdir(os.path.join(_base_dir_, _dir_)):
         _article_raw_ = open(os.path.join(_base_dir_, _dir_, _file_), 'rb').read()
         _article_     = str(_article_raw_) #.replace('\\r', '').split('\\n')
+        if _article_ in done: continue
         ts0_model = time.time()
         _response_    = promptModel(_prompt_ + '\n\n' + _article_, max_tokens=4096)
         ts1_model = time.time()
