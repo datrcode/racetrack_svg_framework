@@ -886,7 +886,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     #
     def loadLayout(self, filename):
         _df_ = pd.read_csv(filename)
-        for row_i, row in _df_.iterrows(): self.pos[row['node']] = (row['x'], row['y'])
+        for row_i, row in _df_.iterrows(): self.pos[row['node']] = (float(row['x']), float(row['y']))
         self.__refreshView__(info=False)
 
     #
@@ -1014,7 +1014,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 if   self.layout_shape == "grid":
                     pos_adj = self.rt_self.rectangularArrangement(as_list, bounds=(x0,y0,x1,y1))
                     for _node_ in pos_adj:
-                        _ln_.pos[_node_] = (_ln_.xT_inv(pos_adj[_node_][0]),_ln_.yT_inv(pos_adj[_node_][1]))
+                        _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
                     nodes_moved = True
                 elif self.layout_shape == "circle":
                     r = sqrt((x0 - x1)**2 + (y0 - y1)**2)
@@ -1022,13 +1022,13 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     inc = 2 * pi / len(as_list)
                     for i in range(len(as_list)):
                         _x_, _y_ = x0 + r * cos(i * inc), y0 + r * sin(i * inc)
-                        _ln_.pos[as_list[i]] = (_ln_.xT_inv(_x_), _ln_.yT_inv(_y_))
+                        _ln_.pos[as_list[i]] = (float(_ln_.xT_inv(_x_)), float(_ln_.yT_inv(_y_)))
                     nodes_moved = True
                 elif self.layout_shape == "sunflower":
                     r = sqrt((x0 - x1)**2 + (y0 - y1)**2)
                     pos_adj = self.rt_self.sunflowerSeedArrangement(as_list, xy=(x0,y0), r_max=r)
                     for _node_ in pos_adj:
-                        _ln_.pos[_node_] = (_ln_.xT_inv(pos_adj[_node_][0]),_ln_.yT_inv(pos_adj[_node_][1]))
+                        _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
                     nodes_moved = True
                 elif self.layout_shape == "line" or self.layout_shape == "v-line" or self.layout_shape == "h-line":
                     dx, dy = x1 - x0, y1 - y0
@@ -1040,10 +1040,10 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     inc = l/(len(as_list) - 1) if len(as_list) > 1 else 1.0
                     for i in range(len(as_list)):
                         _x_, _y_ = x0 + ux * i * inc, y0 + uy * i * inc
-                        _ln_.pos[as_list[i]] = (_ln_.xT_inv(_x_), _ln_.yT_inv(_y_))
+                        _ln_.pos[as_list[i]] = (float(_ln_.xT_inv(_x_)), float(_ln_.yT_inv(_y_)))
                     nodes_moved = True
             elif len(as_list) == 1:
-                _ln_.pos[as_list[0]] = (_ln_.xT_inv((x0+x1)/2), _ln_.yT_inv((y0+y1)/2))
+                _ln_.pos[as_list[0]] = (float(_ln_.xT_inv((x0+x1)/2)), float(_ln_.yT_inv((y0+y1)/2)))
                 nodes_moved = True
 
             # Reposition if the nodes moved
