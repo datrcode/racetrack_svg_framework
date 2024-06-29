@@ -54,12 +54,29 @@ import pandas as pd
 import numpy as np
 import time
 import os
-_base_dir_ = '../../../data/2014_vast/MC1/News Articles'
+from os.path import exists
 
 _lu_       = {'file':[], 'source':[], 'title':[], 'published':[], 'sentence':[], 'sentence_no':[], 'llama3_8b_response':[], 'llama3_8b_time':[]}
+done       = set()
+
+if exists('llama3_8b_2014_vast_sbs.csv.partial'):
+    _df_ = pd.read_csv('llama3_8b_2014_vast_sbs.csv.partial')
+    _lu_['file'].extend(_df_['file'])
+    _lu_['source'].extend(_df_['source'])
+    _lu_['title'].extend(_df_['title'])
+    _lu_['published'].extend(_df_['published'])
+    _lu_['sentence'].extend(_df_['sentence'])
+    _lu_['sentence_no'].extend(_df_['sentence_no'])
+    _lu_['llama3_8b_response'].extend(_df_['llama3_8b_response'])
+    _lu_['llama3_8b_time'].extend(_df_['llama3_8b_time'])
+    done = set(_df_['file'])
+
+_base_dir_ = '../../../data/2014_vast/MC1/News Articles'
+
 _prompt_   = 'Translate the following text into an CCO ontology represented as JSON.  Only include the JSON structure.'
 for _dir_ in os.listdir(_base_dir_):
     for _file_ in os.listdir(os.path.join(_base_dir_, _dir_)):
+        if _file_ in done: continue
         _article_raw_ = open(os.path.join(_base_dir_, _dir_, _file_), 'rb').read()
         _src_, _title_, _published_, _sentences_ = separateArticle(str(_article_raw_).replace('\\r', '').replace('\\n', '\n'))
         _sentence_no_ = 0
