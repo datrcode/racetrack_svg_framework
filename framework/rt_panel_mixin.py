@@ -1308,11 +1308,11 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                 self.__refreshView__(all_ents=False, sel_ents=False)
 
             #
-            # 'Z' - Center on Selected (if selected) or Reset View (if not selected) / Selected + Neighbors
+            # 'C' - Center on Selected (if selected) or Reset View (if not selected) / Selected + Neighbors
             #
-            elif self.key_op_finished == 'z' or self.key_op_finished == 'Z':
+            elif self.key_op_finished == 'c' or self.key_op_finished == 'C':
                 _rerender_ = False
-                if self.key_op_finished == 'Z':
+                if self.key_op_finished == 'C':
                     if len(self.selected_entities) > 0:
                         _new_set_ = set(self.selected_entities)
                         for _node_ in self.selected_entities:
@@ -1538,7 +1538,9 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
 
-            if      (event.key == "e") { data.key_op_finished = 'e';  } // Expand
+            if      (event.key == "c") { data.key_op_finished = 'c';  } // (if selected) zoom to selected, else zoom to entire view
+            else if (event.key == "C") { data.key_op_finished = 'C';  } // Zoom to selected + neighbors
+            else if (event.key == "e") { data.key_op_finished = 'e';  } // Expand
             else if (event.key == "E") { data.key_op_finished = 'E';  } // Expand (w/ digraph)
             else if (event.key == "g") { state.layout_op      = true; } // Mouse press is layout shape
             else if (event.key == "G") { data.key_op_finished = 'G';  } // Iterate through layout shapes
@@ -1552,8 +1554,6 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             else if (event.key == "W") { data.key_op_finished = 'W';  } // Iterate through label settings
             else if (event.key == "y") { data.key_op_finished = 'y';  } // Arrange selected into a verticle line at mouse
             else if (event.key == "Y") { data.key_op_finished = 'Y';  } // Arrange selected into a horizontal line at mouse
-            else if (event.key == "z") { data.key_op_finished = 'z';  } // (if selected) zoom to selected, else zoom to entire view
-            else if (event.key == "Z") { data.key_op_finished = 'Z';  } // Zoom to selected + neighbors
             else if (event.key == "p") { data.key_op_finished = 'p';  } // push the stack (remove the selected from the current graph)
             else if (event.key == "P") { data.key_op_finished = 'P';  } // pop the stack (add removed nodes back in)
             else if (event.key == "1" || event.key == "!") { data.key_op_finished = '1';  }
