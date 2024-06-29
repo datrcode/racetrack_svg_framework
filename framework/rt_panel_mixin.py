@@ -974,6 +974,25 @@ class RTGraphInteractiveLayout(ReactiveHTML):
         return _set_
 
     #
+    # selectedNodes() - return the selected nodes
+    # - distinction is that the node is the representation within the dataframe
+    # - versus the entity may be the lookup label if the node_labels is set
+    # - if there are no node_labels, this should return the same as selectedEntities()
+    #
+    def selectedNodes(self):
+        if 'node_labels' in self.ln_params:
+            _set_, covered = set(), set()
+            for _node_ in self.ln_params['node_labels'].keys():
+                if _node_                                in self.selectedEntities() or \
+                   self.ln_params['node_labels'][_node_] in self.selectedEntities(): _set_.add(_node_)
+                covered.add(_node_), covered.add(self.ln_params['node_labels'][_node_])
+            for _node_ in self.selectedEntities():
+                if _node_ not in covered: _set_.add(_node_)
+            return _set_
+        else:
+            return set(self.selected_entities) # no node labels, it's the same... return a copy
+
+    #
     # __renderView__() - render the view
     #
     def __renderView__(self, __df__):
