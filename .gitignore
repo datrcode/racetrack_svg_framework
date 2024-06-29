@@ -13,3 +13,4 @@ use_cases/2014_vast_challenge/phi_time.txt
 use_cases/2014_vast_challenge/phi_2014_vast.csv.partial
 use_cases/2014_vast_challenge/mistral_7b_2014_vast.csv.partial
 use_cases/2014_vast_challenge/phi_small_2014_vast.csv
+use_cases/2014_vast_challenge/llama3_8b_2014_vast_sbs.csv
