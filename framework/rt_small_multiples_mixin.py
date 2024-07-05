@@ -163,7 +163,7 @@ class RTSmallMultiplesMixin(object):
         df = self.copyDataFrame(df)
 
         # Check widget ... since there's widget specific processing
-        _implemented_types = ['boxplot', 'calendarHeatmap', 'chordDiagram', 'choroplethMap', 'histogram', 'linkNode', 
+        _implemented_types = ['boxplot', 'calendarHeatmap', 'chordDiagram', 'choroplethMap', 'histogram', 'linkNode', 'link',
                               'periodicBarChart', 'pieChart', 'temporalBarChart', 'wordCloud', 'xy']
         if (sm_type in _implemented_types) == False:
             raise Exception(f'smallMultipes: widget type "{sm_type}" not implemented (initial check)')
@@ -251,7 +251,7 @@ class RTSmallMultiplesMixin(object):
             most_params['ts_field'] = ts_field
         if 'temporal_granularity' in accepted_args:
             most_params['temporal_granularity'] = temporal_granularity
-        if sm_type == 'linkNode':
+        if sm_type == 'linkNode' or sm_type == 'link':
             most_params['use_pos_for_bounds'] = False
 
         # Handle dependent axes ... unfortunately, this is widget dependent
@@ -314,7 +314,7 @@ class RTSmallMultiplesMixin(object):
             #
             # linkNode and position for bounds
             #
-            if sm_type == 'linkNode' and x_axis_independent == False:
+            if (sm_type == 'linkNode' or sm_type == 'link') and x_axis_independent == False:
                 most_params['use_pos_for_bounds'] = True
             
             #
@@ -1095,7 +1095,8 @@ class RTSmallMultiplesMixin(object):
 
         # Find the timestamp field... or figure out what to use...
         accepted_args = set(inspect.getfullargspec(getattr(self, sm_type)).args)
-        if ('ts_field' in accepted_args and sm_type != 'linkNode') or (sm_type == 'linkNode' and 'timing_marks' in sm_params.keys() and sm_params['timing_marks'] == True):
+        if ('ts_field' in accepted_args and sm_type != 'linkNode' and sm_type != 'link') or \
+           ((sm_type == 'linkNode' or sm_type == 'link') and 'timing_marks' in sm_params.keys() and sm_params['timing_marks'] == True):
             if 'ts_field' in sm_params.keys():     # precedence is sm_params ts_field
                 ts_field = sm_params['ts_field']
             elif ts_field is None:                 # best guess from the columns // copied from temporalBarChart method
