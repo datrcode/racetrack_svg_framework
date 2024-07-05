@@ -219,18 +219,21 @@ class RTGraphLayoutsMixin(object):
     #
     def rectangularArrangement(self, nodes, pos=None, bounds=(0,0,1,1)):
         x0, y0, x1, y1 = bounds
+        if x0 > x1: x0, x1 = x1, x0
+        if y0 > y1: y0, y1 = y1, y0
+        dx, dy = float(x1-x0), float(y1-y0)
         if type(nodes) is not list: nodes = list(nodes)
         if pos is None: pos = {}
         if   len(nodes) == 1:
-            pos[nodes[0]] = ((x0+x1)/2, (y0+y1)/2)
+            pos[nodes[0]] = (x0 + dx/2.0, y0 + dy/2.0)
         elif len(nodes) == 2:
-            pos[nodes[0]], pos[nodes[1]] = (1*(x0+x1)/3, (y0+y1)/2), (2*(x0+x1)/3, (y0+y1)/2) 
+            pos[nodes[0]], pos[nodes[1]] = (x0, y0+dy/2), (x1, y0+dy/2.0)
         elif len(nodes) == 3:
-            pos[nodes[0]], pos[nodes[1]], pos[nodes[2]] = (1*(x0+x1)/3, 1*(y0+y1)/3), (2*(x0+x1)/3, 1*(y0+y1)/3), ((x0+x1)/2, 2*(y0+y1)/3)
+            pos[nodes[0]], pos[nodes[1]], pos[nodes[2]] = (x0, y0), (x0 + dx/2.0, y1), (x1, y0)
         elif len(nodes) == 4 or len(nodes) == 5:
             pos[nodes[0]], pos[nodes[1]] = (x0,y0),(x1,y0)
             pos[nodes[2]], pos[nodes[3]] = (x0,y1),(x1,y1)
-            if len(nodes) == 5: pos[nodes[4]] = ((x0+x1)/2, (y0+y1)/2)
+            if len(nodes) == 5: pos[nodes[4]] = ((x0+x1)/2.0, (y0+y1)/2.0)
         else:
             if x0 >= x1: x1 = x0 + 1.0
             if y0 >= y1: y1 = y0 + 1.0
