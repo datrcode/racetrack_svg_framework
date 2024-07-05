@@ -217,7 +217,7 @@ class RTGraphLayoutsMixin(object):
     # rectangularArrangement() - arrange a list of nodes in a rectangular shape.
     # - bounds = (x0,y0,x1,y1) where x0 < x1 and y0 < y1
     #
-    def rectangularArrangement(self, nodes, pos=None, bounds=(0,0,1,1)):
+    def rectangularArrangement(self, g, nodes, pos=None, bounds=(0,0,1,1)):
         x0, y0, x1, y1 = bounds
         if x0 > x1: x0, x1 = x1, x0
         if y0 > y1: y0, y1 = y1, y0
@@ -254,11 +254,19 @@ class RTGraphLayoutsMixin(object):
             else:                              # roughly square
                 max_x_i = max_y_i = n
 
+            _sorter_  = []
+            _degrees_ = g.degree(nodes)
+            for node in nodes: 
+                _degrees_ = g.degree(node)
+                if type(_degrees_) == int: _sorter_.append((_degrees_,      node))
+                else:                      _sorter_.append((len(_degrees_), node))
+            _sorter_ = sorted(_sorter_, reverse=True)
+
             x_i, y_i = 0, 0
             for i in range(len(nodes)):
                 _x_ = x0 + x_i * (dx/max_x_i)
                 _y_ = y0 + y_i * (dy/max_y_i)
-                pos[nodes[i]] = (_x_,_y_)
+                pos[_sorter_[i][1]] = (_x_,_y_)
                 x_i += 1
                 if x_i >= max_x_i:
                     y_i += 1

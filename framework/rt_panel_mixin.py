@@ -1012,7 +1012,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
             _ln_        = self.dfs_layout[self.df_level]
             if len(as_list) > 1:
                 if   self.layout_shape == "grid":
-                    pos_adj = self.rt_self.rectangularArrangement(as_list, bounds=(x0,y0,x1,y1))
+                    pos_adj = self.rt_self.rectangularArrangement(self.graphs[self.df_level], as_list, bounds=(x0,y0,x1,y1))
                     for _node_ in pos_adj:
                         _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
                     nodes_moved = True
