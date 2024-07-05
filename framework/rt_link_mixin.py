@@ -188,7 +188,8 @@ class RTLinkMixin(object):
              draw_border           = True):  # draw a border around the graph
         _params_ = locals().copy()
         _params_.pop('self')
-        return self.RTLink(self, **_params_)
+        if self.isPandas(df): return self.RTLinkNode(self, **_params_)
+        else:                 return self.RTLink    (self, **_params_)
 
     #
     # RTLink Class
