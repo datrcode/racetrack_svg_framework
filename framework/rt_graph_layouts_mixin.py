@@ -1,4 +1,4 @@
-# Copyright 2022 David Trimm
+# Copyright 2024 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import numpy as np
 import squarify # treemaps
 import random
 
-from math import sqrt, pi, cos, sin, ceil, floor, inf
+from math import sqrt, pi, cos, sin, ceil, floor, inf, atan2
 from dataclasses import dataclass
 
 from multiprocessing import Pool
@@ -290,6 +290,94 @@ class RTGraphLayoutsMixin(object):
             pos[nodes[i]] = (xy[0] + _radius_ * np.cos(_angle_), 
                              xy[1] + _radius_ * np.sin(_angle_))
         return pos
+
+    #
+    # circularOptimizedArrangement() - attempt to place the nodes in their best positions around a circle
+    # - returns a dictionary of the nodes that were adjusted -- should be equal to the nodes passed in
+    #
+    def circularOptimizedArrangement(self, g, nodes, pos, xy=(0.0,0.0), r=1.0):
+        adj_pos, as_set  = {}, set(nodes)
+
+        # Break the nodes into externally (any) connected and internally (only) connected
+        _externals_, _internals_ = set(), set()
+        for _node_ in nodes:
+            for _nbor_ in g.neighbors(_node_):
+                if _nbor_ not in as_set: 
+                    _externals_.add(_node_)  # any external connection, makes it external
+                    break
+            if _node_ not in _externals_: _internals_.add(_node_) # if it wasn't added in the loop, it's an internal
+
+        # Create blanks for positions around the circle
+        _filled_with_, _angulars_, _angular_locations_ = [], [], []
+        for i in range(len(nodes)):
+            _angle_            = i * 2 * pi / len(nodes)
+            _filled_with_      .append(None)
+            _angulars_         .append(_angle_)
+            _angular_locations_.append((xy[0] + r * cos(_angle_), xy[1] + r * sin(_angle_)))
+
+        # For a given angle, find the closest available slot to place the node
+        def placeNodeIntoClosestSlot(node_to_place, nodes_xy=None):
+            _closest_ = 0
+            if nodes_xy is None: _closest_ = random.randint(0, len(_angulars_)-1)
+            else:
+                _closest_, _closest_d_ = 0, 1e9
+                for i in range(0, len(_angular_locations_)):
+                    dx, dy = nodes_xy[0] - _angular_locations_[i][0], nodes_xy[1] - _angular_locations_[i][1]
+                    d      = sqrt(dx*dx + dy*dy)
+                    if d < _closest_d_: _closest_, _closest_d_ = i, d
+                    
+            if _filled_with_[_closest_] is None: 
+                _filled_with_[_closest_] = node_to_place
+                adj_pos[node_to_place]   = _angular_locations_[_closest_]
+            else:
+                for j in range(1, len(_angulars_)):
+                    up =  (_closest_+j)                  % len(_angulars_)
+                    dn = ((_closest_-j)+len(_angulars_)) % len(_angulars_)
+                    if _filled_with_[up] is None:
+                        _filled_with_[up]        = node_to_place
+                        adj_pos[node_to_place]   = _angular_locations_[up]
+                        break
+                    elif _filled_with_[dn] is None:
+                        _filled_with_[dn]        = node_to_place
+                        adj_pos[node_to_place]   = _angular_locations_[dn]
+                        break
+
+        # Arrange the externally connected nodes first ... put them in the closest slot
+        for _node_ in _externals_:
+            _x_sum_, _y_sum_, _samples_ = 0.0, 0.0, 0
+            for _nbor_ in g.neighbors(_node_):
+                if _nbor_ not in _internals_ and _nbor_ not in _externals_:
+                    _nbor_xy_   =  pos[_nbor_]
+                    _x_sum_     += _nbor_xy_[0]
+                    _y_sum_     += _nbor_xy_[1]
+                    _samples_   += 1
+            _x_, _y_ = _x_sum_ / _samples_, _y_sum_ / _samples_
+            placeNodeIntoClosestSlot(_node_, (_x_,_y_))
+
+        # Arrange the internally connected nodes next ... start with the ones connected to the most externals
+        _sorter_ = []
+        for _node_ in _internals_:
+            _externally_connected_ = 0
+            for _nbor_ in g.neighbors(_node_):
+                if _nbor_ in _externals_: _externally_connected_ += 1
+            _sorter_.append((_externally_connected_, _node_))
+        _sorter_ = sorted(_sorter_, reverse=True)
+        for _tuple_ in _sorter_:
+            _node_ = _tuple_[1]
+            if _tuple_[0] > 0:
+                _x_sum_, _y_sum_, _samples_ = 0.0, 0.0, 0
+                for _nbor_ in g.neighbors(_node_):
+                    if _nbor_ in _filled_with_:
+                        i           =  _filled_with_.index(_nbor_)
+                        _x_sum_     += _angular_locations_[i][0]
+                        _y_sum_     += _angular_locations_[i][1]
+                        _samples_   += 1
+                _x_, _y_ = _x_sum_ / _samples_, _y_sum_ / _samples_
+                placeNodeIntoClosestSlot(_node_, (_x_,_y_))
+            else:
+                placeNodeIntoClosestSlot(_node_)
+
+        return adj_pos
 
     #
     # circularLayout() - from the java version

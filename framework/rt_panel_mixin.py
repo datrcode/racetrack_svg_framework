@@ -1017,12 +1017,12 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
                     nodes_moved = True
                 elif self.layout_shape == "circle":
-                    r = sqrt((x0 - x1)**2 + (y0 - y1)**2)
-                    if r < 1.0: r = 1.0
-                    inc = 2 * pi / len(as_list)
-                    for i in range(len(as_list)):
-                        _x_, _y_ = x0 + r * cos(i * inc), y0 + r * sin(i * inc)
-                        _ln_.pos[as_list[i]] = (float(_ln_.xT_inv(_x_)), float(_ln_.yT_inv(_y_)))
+                    wx0, wy0 = _ln_.xT_inv(x0), _ln_.yT_inv(y0)
+                    wx1, wy1 = _ln_.xT_inv(x1), _ln_.yT_inv(y1)
+                    r = sqrt((wx0 - wx1)**2 + (wy0 - wy1)**2)
+                    if r < 0.1: r = 0.1
+                    pos_adj = self.rt_self.circularOptimizedArrangement(self.graphs[self.df_level], as_list, _ln_.pos, xy=(wx0,wy0), r=r)
+                    for _node_ in pos_adj: _ln_.pos[_node_] = (pos_adj[_node_][0],pos_adj[_node_][1])
                     nodes_moved = True
                 elif self.layout_shape == "sunflower":
                     r = sqrt((x0 - x1)**2 + (y0 - y1)**2)
