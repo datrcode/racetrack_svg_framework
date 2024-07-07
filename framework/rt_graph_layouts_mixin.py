@@ -634,8 +634,28 @@ class RTGraphLayoutsMixin(object):
             # Place root
             _leaf_count = {}
             ht_state = HTState(angle=0.0, angle_inc=2.0*pi/self.__totalLeaves__(G, my_root, my_root, _leaf_count), max_depth=self.__treeDepth__(G,my_root,my_root))
-            for x in G[my_root]:
-                self.__hyperTreePlaceChildren__(pos, G, my_root, my_root, 0, ht_state, 0, 0, _child_count, _leaf_count)
+
+            _R_ = 8.0
+            def placeChildren(_parent, _node, _depth):
+                # Place Leaves Directly
+                if _child_count[_node] == 0:
+                    pos[_node] = (_depth * _R_ * cos(ht_state.angle) / ht_state.max_depth,
+                                  _depth * _R_ * sin(ht_state.angle) / ht_state.max_depth)
+                    ht_state.angle += ht_state.angle_inc
+                # Interior Node...
+                else:
+                    begin_angle = ht_state.angle
+                    _heap = []
+                    for x in G[_node]:
+                        if x != _parent: heapq.heappush(_heap, (1/(_child_count[x]+1), x))
+                    while len(_heap) > 0:
+                        x = heapq.heappop(_heap)[1]
+                        placeChildren(_node, x, _depth+1)
+                    end_angle = ht_state.angle
+                    half_angle = (begin_angle + end_angle)/2
+                    pos[_node] = (_depth * _R_ * cos(half_angle) / ht_state.max_depth, _depth * _R_ * sin(half_angle) / ht_state.max_depth)
+
+            for x in G[my_root]: placeChildren(my_root, my_root, 0)
             
             # Touch up center w/ spring layout
             if touch_up_with_springs:
@@ -669,22 +689,18 @@ class RTGraphLayoutsMixin(object):
             pos[_node] = (cen_x + _depth * _R_ * cos(ht_state.angle) / ht_state.max_depth,
                           cen_y + _depth * _R_ * sin(ht_state.angle) / ht_state.max_depth)
             ht_state.angle += ht_state.angle_inc
-
         # Interior Node...
         else:
             begin_angle = ht_state.angle
             _heap = []
             for x in _graph[_node]:
-                if x != _parent:
-                    heapq.heappush(_heap, (1/(_child_count[x]+1), x))
+                if x != _parent: heapq.heappush(_heap, (1/(_child_count[x]+1), x))
             while len(_heap) > 0:
                 x = heapq.heappop(_heap)[1]
-                self.__hyperTreePlaceChildren__(pos, _graph, _node, x, _depth+1, ht_state, 
-                                                cen_x, cen_y, _child_count, _leaf_count)
+                self.__hyperTreePlaceChildren__(pos, _graph, _node, x, _depth+1, ht_state, cen_x, cen_y, _child_count, _leaf_count)
             end_angle = ht_state.angle
             half_angle = (begin_angle + end_angle)/2
-            pos[_node] = (cen_x + _depth * _R_ * cos(half_angle) / ht_state.max_depth,
-                          cen_y + _depth * _R_ * sin(half_angle) / ht_state.max_depth)
+            pos[_node] = (cen_x + _depth * _R_ * cos(half_angle) / ht_state.max_depth, cen_y + _depth * _R_ * sin(half_angle) / ht_state.max_depth)
 
 
     #
@@ -702,14 +718,12 @@ class RTGraphLayoutsMixin(object):
         
         # Order the graphs from largest to smallest
         my_order = []
-        for _subgraph in S:
-            my_order.append((len(_subgraph),_subgraph))
+        for _subgraph in S: my_order.append((len(_subgraph),_subgraph))
         my_order.sort(key=lambda x:x[0], reverse=True)
 
         # Transpose the sizes into an array
         nodes = []
-        for tup in my_order:
-            nodes.append(tup[0])
+        for tup in my_order: nodes.append(tup[0])
 
         # Calculate the treemap via the squarify library
         normalized_sizes   = squarify.normalize_sizes(nodes, 1024, 1024)
