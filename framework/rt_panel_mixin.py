@@ -1026,7 +1026,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     nodes_moved = True
                 elif self.layout_shape == "sunflower":
                     r = sqrt((x0 - x1)**2 + (y0 - y1)**2)
-                    pos_adj = self.rt_self.sunflowerSeedArrangement(as_list, xy=(x0,y0), r_max=r)
+                    pos_adj = self.rt_self.sunflowerSeedArrangement(self.graphs[self.df_level], as_list, xy=(x0,y0), r_max=r)
                     for _node_ in pos_adj:
                         _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
                     nodes_moved = True

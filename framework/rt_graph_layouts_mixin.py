@@ -277,18 +277,28 @@ class RTGraphLayoutsMixin(object):
     #
     # sunflowerSeedArrangement() - arrange a list of nodes in a sunflower arrangement
     #
-    def sunflowerSeedArrangement(self, nodes, pos=None, xy=None, r_max=1.0):
+    def sunflowerSeedArrangement(self, g, nodes, pos=None, xy=None, r_max=1.0):
         if type(nodes) is not list: nodes = list(nodes)
         if xy is None: xy = (0,0)
         n = len(nodes)
+
+        # place highest degree nodes in the center
+        _sorter_  = []
+        _degrees_ = g.degree(nodes)
+        for node in nodes: 
+            _degrees_ = g.degree(node)
+            if type(_degrees_) == int: _sorter_.append((_degrees_,      node))
+            else:                      _sorter_.append((len(_degrees_), node))
+        _sorter_ = sorted(_sorter_, reverse=True)
+
         if pos is None:  pos = {}
         r_max_formula = np.sqrt(n)
         _golden_ratio_ = (1 + np.sqrt(5)) / 2
         for i in range(n):
             _angle_  = i * 2 * np.pi / _golden_ratio_
             _radius_ = r_max * np.sqrt(i) / r_max_formula
-            pos[nodes[i]] = (xy[0] + _radius_ * np.cos(_angle_), 
-                             xy[1] + _radius_ * np.sin(_angle_))
+            pos[_sorter_[i][1]] = (xy[0] + _radius_ * np.cos(_angle_), 
+                                   xy[1] + _radius_ * np.sin(_angle_))
         return pos
 
 
@@ -496,7 +506,7 @@ class RTGraphLayoutsMixin(object):
         for center in outer_rings.keys():
             _angle_  = center_angle[center]
             xy       = (_radius_plus_*cos(_angle_), _radius_plus_*sin(_angle_))
-            pos      = self.sunflowerSeedArrangement(outer_rings[center], pos, xy, _plus_)
+            pos      = self.sunflowerSeedArrangement(g, outer_rings[center], pos, xy, _plus_)
 
         return pos
     
