@@ -291,6 +291,79 @@ class RTGraphLayoutsMixin(object):
                              xy[1] + _radius_ * np.sin(_angle_))
         return pos
 
+
+    #
+    # linearOptimizedArrangement() - attempt to place the nodes in their best positions in a line
+    # - _segment_ = [(x0,y0),(x1,y1)]
+    #
+    def linearOptimizedArrangement(self, g, nodes, pos, segment=((0.0, 0.0), (1.0, 1.0))):
+        if len(nodes) == 1: return {nodes[0]:((segment[0][0]+segment[1][0])/2.0, (segment[0][1]+segment[1][1])/2.0)}
+        adj_pos, as_set = {}, set(nodes)
+        # Break the nodes into externally (any) connected and internally (only) connected
+        _externals_, _internals_ = set(), set()
+        for _node_ in nodes:
+            for _nbor_ in g.neighbors(_node_):
+                if _nbor_ not in as_set: 
+                    _externals_.add(_node_)  # any external connection, makes it external
+                    break
+            if _node_ not in _externals_: _internals_.add(_node_) # if it wasn't added in the loop, it's an internal
+
+        # Create blanks for positions on the line
+        dx, dy = segment[1][0] - segment[0][0], segment[1][1] - segment[0][1]
+        _filled_with_, _locations_ = [], []
+        for i in range(len(nodes)): 
+            _filled_with_.append(None)
+            perc = i/float(len(nodes)-1)
+            _locations_.append((segment[0][0] + dx*perc, segment[0][1] + dy*perc))
+
+        def placeNodeIntoClosestSlot(node_to_place, nodes_xy=None):
+            _closest_ = 0
+            if nodes_xy is not None:
+                _closest_pt_ = self.closestPointOnSegment(segment, nodes_xy)[1]
+                if    _closest_pt_ == segment[0]: _closest_ = 0
+                elif  _closest_pt_ == segment[1]: _closest_ = len(_locations_)-1
+                else:
+                    _closest_d_ = sqrt((_closest_pt_[0]-_locations_[0][0])**2 + (_closest_pt_[1]-_locations_[0][1])**2)
+                    for i in range(1, len(_locations_)):
+                        _d_ = sqrt((_closest_pt_[0]-_locations_[i][0])**2 + (_closest_pt_[1]-_locations_[i][1])**2)
+                        if _d_ < _closest_d_: _closest_, _closest_d_ = i, _d_
+
+            if _filled_with_[_closest_] is None: 
+                _filled_with_[_closest_] = node_to_place
+                adj_pos[node_to_place]   = _locations_[_closest_]
+            else:
+                for j in range(1, len(_locations_)):
+                    up = _closest_+j
+                    dn = _closest_-j
+                    if   up < len(_locations_) and _filled_with_[up] is None:
+                        _filled_with_[up]        = node_to_place
+                        adj_pos[node_to_place]   = _locations_[up]
+                        break
+                    elif dn >= 0 and _filled_with_[dn] is None:
+                        _filled_with_[dn]        = node_to_place
+                        adj_pos[node_to_place]   = _locations_[dn]
+                        break
+
+        # Place the external nodes -- start with the highest degree node
+        _sorter_ = []
+        for _node_ in _externals_: _sorter_.append((g.degree(_node_), _node_))
+        _sorter_ = sorted(_sorter_, reverse=True)
+        for _tuple_ in _sorter_:
+            _node_ = _tuple_[1]
+            _x_sum_, _y_sum_, _samples_ = 0.0, 0.0, 0
+            for _nbor_ in g.neighbors(_node_):
+                if _nbor_ in as_set: continue
+                _x_sum_   += pos[_nbor_][0]
+                _y_sum_   += pos[_nbor_][1]
+                _samples_ += 1
+            _x_, _y_ = _x_sum_ / _samples_, _y_sum_ / _samples_
+            placeNodeIntoClosestSlot(_node_, (_x_, _y_))
+        
+        # Place the rest of the nodes
+        for _node_ in _internals_: placeNodeIntoClosestSlot(_node_)
+
+        return adj_pos
+
     #
     # circularOptimizedArrangement() - attempt to place the nodes in their best positions around a circle
     # - returns a dictionary of the nodes that were adjusted -- should be equal to the nodes passed in
