@@ -637,10 +637,6 @@ class RTGraphLayoutsMixin(object):
             for x in G[my_root]:
                 self.__hyperTreePlaceChildren__(pos, G, my_root, my_root, 0, ht_state, 0, 0, _child_count, _leaf_count)
             
-            print(_child_count)
-            print(G.nodes())
-            print(pos)
-
             # Touch up center w/ spring layout
             if touch_up_with_springs:
                 dists   = dict(nx.all_pairs_shortest_path_length(G))
