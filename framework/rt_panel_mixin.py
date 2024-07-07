@@ -1020,7 +1020,7 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                     wx0, wy0 = _ln_.xT_inv(x0), _ln_.yT_inv(y0)
                     wx1, wy1 = _ln_.xT_inv(x1), _ln_.yT_inv(y1)
                     r = sqrt((wx0 - wx1)**2 + (wy0 - wy1)**2)
-                    if r < 0.1: r = 0.1
+                    if r < 0.001: r = 0.001
                     pos_adj = self.rt_self.circularOptimizedArrangement(self.graphs[self.df_level], as_list, _ln_.pos, xy=(wx0,wy0), r=r)
                     for _node_ in pos_adj: _ln_.pos[_node_] = (pos_adj[_node_][0],pos_adj[_node_][1])
                     nodes_moved = True
@@ -1031,16 +1031,12 @@ class RTGraphInteractiveLayout(ReactiveHTML):
                         _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
                     nodes_moved = True
                 elif self.layout_shape == "line" or self.layout_shape == "v-line" or self.layout_shape == "h-line":
-                    dx, dy = x1 - x0, y1 - y0
                     if   self.layout_shape == "v-line": x0, x1, dx = x1, x1, 0
                     elif self.layout_shape == "h-line": y0, y1, dy = y1, y1, 0
-                    l      = sqrt(dx * dx + dy * dy)
-                    if l < 0.001: l = 1.0
-                    ux, uy = dx / l, dy / l
-                    inc = l/(len(as_list) - 1) if len(as_list) > 1 else 1.0
-                    for i in range(len(as_list)):
-                        _x_, _y_ = x0 + ux * i * inc, y0 + uy * i * inc
-                        _ln_.pos[as_list[i]] = (float(_ln_.xT_inv(_x_)), float(_ln_.yT_inv(_y_)))
+                    wx0, wy0 = _ln_.xT_inv(x0), _ln_.yT_inv(y0)
+                    wx1, wy1 = _ln_.xT_inv(x1), _ln_.yT_inv(y1)
+                    pos_adj = self.rt_self.linearOptimizedArrangement(self.graphs[self.df_level], as_list, _ln_.pos, ((wx0,wy0),(wx1,wy1)))
+                    for _node_ in pos_adj: _ln_.pos[_node_] = (pos_adj[_node_][0],pos_adj[_node_][1])
                     nodes_moved = True
             elif len(as_list) == 1:
                 _ln_.pos[as_list[0]] = (float(_ln_.xT_inv((x0+x1)/2)), float(_ln_.yT_inv((y0+y1)/2)))
