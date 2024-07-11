@@ -18,6 +18,7 @@ import polars as pl
 import numpy as np
 import json
 import time
+import os
 
 __name__ = 'rt_ontologies_mixin'
 
@@ -439,10 +440,14 @@ class RTOntology(object):
         self.df_triples.write_parquet(f'{_base_name_}.triples.parquet')
 
         # uids information
-        _lu_ = {'uid':[], 't0':[], 't1':[], 't2':[]}
+        _lu_ = {'uid':[], 't0':[], 't1':[], 't2':[], 't0_type':[]}
         for _uid_ in self.uid_lu:
             _lu_['uid'].append(_uid_)
-            _lu_['t0'].append(self.uid_lu[_uid_][0])
+            _lu_['t0'].append(str(self.uid_lu[_uid_][0]))
+            if   type(self.uid_lu[_uid_][0]) == str: _lu_['t0_type'].append('str')
+            elif type(self.uid_lu[_uid_][0]) == int: _lu_['t0_type'].append('int')
+            else: raise Exception(f'Unexpected type for "{self.uid_lu[_uid_][0]}" -- type is {type(self.uid_lu[_uid_][0])}')
+
             _lu_['t1'].append(self.uid_lu[_uid_][1])
             _lu_['t2'].append(self.uid_lu[_uid_][2])
         pd.DataFrame(_lu_).to_parquet(f'{_base_name_}.uids.parquet')
@@ -464,6 +469,23 @@ class RTOntology(object):
         if len(self.xform_spec_lines) > 0:
             with open(f'{_base_name_}.xform_spec', 'wt') as f: f.write('\n'.join(self.xform_spec_lines))
 
+        # tabular data
+        if len(self.tables) > 0:
+            _lu_ = {'table_id':[], 'sbj':[], 'vrb':[], 'obj':[], 'grp':[], 'src':[]}
+            for _table_id_ in self.table_mappings:
+                for _map_ in self.table_mappings[_table_id_]:
+                    _lu_['table_id'].append(_table_id_)
+                    _lu_['sbj'].append(_map_[0])
+                    _lu_['vrb'].append(_map_[1])
+                    _lu_['obj'].append(_map_[2])
+                    if len(_map_) > 3: _lu_['grp'].append(_map_[3])
+                    else:              _lu_['grp'].append(None)
+                    if len(_map_) > 4: _lu_['src'].append(_map_[5])
+                    else:              _lu_['src'].append(None)
+            pl.DataFrame(_lu_).write_parquet(f'{_base_name_}.table_mappings.parquet')
+            for _table_id_ in self.tables:
+                self.tables[_table_id_].write_parquet(f'{_base_name_}.{_table_id_}.parquet')
+
     # fm_files() - read state from several files
     def fm_files(self, _base_name_):
         # RDF triples
@@ -471,9 +493,11 @@ class RTOntology(object):
 
         # uids information
         _lu_ = pd.read_parquet(f'{_base_name_}.uids.parquet')
-        uid_v, t0_v, t1_v, t2_v = _lu_['uid'].values, _lu_['t0'].values, _lu_['t1'].values, _lu_['t2'].values
+        uid_v, t0_v, t1_v, t2_v, t0_types = _lu_['uid'].values, _lu_['t0'].values, _lu_['t1'].values, _lu_['t2'].values, _lu_['t0_type'].values
         for i in range(len(uid_v)):
-            self.uid_lu[uid_v[i]] = (t0_v[i], t1_v[i], t2_v[i])
+            if    t0_types[i] == 'str': self.uid_lu[uid_v[i]] = (    t0_v[i],  t1_v[i], t2_v[i])
+            elif  t0_types[i] == 'int': self.uid_lu[uid_v[i]] = (int(t0_v[i]), t1_v[i], t2_v[i])
+            else: raise Exception(f'Unexpected type for "{t0_v[i]}" -- type is {t0_types[i]}')
             if t2_v[i] == 'uniq':
                 _key_ = str(t0_v[i]) + '|' + str(t1_v[i])
                 self.rev_uid_lu[_key_] = uid_v[i]
@@ -488,7 +512,19 @@ class RTOntology(object):
         uid_v, label_v = _lu_['sbj'].values, _lu_['label'].values
         for i in range(len(uid_v)):
             self.labeling_sbjs[uid_v[i]] = label_v[i]
+        
+        # tabular data
+        if os.path.exists(f'{_base_name_}.table_mappings.parquet'):
+            _df_ = pl.read_parquet(f'{_base_name_}.table_mappings.parquet')
+            for i in range(len(_df_)):
+                _table_id_, _sbj_, _vrb_, _obj_, _grp_, _src_ = _df_['table_id'][i], _df_['sbj'][i], _df_['vrb'][i], _df_['obj'][i], _df_['grp'][i], _df_['src'][i]
+                if _table_id_ not in self.table_mappings: self.table_mappings[_table_id_] = []
+                if   _src_ is None and _grp_ is None:  self.table_mappings[_table_id_].append((_sbj_, _vrb_, _obj_))
+                elif _src_ is None:                    self.table_mappings[_table_id_].append((_sbj_, _vrb_, _obj_, _grp_))
+                else:                                  self.table_mappings[_table_id_].append((_sbj_, _vrb_, _obj_, _grp_, _src_))
 
+            for _table_id_ in self.tables:
+                self.tables[_table_id_] = pl.read_parquet(f'{_base_name_}.{_table_id_}.parquet')
 
     # __substituteDefines__() - subsitute defines
     def __substituteDefines__(self, _txt_):
@@ -743,15 +779,18 @@ class RTOntology(object):
         if tabular_id is None: tabular_id_internal = self.createId('tabular')
         else:                  tabular_id_internal = self.resolveUniqIdAndUpdateLookups(tabular_id, 'tabular', 'uniq')
 
-        # Validate the mapping -- each map should be either three or four elements
-        # -- [<sbj>, <vrb>, <obj>]
+        # Validate the mapping -- each map should be either three, four, or five elements
+        # -- [<sbj>, <vrb>, <obj>] .... should be the same as [<sbj>, <vrb>, <obj>, None, None]
         # -- [<sbj>, <vrb>, <obj>, <grp>]
+        # -- [<sbj>, <vrb>, <obj>, <grp>, <src>]
         # -- elements that start with a "@" represent columns in the dataframe
         # -- elements that start with a "@__id..." represent columns in the dataframe that should have ID's previously created
+        # -- elements that are 'None' are ignored and won't be represented by the ontology
         for _map_ in mapping:
-            if len(_map_) != 3 and len(_map_) != 4: raise ValueError('mapping must be a list of 3 or 4 elements')
+            if len(_map_) != 3 and len(_map_) != 4 and len(_map_) != 5: raise ValueError('mapping must be a list of 3, 4, or 5 elements')
             for _elem_ in _map_:
-                if    _elem_.startswith('@__id'):
+                if    _elem_ is None: continue
+                elif  _elem_.startswith('@__id'):
                     if _elem_[1:] not in df.columns: raise ValueError(f'mapping column "{_elem_}" not found in dataframe [1]')
                     _set_ = set(df[_elem_[1:]])
                     for _id_ in _set_: 
