@@ -34,6 +34,7 @@ class RTOntologiesMixin(object):
 
     #
     # Ontology Framework
+    # - "base_filename" -- forces a load of the specified base path
     #
     def ontologyFrameworkInstance(self, **kwargs):
         if    'xform_spec'    in kwargs: return RTOntology(self, **kwargs)
