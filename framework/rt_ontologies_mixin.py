@@ -445,7 +445,8 @@ class RTOntology(object):
         for _uid_ in self.uid_lu:
             _lu_['uid'].append(_uid_)
             _lu_['t0'].append(str(self.uid_lu[_uid_][0]))
-            if   type(self.uid_lu[_uid_][0]) == str: _lu_['t0_type'].append('str')
+            if        self.uid_lu[_uid_][0] is None: _lu_['t0_type'].append('none')
+            elif type(self.uid_lu[_uid_][0]) == str: _lu_['t0_type'].append('str')
             elif type(self.uid_lu[_uid_][0]) == int: _lu_['t0_type'].append('int')
             else: raise Exception(f'Unexpected type for "{self.uid_lu[_uid_][0]}" -- type is {type(self.uid_lu[_uid_][0])}')
 
@@ -496,8 +497,9 @@ class RTOntology(object):
         _lu_ = pd.read_parquet(f'{_base_name_}.uids.parquet')
         uid_v, t0_v, t1_v, t2_v, t0_types = _lu_['uid'].values, _lu_['t0'].values, _lu_['t1'].values, _lu_['t2'].values, _lu_['t0_type'].values
         for i in range(len(uid_v)):
-            if    t0_types[i] == 'str': self.uid_lu[uid_v[i]] = (    t0_v[i],  t1_v[i], t2_v[i])
-            elif  t0_types[i] == 'int': self.uid_lu[uid_v[i]] = (int(t0_v[i]), t1_v[i], t2_v[i])
+            if    t0_types[i] == 'none': self.uid_lu[uid_v[i]] = (None,         t1_v[i], t2_v[i])
+            elif  t0_types[i] == 'str':  self.uid_lu[uid_v[i]] = (    t0_v[i],  t1_v[i], t2_v[i])
+            elif  t0_types[i] == 'int':  self.uid_lu[uid_v[i]] = (int(t0_v[i]), t1_v[i], t2_v[i])
             else: raise Exception(f'Unexpected type for "{t0_v[i]}" -- type is {t0_types[i]}')
             if t2_v[i] == 'uniq':
                 _key_ = str(t0_v[i]) + '|' + str(t1_v[i])
