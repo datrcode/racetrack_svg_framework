@@ -424,6 +424,11 @@ class RTOntology(object):
 
         # Validation errors
         self.validation_errors = set()
+
+        # Tabular Data Supplied By User
+        self.tables         = {}
+        self.table_mappings = {}
+
         # Performance measurements
         self.time_lu    = {}
         for x in ['fill.trace_json_paths', 'fill.collapse', 'fill.parse']: self.time_lu[x] = 0
@@ -727,6 +732,37 @@ class RTOntology(object):
                                  'grp':   [],
                                  'gdisp': [],
                                  'src':   []}
+
+    #
+    # addTabularDataFrame() - add a tabular dataframe
+    #
+    def addTabularDataFrame(self, 
+                            df, 
+                            mapping, 
+                            tabular_id=None): # user supplied string
+        if tabular_id is None: tabular_id_internal = self.createId('tabular')
+        else:                  tabular_id_internal = self.resolveUniqIdAndUpdateLookups(tabular_id, 'tabular', 'uniq')
+
+        # Validate the mapping -- each map should be either three or four elements
+        # -- [<sbj>, <vrb>, <obj>]
+        # -- [<sbj>, <vrb>, <obj>, <grp>]
+        # -- elements that start with a "@" represent columns in the dataframe
+        # -- elements that start with a "@__id..." represent columns in the dataframe that should have ID's previously created
+        for _map_ in mapping:
+            if len(_map_) != 3 and len(_map_) != 4: raise ValueError('mapping must be a list of 3 or 4 elements')
+            for _elem_ in _map_:
+                if    _elem_.startswith('@__id'):
+                    if _elem_[1:] not in df.columns: raise ValueError(f'mapping column "{_elem_}" not found in dataframe [1]')
+                    _set_ = set(df[_elem_[1:]])
+                    for _id_ in _set_: 
+                        if _id_ not in self.uid_lu: raise ValueError(f'mapping id "{_id_}" from column "{_elem_}" not found in dataframe [1]')
+                elif  _elem_.startswith('@'):
+                    if _elem_[1:] not in df.columns: raise ValueError(f'mapping column "{_elem_}" not found in dataframe [2]')
+
+        # Add the tabular dataframe & the related mappings
+        # -- mappings should enable the dataframe to be completely represented within the triples if necessary
+        self.tables[tabular_id_internal]         = df
+        self.table_mappings[tabular_id_internal] = mapping
 
     #
     # nodeLabels() - return node labels for the sbj, obj in the df_triples structure
