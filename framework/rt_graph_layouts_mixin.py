@@ -604,8 +604,8 @@ class RTGraphLayoutsMixin(object):
             if len(G) <= 4:
                 as_list = list(G.nodes())
                 if len(G) >= 1: pos[as_list[0]] = (0,0)
-                if len(G) >= 2: pos[as_list[1]] = (1,0)
-                if len(G) >= 3: pos[as_list[2]] = (1,1)
+                if len(G) >= 2: pos[as_list[1]] = (1,1)
+                if len(G) >= 3: pos[as_list[2]] = (1,0)
                 if len(G) >= 4: pos[as_list[3]] = (0,1)
                 continue
 
