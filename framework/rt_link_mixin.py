@@ -681,11 +681,12 @@ class RTLinkMixin(object):
             # Create the node SVG
             if    self.node_size is None: _svg_strs_ = []
             elif  self.node_size in self.node_size_lu or type(self.node_size) == int or type(self.node_size) == float:
-                _sz_ = self.node_size_lu[self.node_size] if self.node_size in self.node_size_lu else self.node_size
+                _sz_         = self.node_size_lu[self.node_size] if self.node_size in self.node_size_lu else self.node_size
+                stroke_width = 1.0 if _sz_ > 3 else _sz_/2.0
                 self.df_node = self.df_node.with_columns(pl.lit(_sz_).alias('__sz__'))
                 # Single nodes
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
-                            pl.lit(f'" r="{_sz_}" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
+                            pl.lit(f'" r="{_sz_}" fill="#ffffff" stroke="#000000" stroke-width="{stroke_width}" />')]
                 df_node_singles = self.df_node.filter(pl.col('__nodes__')==1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_ = list(set(df_node_singles.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
                 # Multi nodes // nodes that are collapsed into a single pixel
@@ -695,7 +696,7 @@ class RTLinkMixin(object):
             elif self.node_size == 'vary':
                 self.df_node = self.df_node.with_columns((self.min_node_size + (self.max_node_size - self.min_node_size) * (pl.col('__count__') - pl.col('__count__').min()) / (0.01 + pl.col('__count__').max() - pl.col('__count__').min())).alias('__sz__'))
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
-                            pl.lit('" r="'), pl.col('__sz__'), pl.lit('" fill="#ffffff" stroke="#000000" stroke-width="1" />')]
+                            pl.lit('" r="'), pl.col('__sz__'), pl.lit(f'" fill="#ffffff" stroke="#000000" stroke-width="{stroke_width}" />')]
                 self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_ = list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
             else: _svg_strs_ = []
