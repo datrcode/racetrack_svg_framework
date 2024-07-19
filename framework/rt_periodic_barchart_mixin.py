@@ -419,6 +419,7 @@ class RTPeriodicBarChartMixin(object):
             # Draw the bars
             if self.style == 'barchart':
                 for k,k_df in group_by:
+                    if type(k) == tuple and len(k) == 1: k = k[0] # polars fixes on 2024-07-19
                     x = x_left + 1 + (bar_w+self.h_gap)*self.rt_self.time_periods_strs[self.period_i].index(k)
                     if   self.count_by is None:
                         px = max_bar_h * len(k_df) / group_by_max

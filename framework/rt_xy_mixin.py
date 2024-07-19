@@ -664,7 +664,7 @@ class RTXYMixin(object):
 
             # Create the new column from the dictionary
             if len(field) == 1:
-                df = df.with_columns(pl.col(field[0]).map_dict(_dict_).alias(new_axis_field))
+                df = df.with_columns(pl.col(field[0]).replace_strict(_dict_, return_dtype=pl.Float32).alias(new_axis_field))
             else:
                 def myMapRows(k):
                     return _dict_[k]
@@ -1258,21 +1258,14 @@ class RTXYMixin(object):
 
             # dot_w will be used for the actual geometry
             def dotSizeNumber(_str_):
-                if _str_ is None or _str_ == 'hidden':
-                    return 0
-                elif type(_str_) == int:
-                    return _str_
-                elif _str_ == 'medium':
-                    return 2
-                elif _str_ == 'small':
-                    return 1
-                elif _str_ == 'large':
-                    return 3
-                elif _str_ == 'huge':
-                    return 8
-                elif _str_ == 'tiny':
-                    return 0.3
-                return -1
+                if _str_ is None or _str_ == 'hidden':           return  0
+                elif type(_str_) == int or type(_str_) == float: return  _str_
+                elif _str_ == 'medium':                          return  2
+                elif _str_ == 'small':                           return  1
+                elif _str_ == 'large':                           return  3
+                elif _str_ == 'huge':                            return  8
+                elif _str_ == 'tiny':                            return  0.3
+                else:                                            return -1
             dot_w  = dotSizeNumber(self.dot_size)
             dot2_w = dotSizeNumber(self.dot2_size)
 
@@ -1438,7 +1431,9 @@ class RTXYMixin(object):
                 t0_render_small_multiples = time.time()
                 node_to_xy  = {} # for small multiples
                 node_to_dfs = {} # for small multiples
-                gb = self.df.groupby([self.x_axis_col+"_px",self.y_axis_col+"_px"])
+                if   self.rt_self.isPandas(self.df): gb = self.df.groupby([self.x_axis_col+"_px",self.y_axis_col+"_px"])
+                elif self.rt_self.isPolars(self.df): gb = self.df.group_by([self.x_axis_col+"_px",self.y_axis_col+"_px"])
+                else:                                raise Exception('Unknown dataframe type')
                 for k, k_df in gb:
                     x,y = k
                     xy_as_str = str(x) + ',' + str(y)
@@ -1960,7 +1955,7 @@ class RTXYMixin(object):
                     gbxy = k_df.groupby([self.x2_axis_col+"_px",self.y2_axis_col+"_px"])
                 elif self.rt_self.isPolars(self.df2):
                     k_df = k_df.sort(self.x2_axis_col+'_px')
-                    gbxy = k_df.groupby([self.x2_axis_col+"_px",self.y2_axis_col+"_px"], maintain_order=True)
+                    gbxy = k_df.group_by([self.x2_axis_col+"_px",self.y2_axis_col+"_px"], maintain_order=True)
                 points = ''
                 for xy,xy_df in gbxy:
                     points += f'{xy[0]},{xy[1]} '

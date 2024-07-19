@@ -829,7 +829,7 @@ class RACETrack(RTAnnotationsMixin,
                        df[count_by].dtypes != np.float64 and \
                        df[count_by].dtypes != np.float32
             elif self.isPolars(df):
-                return df[count_by].is_float() == False and df[count_by].is_integer() == False
+                return df[count_by].dtype.is_float() == False and df[count_by].dtype.is_integer() == False
             else:
                 raise Exception('countBySet() - not a pandas or polars dataframe')
     
@@ -845,7 +845,7 @@ class RACETrack(RTAnnotationsMixin,
                    df[field].dtypes == np.float64 or \
                    df[field].dtypes == np.float32
         elif self.isPolars(df):
-            return df[field].is_float() or df[field].is_integer()
+            return df[field].dtype.is_float() or df[field].dtype.is_integer()
         else:
             raise Exception('fieldIsArithmetic() - not a pandas or polars dataframe')
 

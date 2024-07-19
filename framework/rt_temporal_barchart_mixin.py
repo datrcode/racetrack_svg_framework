@@ -38,12 +38,14 @@ class RTTemporalBarChartMixin(object):
     # Init / Constructor for this mixin
     #
     def __temporal_barchart_mixin_init__(self):
+        # These values also occur later.... so make sure to search for the different strings to
+        # update the places where these also occur...
         _tups = [('100YS',  '%Y',                'Centuries',  '100y'),
                  ('10YS',   '%Y',                'Decades',    '10y'),
                  ('YS',     '%Y',                'Years',      '1y'),
                  ('QS',     '%Y-%m',             'Quarters',   '1q'),
                  ('MS',     '%Y-%m',             'Months',     '1mo'),
-                 ('1W',     '%Y-%m-%d',          'Weeks',      '1w'),
+                 ('1W-MON', '%Y-%m-%d',          'Weeks',      '1w'),
                  ('D',      '%Y-%m-%d',          'Days',       '1d'),
                  ('4h',     '%Y-%m-%d %H',       '4 Hours',    '4h'),
                  ('h',      '%Y-%m-%d %H',       'Hours',      '1h'),
@@ -51,8 +53,8 @@ class RTTemporalBarChartMixin(object):
                  ('10min',  '%Y-%m-%d %H:%M',    '10 Mins',    '10m'),
                  ('5min',   '%Y-%m-%d %H:%M',    '5 Mins',     '5m'),
                  ('1min',   '%Y-%m-%d %H:%M',    'Minutes',    '1m'),
-                 ('15S',    '%Y-%m-%d %H:%M:%S', '15 Secs',    '15s'),
-                 ('S',      '%Y-%m-%d %H:%M:%S', 'Seconds',    '1s')]
+                 ('15s',    '%Y-%m-%d %H:%M:%S', '15 Secs',    '15s'),
+                 ('s',      '%Y-%m-%d %H:%M:%S', 'Seconds',    '1s')]
 
         self.time_rezes        = []
         self.time_rezes_fmt    = []
@@ -71,36 +73,26 @@ class RTTemporalBarChartMixin(object):
     # Faster version... testing on 648K rows == 5s vs 47s for the _SLOW version
     #
     def temporalGranularity(self, my_df, ts_field):
-        if   self.isPandas(my_df):
-            return self.__temporalGranularity_pandas__(my_df, ts_field)
-        elif self.isPolars(my_df):
-            return self.__temporalGranularity_polars__(my_df, ts_field)
-        else:
-            raise Exception('RTTemporalBarChart.temporalGranularity() - only accepts pandas and polars')
+        if   self.isPandas(my_df): return self.__temporalGranularity_pandas__(my_df, ts_field)
+        elif self.isPolars(my_df): return self.__temporalGranularity_polars__(my_df, ts_field)
+        else: raise Exception('RTTemporalBarChart.temporalGranularity() - only accepts pandas and polars')
 
     #
     def __temporalGranularity_pandas__(self, my_df, ts_field):
-        if len(my_df) == 0:
-            return 'S'
+        if len(my_df) == 0: return 'S'
         # Very simple test to determine if it should be second level...
-        if my_df.iloc[0][ts_field].second != 0:
-            return 'S'
+        if my_df.iloc[0][ts_field].second != 0: return 'S'
         # Harder tests... starting from the bottom and working up...
         my_set = set(my_df[ts_field].apply(lambda x: pd.to_datetime(x).second))
-        if len(my_set) > 1 or 0 not in my_set:
-            return 'S'
+        if len(my_set) > 1 or 0 not in my_set: return 'S'
         my_set = set(my_df[ts_field].apply(lambda x: pd.to_datetime(x).minute))
-        if len(my_set) > 1 or 0 not in my_set:
-            return 'M'
+        if len(my_set) > 1 or 0 not in my_set: return 'M'
         my_set = set(my_df[ts_field].apply(lambda x: pd.to_datetime(x).hour))
-        if len(my_set) > 1 or 0 not in my_set:
-            return 'H'
+        if len(my_set) > 1 or 0 not in my_set: return 'H'
         my_set = set(my_df[ts_field].apply(lambda x: pd.to_datetime(x).day))
-        if len(my_set) > 1 or 1 not in my_set:
-            return 'd'
+        if len(my_set) > 1 or 1 not in my_set: return 'd'
         my_set = set(my_df[ts_field].apply(lambda x: pd.to_datetime(x).month))
-        if len(my_set) > 1 or 1 not in my_set:    
-            return 'm'
+        if len(my_set) > 1 or 1 not in my_set: return 'm'
         return 'Y'
 
     #
@@ -108,28 +100,22 @@ class RTTemporalBarChartMixin(object):
         if len(my_df) == 0:
             return 'S'
         # Very simple test to determine if it should be second level...
-        if my_df[ts_field][0].second != 0:
-            return 'S'
+        if my_df[ts_field][0].second != 0: return 'S'
         new_df, new_field = self.applyTransform(my_df, self.createTField(ts_field, 'second'))
         my_set = set(new_df[new_field])
-        if len(my_set) > 1 or '00' not in my_set:
-            return 'S'
+        if len(my_set) > 1 or '00' not in my_set: return 'S'
         new_df, new_field = self.applyTransform(my_df, self.createTField(ts_field, 'minute'))
         my_set = set(new_df[new_field])
-        if len(my_set) > 1 or '00' not in my_set:
-            return 'M'
+        if len(my_set) > 1 or '00' not in my_set: return 'M'
         new_df, new_field = self.applyTransform(my_df, self.createTField(ts_field, 'hour'))
         my_set = set(new_df[new_field])
-        if len(my_set) > 1 or '00' not in my_set:
-            return 'H'
+        if len(my_set) > 1 or '00' not in my_set: return 'H'
         new_df, new_field = self.applyTransform(my_df, self.createTField(ts_field, 'day'))
         my_set = set(new_df[new_field])
-        if len(my_set) > 1 or '01' not in my_set:
-            return 'd'
+        if len(my_set) > 1 or '01' not in my_set: return 'd'
         new_df, new_field = self.applyTransform(my_df, self.createTField(ts_field, 'month'))
         my_set = set(new_df[new_field])
-        if len(my_set) > 1 or 'Jan' not in my_set:
-            return 'm'
+        if len(my_set) > 1 or 'Jan' not in my_set: return 'm'
         return 'Y'
 
     #
@@ -140,15 +126,15 @@ class RTTemporalBarChartMixin(object):
              granularity == 'S':      # Seconds or less than seconds
             return False
         elif granularity == 'M':      # Minutes
-            return time_rez in [                                                                                        '15S','S']
+            return time_rez in [                                                                                            '15s','s']
         elif granularity == 'H':      # Hour
-            return time_rez in [                                                        '15min','10min','5min','1min',  '15S','S']
+            return time_rez in [                                                            '15min','10min','5min','1min',  '15s','s']
         elif granularity == 'd':      # Days
-            return time_rez in [                                             '4h','h',  '15min','10min','5min','1min',  '15S','S']
+            return time_rez in [                                                 '4h','h',  '15min','10min','5min','1min',  '15s','s']
         elif granularity == 'm':      # Months
-            return time_rez in [                                  '1W','D',  '4h','h',  '15min','10min','5min','1min',  '15S','S']
+            return time_rez in [                                  '1W-MON','D',  '4h','h',  '15min','10min','5min','1min',  '15s','s']
         else:                         # Years
-            return time_rez in [                      'QS','MS',  '1W','D',  '4h','h',  '15min','10min','5min','1min',  '15S','S']
+            return time_rez in [                      'QS','MS',  '1W-MON','D',  '4h','h',  '15min','10min','5min','1min',  '15s','s']
 
     #
     # Render context information for the specified time_rez
@@ -166,7 +152,7 @@ class RTTemporalBarChartMixin(object):
                   'YS':       ('%Y',       lambda x: x.year,   10,  0, 5,  False),
                   'QS':       ('%Y',       lambda x: x.year,   2,   0, 4,  True, lambda x: x.month,  1),
                   'MS':       ('%Y',       lambda x: x.year,   1,   0, 12, True, lambda x: x.month,  1),
-                  '1W':       ('%m/%d',    lambda x: x.week,   4,   0, 4,  False),
+                  '1W-MON':   ('%m/%d',    lambda x: x.week,   4,   0, 4,  False),
                   'D':        ('%m/%d',    lambda x: x.day,    40,  1, 15, False), # INCLUDES KLUGE BELOW
                   '4h':       ('%m/%d',    lambda x: x.day,    2,   0, 6,  True, lambda x: x.hour,   0),
                   'h':        ('%H:00',    lambda x: x.hour,   12,  0, 6,  False),
@@ -174,8 +160,8 @@ class RTTemporalBarChartMixin(object):
                   '10min':    ('%H:%M',    lambda x: x.hour,   2,   0, 2,  True, lambda x: x.minute, 0),
                   '5min':     ('%H:%M',    lambda x: x.minute, 15,  0, 5,  False),
                   '1min':     ('%H:%M',    lambda x: x.minute, 10,  0, 5,  False),
-                  '15S':      ('%H:%M:%S', lambda x: x.minute, 10,  0, 20, True, lambda x: x.second, 0),
-                  'S':        ('%H:%M:%S', lambda x: x.minute, 1,   0, 30, True, lambda x: x.second, 0) }
+                  '15s':      ('%H:%M:%S', lambda x: x.minute, 10,  0, 20, True, lambda x: x.second, 0),
+                  's':        ('%H:%M:%S', lambda x: x.minute, 1,   0, 30, True, lambda x: x.second, 0) }
 
         if time_rez not in fmt_lu.keys():
             raise Exception(f'drawTemporalContext() - {time_rez} not a valid time resolution')
@@ -221,22 +207,19 @@ class RTTemporalBarChartMixin(object):
     # - Need to check the temporal granularity if passed in
     # - Return the preferred size
     #
-    def temporalBarChartPreferredDimensions(self, **kwargs):
-        return (384,128)
+    def temporalBarChartPreferredDimensions(self, **kwargs): return (384,128)
 
     #
     # temporalBarChartMinimumDimensions()
     # - Need to check the temporal granularity if passed in
     # - Return the minimum size
     #
-    def temporalBarChartMinimumDimensions(self, **kwargs):
-        return (256,96)
+    def temporalBarChartMinimumDimensions(self, **kwargs): return (256,96)
 
     #
     # temporalBarChartSmallMultipleDimensions()
     #
-    def temporalBarChartSmallMultipleDimensions(self, **kwargs):
-        return (48,32)
+    def temporalBarChartSmallMultipleDimensions(self, **kwargs): return (48,32)
 
     #
     # Identify the required fields...
@@ -335,10 +318,8 @@ class RTTemporalBarChartMixin(object):
 
     #
     # Proper Label Based On Time Resolution
-    # time_rezes     = ['100YS',     '10YS',    'YS',    'QS',       'MS',     '1W',    'D',    '4H',      'H',     '15MIN',   '1MIN',     '15S',     'S']
     #
-    def relevantTimeLabel(self, dt, time_rez_i):
-        return dt.strftime(self.time_rezes_fmt[time_rez_i])
+    def relevantTimeLabel(self, dt, time_rez_i): return dt.strftime(self.time_rezes_fmt[time_rez_i])
 
     #
     # RTTemporalBarChart Class
@@ -475,12 +456,9 @@ class RTTemporalBarChartMixin(object):
         # orderAndRanges() -- determine order and ranges
         #
         def orderAndRanges(self, time_rez_i):
-            if self.rt_self.isPandas(self.df):
-                return self.__orderAndRanges_pandas__(time_rez_i)
-            elif self.rt_self.isPolars(self.df):
-                return self.__orderAndRanges_polars__(time_rez_i)
-            else:
-                raise Exception('RTTemporalPlot.renderSVG() - only pandas and polars are implemented')
+            if   self.rt_self.isPandas(self.df):   return self.__orderAndRanges_pandas__(time_rez_i)
+            elif self.rt_self.isPolars(self.df):   return self.__orderAndRanges_polars__(time_rez_i)
+            else: raise Exception('RTTemporalPlot.renderSVG() - only pandas and polars are implemented')
             
         #
         def __orderAndRanges_pandas__(self, time_rez_i):
@@ -533,39 +511,54 @@ class RTTemporalBarChartMixin(object):
         # resolutionAndLookups() - determine the resolution and return geometry information to include lookup tables
         #
         def resolutionAndLookups(self, w_usable):
-            if self.rt_self.isPandas(self.df):
-                return self.__resolutionAndLookups_pandas__(w_usable)
-            elif self.rt_self.isPolars(self.df):
-                return self.__resolutionAndLookups_polars__(w_usable)
-            else:
-                raise Exception('RTTemporalChart.resolutionAndLookups() -- only pandas and polars supported')                
+            if   self.rt_self.isPandas(self.df): return self.__resolutionAndLookups_pandas__(w_usable)
+            elif self.rt_self.isPolars(self.df): return self.__resolutionAndLookups_pandas__(w_usable)
+            else: raise Exception('RTTemporalChart.resolutionAndLookups() -- only pandas and polars supported')                
 
         #
         def __resolutionAndLookups_pandas__(self, w_usable):
             # Determine the render resolution
-            tmp_df  = pd.DataFrame({'timefield':[self.ts_min,self.ts_max]})
-            tmp_df['timefield'] = np.array(tmp_df['timefield'],dtype=np.datetime64)
+            # ... have to hack this a little to make the lookups work for polars too...
+            def createPolarsAlignedDataFrame(_time_rez_):
+                if self.rt_self.isPandas(self.df):
+                    tmp_df  = pd.DataFrame({'timefield':[self.ts_min,self.ts_max]})
+                    tmp_df['timefield'] = np.array(tmp_df['timefield'],dtype=np.datetime64)
+                    return tmp_df
+                else:
+                    ts0, ts1 = pd.to_datetime(self.ts_min), pd.to_datetime(self.ts_max)
+                    if   _time_rez_ == '100YS':
+                        century = round(ts0.year/100)*100
+                        t_min_fixed = pd.Timestamp(century, ts0.month, ts0.day, ts0.hour, ts0.minute, ts0.second, ts0.microsecond, ts0.tzinfo)
+                        tmp_df = pd.DataFrame({'timefield':[t_min_fixed,ts1]})
+                    elif _time_rez_ == '10YS':
+                        decade = round(ts0.year/10)*10
+                        t_min_fixed = pd.Timestamp(decade, ts0.month, ts0.day, ts0.hour, ts0.minute, ts0.second, ts0.microsecond, ts0.tzinfo)
+                        tmp_df = pd.DataFrame({'timefield':[t_min_fixed,ts1]})
+                    elif _time_rez_ == '1W-MON':
+                        if ts0.weekday() == 0: t_min_fixed = ts0
+                        else:                  t_min_fixed = ts0 - pd.Timedelta(7, 'D')
+                        tmp_df = pd.DataFrame({'timefield':[t_min_fixed,ts1]})
+                    else:
+                        tmp_df = pd.DataFrame({'timefield':[ts0,ts1]})
+                    return tmp_df
             time_rez_i     = 0
             for i in range(0,len(self.rt_self.time_rezes)):
                 # Disable some resolutions... if ignore unintuitive is set...
-                if self.ignore_unintuitive and (self.rt_self.time_rezes[i] == '1W'    or \
-                                                self.rt_self.time_rezes[i] == '4h'    or \
-                                                self.rt_self.time_rezes[i] == '15min' or \
-                                                self.rt_self.time_rezes[i] == '10min' or \
-                                                self.rt_self.time_rezes[i] == '5min'):
-                    continue
-
-                bins  = len(tmp_df.groupby(pd.Grouper(key='timefield',freq=self.rt_self.time_rezes[i])))
+                if self.ignore_unintuitive and (self.rt_self.time_rezes[i] == '1W-MON' or \
+                                                self.rt_self.time_rezes[i] == '4h'     or \
+                                                self.rt_self.time_rezes[i] == '15min'  or \
+                                                self.rt_self.time_rezes[i] == '10min'  or \
+                                                self.rt_self.time_rezes[i] == '5min'): continue
+                
+                
+                bins  = len(createPolarsAlignedDataFrame(self.rt_self.time_rezes[i]).groupby(pd.Grouper(key='timefield',freq=self.rt_self.time_rezes[i])))
                 bar_w = ((w_usable - (bins*self.h_gap))/bins)
-                if self.rt_self.granularityExceedsResolution(self.temporal_granularity,self.rt_self.time_rezes[i]):
-                    break
-                elif bar_w >= self.min_bar_w:
-                    time_rez_i = i
-                elif bar_w <= 1:
-                    break
+                if   self.rt_self.granularityExceedsResolution(self.temporal_granularity,self.rt_self.time_rezes[i]): break
+                elif bar_w >= self.min_bar_w:                                                                         time_rez_i = i
+                elif bar_w <= 1:                                                                                      break
         
             # Finalize the bar width
-            groupby = tmp_df.groupby(pd.Grouper(key='timefield',freq=self.rt_self.time_rezes[time_rez_i]))
+            groupby = createPolarsAlignedDataFrame(self.rt_self.time_rezes[time_rez_i]).groupby(pd.Grouper(key='timefield',freq=self.rt_self.time_rezes[time_rez_i]))
             bins    = len(groupby)
             bar_w   = ((w_usable - (bins*self.h_gap))/bins)
 
@@ -574,68 +567,13 @@ class RTTemporalBarChartMixin(object):
             xi_lu,xi = {},0
             for k,k_df in groupby:
                 xi_lu[k] = xi
-                if t0_label is None:
-                    t0_label = k
+                if t0_label is None: t0_label = k
                 t1_label = k
                 xi += 1
 
-            return bar_w, time_rez_i, xi_lu, t0_label, t1_label, tmp_df.groupby(pd.Grouper(key='timefield',freq=self.rt_self.time_rezes[time_rez_i]))
+            my_groupby = createPolarsAlignedDataFrame(self.rt_self.time_rezes[time_rez_i]).groupby(pd.Grouper(key='timefield',freq=self.rt_self.time_rezes[time_rez_i]))
 
-        #
-        def __resolutionAndLookups_polars__(self, w_usable):
-            as_pandas = pd.DataFrame({'timefield':[self.ts_min,self.ts_max]})
-            tmp_df    = pl.DataFrame(as_pandas)
-            tmp_df    = tmp_df.sort('timefield')            
-            # Determine the render resolution
-            time_rez_i     = 0
-            for i in range(0,len(self.rt_self.time_rezes)):
-                # Disable some resolutions... if ignore unintuitive is set...
-                if self.ignore_unintuitive and (self.rt_self.time_rezes[i] == '1W'    or \
-                                                self.rt_self.time_rezes[i] == '4h'    or \
-                                                self.rt_self.time_rezes[i] == '15min' or \
-                                                self.rt_self.time_rezes[i] == '10min' or \
-                                                self.rt_self.time_rezes[i] == '5min'):
-                    continue
-
-                # Get the actual group_by_dynamic mins/maxes # only really a problem for the weeks setting...
-                _gbd_first_ , _gbd_end_ = None, None
-                for k, k_df in tmp_df.group_by_dynamic('timefield', every=self.rt_self.time_rezes_polars[i]):
-                    if _gbd_first_ is None:
-                        _gbd_first_ = k
-                    _gbd_end_ = k
-
-                bins  = len(tmp_df.upsample('timefield', every=self.rt_self.time_rezes_polars[i], offset=(_gbd_first_ - tmp_df['timefield'][0])))
-                bar_w = ((w_usable - (bins*self.h_gap))/bins)
-                if self.rt_self.granularityExceedsResolution(self.temporal_granularity,self.rt_self.time_rezes[i]):
-                    break
-                elif bar_w >= self.min_bar_w:
-                    time_rez_i = i
-                elif bar_w <= 1:
-                    break
-        
-            # Finalize the bar width
-            # Get the actual group_by_dynamic mins/maxes # only really a problem for the weeks setting...
-            _gbd_first_ , _gbd_end_ = None, None
-            for k, k_df in tmp_df.group_by_dynamic('timefield', every=self.rt_self.time_rezes_polars[time_rez_i]):
-                if _gbd_first_ is None:
-                    _gbd_first_ = k
-                _gbd_end_ = k
-
-            groupby = tmp_df.upsample('timefield',every=self.rt_self.time_rezes_polars[time_rez_i], offset=(_gbd_first_ - tmp_df['timefield'][0]))
-            bins    = len(groupby)
-            bar_w   = ((w_usable - (bins*self.h_gap))/bins)
-
-            # Create the lookup to the x index per key in the groupby
-            t0_label, t1_label = None, None
-            xi_lu,xi = {},0
-            for k in groupby['timefield']:
-                xi_lu[k] = xi
-                if t0_label is None:
-                    t0_label = k
-                t1_label = k
-                xi += 1
-
-            return bar_w, time_rez_i, xi_lu, t0_label, t1_label, as_pandas.groupby(pd.Grouper(key='timefield',freq=self.rt_self.time_rezes[time_rez_i]))
+            return bar_w, time_rez_i, xi_lu, t0_label, t1_label, my_groupby
 
         #
         # renderSVG() - create the SVG
@@ -662,10 +600,8 @@ class RTTemporalBarChartMixin(object):
                 if   self.rt_self.isPandas(self.df):
                     self.df = self.df[self.df[self.ts_field] >= self.ts_min]
                 elif self.rt_self.isPolars(self.df):
-                    if type(self.ts_min) == str:
-                        _ts_min_ = datetime.fromisoformat(self.ts_min)
-                    else:
-                        _ts_min_ = self.ts_min
+                    if type(self.ts_min) == str: _ts_min_ = datetime.fromisoformat(self.ts_min)
+                    else:                        _ts_min_ = self.ts_min
                     self.df = self.df.filter(pl.col(self.ts_field) >= _ts_min_)
             if len(self.df) != _len_before_min_:
                 self.min_cropped = True
@@ -689,10 +625,8 @@ class RTTemporalBarChartMixin(object):
             else:
                 self.max_cropped = False
 
-            if type(self.ts_min) != np.datetime64:
-                self.ts_min = np.datetime64(self.ts_min)
-            if type(self.ts_max) != np.datetime64:
-                self.ts_max = np.datetime64(self.ts_max)
+            if type(self.ts_min) != np.datetime64: self.ts_min = np.datetime64(self.ts_min)
+            if type(self.ts_max) != np.datetime64: self.ts_max = np.datetime64(self.ts_max)
         
             # If the height/width are less than the minimums, turn off labeling... and make the min_bar_w = 1
             # ... for this component as a small multiples
@@ -781,23 +715,20 @@ class RTTemporalBarChartMixin(object):
             # Group and determine the maximum
             order, group_by_min, group_by_max, groupby = self.orderAndRanges(time_rez_i)
             
-            if self.global_max is not None:
-                group_by_min, group_by_max = self.global_min, self.global_max
+            if self.global_max is not None: group_by_min, group_by_max = self.global_min, self.global_max
 
             # For just calculating max....
-            if just_calc_max:
-                return group_by_min,group_by_max
+            if just_calc_max: return group_by_min,group_by_max
 
             # Iterate over the order and render each bar
             if self.style == 'barchart':    
                 for k,k_df in groupby:
-                    if   self.count_by is None:
-                        px = max_bar_h * len(k_df) / group_by_max
-                    elif self.count_by_set:
-                        px = max_bar_h * len(set(k_df[self.count_by])) / group_by_max
-                    else:
-                        px = max_bar_h * k_df[self.count_by].sum() / group_by_max
-                    
+                    if type(k) == tuple and len(k) == 1: k = k[0] # fixes for Polars 2024-07-19
+
+                    if   self.count_by is None: px = max_bar_h * len(k_df)                     / group_by_max
+                    elif self.count_by_set:     px = max_bar_h * len(set(k_df[self.count_by])) / group_by_max
+                    else:                       px = max_bar_h * k_df[self.count_by].sum()     / group_by_max
+
                     x = x_left + 1 + xi_lu[k] * (bar_w + self.h_gap)
                     svg += self.rt_self.colorizeBar(k_df, self.global_color_order, self.color_by, self.count_by, self.count_by_set, x, y_baseline, px, bar_w, False)
                     self.ts_to_x[k] = (x,bar_w)
@@ -808,10 +739,7 @@ class RTTemporalBarChartMixin(object):
 
             elif self.style.startswith('boxplot'):
                 # Adjust the bar width so that it's not excessively long
-                if bar_w > 16:
-                    _bar_w = 16
-                else:
-                    _bar_w = bar_w
+                _bar_w = 16 if bar_w > 16 else bar_w
 
                 # Make a y-transform lambda
                 if group_by_max == 0:
@@ -820,6 +748,7 @@ class RTTemporalBarChartMixin(object):
 
                 # Render the boxplot columns
                 for k,k_df in groupby:
+                    if type(k) == tuple and len(k) == 1: k = k[0] # fixes for Polars 2024-07-19
                     x = x_left + 1 + xi_lu[k] * (bar_w + self.h_gap)
                     _cx = x + bar_w/2
                     svg += self.rt_self.renderBoxPlotColumn(self.style, k_df, _cx, yT, group_by_max, group_by_min, _bar_w, self.count_by, self.color_by, self.cap_swarm_at)
@@ -923,13 +852,15 @@ class RTTemporalBarChartMixin(object):
                     self.df2 = self.df2.with_columns([pl.col(self.x2_axis_col+'_px').cast(pl.Int32), pl.col(self.y2_axis_col+'_px').cast(pl.Int32)])
                 # Draw the lines (if configured)
                 if self.line2_groupby_field is not None:
-                    _gb = self.df2.groupby(by=self.line2_groupby_field)
+                    if   self.rt_self.isPandas(self.df2): _gb = self.df2.groupby (by=self.line2_groupby_field)
+                    elif self.rt_self.isPolars(self.df2): _gb = self.df2.group_by(by=self.line2_groupby_field)
                     for k,k_df in _gb:
+                        if type(k) == tuple and len(k) == 1: k = k[0]
                         if   self.rt_self.isPandas(k_df):
                             _points,gbxy = '',k_df.groupby([self.x2_axis_col+'_px',self.y2_axis_col+'_px'])    
                         elif self.rt_self.isPolars(k_df):
                             k_df = k_df.sort(self.x2_axis_col+'_px')
-                            _points,gbxy = '',k_df.groupby([self.x2_axis_col+'_px',self.y2_axis_col+'_px'], maintain_order=True)
+                            _points,gbxy = '',k_df.group_by([self.x2_axis_col+'_px',self.y2_axis_col+'_px'], maintain_order=True)
                         for xy,xy_df in gbxy:
                             _points += f'{xy[0]},{xy[1]} '
                         _co = self.rt_self.co_mgr.getTVColor('data','default')
@@ -958,7 +889,8 @@ class RTTemporalBarChartMixin(object):
                     elif self.dot2_size == 'large':
                         _dot_r = 3
                     _co = self.rt_self.co_mgr.getTVColor('data','default')
-                    _gb = self.df2.groupby(by=[self.x2_axis_col+'_px', self.y2_axis_col+'_px'])
+                    if   self.rt_self.isPandas(self.df2): _gb = self.df2.groupby (by=[self.x2_axis_col+'_px', self.y2_axis_col+'_px'])
+                    elif self.rt_self.isPolars(self.df2): _gb = self.df2.group_by([self.x2_axis_col+'_px', self.y2_axis_col+'_px'])
                     for k,k_df in _gb:
                         _x  = k[0]
                         _y  = k[1]
