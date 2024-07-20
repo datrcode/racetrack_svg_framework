@@ -533,8 +533,8 @@ class RTLinkMixin(object):
         def __calculateScreenCoordinates__(self):
             _operations_ = []
             for i in range(len(self.xcols)):
-                _operations_.append(pl.col(self.xcols[i]).apply(self.xT, return_dtype=pl.Float32).cast(pl.Int32).alias(self.xcols[i].replace('wx','sx')))
-                _operations_.append(pl.col(self.ycols[i]).apply(self.yT, return_dtype=pl.Float32).cast(pl.Int32).alias(self.ycols[i].replace('wy','sy')))
+                _operations_.append(pl.col(self.xcols[i]).map_elements(self.xT, return_dtype=pl.Float32).cast(pl.Int32).alias(self.xcols[i].replace('wx','sx')))
+                _operations_.append(pl.col(self.ycols[i]).map_elements(self.yT, return_dtype=pl.Float32).cast(pl.Int32).alias(self.ycols[i].replace('wy','sy')))
             self.df = self.df.with_columns(*_operations_)
 
         #
