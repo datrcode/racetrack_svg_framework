@@ -38,12 +38,9 @@ class RTSmallMultiplesMixin(object):
     def categoryOrder(self, df, category_by, sort_by, sort_by_field):
         #if type(category_by) != list:
         #    category_by = [category_by]
-        if   self.isPandas(df):
-            return self.__categoryOrder_pandas__(df, category_by, sort_by, sort_by_field)
-        elif self.isPolars(df):
-            return self.__categoryOrder_polars__(df, category_by, sort_by, sort_by_field)
-        else:
-            raise Exception('RTSmallMultiples.categoryOrder() - only pandas and polars are supported')
+        if   self.isPandas(df): return self.__categoryOrder_pandas__(df, category_by, sort_by, sort_by_field)
+        elif self.isPolars(df): return self.__categoryOrder_polars__(df, category_by, sort_by, sort_by_field)
+        else: raise Exception('RTSmallMultiples.categoryOrder() - only pandas and polars are supported')
 
     #
     def __categoryOrder_pandas__(self, df, category_by, sort_by, sort_by_field):
@@ -176,15 +173,11 @@ class RTSmallMultiplesMixin(object):
         ### PARAMETERS
         ### ***************************************************************************************************************************
 
-        if sm_params is not None and 'count_by' in sm_params:
-            count_by = sm_params['count_by']
-        
-        if sm_params is not None and 'color_by' in sm_params:
-            color_by = sm_params['color_by']
+        if sm_params is not None and 'count_by' in sm_params: count_by = sm_params['count_by']
+        if sm_params is not None and 'color_by' in sm_params: color_by = sm_params['color_by']
 
         # Make the categories into a list (if not already so)
-        if type(category_by) != list:
-            category_by = [category_by]
+        if type(category_by) != list: category_by = [category_by]
 
         # Organize by similarity...        
         if sort_by == 'similarity':
@@ -1087,7 +1080,9 @@ class RTSmallMultiplesMixin(object):
             for k in str_to_df_list.keys():
                 df_list    = str_to_df_list[k]
                 aligned_df = self.__alignDataFrames__(df_list,required_columns)
-                aligned_df = aligned_df.with_columns(pl.lit(k).alias(my_cat_column))
+                #aligned_df = aligned_df.with_columns(pl.lit(k).alias(my_cat_column)) # original
+                if type(k) == str: aligned_df = aligned_df.with_columns(pl.lit(k).alias(my_cat_column)) # attempt to fix due to unhashable type...
+                else:              aligned_df = aligned_df.with_columns(pl.lit(k).list.join('|').alias(my_cat_column)) # attempt to fix due to unhashable type...
                 _dfs_.append(aligned_df)
             master_df = pl.concat(_dfs_)
         else:

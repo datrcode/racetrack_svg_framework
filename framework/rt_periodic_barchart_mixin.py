@@ -462,12 +462,14 @@ class RTPeriodicBarChartMixin(object):
 
             # Handle the small multiple renders
             if self.sm_type is not None:
-                group_by = self.df.groupby(period_field)
+                if   self.rt_self.isPandas(self.df): group_by = self.df.groupby(period_field)
+                elif self.rt_self.isPolars(self.df): group_by = self.df.group_by(period_field)
 
                 node_to_xy  = {}
                 node_to_dfs = {}
 
                 for key,key_df in group_by:
+                    if type(key) == tuple and len(key) == 1: key = key[0] # polars fixes on 2024-07-19
                     x = x_left + 1 + (bar_w+self.h_gap)*self.rt_self.time_periods_strs[self.period_i].index(key)
                     if len(key_df) != 0:
                         node_to_xy[key]  = [x + bar_w/2, sm_cy]
