@@ -771,10 +771,12 @@ class RTTemporalBarChartMixin(object):
                 node_to_dfs = {}
 
                 for key,key_df in groupby:
+                    if type(key) == tuple and len(key) == 1: key = key[0] # fixes for Polars 2024-07-19
+                    key_as_str = str(key) # was datetime... but needs to be a string for the polars implementation to work
                     x = x_left + 1 + xi_lu[key] * (bar_w + self.h_gap)
                     if len(key_df) != 0:
-                        node_to_xy[key]  = [x + bar_w/2, sm_cy]
-                        node_to_dfs[key] = key_df
+                        node_to_xy  [key_as_str] = [x + bar_w/2, sm_cy]
+                        node_to_dfs [key_as_str] = key_df
                 
                 sm_lu = self.rt_self.createSmallMultiples(self.df, node_to_dfs, node_to_xy, self.count_by, self.count_by_set, self.color_by, self.ts_field, self.widget_id,
                                                           self.sm_type, self.sm_params, self.sm_x_axis_independent, self.sm_y_axis_independent, self.sm_w, self.sm_h)
