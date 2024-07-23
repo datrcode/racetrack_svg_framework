@@ -1016,9 +1016,9 @@ class RTGeometryMixin(object):
             # Copied from wikipedia page on B-splines -- https://en.wikipedia.org/wiki/B-spline
             b0,b1,b2,b3 = cps[i],cps[i+1],cps[i+2],cps[i+3]
             t = 0.0
-            while t <= 1.0:
+            while t < 1.0:
                 cT = lambda _t_, k: (1/6) * ( (-b0[k] + 3*b1[k] - 3*b2[k] +b3[k])*_t_**3 + (3*b0[k] - 6*b1[k] + 3*b2[k])*_t_**2 + (-3*b0[k] + 3*b2[k])*_t_ + (b0[k] + 4*b1[k] + b2[k]) )
-                x1,y1 = cT(t,0),       cT(t,1)
+                x1,y1 = cT(t,0), cT(t,1)
                 points.append((x1,y1))
                 t += t_inc
 
