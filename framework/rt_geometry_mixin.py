@@ -985,6 +985,7 @@ class RTGeometryMixin(object):
     #   will eventually add to another single precision number evenly)
     #
     def piecewiseCubicBSpline(self, pts, beta=0.8, t_inc=0.1):
+        _min_d_threshold_ = 0.5
         points = []
         # Formula 1 form the Holten Paper - generates a control point
         def cP(i, n, p_0, p_i, p_n_minus_1):
@@ -1006,7 +1007,10 @@ class RTGeometryMixin(object):
         bezier   = self.bezierCurve(pt_beg, pt_mid_b, pt_mid_e, pt_end)
         t = 0.0
         while t < 1.0:
-            points.append(bezier(t))
+            _xy_ = bezier(t)
+            if len(points) > 0: d2 = sqrt((points[-1][0] - _xy_[0])**2 + (points[-1][1] - _xy_[1])**2)
+            else:               d2 = _min_d_threshold_
+            if d2 >= _min_d_threshold_: points.append(_xy_)
             t += t_inc
 
         # For every four points, use the wikipedia interpolation...
@@ -1019,7 +1023,8 @@ class RTGeometryMixin(object):
             while t < 1.0:
                 cT = lambda _t_, k: (1/6) * ( (-b0[k] + 3*b1[k] - 3*b2[k] +b3[k])*_t_**3 + (3*b0[k] - 6*b1[k] + 3*b2[k])*_t_**2 + (-3*b0[k] + 3*b2[k])*_t_ + (b0[k] + 4*b1[k] + b2[k]) )
                 x1,y1 = cT(t,0), cT(t,1)
-                points.append((x1,y1))
+                d2    = sqrt((x1-points[-1][0])**2 + (y1-points[-1][1])**2)
+                if d2 >= _min_d_threshold_: points.append((x1,y1))
                 t += t_inc
 
         # Hack the last three points
@@ -1031,7 +1036,9 @@ class RTGeometryMixin(object):
         bezier   = self.bezierCurve(pt_beg, pt_mid_b, pt_mid_e, pt_end)
         t = 0.0
         while t < 1.0:
-            points.append(bezier(t))
+            _xy_ = bezier(t)
+            d2   = sqrt((_xy_[0]-points[-1][0])**2 + (_xy_[1]-points[-1][1])**2)
+            if d2 >= _min_d_threshold_: points.append(_xy_)
             t += t_inc
 
         return points
