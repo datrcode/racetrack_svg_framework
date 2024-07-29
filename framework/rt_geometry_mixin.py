@@ -13,14 +13,15 @@
 # limitations under the License.
 #
 
-from shapely.geometry              import Point, Polygon, LineString, GeometryCollection, MultiLineString
+from shapely.geometry              import Polygon, LineString, GeometryCollection, MultiLineString
 from shapely.geometry.multipolygon import MultiPolygon
-from math import sqrt,acos
+from math import sqrt, acos
 import random
 
 import heapq
 
 __name__ = 'rt_geometry_mixin'
+
 
 #
 # Geometry Methods
@@ -29,19 +30,27 @@ class RTGeometryMixin(object):
     #
     # crunchCircles() - compress circles with a packing algorithm
     #
-    def crunchCircles(self, circles, min_d=20):
+    def crunchCircles(self,
+                      circles: list[tuple[float, float, float]],
+                      min_d:   float = 20) -> list[tuple[float, float, float]]:
+        """
+        Compress circles with a packing algorithm.
+        :param circles: list of circle x, y, and r as individual tuples
+        :param min_d:   minimum distance for packing
+        :return:        list[tuple[float, float, float]]
+        """
         n_circles = len(circles)
 
         # Find the "middle" circle
         s, placed = [], []
         for i in range(n_circles):
             cx, cy, r = circles[i][:3]
-            placed.append(circles[i]) # this will be the updated placement ... just initializing here
+            placed.append(circles[i])  # this will be the updated placement ... just initializing here
             s.append((cx, i))
         s.sort()
         s2 = []
-        m = int(len(s)/2)
-        for _tuple_ in s[m-1:m+2]:
+        m = int(len(s) / 2)
+        for _tuple_ in s[m - 1:m + 2]:
             cx, cy, r = circles[_tuple_[1]][:3]
             s2.append((cy, _tuple_[1]))
         s2.sort()
@@ -49,7 +58,7 @@ class RTGeometryMixin(object):
 
         # Place the middle circle
         mx, my, mr       = circles[middle_i][:3]
-        placed[middle_i] = circles[middle_i] # not really necessary
+        placed[middle_i] = circles[middle_i]  # not really necessary
         placed_set       = set([middle_i])
 
         # Sort all circles relative to the middle
@@ -63,7 +72,7 @@ class RTGeometryMixin(object):
             to_place.append((d, i))
         to_place.sort()
 
-        def overlapsWithPlaced(cx,cy,r):
+        def overlapsWithPlaced(cx, cy, r):
             for j in placed_set:
                 cx2, cy2, r2 = placed[j][:3]
                 d = sqrt((cx-cx2)**2 + (cy-cy2)**2)
@@ -75,22 +84,22 @@ class RTGeometryMixin(object):
         for k in range(len(to_place)):
             i = to_place[k][1]
             cx, cy, r = circles[i][:3]
-            uv = self.unitVector(((mx,my),(cx,cy)))
+            uv = self.unitVector(((mx, my), (cx, cy)))
             if uv[0] == 0 and uv[1] == 0:
-                uv = (1,0)
+                uv = (1, 0)
             fail_after = 0
-            while overlapsWithPlaced(cx,cy,r) and fail_after < 1000:
+            while overlapsWithPlaced(cx, cy, r) and fail_after < 1000:
                 cx, cy = cx + uv[0]*min_d, cy + uv[1]*min_d
                 fail_after += 1
             fail_after = 0
             last_cx, last_cy = cx, cy
-            while overlapsWithPlaced(cx,cy,r) == False and fail_after < 1000:
+            while overlapsWithPlaced(cx, cy, r) is False and fail_after < 1000:
                 last_cx, last_cy = cx, cy
                 cx, cy = cx - uv[0]*min_d/4, cy - uv[1]*min_d/4
                 fail_after += 1
             placed_set.add(i)
-            placed[i] = (last_cx,last_cy) + placed[i][2:]
-        
+            placed[i] = (last_cx, last_cy) + placed[i][2:]
+
         # Return the placed circles
         return placed
 
@@ -116,13 +125,13 @@ class RTGeometryMixin(object):
                     return _segment_
                 for _geom_ in circle_geoms:
                     _circle_plus_ = (_geom_[0], _geom_[1], _geom_[2]+radius_inc_test)
-                    _dist_, _inter_  = self.segmentIntersectsCircle(_segment_,_circle_plus_)
+                    _dist_, _inter_  = self.segmentIntersectsCircle(_segment_, _circle_plus_)
                     if _dist_ <= _circle_plus_[2]:
                         if _inter_[0] == _geom_[0] and _inter_[1] == _geom_[1]:
                             dx, dy   = _segment_[1][0] - _segment_[0][0], _segment_[1][1] - _segment_[0][1]
                             l        = sqrt(dx*dx+dy*dy)
                             dx,  dy  = dx/l, dy/l
-                            pdx, pdy = -dy, dx 
+                            pdx, pdy = -dy, dx
                             return [(_segment_[0][0], _segment_[0][1]), (_geom_[0] + pdx*(_geom_[2]+half_sep), _geom_[1] + pdy*(_geom_[2]+half_sep)), (_segment_[1][0], _segment_[1][1])]
                         else:
                             dx, dy = _inter_[0] - _geom_[0], _inter_[1] - _geom_[1]
@@ -145,32 +154,32 @@ class RTGeometryMixin(object):
                     else:
                         _new_segments_.append(_new_[0])
                 _new_segments_.append(_new_[-1])
-                _segments_ = _new_segments_        
+                _segments_ = _new_segments_
             return _segments_
-        
+
         # Fix up the the entry and exit points...
-        x_min,y_min,x_max,y_max = entry_pt[0],entry_pt[1],entry_pt[0],entry_pt[1]
+        x_min, y_min, x_max, y_max = entry_pt[0], entry_pt[1], entry_pt[0], entry_pt[1]
         entries = []
-        x0,y0,ci  = entry_pt
-        uv        = self.unitVector(((circle_geoms[ci][0],circle_geoms[ci][1]),(x0,y0)))
-        x0s,y0s   = x0+uv[0]*escape_px, y0+uv[1]*escape_px
+        x0, y0, ci  = entry_pt
+        uv          = self.unitVector(((circle_geoms[ci][0], circle_geoms[ci][1]), (x0, y0)))
+        x0s, y0s    = x0+uv[0]*escape_px, y0+uv[1]*escape_px
         for pt in exit_pts:
-            x1,y1,ci  = pt        
-            uv        = self.unitVector(((circle_geoms[ci][0],circle_geoms[ci][1]),(x1,y1)))
-            x1s,y1s   = x1+uv[0]*escape_px, y1+uv[1]*escape_px
-            entries.append([(x0,y0), (x0s,y0s), (x1s,y1s), (x1,y1)])
-            x_min,y_min,x_max,y_max = min(x_min,x1),min(y_min,y1),max(x_max,x1),max(y_max,y1)
-            x_min,y_min,x_max,y_max = min(x_min,x1s),min(y_min,y1s),max(x_max,x1s),max(y_max,y1s)
+            x1, y1, ci  = pt
+            uv          = self.unitVector(((circle_geoms[ci][0], circle_geoms[ci][1]), (x1, y1)))
+            x1s, y1s    = x1+uv[0]*escape_px, y1+uv[1]*escape_px
+            entries.append([(x0, y0), (x0s, y0s), (x1s, y1s), (x1, y1)])
+            x_min, y_min, x_max, y_max = min(x_min, x1),  min(y_min, y1),  max(x_max, x1),  max(y_max, y1)
+            x_min, y_min, x_max, y_max = min(x_min, x1s), min(y_min, y1s), max(x_max, x1s), max(y_max, y1s)
 
         # XY Quad Tree
-        xy_tree = self.xyQuadTree((x_min-half_sep,y_min-half_sep,x_max+half_sep,y_max+half_sep), max_pts_per_node=max_pts_per_node)
+        xy_tree = self.xyQuadTree((x_min-half_sep, y_min-half_sep, x_max+half_sep, y_max+half_sep), max_pts_per_node=max_pts_per_node)
 
         # Sort paths by length (longest first)
         exit_sorter = []
         for i in range(len(entries)):
             _entry_ = entries[i]
             l = self.segmentLength((_entry_[0], _entry_[3]))
-            exit_sorter.append((l,i))
+            exit_sorter.append((l, i))
         exit_sorter = sorted(exit_sorter)
         exit_sorter.reverse()
 
@@ -178,7 +187,7 @@ class RTGeometryMixin(object):
         paths, merge_info = [], []
         for i in range(len(entries)):
             paths.append(entries[i])
-            merge_info.append((-1,-1))
+            merge_info.append((-1, -1))
 
         # plot out the longest path
         i_longest        = exit_sorter[0][1]
@@ -192,16 +201,16 @@ class RTGeometryMixin(object):
             xy_tree.add([pt])
 
         # analyze the other paths
-        for i in range(1,len(exit_sorter)):
-            i_path        =  exit_sorter[i][1]
-            pts           =  entries[i_path]
-            _path_        =  calculatePathAroundCircles(pts)
-            _path_smooth_ =  self.smoothSegments(self.expandSegmentsIntoPiecewiseCurvedParts(_path_, amp=5.0, ampends=8.0, max_travel=1))    
+        for i in range(1, len(exit_sorter)):
+            i_path        = exit_sorter[i][1]
+            pts           = entries[i_path]
+            _path_        = calculatePathAroundCircles(pts)
+            _path_smooth_ = self.smoothSegments(self.expandSegmentsIntoPiecewiseCurvedParts(_path_, amp=5.0, ampends=8.0, max_travel=1))
             # merge with existing path
             merged_flag   = False
-            _path_merged_ =  [_path_smooth_[-1]]
-            for j in range(len(_path_smooth_)-2, 2, -1): # only down to 2... because the stem will exist from the longest path created
-                closest = xy_tree.closest((_path_smooth_[j][0],_path_smooth_[j][1]), n=1)
+            _path_merged_ = [_path_smooth_[-1]]
+            for j in range(len(_path_smooth_)-2, 2, -1):  # only down to 2... because the stem will exist from the longest path created
+                closest = xy_tree.closest((_path_smooth_[j][0], _path_smooth_[j][1]), n=1)
                 _path_merged_.append(_path_smooth_[j])
                 if closest[0][0] < merge_distance_min:
                     _path_merged_.append((closest[0][1][0], closest[0][1][1]))
@@ -210,20 +219,25 @@ class RTGeometryMixin(object):
             # save the path off
             paths[i_path] = _path_merged_
             if merged_flag:
-                merge_info[i_path] = (closest[0][1][2], closest[0][1][3]) # path index ... path point
+                merge_info[i_path] = (closest[0][1][2], closest[0][1][3])  # path index ... path point
             # update xy tree
-            for j in range(len(_path_merged_)-3): # don't include the exit points (don't want merges with them...)
+            for j in range(len(_path_merged_)-3):  # don't include the exit points (don't want merges with them...)
                 pt = (_path_merged_[j][0], _path_merged_[j][1], i_path, j)
                 xy_tree.add([pt])
 
-        # return the merged paths            
+        # return the merged paths
         return paths, merge_info
 
     #
     # segmentLength()
     # - _segment_ = [(x0,y0),(x1,y1)]
     #
-    def segmentLength(self, _segment_):
+    def segmentLength(self, _segment_: tuple[tuple[float, float], tuple[float, float]]) -> float:
+        """
+        Returns the length of the segment.
+        :param _segment_: a tuple of ((x0,y0), (x1,y1))
+        :return: length of the segment as a float
+        """
         dx, dy = _segment_[1][0] - _segment_[0][0], _segment_[1][1] - _segment_[0][1]
         return sqrt(dx*dx+dy*dy)
 
@@ -231,7 +245,12 @@ class RTGeometryMixin(object):
     # unitVector()
     # - _segment_ = [(x0,y0),(x1,y1)]
     #
-    def unitVector(self, _segment_):
+    def unitVector(self, _segment_: tuple[tuple[float, float], tuple[float, float]]) -> tuple[float, float]:
+        """
+        Returns the unit vector of the segment.
+        :param _segment_: a tuple of ((x0,y0), (x1,y1))
+        :return: unit vector of the segment as a tuple
+        """
         dx, dy = _segment_[1][0] - _segment_[0][0], _segment_[1][1] - _segment_[0][1]
         _len_  = sqrt(dx*dx+dy*dy)
         if _len_ < 0.0001:
@@ -242,10 +261,24 @@ class RTGeometryMixin(object):
     # bezierCurve() - parametric bezier curve object
     # - from Bezier Curve on wikipedia.org
     #
-    def bezierCurve(self, pt1, pt1p, pt2p, pt2):
+    def bezierCurve(self,
+                    pt1:  tuple[float, float],
+                    pt1p: tuple[float, float],
+                    pt2p: tuple[float, float],
+                    pt2:  tuple[float, float]) -> object:
+        """
+        Returns the parametric bezier curve object.
+        :param pt1: point 1
+        :param pt1p: point 1 parametric
+        :param pt2p: point 2 parametric
+        :param pt2: point 2
+        :return: parametric bezier curve object -- call object with _obj_(t) where t is 0.0 to 1.0
+        """
         class BezierCurve(object):
+
             def __init__(self, pt1, pt1p, pt2p, pt2):
                 self.pt1, self.pt1p, self.pt2p, self.pt2 = pt1, pt1p, pt2p, pt2
+
             def __call__(self, t):
                 return (1-t)**3*self.pt1[0]+3*(1-t)**2*t*self.pt1p[0]+3*(1-t)*t**2*self.pt2p[0]+t**3*self.pt2[0], \
                        (1-t)**3*self.pt1[1]+3*(1-t)**2*t*self.pt1p[1]+3*(1-t)*t**2*self.pt2p[1]+t**3*self.pt2[1]
@@ -255,8 +288,15 @@ class RTGeometryMixin(object):
     # closestPointOnSegment() - find the closest point on the specified segment.
     # returns distance, point
     # ... for example:  10, (1,2)
-    def closestPointOnSegment(self, _segment_, _pt_):
-        if _segment_[0][0] == _segment_[1][0] and _segment_[0][1] == _segment_[1][1]: # not a segment...
+    def closestPointOnSegment(self,
+                              _segment_: tuple[tuple[float, float], tuple[float, float]],
+                              _pt_:      tuple[float, float]) -> tuple[float, tuple[float, float]]:
+        """
+        :param _segment_: a tuple of ((x0,y0), (x1,y1))
+        :param _pt_: a tuple of (x,y)
+        :return: distance to the segment, closet point on the segment point in (x,y) tuple
+        """
+        if _segment_[0][0] == _segment_[1][0] and _segment_[0][1] == _segment_[1][1]:  # not a segment...
             dx, dy = _pt_[0] - _segment_[0][0], _pt_[1] - _segment_[0][1]
             return sqrt(dx*dx+dy*dy), _segment_[0]
         else:
@@ -267,7 +307,7 @@ class RTGeometryMixin(object):
 
             dx,  dy  = _segment_[1][0] - _segment_[0][0], _segment_[1][1] - _segment_[0][1]
             pdx, pdy = -dy, dx
-            _pt_line_ = (_pt_, (_pt_[0] + pdx, _pt_[1] + pdy)) 
+            _pt_line_ = (_pt_, (_pt_[0] + pdx, _pt_[1] + pdy))
             _ret_ = self.lineSegmentIntersectionPoint(_pt_line_, _segment_)
             if _ret_ is not None:
                 dx, dy = _pt_[0] - _ret_[0], _pt_[1] - _ret_[1]
@@ -293,11 +333,9 @@ class RTGeometryMixin(object):
     def intersectionPoint(self, line1, line2):
         xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
         ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
-        def det(a, b):
-            return a[0] * b[1] - a[1] * b[0]
+        def det(a, b): return a[0] * b[1] - a[1] * b[0]
         div = det(xdiff, ydiff)
-        if abs(div) < 0.0001 or div == 0:
-            return None
+        if abs(div) < 0.0001 or div == 0: return None
         d = (det(*line1), det(*line2))
         x = det(d, xdiff) / div
         y = det(d, ydiff) / div
@@ -313,35 +351,33 @@ class RTGeometryMixin(object):
         if results is None:
             return None
         # They intersect as lines... are the results on the segment?
-        x,y = results
-        if x < min(segment[0][0], segment[1][0]) or x > max(segment[0][0], segment[1][0]):
-            return None
-        if y < min(segment[0][1], segment[1][1]) or y > max(segment[0][1], segment[1][1]):
-            return None
-        return x,y
+        x, y = results
+        if x < min(segment[0][0], segment[1][0]) or x > max(segment[0][0], segment[1][0]): return None
+        if y < min(segment[0][1], segment[1][1]) or y > max(segment[0][1], segment[1][1]): return None
+        return x, y
 
     #
     # pointWithinSegment()
     #
     def pointWithinSegment(self, x, y, x0, y0, x1, y1):
         dx, dy = x1 - x0, y1 - y0
-        _xmin,_xmax = min(x0,x1),max(x0,x1)
-        _ymin,_ymax = min(y0,y1),max(y0,y1)
+        _xmin, _xmax = min(x0, x1), max(x0, x1)
+        _ymin, _ymax = min(y0, y1), max(y0, y1)
         if x < _xmin or x > _xmax or y < _ymin or y > _ymax:
             return False, 0.0
         # xp = x0 + t * dx
         # yp = y0 + t * dy
-        if dx == 0 and dy == 0: # segment is a point...
+        if dx == 0 and dy == 0:  # segment is a point...
             if x == x0 and y == y0:
                 return True, 0.0
-        elif dx == 0: # it's vertical...
-            t  = (y - y0)/dy
-            xp,yp = x0 + t*dx, y0 + t*dy
+        elif dx == 0:  # it's vertical...
+            t      = (y - y0)/dy
+            xp, yp = x0 + t*dx, y0 + t*dy
             if xp == x and yp == y and t >= 0.0 and t <= 1.0:
                 return True, t
-        else: # it's horizontal... or at least conforms to f(x)
-            t  = (x - x0)/dx
-            xp,yp = x0 + t*dx, y0 + t*dy
+        else:  # it's horizontal... or at least conforms to f(x)
+            t      = (x - x0)/dx
+            xp, yp = x0 + t*dx, y0 + t*dy
             if xp == x and yp == y and t >= 0.0 and t <= 1.0:
                 return True, t
         return False, 0.0
@@ -353,17 +389,17 @@ class RTGeometryMixin(object):
         dx, dy = x1 - x0, y1 - y0
         # xp = x0 + t * dx
         # yp = y0 + t * dy
-        if dx == 0 and dy == 0: # segment is a point...
+        if dx == 0 and dy == 0:  # segment is a point...
             if x == x0 and y == y0:
                 return True, 0.0
-        elif dx == 0: # it's vertical...
-            t  = (y - y0)/dy
-            xp,yp = x0 + t*dx, y0 + t*dy
+        elif dx == 0:  # it's vertical...
+            t      = (y - y0)/dy
+            xp, yp = x0 + t*dx, y0 + t*dy
             if xp == x and yp == y:
                 return True, t
-        else: # it's horizontal... or at least conforms to f(x)
-            t  = (x - x0)/dx
-            xp,yp = x0 + t*dx, y0 + t*dy
+        else:  # it's horizontal... or at least conforms to f(x)
+            t      = (x - x0)/dx
+            xp, yp = x0 + t*dx, y0 + t*dy
             if xp == x and yp == y:
                 return True, t
         return False, 0.0
@@ -374,37 +410,31 @@ class RTGeometryMixin(object):
     # - return BOOLEAN, x_intersect, y_intersect, t_for_s0, t_for_s1 # I think :(
     #
     def segmentsIntersect(self, s0, s1):
-        x0,y0,x1,y1 = s0[0][0],s0[0][1],s0[1][0],s0[1][1]
-        x2,y2,x3,y3 = s1[0][0],s1[0][1],s1[1][0],s1[1][1]
-        _xmin,_ymin,_amin,_bmin = min(x0,x1),min(y0,y1),min(x2,x3),min(y2,y3)
-        _xmax,_ymax,_amax,_bmax = max(x0,x1),max(y0,y1),max(x2,x3),max(y2,y3)
+        x0, y0, x1, y1 = s0[0][0], s0[0][1], s0[1][0], s0[1][1]
+        x2, y2, x3, y3 = s1[0][0], s1[0][1], s1[1][0], s1[1][1]
+        _xmin, _ymin, _amin, _bmin = min(x0, x1), min(y0, y1), min(x2, x3), min(y2, y3)
+        _xmax, _ymax, _amax, _bmax = max(x0, x1), max(y0, y1), max(x2, x3), max(y2, y3)
 
         # Determine if they share a point
         _small_number_ = 0.00001
-        if abs(x0-x2) < _small_number_ and abs(y0-y2) < _small_number_:
-            return True, x0, y0, 0.0, 0.0
-        if abs(x0-x3) < _small_number_ and abs(y0-y3) < _small_number_:
-            return True, x0, y0, 0.0, 1.0
-        if abs(x1-x2) < _small_number_ and abs(y1-y2) < _small_number_:
-            return True, x1, y1, 1.0, 0.0
-        if abs(x1-x3) < _small_number_ and abs(y1-y3) < _small_number_:
-            return True, x1, y1, 1.0, 1.0
+        if abs(x0-x2) < _small_number_ and abs(y0-y2) < _small_number_: return True, x0, y0, 0.0, 0.0
+        if abs(x0-x3) < _small_number_ and abs(y0-y3) < _small_number_: return True, x0, y0, 0.0, 1.0
+        if abs(x1-x2) < _small_number_ and abs(y1-y2) < _small_number_: return True, x1, y1, 1.0, 0.0
+        if abs(x1-x3) < _small_number_ and abs(y1-y3) < _small_number_: return True, x1, y1, 1.0, 1.0
 
         # Simple overlapping bounds test... as inexpensive as it gets...
-        if _xmin > _amax or _amin > _xmax or _ymin > _bmax or _bmin > _ymax:
-            return False, 0.0, 0.0, 0.0, 0.0
+        if _xmin > _amax or _amin > _xmax or _ymin > _bmax or _bmin > _ymax: return False, 0.0, 0.0, 0.0, 0.0
         # Both segments are points... Are they the same point?
         if _xmin == _xmax and _ymin == _ymax and _amin == _amax and _bmin == _bmax:
-            if x0 == x2 and y0 == y2:
-                return True, x0, y0, 0.0, 0.0
-            return False,0.0,0.0,0.0,0.0
+            if x0 == x2 and y0 == y2: return True, x0, y0, 0.0, 0.0
+            return False, 0.0, 0.0, 0.0, 0.0
 
-        A,B,C,D = y3 - y2, x3 - x2, x1 - x0, y1 - y0
+        A, B, C, D = y3 - y2, x3 - x2, x1 - x0, y1 - y0
 
-        #x = x0 + t * C
-        #t = (x - x0) / C
-        #y = y0 + t * D
-        #t = (y - y0) / D
+        # x = x0 + t * C
+        # t = (x - x0) / C
+        # y = y0 + t * D
+        # t = (y - y0) / D
 
         # Deal with parallel lines
         denom = B * D - A * C                # Cross Product
@@ -413,31 +443,25 @@ class RTGeometryMixin(object):
             online1, t1 = self.pointOnLine(x0, y0, x2, y2, x3, y3)
             if online0 or online1:
                 onseg, t = self.pointWithinSegment(x0, y0, x2, y2, x3, y3)
-                if onseg:
-                    return True, x0, y0, 0.0, t
+                if onseg: return True, x0, y0, 0.0, t
                 onseg, t = self.pointWithinSegment(x1, y1, x2, y2, x3, y3)
-                if onseg:
-                    return True, x1, y1, 1.0, t
+                if onseg: return True, x1, y1, 1.0, t
                 onseg, t = self.pointWithinSegment(x2, y2, x0, y0, x1, y1)
-                if onseg:
-                    return True, x2, y2, t, 0.0
+                if onseg: return True, x2, y2, t, 0.0
                 onseg, t = self.pointWithinSegment(x3, y3, x0, y0, x1, y1)
-                if onseg:
-                    return True, x3, y3, t, 1.0
+                if onseg: return True, x3, y3, t, 1.0
 
         # Normal calculation...
         t0 = (A*(x0 - x2) - B*(y0 - y2))/denom
         if t0 >= 0.0 and t0 <= 1.0:
             x    = x0 + t0 * (x1 - x0)
             y    = y0 + t0 * (y1 - y0)
-            if (x3 -x2) != 0:
+            if (x3 - x2) != 0:
                 t1   = (x - x2)/(x3 - x2)
-                if t1 >= 0.0 and t1 <= 1.0:
-                    return True, x, y, t0, t1
+                if t1 >= 0.0 and t1 <= 1.0: return True, x, y, t0, t1
             if (y3 - y2) != 0:
                 t1   = (y - y2)/(y3 - y2)
-                if t1 >= 0.0 and  t1 <= 1.0:
-                    return True, x, y, t0, t1
+                if t1 >= 0.0 and t1 <= 1.0: return True, x, y, t0, t1
         return False, 0.0, 0.0, 0.0, 0.0
 
     #
@@ -450,25 +474,20 @@ class RTGeometryMixin(object):
     def segmentIntersectsCircle(self, segment, circle):
         A, B, C = segment[0], segment[1], (circle[0], circle[1])
         sub  = lambda a, b: (a[0] - b[0], a[1] - b[1])
-        AC, AB = sub(C,A), sub(B,A)
+        AC, AB = sub(C, A), sub(B, A)
         add  = lambda a, b: (a[0] + b[0], a[1] + b[1])
         dot  = lambda a, b: a[0]*b[0] + a[1]*b[1]
-        def proj(a,b):
-            k = dot(a,b)/dot(b,b)
-            return (k*b[0],k*b[1])
+        def proj(a, b):
+            k = dot(a, b)/dot(b, b)
+            return (k*b[0], k*b[1])
         D = add(proj(AC, AB), A)
-        AD = sub(D,A)
-        if abs(AB[0]) > abs(AB[1]):
-            k = AD[0] / AB[0]
-        else:
-            k = AD[1] / AB[1]
-        hypot2 = lambda a, b: dot(sub(a,b),sub(a,b))
-        if k <= 0.0:
-            return sqrt(hypot2(C,A)), C
-        elif k >= 1.0:
-            return sqrt(hypot2(C,B)), B
-        else:
-            return sqrt(hypot2(C,D)), D
+        AD = sub(D, A)
+        if abs(AB[0]) > abs(AB[1]): k = AD[0] / AB[0]
+        else:                       k = AD[1] / AB[1]
+        hypot2 = lambda a, b: dot(sub(a, b), sub(a, b))
+        if   k <= 0.0: return sqrt(hypot2(C, A)), C
+        elif k >= 1.0: return sqrt(hypot2(C, B)), B
+        else:          return sqrt(hypot2(C, D)), D
 
     #
     # Create a background lookup table (and the fill table) from a shape file...
@@ -480,10 +499,10 @@ class RTGeometryMixin(object):
     # fill            = hex color string
     # naming          = naming function for series from geopandas dataframe
     #
-    def createBackgroundLookupsFromShapeFile(self, 
+    def createBackgroundLookupsFromShapeFile(self,
                                              shape_file,
                                              keep_as_shapely = True,
-                                             clip_rect       = None, 
+                                             clip_rect       = None,
                                              fill            = '#000000',
                                              naming          = None):
         import geopandas as gpd
@@ -497,23 +516,21 @@ class RTGeometryMixin(object):
                 _poly_ = gdf.iloc[i].geometry
             else:
                 _poly_ = gdf.iloc[i]
-            
+
             # Probably want to keep it as shapely if transforms are needed
             if keep_as_shapely:
                 d = _poly_
             else:
                 d = self.shapelyPolygonToSVGPathDescription(_poly_)
-            
+
             # Store it
             if d is not None:
                 _name_ = i
-                if naming is not None: # if naming function, call it with gpd series
+                if naming is not None:  # if naming function, call it with gpd series
                     _name_ = naming(_series_, i)
                 bg_shape_lu[_name_] = d
-                if type(_poly_) == LineString or type(_poly_) == MultiLineString:
-                    bg_fill_lu[_name_] = None
-                else:
-                    bg_fill_lu[_name_] = fill
+                if type(_poly_) is LineString or type(_poly_) is MultiLineString: bg_fill_lu[_name_] = None
+                else:                                                             bg_fill_lu[_name_] = fill
         return bg_shape_lu, bg_fill_lu
 
     #
@@ -525,56 +542,51 @@ class RTGeometryMixin(object):
         #
         # MultiPolygon -- just break into individual polygons...
         #
-        if type(_poly) == MultiPolygon:
+        if type(_poly) is MultiPolygon:
             path_str = ''
             for _subpoly in _poly.geoms:
-                if len(path_str) > 0:
-                    path_str += ' '
+                if len(path_str) > 0: path_str += ' '
                 path_str += self.shapelyPolygonToSVGPathDescription(_subpoly)
             return path_str
         #
         # LineString -- segments
         #
-        elif type(_poly) == LineString:
+        elif type(_poly) is LineString:
             coords = _poly.coords
             path_str = f'M {coords[0][0]} {coords[0][1]} '
-            for i in range(1,len(coords)):
-                path_str += f'L {coords[i][0]} {coords[i][1]} '
+            for i in range(1, len(coords)): path_str += f'L {coords[i][0]} {coords[i][1]} '
             return path_str
         #
         # Multiple LineStrings -- break into individual line strings
         #
-        elif type(_poly) == MultiLineString:
+        elif type(_poly) is MultiLineString:
             path_str = ''
             for _subline in _poly.geoms:
-                if len(path_str) > 0:
-                    path_str += ' '
+                if len(path_str) > 0: path_str += ' '
                 path_str += self.shapelyPolygonToSVGPathDescription(_subline)
             return path_str
         #
         # Polygon -- base polygon processing
         #
-        elif type(_poly) == Polygon:
+        elif type(_poly) is Polygon:
             # Draw the exterior shape first
             xx, yy = _poly.exterior.coords.xy
             path_str = f'M {xx[0]} {yy[0]} '
-            for i in range(1,len(xx)):
-                path_str += f' L {xx[i]} {yy[i]}'
+            for i in range(1, len(xx)): path_str += f' L {xx[i]} {yy[i]}'
             # Determine if the interior exists... and then render that...
             interior_len = len(list(_poly.interiors))
             if interior_len > 0:
                 for interior_i in range(0, interior_len):
-                    xx,yy = _poly.interiors[interior_i].coords.xy
+                    xx, yy = _poly.interiors[interior_i].coords.xy
                     path_str += f' M {xx[0]} {yy[0]}'
-                    for i in range(1,len(xx)):
-                        path_str += f' L {xx[i]} {yy[i]}'
+                    for i in range(1, len(xx)): path_str += f' L {xx[i]} {yy[i]}'
             return path_str + ' Z'
         #
         # GeometryCollection -- unsure of what this actual is...
         #
-        elif type(_poly) == GeometryCollection:
-            if len(_poly.geoms) > 0: # Haven't seen this... so unsure of how to process
-                raise Exception('shapelyPolygonToSVGPathDescription() - geometrycollection not empty')    
+        elif type(_poly) is GeometryCollection:
+            if len(_poly.geoms) > 0:  # Haven't seen this... so unsure of how to process
+                raise Exception('shapelyPolygonToSVGPathDescription() - geometrycollection not empty')
             return None
         else:
             raise Exception('shapelyPolygonToSVGPathDescription() - cannot process type', type(_poly))
@@ -582,10 +594,10 @@ class RTGeometryMixin(object):
     #
     # Determine counterclockwise angle
     #
-    def grahamScan_ccw(self,pt1,pt2,pt3):
-        x1,y1 = pt1[0],pt1[1]
-        x2,y2 = pt2[0],pt2[1]
-        x3,y3 = pt3[0],pt3[1]
+    def grahamScan_ccw(self, pt1, pt2, pt3):
+        x1, y1 = pt1[0], pt1[1]
+        x2, y2 = pt2[0], pt2[1]
+        x3, y3 = pt3[0], pt3[1]
         return (x2-x1)*(y3-y1)-(y2-y1)*(x3-x1)
 
     #
@@ -595,7 +607,7 @@ class RTGeometryMixin(object):
     #
     # https://en.wikipedia.org/wiki/Graham_scan
     #
-    def grahamScan(self,pos):
+    def grahamScan(self, pos):
         # Find the lowest point... if same y coordinate, find the leftmost point
         pt_low = None
         for k in pos.keys():
@@ -624,22 +636,19 @@ class RTGeometryMixin(object):
                     polar_d [theta] = l
 
         to_sort = []
-        for x in polar_lu.keys():
-            to_sort.append((x, polar_lu[x]))
+        for x in polar_lu.keys(): to_sort.append((x, polar_lu[x]))
         points = sorted(to_sort)
 
         stack  = []
         for point in points:
-            while len(stack) > 1 and self.grahamScan_ccw(pos[stack[-2][1]],pos[stack[-1][1]],pos[point[1]]) <= 0:
-                stack = stack[:-1]
+            while len(stack) > 1 and self.grahamScan_ccw(pos[stack[-2][1]], pos[stack[-1][1]], pos[point[1]]) <= 0: stack = stack[:-1]
             stack.append(point)
 
         ret = []
         ret.append(pt_low)
-        for x in stack:
-            ret.append(x[1])
+        for x in stack: ret.append(x[1])
         return ret
-    
+
     #
     # extrudePolyLine()
     # - Extrude the polyline returned by the grahamScan() method
@@ -652,50 +661,47 @@ class RTGeometryMixin(object):
 
         d_str = ''
 
-        for i in range(0,len(pts)):
+        for i in range(0, len(pts)):
             pt0 = pts[i]
             pt1 = pts[(i+1)%len(pts)]
             pt2 = pts[(i+2)%len(pts)]
 
-            x0,y0 = pos[pt0][0],pos[pt0][1]
-            x1,y1 = pos[pt1][0],pos[pt1][1]
-            x2,y2 = pos[pt2][0],pos[pt2][1]
+            x0, y0 = pos[pt0][0], pos[pt0][1]
+            x1, y1 = pos[pt1][0], pos[pt1][1]
+            x2, y2 = pos[pt2][0], pos[pt2][1]
 
-            dx,dy = x1 - x0,y1 - y0
+            dx, dy = x1 - x0, y1 - y0
             l  = sqrt(dx*dx+dy*dy)
-            if l < 0.001:
-                l = 0.001
+            if l < 0.001: l = 0.001
             dx /= l
             dy /= l
             pdx =  dy
             pdy = -dx
 
-            dx2,dy2 = x2 - x1,y2 - y1
+            dx2, dy2 = x2 - x1, y2 - y1
             l2  = sqrt(dx2*dx2+dy2*dy2)
-            if l2 < 0.001:
-                l2 = 0.001
+            if l2 < 0.001: l2 = 0.001
             dx2 /= l2
             dy2 /= l2
             pdx2 =  dy2
             pdy2 = -dx2
 
             # First point is a move to...
-            if len(d_str) == 0:
-                d_str += f'M {x0+pdx*r} {y0+pdy*r} '
-            
+            if len(d_str) == 0: d_str += f'M {x0+pdx*r} {y0+pdy*r} '
+
             # Line along the the polygon edge
             d_str += f'L {x1+pdx*r} {y1+pdy*r} '
 
             # Curved cap
-            cx0 = x1+pdx  *r + dx  * r/4
-            cy0 = y1+pdy  *r + dy  * r/4
-            cx1 = x1+pdx2 *r - dx2 * r/4
-            cy1 = y1+pdy2 *r - dy2 * r/4
+            cx0 = x1+pdx  * r + dx  * r/4
+            cy0 = y1+pdy  * r + dy  * r/4
+            cx1 = x1+pdx2 * r - dx2 * r/4
+            cy1 = y1+pdy2 * r - dy2 * r/4
 
             d_str += f'C {cx0} {cy0} {cx1} {cy1} {x1+pdx2*r} {y1+pdy2*r}'
 
-            #d_str += f'L {cx0} {cy0} '
-            #d_str += f'L {cx1} {cy1} '
+            # d_str += f'L {cx0} {cy0} '
+            # d_str += f'L {cx1} {cy1} '
             d_str += f'L {x1+pdx2*r} {y1+pdy2*r} '
 
         return d_str
@@ -705,55 +711,54 @@ class RTGeometryMixin(object):
     # - raster is a two dimensional structure ... _raster[y][x]
     # - "0" or None means to calculate
     # - "-1" means a wall / immovable object
-    # - "> 0" means the class to expand 
+    # - "> 0" means the class to expand
     # - Faster version doesn't correctly model obstacles... slower version is more precise
     #
     def levelSetFast(self,
                      _raster):
-        h,w = len(_raster),len(_raster[0])
+        h, w = len(_raster), len(_raster[0])
 
         # Allocate the level set
-        state      = [[None for x in range(w)] for y in range(h)] # node that found the pixel
-        found_time = [[None for x in range(w)] for y in range(h)] # when node was found
-        origin     = [[None for x in range(w)] for y in range(h)] # when node was found
+        state      = [[None for x in range(w)] for y in range(h)]  # node that found the pixel
+        found_time = [[None for x in range(w)] for y in range(h)]  # when node was found
+        origin     = [[None for x in range(w)] for y in range(h)]  # when node was found
 
         # Distance lambda function
-        dist = lambda _x0,_y0,_x1,_y1: sqrt((_x0-_x1)*(_x0-_x1)+(_y0-_y1)*(_y0-_y1))
+        dist = lambda _x0, _y0, _x1, _y1: sqrt((_x0-_x1)*(_x0-_x1)+(_y0-_y1)*(_y0-_y1))
 
-        # Copy the _raster 
-        for x in range(0,len(_raster[0])):
-            for y in range(0,len(_raster)):
+        # Copy the _raster
+        for x in range(0, len(_raster[0])):
+            for y in range(0, len(_raster)):
                 if _raster[y][x] is not None and _raster[y][x] != 0:
                     state[y][x]      = _raster[y][x]  # class of the find
                     found_time[y][x] = 0              # what time it was found
-                    origin[y][x]     = (y,x)          # origin of the finder
+                    origin[y][x]     = (y, x)         # origin of the finder
 
         # Initialize the heap
         _heap = []
-        for x in range(0,len(_raster[0])):
-            for y in range(0,len(_raster)):
-                if state[y][x] is not None and state[y][x] > 0: # Only expand non-walls and set indices...
-                    for dx in range(-1,2):
-                        for dy in range(-1,2):
-                            if dx == 0 and dy == 0:
-                                continue
-                            xn,yn = x+dx,y+dy
+        for x in range(0, len(_raster[0])):
+            for y in range(0, len(_raster)):
+                if state[y][x] is not None and state[y][x] > 0:  # Only expand non-walls and set indices...
+                    for dx in range(-1, 2):
+                        for dy in range(-1, 2):
+                            if dx == 0 and dy == 0: continue
+                            xn, yn = x+dx, y+dy
                             if xn >= 0 and yn >= 0 and xn < w and yn < h:
                                 if state[yn][xn] is None or state[yn][x] == 0:
                                     t = dist(x, y, xn, yn)
-                                    heapq.heappush(_heap,(t, xn, yn, state[y][x], origin[y][x][0], origin[y][x][1]))
+                                    heapq.heappush(_heap, (t, xn, yn, state[y][x], origin[y][x][0], origin[y][x][1]))
 
         # Go through the heap
         while len(_heap) > 0:
-            t,xi,yi,_class,y_origin,x_origin = heapq.heappop(_heap)
+            t, xi, yi, _class, y_origin, x_origin = heapq.heappop(_heap)
             if state[yi][xi] is not None and state[yi][xi] < 0:           # Check for a wall
                 continue
             if found_time[yi][xi] is None or found_time[yi][xi] > t:      # Deterimine if we should overwrite the state
                 state [yi][xi]     = _class
                 found_time[yi][xi] = t
-                origin[yi][xi]      = (y_origin,x_origin)
-                for dx in range(-1,2):                                    # Add the neighbors to the priority queue
-                    for dy in range(-1,2):
+                origin[yi][xi]      = (y_origin, x_origin)
+                for dx in range(-1, 2):                                    # Add the neighbors to the priority queue
+                    for dy in range(-1, 2):
                         if dx == 0 and dy == 0:
                             continue
                         xn = xi + dx
@@ -764,37 +769,37 @@ class RTGeometryMixin(object):
                             # have the possibility of walls, unsure how to smooth this one out...
                             t = found_time[yi][xi] + dist(xi, yi, xn, yn)
                             if found_time[yn][xn] is None or found_time[yn][xn] > t:
-                                heapq.heappush(_heap,(t, xn, yn, state[y_origin][x_origin], y_origin, x_origin))
+                                heapq.heappush(_heap, (t, xn, yn, state[y_origin][x_origin], y_origin, x_origin))
 
         return state, found_time, origin
-
 
     #
     # Implemented from pseudocode on https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
     #
-    def __bresenhamsLow__(self, x0,y0,x1,y1):
+    def __bresenhamsLow__(self, x0, y0, x1, y1):
         dx, dy, yi, pts = x1 - x0, y1 - y0, 1, []
         if dy < 0:
             yi, dy = -1, -dy
         D, y = (2*dy)-dx, y0
-        for x in range(x0,x1+1):
-            pts.append((x,y))
+        for x in range(x0, x1+1):
+            pts.append((x, y))
             if D > 0:
                 y += yi
                 D += 2*(dy-dx)
             else:
                 D += 2*dy
         return pts
+
     #
     # Implemented from pseudocode on https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
     #
-    def __bresenhamsHigh__(self, x0,y0,x1,y1):
+    def __bresenhamsHigh__(self, x0, y0, x1, y1):
         dx, dy, xi, pts = x1 - x0, y1 - y0, 1, []
         if dx < 0:
             xi, dx = -1, -dx
         D, x = (2*dx)-dy, x0
-        for y in range(y0,y1+1):
-            pts.append((x,y))
+        for y in range(y0, y1+1):
+            pts.append((x, y))
             if D > 0:
                 x += xi
                 D += 2*(dx-dy)
@@ -806,11 +811,9 @@ class RTGeometryMixin(object):
     # bresenhams() - returns list of points on the pixelized (discrete) line from (x0,y0) to (x1,y1)
     # - Implemented from pseudocode on https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
     #
-    def bresenhams(self, x0,y0,x1,y1):
-        if abs(y1-y0) < abs(x1-x0):
-            return self.__bresenhamsLow__(x1,y1,x0,y0)  if (x0 > x1) else self.__bresenhamsLow__(x0,y0,x1,y1)
-        else:
-            return self.__bresenhamsHigh__(x1,y1,x0,y0) if (y0 > y1) else self.__bresenhamsHigh__(x0,y0,x1,y1)
+    def bresenhams(self, x0, y0, x1, y1):
+        if abs(y1-y0) < abs(x1-x0): return self.__bresenhamsLow__ (x1, y1, x0, y0) if (x0 > x1) else self.__bresenhamsLow__ (x0, y0, x1, y1)
+        else:                       return self.__bresenhamsHigh__(x1, y1, x0, y0) if (y0 > y1) else self.__bresenhamsHigh__(x0, y0, x1, y1)
 
     #
     # levelSet() - slower version but more precise (takes objects into consideration)
@@ -818,54 +821,54 @@ class RTGeometryMixin(object):
     # - raster is a two dimensional structure ... _raster[y][x]
     # - "0" or None means to calculate
     # - "-1" means a wall / immovable object
-    # - "> 0" means the class to expand 
+    # - "> 0" means the class to expand
     #
     def levelSet(self, _raster):
-        h,w = len(_raster),len(_raster[0])
+        h, w = len(_raster), len(_raster[0])
 
         # Allocate the level set
-        state      = [[None for x in range(w)] for y in range(h)] # node that found the pixel
-        found_time = [[None for x in range(w)] for y in range(h)] # when node was found
-        origin     = [[None for x in range(w)] for y in range(h)] # when node was found
+        state      = [[None for x in range(w)] for y in range(h)]  # node that found the pixel
+        found_time = [[None for x in range(w)] for y in range(h)]  # when node was found
+        origin     = [[None for x in range(w)] for y in range(h)]  # when node was found
 
         # Distance lambda function
-        dist = lambda _x0,_y0,_x1,_y1: sqrt((_x0-_x1)*(_x0-_x1)+(_y0-_y1)*(_y0-_y1))
+        dist = lambda _x0, _y0, _x1, _y1: sqrt((_x0-_x1)*(_x0-_x1)+(_y0-_y1)*(_y0-_y1))
 
-        # Copy the _raster 
-        for x in range(0,len(_raster[0])):
-            for y in range(0,len(_raster)):
+        # Copy the _raster
+        for x in range(0, len(_raster[0])):
+            for y in range(0, len(_raster)):
                 if _raster[y][x] is not None and _raster[y][x] != 0:
                     state[y][x]      = _raster[y][x]  # class of the find
                     found_time[y][x] = 0              # what time it was found
-                    origin[y][x]     = (y,x)          # origin of the finder
+                    origin[y][x]     = (y, x)         # origin of the finder
 
         # Initialize the heap
         _heap = []
-        for x in range(0,len(_raster[0])):
-            for y in range(0,len(_raster)):
-                if state[y][x] is not None and state[y][x] > 0: # Only expand non-walls and set indices...
-                    for dx in range(-1,2):
-                        for dy in range(-1,2):
+        for x in range(0, len(_raster[0])):
+            for y in range(0, len(_raster)):
+                if state[y][x] is not None and state[y][x] > 0:  # Only expand non-walls and set indices...
+                    for dx in range(-1, 2):
+                        for dy in range(-1, 2):
                             if dx == 0 and dy == 0:
                                 continue
-                            xn,yn = x+dx,y+dy
+                            xn, yn = x+dx, y+dy
                             if xn >= 0 and yn >= 0 and xn < w and yn < h:
                                 if state[yn][xn] is None or state[yn][x] == 0:
                                     t = dist(x, y, xn, yn)
-                                    heapq.heappush(_heap,(t, xn, yn, state[y][x], origin[y][x][0], origin[y][x][1]))
+                                    heapq.heappush(_heap, (t, xn, yn, state[y][x], origin[y][x][0], origin[y][x][1]))
 
         # Go through the heap
         while len(_heap) > 0:
-            t,xi,yi,_class,y_origin,x_origin = heapq.heappop(_heap)
-            t = dist(xi,yi,x_origin,y_origin) + found_time[y_origin][x_origin]
+            t, xi, yi, _class, y_origin, x_origin = heapq.heappop(_heap)
+            t = dist(xi, yi, x_origin, y_origin) + found_time[y_origin][x_origin]
             if state[yi][xi] is not None and state[yi][xi] < 0:           # Check for a wall
                 continue
             if found_time[yi][xi] is None or found_time[yi][xi] > t:      # Deterimine if we should overwrite the state
                 state [yi][xi]     = _class
                 found_time[yi][xi] = t
-                origin[yi][xi]      = (y_origin,x_origin)
-                for dx in range(-1,2):                                    # Add the neighbors to the priority queue
-                    for dy in range(-1,2):
+                origin[yi][xi]      = (y_origin, x_origin)
+                for dx in range(-1, 2):                                   # Add the neighbors to the priority queue
+                    for dy in range(-1, 2):
                         if dx == 0 and dy == 0:
                             continue
                         xn, yn = xi + dx, yi + dy
@@ -874,44 +877,33 @@ class RTGeometryMixin(object):
                             t = found_time[yi][xi] + dist(xi, yi, xn, yn)
                             # Adjust the origin if we can't see the origin from the new point...
                             x_origin_adj, y_origin_adj = x_origin, y_origin
-                            path = self.bresenhams(xn,yn,x_origin,y_origin)
+                            path = self.bresenhams(xn, yn, x_origin, y_origin)
                             for pt in path:
-                                if state[pt[1]][pt[0]] is not None and state[pt[1]][pt[0]] < 0:
-                                    x_origin_adj, y_origin_adj = xi, yi
+                                if state[pt[1]][pt[0]] is not None and state[pt[1]][pt[0]] < 0: x_origin_adj, y_origin_adj = xi, yi
                             if found_time[yn][xn] is None or found_time[yn][xn] > t:
-                                heapq.heappush(_heap,(t, xn, yn, state[y_origin][x_origin], y_origin_adj, x_origin_adj))
+                                heapq.heappush(_heap, (t, xn, yn, state[y_origin][x_origin], y_origin_adj, x_origin_adj))
         return state, found_time, origin
 
     #
     #
     #
     def levelSetStateAndFoundTimeSVG(self, _state, _found_time):
-        _w,_h = len(_state[0]),len(_state)
+        _w, _h = len(_state[0]), len(_state)
         svg = f'<svg x="0" y="0" width="{_w*2}" height="{_h}">'
-
         _tmax = 1
-        for y in range(0,_h):
-            for x in range(0,_w):
-                if _found_time[y][x] is not None and _found_time[y][x] > _tmax:
-                    _tmax = _found_time[y][x]
-
-        for y in range(0,_h):
-            for x in range(0,_w):
-                if _state[y][x] == -1:
-                    _co = '#000000'
-                else:
-                    _co = self.co_mgr.getColor(_state[y][x])
+        for y in range(0, _h):
+            for x in range(0, _w):
+                if _found_time[y][x] is not None and _found_time[y][x] > _tmax: _tmax = _found_time[y][x]
+        for y in range(0, _h):
+            for x in range(0, _w):
+                if _state[y][x] == -1: _co = '#000000'
+                else:                  _co = self.co_mgr.getColor(_state[y][x])
                 svg += f'<rect x="{x}" y="{y}" width="{1}" height="{1}" fill="{_co}" stroke-opacity="0.0" />'
-
                 if _found_time[y][x] is not None:
-                    if _state[y][x] == -1:
-                        _co = '#000000'
-                    else:
-                        _co = self.co_mgr.spectrum(_found_time[y][x], 0, _tmax)
-                else:
-                    _co = '#ffffff' # shouldn't really ever be here...
+                    if _state[y][x] == -1: _co = '#000000'
+                    else:                  _co = self.co_mgr.spectrum(_found_time[y][x], 0, _tmax)
+                else: _co = '#ffffff'  # shouldn't really ever be here...
                 svg += f'<rect x="{x+_w}" y="{y}" width="{1}" height="{1}" fill="{_co}" stroke-opacity="0.0" />'
-
         return svg + '</svg>'
 
     #
@@ -920,22 +912,22 @@ class RTGeometryMixin(object):
     def smoothSegments(self, segments):
         smoothed = [segments[0]]
         for i in range(1, len(segments)-1):
-            x, y = (segments[i-1][0] + segments[i][0] + segments[i+1][0])/3.0 , (segments[i-1][1] + segments[i][1] + segments[i+1][1])/3.0
-            smoothed.append((x,y))
+            x, y = (segments[i-1][0] + segments[i][0] + segments[i+1][0])/3.0, (segments[i-1][1] + segments[i][1] + segments[i+1][1])/3.0
+            smoothed.append((x, y))
         smoothed.append(segments[-1])
         return smoothed
-    
+
     #
     # expandSegmentsIntoPiecewiseCurvePartsFIXEDINC()
     # ... old version of this method...
     #
     def expandSegmentsIntoPiecewiseCurvedPartsFIXEDINC(self, segments, amp=5.0, ampends=20.0, t_inc=0.1):
         _piecewise_ = [segments[0], segments[1]]
-        for i in range(1,len(segments)-2):
+        for i in range(1, len(segments)-2):
             _amp_ = ampends if ((i == 1) or (i == len(segments)-3)) else amp
             v0 = self.unitVector([segments[i],   segments[i-1]])
             v1 = self.unitVector([segments[i+1], segments[i+2]])
-            bc = self.bezierCurve(segments[i], ( segments[i][0]-_amp_*v0[0] , segments[i][1]-_amp_*v0[1] ), ( segments[i+1][0]-_amp_*v1[0] , segments[i+1][1]-_amp_*v1[1] ), segments[i+1])
+            bc = self.bezierCurve(segments[i],  (segments[i][0]-_amp_*v0[0], segments[i][1]-_amp_*v0[1]), (segments[i+1][0]-_amp_*v1[0], segments[i+1][1]-_amp_*v1[1]), segments[i+1])
             t = 0.0
             while t < 1.0:
                 _piecewise_.append(bc(t))
@@ -949,11 +941,11 @@ class RTGeometryMixin(object):
     #
     def expandSegmentsIntoPiecewiseCurvedParts(self, segments, amp=5.0, ampends=20.0, max_travel=2.0):
         _piecewise_ = [segments[0], segments[1]]
-        for i in range(1,len(segments)-2):
+        for i in range(1, len(segments)-2):
             _amp_ = ampends if ((i == 1) or (i == len(segments)-3)) else amp
             v0 = self.unitVector([segments[i],   segments[i-1]])
             v1 = self.unitVector([segments[i+1], segments[i+2]])
-            bc = self.bezierCurve(segments[i], ( segments[i][0]-_amp_*v0[0] , segments[i][1]-_amp_*v0[1] ), ( segments[i+1][0]-_amp_*v1[0] , segments[i+1][1]-_amp_*v1[1] ), segments[i+1])
+            bc = self.bezierCurve(segments[i], (segments[i][0]-_amp_*v0[0], segments[i][1]-_amp_*v0[1]), (segments[i+1][0]-_amp_*v1[0], segments[i+1][1]-_amp_*v1[1]), segments[i+1])
             t_lu = {}
             ts   = []
             t_lu[0.0] = bc(0.0)
@@ -962,14 +954,14 @@ class RTGeometryMixin(object):
             ts.append(1.0)
             j = 0
             while j < len(ts)-1:
-                l = self.segmentLength((  t_lu[ts[j]]  ,  t_lu[ts[j+1]]  ))
+                l = self.segmentLength((t_lu[ts[j]], t_lu[ts[j+1]]))
                 if l > max_travel:
                     t_new = (ts[j] + ts[j+1])/2.0
                     ts.insert(j+1, t_new)
                     t_lu[t_new] = bc(t_new)
                 else:
                     j += 1
-            for j in range(0,len(ts)-1):
+            for j in range(0, len(ts)-1):
                 _piecewise_.append(t_lu[ts[j]])
         _piecewise_.append(segments[-1])
         return _piecewise_
@@ -981,7 +973,7 @@ class RTGeometryMixin(object):
     # -- see the hierarchical_edge_bundling.ipynb test file for an example
     # -- fixed by hacking the first three points and last three points (not consistent w/ 2nd and 3rd order cubic b-splines)
     # - this version returns points which is less efficient for constructing svg structures
-    # - t_inc should be something that (when added to a single precision number (e.g., 0.1) 
+    # - t_inc should be something that (when added to a single precision number (e.g., 0.1)
     #   will eventually add to another single precision number evenly)
     #
     def piecewiseCubicBSpline(self, pts, beta=0.8, t_inc=0.1):
@@ -990,18 +982,18 @@ class RTGeometryMixin(object):
         # Formula 1 form the Holten Paper - generates a control point
         def cP(i, n, p_0, p_i, p_n_minus_1):
             _fn_ = lambda k: beta * p_i[k] + (1.0 - beta) * (p_0[k] + ((i/(n-1)) * (p_n_minus_1[k] - p_0[k])))
-            return (_fn_(0),_fn_(1))
-        
+            return (_fn_(0), _fn_(1))
+
         # Generate all the control points
         i, cps = 0, []
         for i in range(len(pts)):
-            xy = cP(i, len(pts), pts[0], pts[i], pts[-1])    
+            xy = cP(i, len(pts), pts[0], pts[i], pts[-1])
             cps.append(xy)
 
         # Hack the first three points into a bezier curve
         pt_beg = cps[0]
-        pt_end   = ( (1/6) * (  cps[0][0] + 4*cps[1][0] + cps[2][0]) ,  (1/6) * (  cps[0][1] + 4*cps[1][1] + cps[2][1]) )
-        pt_end_d = ( (1/3) * (2*cps[1][0] +   cps[2][0]),               (1/3) * (2*cps[1][1] +   cps[2][1]) )
+        pt_end   = ((1/6) *   (cps[0][0] + 4*cps[1][0] + cps[2][0]),  (1/6) *   (cps[0][1] + 4*cps[1][1] + cps[2][1]))
+        pt_end_d = ((1/3) * (2*cps[1][0] +   cps[2][0]),              (1/3) * (2*cps[1][1] +   cps[2][1]))
         pt_mid_e = (pt_end[0] + (pt_end[0] - pt_end_d[0]), pt_end[1] + (pt_end[1] - pt_end_d[1]))
         pt_mid_b = (pt_beg[0] + pt_mid_e[0])/2, (pt_beg[1] + pt_mid_e[1])/2
         bezier   = self.bezierCurve(pt_beg, pt_mid_b, pt_mid_e, pt_end)
@@ -1018,18 +1010,18 @@ class RTGeometryMixin(object):
         #   there's no implementation within SVG to shade across the curve...
         for i in range(len(cps)-3):
             # Copied from wikipedia page on B-splines -- https://en.wikipedia.org/wiki/B-spline
-            b0,b1,b2,b3 = cps[i],cps[i+1],cps[i+2],cps[i+3]
+            b0, b1, b2, b3 = cps[i], cps[i+1], cps[i+2], cps[i+3]
             t = 0.0
             while t < 1.0:
-                cT = lambda _t_, k: (1/6) * ( (-b0[k] + 3*b1[k] - 3*b2[k] +b3[k])*_t_**3 + (3*b0[k] - 6*b1[k] + 3*b2[k])*_t_**2 + (-3*b0[k] + 3*b2[k])*_t_ + (b0[k] + 4*b1[k] + b2[k]) )
-                x1,y1 = cT(t,0), cT(t,1)
-                d2    = sqrt((x1-points[-1][0])**2 + (y1-points[-1][1])**2)
-                if d2 >= _min_d_threshold_: points.append((x1,y1))
+                cT = lambda _t_, k: (1/6) * ((-b0[k] + 3*b1[k] - 3*b2[k] + b3[k])*_t_**3 + (3*b0[k] - 6*b1[k] + 3*b2[k])*_t_**2 + (-3*b0[k] + 3*b2[k])*_t_ + (b0[k] + 4*b1[k] + b2[k]))
+                x1, y1 = cT(t, 0), cT(t, 1)
+                d2     = sqrt((x1-points[-1][0])**2 + (y1-points[-1][1])**2)
+                if d2 >= _min_d_threshold_: points.append((x1, y1))
                 t += t_inc
 
         # Hack the last three points
-        pt_beg   = ( (1/6) * (cps[-3][0] + 4*cps[-2][0] + cps[-1][0]), (1/6) * (cps[-3][1] + 4*cps[-2][1] + cps[-1][1]) )
-        pt_beg_d = ( (1/3) * (cps[-3][0] + 2*cps[-2][0]),              (1/3) * (cps[-3][1] + 2*cps[-2][1]) )
+        pt_beg   = ((1/6) * (cps[-3][0] + 4*cps[-2][0] + cps[-1][0]), (1/6) * (cps[-3][1] + 4*cps[-2][1] + cps[-1][1]))
+        pt_beg_d = ((1/3) * (cps[-3][0] + 2*cps[-2][0]),              (1/3) * (cps[-3][1] + 2*cps[-2][1]))
         pt_mid_b = pt_beg[0] + (pt_beg[0] - pt_beg_d[0]), pt_beg[1] + (pt_beg[1] - pt_beg_d[1])
         pt_end   = cps[-1]
         pt_mid_e = (pt_end[0] + pt_mid_b[0])/2, (pt_end[1] + pt_mid_b[1])/2
@@ -1052,18 +1044,18 @@ class RTGeometryMixin(object):
         # Formula 1 form the Holten Paper - generates a control point
         def cP(i, n, p_0, p_i, p_n_minus_1):
             _fn_ = lambda k: beta * p_i[k] + (1.0 - beta) * (p_0[k] + ((i/(n-1)) * (p_n_minus_1[k] - p_0[k])))
-            return (_fn_(0),_fn_(1))
-        
+            return (_fn_(0), _fn_(1))
+
         # Generate all the control points
         i, cps = 0, []
         for i in range(len(pts)):
-            xy = cP(i, len(pts), pts[0], pts[i], pts[-1])    
+            xy = cP(i, len(pts), pts[0], pts[i], pts[-1])
             cps.append(xy)
 
         # Hack the first three points into a bezier curve
         pt_beg = cps[0]
-        pt_end   = ( (1/6) * (  cps[0][0] + 4*cps[1][0] + cps[2][0]) ,  (1/6) * (  cps[0][1] + 4*cps[1][1] + cps[2][1]) )
-        pt_end_d = ( (1/3) * (2*cps[1][0] +   cps[2][0]),               (1/3) * (2*cps[1][1] +   cps[2][1]) )
+        pt_end   = ((1/6) *   (cps[0][0] + 4*cps[1][0] + cps[2][0]),  (1/6) *   (cps[0][1] + 4*cps[1][1] + cps[2][1]))
+        pt_end_d = ((1/3) * (2*cps[1][0] +   cps[2][0]),              (1/3) * (2*cps[1][1] +   cps[2][1]))
         pt_mid_e = (pt_end[0] + (pt_end[0] - pt_end_d[0]), pt_end[1] + (pt_end[1] - pt_end_d[1]))
         pt_mid_b = (pt_beg[0] + pt_mid_e[0])/2, (pt_beg[1] + pt_mid_e[1])/2
 
@@ -1076,14 +1068,14 @@ class RTGeometryMixin(object):
         for i in range(len(cps)-3):
             # Copied from wikipedia page on B-splines -- https://en.wikipedia.org/wiki/B-spline
             # p0 = ( (1/6) * (cps[i][0] + 4*cps[i+1][0] + cps[i+2][0]) ,  (1/6) * (cps[i][1] + 4*cps[i+1][1] + cps[i+2][1]) )
-            p1 = ( (1/3) * (2*cps[i+1][0] + cps[i+2][0]),               (1/3) * (2*cps[i+1][1] + cps[i+2][1]) )
-            p2 = ( (1/3) * (cps[i+1][0] + 2*cps[i+2][0]),               (1/3) * (cps[i+1][1] + 2*cps[i+2][1]) )
-            p3 = ( (1/6) * (cps[i+1][0] + 4*cps[i+2][0] + cps[i+3][0]), (1/6) * (cps[i+1][1] + 4*cps[i+2][1] + cps[i+3][1]) )
+            p1 = ((1/3) * (2*cps[i+1][0] + cps[i+2][0]),               (1/3) * (2*cps[i+1][1] + cps[i+2][1]))
+            p2 = ((1/3) * (cps[i+1][0] + 2*cps[i+2][0]),               (1/3) * (cps[i+1][1] + 2*cps[i+2][1]))
+            p3 = ((1/6) * (cps[i+1][0] + 4*cps[i+2][0] + cps[i+3][0]), (1/6) * (cps[i+1][1] + 4*cps[i+2][1] + cps[i+3][1]))
             svg_path.append(f'C {p1[0]} {p1[1]} {p2[0]} {p2[1]} {p3[0]} {p3[1]}')
 
         # Hack the last three points
-        pt_beg   = ( (1/6) * (cps[-3][0] + 4*cps[-2][0] + cps[-1][0]), (1/6) * (cps[-3][1] + 4*cps[-2][1] + cps[-1][1]) )
-        pt_beg_d = ( (1/3) * (cps[-3][0] + 2*cps[-2][0]),              (1/3) * (cps[-3][1] + 2*cps[-2][1]) )
+        pt_beg   = ((1/6) * (cps[-3][0] + 4*cps[-2][0] + cps[-1][0]), (1/6) * (cps[-3][1] + 4*cps[-2][1] + cps[-1][1]))
+        pt_beg_d = ((1/3) * (cps[-3][0] + 2*cps[-2][0]),              (1/3) * (cps[-3][1] + 2*cps[-2][1]))
         pt_mid_b = pt_beg[0] + (pt_beg[0] - pt_beg_d[0]), pt_beg[1] + (pt_beg[1] - pt_beg_d[1])
         pt_end   = cps[-1]
         pt_mid_e = (pt_end[0] + pt_mid_b[0])/2, (pt_end[1] + pt_mid_b[1])/2
@@ -1095,17 +1087,17 @@ class RTGeometryMixin(object):
     #
     # segmentOctTree() - return a segment octree
     # - bounds == (x0,y0,x1,y1)
-    # - DONT USE!!!    
+    # - DONT USE!!!
     #
     def segmentOctTree(self, bounds, max_segments_per_cell=20):
         return SegmentOctTree(self, bounds, max_segments_per_cell=max_segments_per_cell)
-
 
     #
     # xyQuadTree() - returns an xy quadtree
     #
     def xyQuadTree(self, bounds, max_pts_per_node=50):
         return XYQuadTree(self, bounds, max_pts_per_node=max_pts_per_node)
+
 
 #
 # XYQuadTree() - implementation of an xy quad tree...
@@ -1135,21 +1127,15 @@ class XYQuadTree(object):
     #
     def __split__(self, q):
         b = self.node_bounds[q]
-        xs, ys = [],[]
-        for pt in self.node_pts[q]:
-            xs.append(pt[0]), ys.append(pt[1])
+        xs, ys = [], []
+        for pt in self.node_pts[q]: xs.append(pt[0]), ys.append(pt[1])
         xs, ys = sorted(xs), sorted(ys)
         mid = int(len(xs)/2)
-        if xs[0] == xs[-1] and ys[0] == ys[-1]:
-            return # not splitable...
-        if xs[0] == xs[-1]:
-            xsplit = (b[0] + b[2])/2.0
-        else:
-            xsplit = xs[mid]
-        if ys[0] == ys[-1]:
-            ysplit = (b[1] + b[3])/2.0
-        else:
-            ysplit = ys[mid]
+        if xs[0] == xs[-1] and ys[0] == ys[-1]: return  # not splitable...
+        if xs[0] == xs[-1]: xsplit = (b[0] + b[2])/2.0
+        else:               xsplit = xs[mid]
+        if ys[0] == ys[-1]: ysplit = (b[1] + b[3])/2.0
+        else:               ysplit = ys[mid]
 
         self.node_pts   [q+'0'] = set()
         self.node_bounds[q+'0'] = (b[0],    b[1],     xsplit,  ysplit)
@@ -1159,7 +1145,7 @@ class XYQuadTree(object):
         self.node_bounds[q+'2'] = (b[0],    ysplit,   xsplit,  b[3])
         self.node_pts   [q+'3'] = set()
         self.node_bounds[q+'3'] = (xsplit,  ysplit,   b[2],    b[3])
-        for node in [q+'0',q+'1',q+'2',q+'3']:
+        for node in [q+'0', q+'1', q+'2', q+'3']:
             b = self.node_bounds[node]
             if b[0] not in self.x_to_node.keys():
                 self.x_to_node[b[0]] = set()
@@ -1192,18 +1178,15 @@ class XYQuadTree(object):
         s = ''
         while (s+'0') in self.node_pts.keys():
             b = self.node_bounds[(s+'0')]
-            if   pt[0] <= b[2] and pt[1] <= b[3]:
-                s += '0'
-            elif                   pt[1] <= b[3]:
-                s += '1'
-            elif pt[0] <= b[2]:
-                s += '2'
-            else:
-                s += '3'
+            if   pt[0] <= b[2] and pt[1] <= b[3]:  s += '0'
+            elif                   pt[1] <= b[3]:  s += '1'
+            elif pt[0] <= b[2]:                    s += '2'
+            else:                                  s += '3'
         return s
+
     #
     # add() - add a list of points to the quadtree
-    #    
+    #
     def add(self, pts):
         for pt in pts:
             q = self.quad(pt)
@@ -1217,7 +1200,7 @@ class XYQuadTree(object):
     # - if q is a set, the set will be iterated over and added as nbors
     #
     def __nbors__STRICT__(self, q):
-        if type(q) == set:
+        if type(q) is set:
             _set_ = set()
             for _q_ in q:
                 _set_ = _set_ | set([_q_]) | self.__nbors__(_q_)
@@ -1226,7 +1209,7 @@ class XYQuadTree(object):
             _set_ = set()
             _set_.add(q)
             b = self.node_bounds[q]
-            to_check = self.x_to_node[b[0]] | self.x_to_node[b[2]] | self.y_to_node[b[1]] | self.y_to_node[b[3]]
+            # to_check = self.x_to_node[b[0]] | self.x_to_node[b[2]] | self.y_to_node[b[1]] | self.y_to_node[b[3]]
             for n in self.node_bounds.keys():
                 _b_ = self.node_bounds[n]
                 if _b_[0] == b[2] or \
@@ -1234,18 +1217,18 @@ class XYQuadTree(object):
                     if (_b_[1] >=  b [1] and _b_[1] <=  b [3]) or \
                        (_b_[3] >=  b [1] and _b_[3] <=  b [3]) or \
                        (_b_[1] <=  b [1] and _b_[3] >= _b_[3]) or \
-                       ( b [1] >= _b_[1] and  b [1] <= _b_[3]) or \
-                       ( b [3] >= _b_[1] and  b [3] <= _b_[3]) or \
-                       ( b [1] <= _b_[1] and  b [3] >= _b_[3]):
+                       (b  [1] >= _b_[1] and  b [1] <= _b_[3]) or \
+                       (b  [3] >= _b_[1] and  b [3] <= _b_[3]) or \
+                       (b  [1] <= _b_[1] and  b [3] >= _b_[3]):
                         _set_.add(n)
                 if _b_[1] == b[3] or \
                    _b_[3] == b[1]:
                     if (_b_[0] >=  b [0] and _b_[0] <=  b [2]) or \
                        (_b_[2] >=  b [0] and _b_[2] <=  b [2]) or \
                        (_b_[0] <=  b [0] and _b_[2] >= _b_[2]) or \
-                       ( b [0] >= _b_[0] and  b [0] <= _b_[2]) or \
-                       ( b [2] >= _b_[0] and  b [2] <= _b_[2]) or \
-                       ( b [0] <= _b_[0] and  b [2] >= _b_[2]):
+                       (b  [0] >= _b_[0] and  b [0] <= _b_[2]) or \
+                       (b  [2] >= _b_[0] and  b [2] <= _b_[2]) or \
+                       (b  [0] <= _b_[0] and  b [2] >= _b_[2]):
                         _set_.add(n)
             return _set_
 
@@ -1255,7 +1238,7 @@ class XYQuadTree(object):
     # - if q is a set, the set will be iterated over and added as nbors
     #
     def __nbors__(self, q):
-        if type(q) == set:
+        if type(q) is set:
             _set_ = set()
             for _q_ in q:
                 _set_ = _set_ | set([_q_]) | self.__nbors__(_q_)
@@ -1264,8 +1247,7 @@ class XYQuadTree(object):
             _set_ = set()
             _set_.add(q)
             b = self.node_bounds[q]
-            ex,ey = (b[2]-b[0])*0.1, (b[3]-b[1])*0.1 # within 10 percent...
-            to_check = self.x_to_node[b[0]] | self.x_to_node[b[2]] | self.y_to_node[b[1]] | self.y_to_node[b[3]]
+            ex, ey = (b[2]-b[0])*0.1, (b[3]-b[1])*0.1  # within 10 percent...
             for n in self.node_bounds.keys():
                 _b_ = self.node_bounds[n]
                 if _b_[0] == b[2] or \
@@ -1273,18 +1255,18 @@ class XYQuadTree(object):
                     if (_b_[1] >=  (b [1]-ey) and _b_[1] <=  (b [3]+ey)) or \
                        (_b_[3] >=  (b [1]-ey) and _b_[3] <=  (b [3]+ey)) or \
                        (_b_[1] <=  (b [1])    and _b_[3] >= (_b_[3]))    or \
-                       ( b [1] >= (_b_[1]-ey) and  b [1] <= (_b_[3]+ey)) or \
-                       ( b [3] >= (_b_[1]-ey) and  b [3] <= (_b_[3]+ey)) or \
-                       ( b [1] <= (_b_[1])    and  b [3] >=  _b_[3]):
+                       (b  [1] >= (_b_[1]-ey) and  b [1] <= (_b_[3]+ey)) or \
+                       (b  [3] >= (_b_[1]-ey) and  b [3] <= (_b_[3]+ey)) or \
+                       (b  [1] <= (_b_[1])    and  b [3] >=  _b_[3]):
                         _set_.add(n)
                 if _b_[1] == b[3] or \
                    _b_[3] == b[1]:
                     if (_b_[0] >=  (b [0]-ex) and _b_[0] <=  (b [2]+ex)) or \
                        (_b_[2] >=  (b [0]-ex) and _b_[2] <=  (b [2]+ex)) or \
                        (_b_[0] <=   b [0]     and _b_[2] >=  _b_[2])     or \
-                       ( b [0] >= (_b_[0]-ex) and  b [0] <= (_b_[2]+ex)) or \
-                       ( b [2] >= (_b_[0]-ex) and  b [2] <= (_b_[2]+ex)) or \
-                       ( b [0] <=  _b_[0]     and  b [2] >=  _b_[2]):
+                       (b  [0] >= (_b_[0]-ex) and  b [0] <= (_b_[2]+ex)) or \
+                       (b  [2] >= (_b_[0]-ex) and  b [2] <= (_b_[2]+ex)) or \
+                       (b  [0] <=  _b_[0]     and  b [2] >=  _b_[2]):
                         _set_.add(n)
             return _set_
 
@@ -1297,12 +1279,12 @@ class XYQuadTree(object):
         q       = self.quad(pt)
         nodes   = self.__nbors__(set([q]))
         if q != '':
-            for x in ['0','1','2','3']:
+            for x in ['0', '1', '2', '3']:
                 nodes.add(q[:-1]+x)
         sorter  = []
         for node in nodes:
             for _pt_ in self.node_pts[node]:
-                sorter.append((self.rt_self.segmentLength((pt,_pt_)), _pt_))
+                sorter.append((self.rt_self.segmentLength((pt, _pt_)), _pt_))
         return sorted(sorter)[:n]
 
     #
@@ -1327,13 +1309,14 @@ class XYQuadTree(object):
         svg.append('</svg>')
         return ''.join(svg)
 
+
 #
 # SegmentOctTree -- oct tree implementation for faster segment discovery.
 # - splits based on the median values in both x and y
 # ... this is probably actually a "QuadTree" :(
 #
 class SegmentOctTree(object):
-    #    
+    #
     # bounds == (x0,y0,x1,y1)
     #
     def __init__(self, rt_self, bounds, max_segments_per_cell=20):
@@ -1348,14 +1331,11 @@ class SegmentOctTree(object):
         self.node_already_split[''] = False
         # self.bad_svgs               = []
 
-        if bounds[0] >= bounds[2]:
-            raise Exception(f'SegmentOctTree.__init__() - [1] bounds messed up {bounds}')
-        if bounds[1] >= bounds[3]:
-            raise Exception(f'SegmentOctTree.__init__() - [2] bounds messed up {bounds}')
-
+        if bounds[0] >= bounds[2]: raise Exception(f'SegmentOctTree.__init__() - [1] bounds messed up {bounds}')
+        if bounds[1] >= bounds[3]: raise Exception(f'SegmentOctTree.__init__() - [2] bounds messed up {bounds}')
 
         # For Debugging...
-        self.pieces = set() # for debugging...
+        self.pieces = set()  # for debugging...
 
     #
     # findOctet() - find the placement of a point within the octtree
@@ -1367,112 +1347,92 @@ class SegmentOctTree(object):
             if check_parents and len(self.tree[s]) > 0:
                 raise Exception(f'SegmentOctTree.findOctet("{pt}") has children... but node "{s}" not empty (len={len(self.tree[s])})')
             b = self.tree_bounds[s+'0']
-            if   pt[0] <= b[2] and pt[1] <= b[3]:
-                s += '0'
-            elif pt[0] <= b[2]:
-                s += '2'
-            elif                   pt[1] <= b[3]:
-                s += '1'
-            else:
-                s += '3'
+            if   pt[0] <= b[2] and pt[1] <= b[3]: s += '0'
+            elif pt[0] <= b[2]:                   s += '2'
+            elif                   pt[1] <= b[3]: s += '1'
+            else:                                 s += '3'
         return s
+
     #
     # __split__() - split a tree node into four parts ... not thread safe
     # def lineSegmentIntersectionPoint(self, line, segment):
     #
     def __split__(self, node):
-        if self.node_already_split[node]: # shouldn't have anything in it...
+        if self.node_already_split[node]:  # shouldn't have anything in it...
             if len(self.tree[node]) != 0:
                 raise Exception(f'SegmentOcttree.__split__(node="{node}") shouldn\'t be non-zero')
             return
-        
+
         # determine the split points -- median of the coordinates in x and y
         b = self.tree_bounds[node]
         xs, ys = [], []
         for piece in self.tree[node]:
             valid = True
-            x0,y0,x1,y1 = piece[0][0], piece[0][1], piece[1][0], piece[1][1]
+            x0, y0, x1, y1 = piece[0][0], piece[0][1], piece[1][0], piece[1][1]
             # clip segment first...
             if (x0 <= b[0] and x1 <= b[0]) or (x0 >= b[2] and x1 >= b[2]):
                 valid = False
             else:
                 if x0 < b[0]:
-                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[0],0),(b[0],1)),piece)
-                    if pt is None:
-                        valid = False
-                    else:
-                        x0, y0 = pt
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[0], 0), (b[0], 1)), piece)
+                    if pt is None: valid  = False
+                    else:          x0, y0 = pt
                 if x0 > b[2]:
-                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[2],0),(b[2],1)),piece)
-                    if pt is None:
-                        valid = False
-                    else:
-                        x0, y0 = pt
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[2], 0), (b[2], 1)), piece)
+                    if pt is None: valid  = False
+                    else:          x0, y0 = pt
                 if x1 < b[0]:
-                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[0],0),(b[0],1)),piece)
-                    if pt is None:
-                        valid = False
-                    else:
-                        x1, y1 = pt
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[0], 0), (b[0], 1)), piece)
+                    if pt is None: valid  = False
+                    else:          x1, y1 = pt
                 if x1 > b[2]:
-                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[2],0),(b[2],1)),piece)
-                    if pt is None:
-                        valid = False
-                    else:
-                        x1, y1 = pt
-            if (y0 <= b[1] and y1 <= b[1]) or (y0 >= b[3] and y1 >= b[3]):
-                valid = False
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((b[2], 0), (b[2], 1)), piece)
+                    if pt is None: valid  = False
+                    else:          x1, y1 = pt
+            if (y0 <= b[1] and y1 <= b[1]) or (y0 >= b[3] and y1 >= b[3]): valid = False
             else:
                 if y0 < b[1]:
-                    pt = self.rt_self.lineSegmentIntersectionPoint(((0,b[1]),(1,b[1])),piece)
-                    if pt is None:
-                        valid = False
-                    else:
-                        x0, y0 = pt
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((0, b[1]), (1, b[1])), piece)
+                    if pt is None: valid  = False
+                    else:          x0, y0 = pt
                 if y0 > b[3]:
-                    pt = self.rt_self.lineSegmentIntersectionPoint(((0,b[3]),(1,b[3])),piece)
-                    if pt is None:
-                        valid = False
-                    else:
-                        x0, y0 = pt
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((0, b[3]), (1, b[3])), piece)
+                    if pt is None: valid  = False
+                    else:          x0, y0 = pt
                 if y1 < b[1]:
-                    pt = self.rt_self.lineSegmentIntersectionPoint(((0,b[1]),(1,b[1])),piece)
-                    if pt is None:
-                        valid = False
-                    else:
-                        x1, y1 = pt
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((0, b[1]), (1, b[1])), piece)
+                    if pt is None: valid  = False
+                    else:          x1, y1 = pt
                 if y1 > b[3]:
-                    pt = self.rt_self.lineSegmentIntersectionPoint(((0,b[3]),(1,b[3])),piece)
-                    if pt is None:
-                        valid = False
-                    else:
-                        x1, y1 = pt
+                    pt = self.rt_self.lineSegmentIntersectionPoint(((0, b[3]), (1, b[3])), piece)
+                    if pt is None: valid  = False
+                    else:          x1, y1 = pt
             if valid:
                 xs.append(x0), xs.append(x1), ys.append(y0), ys.append(y1)
-        xs,ys = sorted(xs),sorted(ys)
+        xs, ys = sorted(xs), sorted(ys)
 
-        if len(xs) == 0 or len(ys) == 0: # nothing if we don't have values to sort
-            return # prevent bad cases
-        if xs[0] == xs[-1] or ys[0] == ys[-1]: # nothing if the values are all the same
-            return # prevent bad cases
+        if len(xs) == 0 or len(ys) == 0:  # nothing if we don't have values to sort
+            return  # prevent bad cases
+        if xs[0] == xs[-1] or ys[0] == ys[-1]:  # nothing if the values are all the same
+            return  # prevent bad cases
 
         x_split = xs[int(len(xs)/2)]
         y_split = ys[int(len(ys)/2)]
 
-        if x_split == b[0] or x_split == b[2] or y_split == b[1] or y_split == b[3]: # nothing if the split equals a current boundary
-            return # prevent bad cases
+        if x_split == b[0] or x_split == b[2] or y_split == b[1] or y_split == b[3]:  # nothing if the split equals a current boundary
+            return  # prevent bad cases
 
-        if abs(x_split - b[0]) < 1.0 or abs(x_split - b[2]) < 1.0 or abs(y_split - b[1]) < 1.0 or abs(y_split - b[3]) < 1.0: # nothing less than one...
-            return # prevent bad cases
+        if abs(x_split - b[0]) < 1.0 or abs(x_split - b[2]) < 1.0 or abs(y_split - b[1]) < 1.0 or abs(y_split - b[3]) < 1.0:  # nothing less than one...
+            return  # prevent bad cases
 
-        self.node_already_split[node] = True # marks that the node has already been split and shouldn't be split again...
+        self.node_already_split[node] = True  # marks that the node has already been split and shouldn't be split again...
 
         self.tree       [node+'0'] = set()
         self.tree_bounds[node+'0'] = (b[0],     b[1],    x_split, y_split)
         self.node_already_split[node+'0'] = False
 
         self.tree       [node+'1'] = set()
-        self.tree_bounds[node+'1'] = (x_split,  b[1],    b[2],    y_split)        
+        self.tree_bounds[node+'1'] = (x_split,  b[1],    b[2],    y_split)
         self.node_already_split[node+'1'] = False
 
         self.tree       [node+'2'] = set()
@@ -1485,24 +1445,25 @@ class SegmentOctTree(object):
 
         to_check =      [node+'0', node+'1', node+'2', node+'3']
         for piece in self.tree[node]:
-            x_min, y_min, x_max, y_max = min(piece[0][0], piece[1][0]), min(piece[0][1], piece[1][1]), max(piece[0][0], piece[1][0]), max(piece[0][1], piece[1][1])
-            oct0, oct1, piece_addition_count = self.findOctet(piece[0], check_parents=False), self.findOctet(piece[1], check_parents=False), 0
+            # x_min, y_min, x_max, y_max = min(piece[0][0], piece[1][0]), min(piece[0][1], piece[1][1]), max(piece[0][0], piece[1][0]), max(piece[0][1], piece[1][1])
+            # oct0, oct1 = self.findOctet(piece[0], check_parents=False), self.findOctet(piece[1], check_parents=False)
+            piece_addition_count = 0
             for k in to_check:
                 if self.__segmentTouchesNode__(piece, k):
                     self.tree[k].add(piece)
-                    piece_addition_count +=1
+                    piece_addition_count += 1
             if piece_addition_count == 0:
-                pass # ... not necessarily a problem -- happens when the segment touches the exact boundary only
-                     # ... should probably keep track to ensure all segments are represented in at least one place instead...
-                #print(f"Error -- No additions for piece {piece} ... node = '{node}' | node_sz = {len(self.tree[k])}")
-                #svg = '<svg width="500" height="500">\n'
-                #svg += f'<rect x="0" y="0" width="500" height="500" fill="#ffffff"/>\n'
-                #for k in to_check:
-                #    b = self.tree_bounds[k]
-                #    svg += f'<rect x="{b[0]}" y="{b[1]}" width="{b[2]-b[0]}" height="{b[3]-b[1]}" fill="none" stroke="#000000"/>\n'
-                #svg += f'<line x1="{piece[0][0]}" y1="{piece[0][1]}" x2="{piece[1][0]}" y2="{piece[1][1]}" stroke="#ff0000"/>\n'
-                #svg += "</svg>"
-                #self.bad_svgs.append(svg)
+                pass  # ... not necessarily a problem -- happens when the segment touches the exact boundary only
+                #       ... should probably keep track to ensure all segments are represented in at least one place instead...
+                # print(f"Error -- No additions for piece {piece} ... node = '{node}' | node_sz = {len(self.tree[k])}")
+                # svg = '<svg width="500" height="500">\n'
+                # svg += f'<rect x="0" y="0" width="500" height="500" fill="#ffffff"/>\n'
+                # for k in to_check:
+                #     b = self.tree_bounds[k]
+                #     svg += f'<rect x="{b[0]}" y="{b[1]}" width="{b[2]-b[0]}" height="{b[3]-b[1]}" fill="none" stroke="#000000"/>\n'
+                # svg += f'<line x1="{piece[0][0]}" y1="{piece[0][1]}" x2="{piece[1][0]}" y2="{piece[1][1]}" stroke="#ff0000"/>\n'
+                # svg += "</svg>"
+                # self.bad_svgs.append(svg)
         self.tree[node] = set()
         for k in to_check:
             if len(self.tree[k]) > self.max_segments_per_cell:
@@ -1513,19 +1474,19 @@ class SegmentOctTree(object):
     # - segments = [(x0,y0), (x1,y1), (x2,y2), (x3,y3)]
     def addSegments(self, segments):
         for i in range(len(segments)-1):
-            piece = ((segments[i][0], segments[i][1]), (segments[i+1][0], segments[i+1][1])) # make sure it's a tuple
+            piece = ((segments[i][0], segments[i][1]), (segments[i+1][0], segments[i+1][1]))  # make sure it's a tuple
             self.pieces.add(piece)
-            oct0  = self.findOctet(segments[i])
-            x0,y0 = segments[i]
-            oct1  = self.findOctet(segments[i+1])
-            x1,y1 = segments[i+1]
-            x_min,y_min,x_max,y_max = min(x0,x1), min(y0,y1), max(x0,x1), max(y0,y1)
+            oct0   = self.findOctet(segments[i])
+            x0, y0 = segments[i]
+            oct1   = self.findOctet(segments[i+1])
+            x1, y1 = segments[i+1]
+            # x_min, y_min, x_max, y_max = min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)
             if oct0 == oct1:
                 self.tree[oct0].add(piece)
                 if len(self.tree[oct0]) > self.max_segments_per_cell:
                     self.__split__(oct0)
             else:
-                to_split = set() # to avoid messing with the keys in this iteration
+                to_split = set()  # to avoid messing with the keys in this iteration
                 for k in self.tree.keys():
                     if self.__segmentTouchesNode__(piece, k):
                         self.tree[k].add(piece)
@@ -1551,7 +1512,7 @@ class SegmentOctTree(object):
                     closest_d, closest_segment, closest_xy = d, segment, xy
                 elif d < closest_d:
                     closest_d, closest_segment, closest_xy = d, segment, xy
-        
+
         return closest_d, closest_segment, closest_xy
 
     #
@@ -1560,10 +1521,10 @@ class SegmentOctTree(object):
     # ... return list of the following tuples:  (distance, segment, xy) where xy is the closest part of the segment to the point.
     #
     def closestSegmentsToPoint(self, pt, n=10):
-        n = min(n, len(self.pieces)) # can't find more pieces than are in the data structure...
+        n = min(n, len(self.pieces))  # can't find more pieces than are in the data structure...
         nbors     = set([self.findOctet(pt)])
         sorter    = []
-        checked   = set() # nodes that have been checked already
+        checked   = set()  # nodes that have been checked already
         while len(sorter) < n:
             # expand to all neighbors from the current region
             new_nbors = set()
@@ -1598,21 +1559,17 @@ class SegmentOctTree(object):
         if   x_max < b[0] or x_min > b[2] or y_max < b[1] or y_min > b[3]:
             return False
         else:
-            flag0, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[0],b[1]),(b[0],b[3])))
-            if flag0:
-                return True
+            flag0, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[0], b[1]), (b[0], b[3])))
+            if flag0: return True
             else:
-                flag1, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[0],b[1]),(b[2],b[1])))
-                if flag1:
-                    return True
+                flag1, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[0], b[1]), (b[2], b[1])))
+                if flag1: return True
                 else:
-                    flag2, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[2],b[3]),(b[0],b[3])))
-                    if flag2:
-                        return True
+                    flag2, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[2], b[3]), (b[0], b[3])))
+                    if flag2: return True
                     else:
-                        flag3, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[2],b[3]),(b[2],b[1])))
-                        if flag3:
-                            return True
+                        flag3, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[2], b[3]), (b[2], b[1])))
+                        if flag3: return True
         return False
 
     #
@@ -1629,21 +1586,17 @@ class SegmentOctTree(object):
         if   x_max < b[0] or x_min > b[2] or y_max < b[1] or y_min > b[3]:
             return 'false - bounds test failed'
         else:
-            flag0, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[0],b[1]),(b[0],b[3])))
-            if flag0:
-                return f'flag0 ... (({b[0]},{b[1]}),({b[0]},{b[3]}))'
+            flag0, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[0], b[1]), (b[0], b[3])))
+            if flag0: return f'flag0 ... (({b[0]},{b[1]}),({b[0]},{b[3]}))'
             else:
-                flag1, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[0],b[1]),(b[2],b[1])))
-                if flag1:
-                    return 'flag1 ... (({b[0]},{b[1]}),({b[2]},{b[1]}))'
+                flag1, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[0], b[1]), (b[2], b[1])))
+                if flag1: return 'flag1 ... (({b[0]},{b[1]}),({b[2]},{b[1]}))'
                 else:
-                    flag2, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[2],b[3]),(b[0],b[3])))
-                    if flag2:
-                        return 'flag2 ... (({b[2]},{b[3]}),({b[0]},{b[3]}))'
+                    flag2, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[2], b[3]), (b[0], b[3])))
+                    if flag2: return 'flag2 ... (({b[2]},{b[3]}),({b[0]},{b[3]}))'
                     else:
-                        flag3, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[2],b[3]),(b[2],b[1])))
-                        if flag3:
-                            return 'flag3 ... (({b[2]},{b[3]}),({b[2]},{b[1]}))'
+                        flag3, x, y, ts0, ts1 = self.rt_self.segmentsIntersect(segment, ((b[2], b[3]), (b[2], b[1])))
+                        if flag3: return 'flag3 ... (({b[2]},{b[3]}),({b[2]},{b[1]}))'
         return False
 
     #
@@ -1658,22 +1611,22 @@ class SegmentOctTree(object):
         oct0       = self.findOctet(segment[0])
         oct0_nbors = self.__neighbors__(oct0)
         oct1       = self.findOctet(segment[1])
-        to_check   = set([oct0,oct1])
+        to_check   = set([oct0, oct1])
         if    oct0 == oct1:
             to_check |= oct0_nbors
         elif  oct1 in oct0_nbors:
             to_check |= oct0_nbors | self.__neighbors__(oct1)
-        else: # :( ... have to search for all possibles...
+        else:  # :( ... have to search for all possibles...
             for k in self.tree_bounds.keys():
                 if self.__segmentTouchesNode__(segment, k):
                     to_check.add(k)
             all_nbors = set()
-            for node in to_check:                
+            for node in to_check:
                 all_nbors |= self.__neighbors__(node)
             to_check |= all_nbors
 
         # Find the closest...
-        nodes_checked = set()            
+        nodes_checked = set()
         closest_d = closest_segment = None
         for node in to_check:
             nodes_checked.add(node)
@@ -1683,10 +1636,9 @@ class SegmentOctTree(object):
                     closest_d, closest_segment = d, other_segment
                 elif d < closest_d:
                     closest_d, closest_segment = d, other_segment
-        
+
         # Return the results
         return closest_d, closest_segment
-            
 
     # __segmentDistance__() ... probably biased towards human scale numbers... 0 to 1000
     # ... this is a really bad way to do this... for example, take two segments that intersect like a plus...
@@ -1698,7 +1650,6 @@ class SegmentOctTree(object):
         v1 = self.rt_self.unitVector(_s1_)
         return d0 + d1 + abs(v0[0]*v1[0]+v0[1]*v1[1])
 
-
     # __neighbors__() ... return the neighbors of a node...
     def __neighbors__(self, node):
         _set_ = set()
@@ -1706,7 +1657,7 @@ class SegmentOctTree(object):
             return _set_
         node_b = self.tree_bounds[node]
         for k in self.tree_bounds:
-            if self.node_already_split[k]: # don't bother with split nodes
+            if self.node_already_split[k]:  # don't bother with split nodes
                 continue
             b = self.tree_bounds[k]
             right, left  = (b[0] == node_b[2]), (b[2] == node_b[0])
@@ -1755,9 +1706,9 @@ class SegmentOctTree(object):
 
         # Draw example neighbors
         _as_list_ = list(self.tree.keys())
-        _node_    = _as_list_[random.randint(0,len(_as_list_)-1)]
-        while self.node_already_split[_node_]: # find a non-split node...
-            _node_    = _as_list_[random.randint(0,len(_as_list_)-1)]
+        _node_    = _as_list_[random.randint(0, len(_as_list_)-1)]
+        while self.node_already_split[_node_]:  # find a non-split node...
+            _node_    = _as_list_[random.randint(0, len(_as_list_)-1)]
         _node_b_  = self.tree_bounds[_node_]
         xc, yc    = (_node_b_[0]+_node_b_[2])/2.0, (_node_b_[1]+_node_b_[3])/2.0
         _nbors_   = self.__neighbors__(_node_)
@@ -1765,7 +1716,6 @@ class SegmentOctTree(object):
             _nbor_b_ = self.tree_bounds[_nbor_]
             xcn, ycn = (_nbor_b_[0]+_nbor_b_[2])/2.0, (_nbor_b_[1]+_nbor_b_[3])/2.0
             svg += f'<line x1="{xT(xc)}" y1="{yT(yc)}" x2="{xT(xcn)}" y2="{yT(ycn)}" stroke="#000000" stroke-width="0.5" />'
-            
         svg +=  '</svg>'
         return svg
 
@@ -1799,4 +1749,3 @@ class SegmentOctTree(object):
 
         svg +=  '</svg>'
         return svg
-
