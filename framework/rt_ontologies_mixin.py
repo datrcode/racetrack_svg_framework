@@ -384,7 +384,8 @@ class RTOntology(object):
         if funcs is not None:      self.funcs = funcs
         else:                      self.funcs = {}
         # RDF triples
-        self.df_triples = pl.DataFrame(schema={'sbj':    pl.Int64,
+        self.df_triples = pl.DataFrame(schema={'uid':    pl.Int64,
+                                               'sbj':    pl.Int64,
                                                'stype':  pl.String,
                                                'sdisp':  pl.String,
                                                'vrb':    pl.String,
@@ -396,16 +397,17 @@ class RTOntology(object):
                                                'src':    pl.String})
         # Needs to match the df_triples schema
         # Needs to be the same as what is cleared later in the appendBufferedTriplesAndClearBuffer()
-        self.buffered_triples = {'sbj':  [],
-                                'stype': [],
-                                'sdisp': [],
-                                'vrb':   [],
-                                'obj':   [],
-                                'otype': [],
-                                'odisp': [],
-                                'grp':   [],
-                                'gdisp': [],
-                                'src':   []}
+        self.buffered_triples = {'uid':  [],
+                                 'sbj':  [],
+                                 'stype': [],
+                                 'sdisp': [],
+                                 'vrb':   [],
+                                 'obj':   [],
+                                 'otype': [],
+                                 'odisp': [],
+                                 'grp':   [],
+                                 'gdisp': [],
+                                 'src':   []}
         # Unique identifiers lookups and reverse
         self.uid_lu     = {}
         self.rev_uid_lu = {}
@@ -430,6 +432,7 @@ class RTOntology(object):
         # Tabular Data Supplied By User
         self.tables         = {}
         self.table_mappings = {}
+        self.id_to_uid_lu   = {} # for any user-provided identifier's labeled as "uniq"
 
         # Performance measurements
         self.time_lu    = {}
@@ -705,6 +708,7 @@ class RTOntology(object):
         _df_ = pl.DataFrame(for_df)
         return _df_
 
+    #
     # resolveIdAndUpdateLookups() - resolve id and update lookups
     # self.uid_lu[<interger>] = (id-from-input, type-from-input, disposition-from-input)
     # _occurs_in_ == 'sbj' or 'obj' or 'sbj,obj'
@@ -715,7 +719,15 @@ class RTOntology(object):
         my_uid = 100_000 + len(self.uid_lu.keys())
         self.uid_lu[my_uid] = (_id_, _type_, _disp_)
         self.rev_uid_lu[_uniq_key_] = my_uid
+        if _disp_ == 'uniq': self.id_to_uid_lu[_id_] = my_uid
         return my_uid
+
+    #
+    # resolveUniqId() - resolve id -- should have been a unique
+    # ... currently not saved w/ state... so only good for initialization
+    #
+    def resolveUniqId(self, _id_):
+        return self.id_to_uid_lu[_id_]
 
     #
     # createId() - create an id
@@ -734,9 +746,16 @@ class RTOntology(object):
     # - only three are required -- sbj, vrb, obj
     #
     def bufferTripleToAddLater(self, sbj, vrb, obj, grp=None, src=None):
+        if type(sbj) is not int: raise Exception(f'bufferTripleToAddLater() - sbj is {type(sbj)}')
+        if type(obj) is not int: raise Exception(f'bufferTripleToAddLater() - obj is {type(obj)}')
+
+        # Create a unique id for the triple
+        my_uid = 100_000 + len(self.uid_lu.keys())
+
         # Resolve the ids
         sbj_tuple = self.uid_lu[sbj]
         obj_tuple = self.uid_lu[obj]
+        self.buffered_triples['uid'].   append(my_uid)
         self.buffered_triples['sbj'].   append(sbj)
         self.buffered_triples['stype']. append(sbj_tuple[1])
         self.buffered_triples['sdisp']. append(sbj_tuple[2])
@@ -751,6 +770,13 @@ class RTOntology(object):
         else: grp_disp = None
         self.buffered_triples['gdisp']. append(grp_disp)
         self.buffered_triples['src'].   append(src)
+
+        # As a tuple (for this event row) -- return the id for reference
+        _tuple_ = (my_uid, '__triple__', 'uniq')
+        self.uid_lu[my_uid]      = _tuple_
+        self.rev_uid_lu[_tuple_] = my_uid
+
+        return my_uid
 
     #
     # appendBufferedTriplesAndClearBuffer() - append buffered triples and clear buffers
