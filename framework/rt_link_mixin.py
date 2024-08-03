@@ -333,6 +333,35 @@ class RTLinkMixin(object):
             # ^^^ -- REMOVABLE (UNTIL WE MODIFY THE REST OF THE CODE BASE)
             # ^^^
 
+            # Create the columns for colors
+            self.df = self.df.with_columns(pl.lit(self.rt_self.co_mgr.getTVColor('data','default')).alias('__color_default__'))
+
+            # Handle varying colors
+            if self.color_by is not None and self.color_by in self.df.columns and (self.node_color == 'vary' or self.link_color == 'vary'):
+                if   self.node_color == 'vary' and self.link_color == 'vary':
+                    self.df = self.df.with_columns(pl.col(self.color_by).map_elements(lambda x: self.rt_self.co_mgr.getColor(x), return_dtype=pl.String).alias('__color_nodes__'))
+                    self.df = self.df.with_columns(pl.col('__color_nodes__').alias('__color_links__')) # make a copy...
+                elif self.node_color == 'vary':
+                    self.df = self.df.with_columns(pl.col(self.color_by).map_elements(lambda x: self.rt_self.co_mgr.getColor(x), return_dtype=pl.String).alias('__color_nodes__'))
+                elif self.link_color == 'vary':
+                    self.df = self.df.with_columns(pl.col(self.color_by).map_elements(lambda x: self.rt_self.co_mgr.getColor(x), return_dtype=pl.String).alias('__color_links__'))
+
+            # Handle fixed color for nodes
+            if self.node_color is not None and self.node_color.startswith('#') and len(self.node_color) == 7:
+                self.df = self.df.with_columns(pl.lit(self.node_color).alias('__color_nodes__'))
+            
+            # Make sure there's something for node colors
+            if '__color_nodes__' not in self.df.columns:
+                self.df = self.df.with_columns(pl.lit('#ffffff').alias('__color_nodes__'))
+
+            # Handle fixed color for links
+            if self.link_color is not None and self.link_color.startswith('#') and len(self.link_color) == 7:
+                self.df = self.df.with_columns(pl.lit(self.link_color).alias('__color_links__'))
+            
+            # Make sures there's something for link colors
+            if '__color_links__' not in self.df.columns:
+                self.df = self.df.with_columns(pl.lit('#000000').alias('__color_links__'))
+
             # Check the node information... make sure the parameters are set
             if self.sm_type is not None and self.sm_mode == 'node':                   self.node_shape = 'small_multiple'
             if self.sm_type is not None and (self.sm_w is None or self.sm_h is None): self.sm_w,self.sm_h = getattr(rt_self, f'{self.sm_type}SmallMultipleDimensions')(**self.sm_params)
@@ -593,42 +622,56 @@ class RTLinkMixin(object):
             _sz_ = self.link_size_lu[self.link_size] if self.link_size in self.link_size_lu else 1.0
             if type(self.link_size) == int or type(self.link_size) == float: _sz_ = self.link_size
 
-            _operations_, self.linkcols, _gb_str_  = [], [], []
+            _set_ = set() # final set of SVG tags to append to the SVG array of strings
+
             for i in range(len(self.relationships)):
-                _link_  = f'__rel{i}_link__'
+                _operations_, _color_calcs_, _gb_str_  = [], [], []
+
+                _link_  = '__rel_link__'
                 _fm_sx_, _fm_sy_ = f'__rel{i}_fm_sx__', f'__rel{i}_fm_sy__'
                 _to_sx_, _to_sy_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__'
                 _gb_str_.extend([_fm_sx_, _fm_sy_, _to_sx_, _to_sy_])
                 if self.link_size == 'vary':
                     _str_ops_ = [pl.lit('<line x1="'), pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
                                  pl.lit('" x2="'),     pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
-                                 pl.lit('" stroke="#000000" stroke-width="'),
+                                 pl.lit('" stroke="'), pl.col('__color_links_final__'), pl.lit('" stroke-width="'),
                                  self.link_size_min + (self.link_size_max - self.link_size_min)*(pl.col('__count__') - pl.col('__count__').min())/(0.01 + pl.col('__count__').max() - pl.col('__count__').min()),
                                  pl.lit(f'" opacity="{self.link_opacity}" />')]
                 else:
-                    _str_ops_ = [pl.lit('<line x1="'), pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
-                                 pl.lit('" x2="'),     pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
-                                 pl.lit(f'" stroke="#000000" stroke-width="{_sz_}" opacity="{self.link_opacity}" />')]
+                    _str_ops_ = [pl.lit('<line x1="'),  pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
+                                 pl.lit('" x2="'),      pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
+                                 pl.lit(f'" stroke="'), pl.col('__color_links_final__'), pl.lit(f'" stroke-width="{_sz_}" opacity="{self.link_opacity}" />')]
 
+                _color_calcs_.append((pl.when(pl.col('__color_links_nuniq__')==1).then(pl.col('__color_links_first__')).otherwise(pl.col('__color_default__'))).alias('__color_links_final__'))
                 _operations_.append(pl.concat_str(_str_ops_).alias(_link_))
-                self.linkcols.append(_link_)
 
-            # Uniquify the x0,y0 -> x1,y1 coordinates ... then format it into svg lines
-            # count by a field
-            if self.link_size == 'vary' and self.count_by_set == False and self.count_by in self.df:
-                self.df_link = self.df.group_by(_gb_str_).agg(pl.sum(self.count_by).alias('__count__')).with_columns(*_operations_)
-            # count by a field (set-based)
-            elif self.link_size == 'vary' and self.count_by_set == True and self.count_by in self.df:
-                self.df_link = self.df.group_by(_gb_str_).agg(pl.col(self.count_by).n_unique().alias('__count__')).with_columns(*_operations_)
-            # else either no counting or by the number of rows
-            else:
-                self.df_link = self.df.group_by(_gb_str_).agg(pl.len().alias('__count__')).with_columns(*_operations_)
+                # Define the color operations
+                color_operations = [pl.col('__color_links__').n_unique().alias('__color_links_nuniq__'),
+                                    pl.col('__color_default__').first(),
+                                    pl.col('__color_links__').first().alias('__color_links_first__')]
 
-            # Return the list of links
-            _set_ = set()
-            if self.link_size is not None:
-                for i in range(len(self.linkcols)): 
-                    _set_ |= set(self.df_link.drop_nulls(subset=[self.linkcols[i]])[self.linkcols[i]].unique())
+                # Uniquify the x0,y0 -> x1,y1 coordinates ... then format it into svg lines
+                # count by a field
+                if self.link_size == 'vary' and self.count_by_set == False and self.count_by in self.df:
+                    self.df_link = self.df.group_by(_gb_str_). \
+                                        agg(pl.sum(self.count_by).alias('__count__'), *color_operations). \
+                                        with_columns(*_color_calcs_). \
+                                        with_columns(*_operations_)
+                # count by a field (set-based)
+                elif self.link_size == 'vary' and self.count_by_set == True and self.count_by in self.df:
+                    self.df_link = self.df.group_by(_gb_str_). \
+                                        agg(pl.col(self.count_by).n_unique().alias('__count__'), *color_operations). \
+                                        with_columns(*_color_calcs_). \
+                                        with_columns(*_operations_)
+                # else either no counting or by the number of rows
+                else:
+                    self.df_link = self.df.group_by(_gb_str_). \
+                                           agg(pl.len().alias('__count__'), *color_operations). \
+                                           with_columns(*_color_calcs_). \
+                                           with_columns(*_operations_)
+
+                # Return the list of links
+                if self.link_size is not None: _set_ |= set(self.df_link.drop_nulls(subset=[_link_])[_link_].unique())
 
             return list(_set_)
         
@@ -674,9 +717,14 @@ class RTLinkMixin(object):
                                     pl.col(_syfld_).alias('__sy__'), 
                                     pl.col(_nmfld_).alias('__nm__')]
                     _dfs_.append(self.df.with_columns(*_operations_).drop_nulls(subset=['__sx__','__sy__','__nm__']))
-            self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']).agg((pl.len()/2.0).alias('__count__'), pl.col('__nm__').unique())
-            self.df_node = self.df_node.with_columns(pl.col('__nm__').list.len().alias('__nodes__'))
-            self.df_node = self.df_node.with_columns(pl.col('__nm__').list.get(0).alias('__first__'))
+            self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']). \
+                                            agg((pl.len()/2.0).alias('__count__'), pl.col('__nm__').unique(),
+                                                 pl.col('__color_nodes__').n_unique().alias('__color_nodes_nuniq__'),
+                                                 pl.col('__color_default__').first(),
+                                                 pl.col('__color_nodes__').first().alias('__color_nodes_first__'))
+            self.df_node = self.df_node.with_columns(pl.col('__nm__').list.len().alias('__nodes__'),
+                                                     pl.col('__nm__').list.get(0).alias('__first__'),
+                                                     (pl.when(pl.col('__color_nodes_nuniq__')==1).then(pl.col('__color_nodes_first__')).otherwise(pl.col('__color_default__'))).alias('__color_nodes_final__'))
 
             # Create the node SVG
             if    self.node_size is None: _svg_strs_ = []
@@ -686,7 +734,7 @@ class RTLinkMixin(object):
                 self.df_node = self.df_node.with_columns(pl.lit(_sz_).alias('__sz__'))
                 # Single nodes
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
-                            pl.lit(f'" r="{_sz_}" fill="#ffffff" stroke="#000000" stroke-width="{stroke_width}" />')]
+                            pl.lit(f'" r="{_sz_}" fill="'),  pl.col('__color_nodes_final__'), pl.lit('" stroke="#000000" stroke-width="{stroke_width}" />')]
                 df_node_singles = self.df_node.filter(pl.col('__nodes__')==1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_ = list(set(df_node_singles.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
                 # Multi nodes // nodes that are collapsed into a single pixel
@@ -696,7 +744,7 @@ class RTLinkMixin(object):
             elif self.node_size == 'vary':
                 self.df_node = self.df_node.with_columns((self.min_node_size + (self.max_node_size - self.min_node_size) * (pl.col('__count__') - pl.col('__count__').min()) / (0.01 + pl.col('__count__').max() - pl.col('__count__').min())).alias('__sz__'))
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
-                            pl.lit('" r="'), pl.col('__sz__'), pl.lit(f'" fill="#ffffff" stroke="#000000" stroke-width="{stroke_width}" />')]
+                            pl.lit('" r="'), pl.col('__sz__'), pl.lit(f'" fill="'), pl.col('__color_nodes_final__'), pl.lit('" stroke="#000000" stroke-width="{stroke_width}" />')]
                 self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_ = list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
             else: _svg_strs_ = []
