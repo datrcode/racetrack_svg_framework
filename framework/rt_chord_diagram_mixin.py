@@ -526,8 +526,8 @@ class RTChordDiagramMixin(object):
                      arrow_px                   = 16,            # arrow size in pixels
                      arrow_ratio                = 0.05,          # arrow size as a ratio of the radius
                      link_style                 = 'narrow',      # 'narrow', 'wide', 'bundled'
-                     min_link_size              = 0.8,           # for 'narrow', min link size
-                     max_link_size              = 4.0,           # for 'narrow', max link size
+                     link_size_min              = 0.8,           # for 'narrow', min link size
+                     link_size_max              = 4.0,           # for 'narrow', max link size
                      global_min                 = None,          # for small multiples, this is the largest across all of the variations
                      global_max                 = None,          # for small multiples, this is the smallest across all of the variations
                      # ----------------------------------------- # small multiples config
@@ -615,8 +615,8 @@ class RTChordDiagramMixin(object):
             self.arrow_px               = kwargs['arrow_px']                  # done!
             self.arrow_ratio            = kwargs['arrow_ratio']               # done!
             self.link_style             = kwargs['link_style']                # done!
-            self.min_link_size          = kwargs['min_link_size']             # done!
-            self.max_link_size          = kwargs['max_link_size']             # done!
+            self.link_size_min          = kwargs['link_size_min']             # done!
+            self.link_size_max          = kwargs['link_size_max']             # done!
             self.global_max             = kwargs['global_max']                # done!
             self.global_min             = kwargs['global_min']                # done!
             self.track_state            = kwargs['track_state']               # <--- still needs to be done
@@ -1292,8 +1292,8 @@ class RTChordDiagramMixin(object):
                             _path_ += f' m {-(arrow_len * (-uv[0] + arrow_scale*uv[1]))} {-(arrow_len * (-uv[1] - arrow_scale*uv[0]))}'
                             _path_ += f' l {  arrow_len * (-uv[0] - arrow_scale*uv[1])}  {  arrow_len * (-uv[1] + arrow_scale*uv[0])}'
 
-                        link_w = self.min_link_size + link_w_perc * (self.max_link_size - self.min_link_size)
-                        link_w = max(min(link_w, self.max_link_size), self.min_link_size)
+                        link_w = self.link_size_min + link_w_perc * (self.link_size_max - self.link_size_min)
+                        link_w = max(min(link_w, self.link_size_max), self.link_size_min)
 
                         svg.append(f'<path d="{_path_}" stroke="{_link_color_}" stroke-opacity="{self.link_opacity}" stroke-width="{link_w}" fill="none" />')
                         #svg.append(f'<circle cx="{x_pull0}" cy="{y_pull0}" r="4" fill="none" stroke="{_link_color_}"/>') # debug - control points
@@ -1668,8 +1668,8 @@ class RTChordDiagramMixin(object):
                             if self.node_dir_arc_ct[node][_fm_][_to_] != local_dir_arc_ct[node][_fm_][_to_]:
                                 perc = (local_dir_arc_ct[node][_fm_][_to_] - local_dir_arc_ct_min)/(local_dir_arc_ct_max - local_dir_arc_ct_min)
                                 link_w_perc *= perc
-                        link_w      = self.min_link_size + link_w_perc * (self.max_link_size - self.min_link_size)
-                        link_w      = max(min(link_w, self.max_link_size), self.min_link_size)
+                        link_w      = self.link_size_min + link_w_perc * (self.link_size_max - self.link_size_min)
+                        link_w      = max(min(link_w, self.link_size_max), self.link_size_min)
                         fm_pos      = fmto_fm_pos[fmto_key]
                         to_pos      = fmto_to_pos[fmto_key]
 

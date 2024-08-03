@@ -496,8 +496,8 @@ class RTLinkNodeMixin(object):
                  link_parallel_perc    = 0.2,  # percent for control point parallel to the link
                  link_ortho_perc       = 0.2,  # percent for control point orthogonal to the link
 
-                 max_link_size     = 4,        # for link vary...
-                 min_link_size     = 0.25,     # for link vary...
+                 link_size_max     = 4,        # for link vary...
+                 link_size_min     = 0.25,     # for link vary...
 
                  # -----------------------     # label information
 
@@ -796,8 +796,8 @@ class RTLinkNodeMixin(object):
             self.link_max_curvature_px      = kwargs['link_max_curvature_px']
             self.link_parallel_perc         = kwargs['link_parallel_perc']
             self.link_ortho_perc            = kwargs['link_ortho_perc']
-            self.max_link_size              = kwargs['max_link_size']
-            self.min_link_size              = kwargs['min_link_size']
+            self.link_size_max              = kwargs['link_size_max']
+            self.link_size_min              = kwargs['link_size_min']
             self.label_links                = kwargs['label_links']
             self.timing_marks               = kwargs['timing_marks']
             self.ts_field                   = kwargs['ts_field']
@@ -1264,7 +1264,7 @@ class RTLinkNodeMixin(object):
 
                         # Determine the size
                         if _sz is None:
-                            _this_sz = self.min_link_size + self.max_link_size * (_weight_ - _sz_min) / (_sz_max - _sz_min)
+                            _this_sz = self.link_size_min + (self.link_size_max - self.link_size_min) * (_weight_ - _sz_min) / (_sz_max - _sz_min)
                         else:
                             if type(self.link_size) == dict:
                                 if rel_tuple in self.link_size.keys():

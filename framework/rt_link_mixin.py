@@ -132,8 +132,8 @@ class RTLinkMixin(object):
              link_parallel_perc    = 0.2,  # percent for control point parallel to the link
              link_ortho_perc       = 0.2,  # percent for control point orthogonal to the link
 
-             max_link_size     = 4,        # for link vary...
-             min_link_size     = 0.25,     # for link vary...
+             link_size_max     = 4,        # for link vary...
+             link_size_min     = 0.25,     # for link vary...
 
              # -----------------------     # label information
 
@@ -240,8 +240,8 @@ class RTLinkMixin(object):
             self.link_max_curvature_px      = kwargs['link_max_curvature_px']
             self.link_parallel_perc         = kwargs['link_parallel_perc']
             self.link_ortho_perc            = kwargs['link_ortho_perc']
-            self.max_link_size              = kwargs['max_link_size']
-            self.min_link_size              = kwargs['min_link_size']
+            self.link_size_max              = kwargs['link_size_max']
+            self.link_size_min              = kwargs['link_size_min']
             self.label_links                = kwargs['label_links']
             self.timing_marks               = kwargs['timing_marks']
             self.ts_field                   = kwargs['ts_field']
@@ -603,7 +603,7 @@ class RTLinkMixin(object):
                     _str_ops_ = [pl.lit('<line x1="'), pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
                                  pl.lit('" x2="'),     pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
                                  pl.lit('" stroke="#000000" stroke-width="'),
-                                 self.min_link_size + (self.max_link_size - self.min_link_size)*(pl.col('__count__') - pl.col('__count__').min())/(0.01 + pl.col('__count__').max() - pl.col('__count__').min()),
+                                 self.link_size_min + (self.link_size_max - self.link_size_min)*(pl.col('__count__') - pl.col('__count__').min())/(0.01 + pl.col('__count__').max() - pl.col('__count__').min()),
                                  pl.lit(f'" opacity="{self.link_opacity}" />')]
                 else:
                     _str_ops_ = [pl.lit('<line x1="'), pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
