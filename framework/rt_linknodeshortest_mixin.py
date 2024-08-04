@@ -52,7 +52,7 @@ class RTLinkNodeShortestMixin(object):
                         y_ins                 = 10,
                         txt_h                 = 10,
                         draw_labels           = False,
-                        label_links           = True,      # if the third tuple is set in the relationship
+                        link_labels           = True,      # if the third tuple is set in the relationship
                         max_label_w           = 64,        # actuall max label height... but we'll stick with convention ... None means no limit
                         w                     = 1024):
         _params_ = locals().copy()
@@ -86,7 +86,7 @@ class RTLinkNodeShortestMixin(object):
             self.y_ins               = kwargs['y_ins']
             self.txt_h               = kwargs['txt_h']
             self.draw_labels         = kwargs['draw_labels']
-            self.label_links         = kwargs['label_links']
+            self.link_labels         = kwargs['link_labels']
             self.max_label_w         = kwargs['max_label_w']
             self.w                   = kwargs['w']
 
@@ -282,7 +282,7 @@ class RTLinkNodeShortestMixin(object):
                         x1 = self.x_ins + x_path_gap*(i+1)
                         node_to_xy[n1] = (x1, y_base)
                         _color_ = self.rt_self.co_mgr.getTVColor('data','default')
-                        if (self.draw_labels and self.label_links) or self.link_color == 'relationship':
+                        if (self.draw_labels and self.link_labels) or self.link_color == 'relationship':
                             link_relationships = self.__linkRelationships__(n0, n1)
                             if   len(link_relationships) >  1: _str_ = '*'
                             elif len(link_relationships) == 1:
@@ -290,7 +290,7 @@ class RTLinkNodeShortestMixin(object):
                                 _str_ = str(_pop_)
                                 if self.link_color == 'relationship': _color_ = self.rt_self.co_mgr.getColor(_pop_)
                             else:                              _str_ = None
-                            if _str_ is not None and self.draw_labels and self.label_links: 
+                            if _str_ is not None and self.draw_labels and self.link_labels: 
                                 svg.append(self.rt_self.svgText(self.rt_self.cropText(_str_, self.txt_h, x1-x0), (x0+x1)/2, y_base-2, self.txt_h, anchor='middle'))
                         svg_edges.append(f'<line x1="{x0}" y1="{y_base}" x2="{x1}" y2="{y_base}" stroke="{_color_}" stroke-width="{self.link_size_px}" />')
 

@@ -478,8 +478,8 @@ class RTLinkNodeMixin(object):
                  label_only        = set(),    # label only set - only label these nodes
                  node_label_max_w  = 64,       # max label width for a node in pixels -- None means no limit
 
-                 max_node_size     = 4,        # for node vary...
-                 min_node_size     = 0.3,      # for node vary...
+                 node_size_max     = 4,        # for node vary...
+                 node_size_min     = 0.3,      # for node vary...
 
                  selected_entities = None,     # list of selected node names
 
@@ -501,7 +501,7 @@ class RTLinkNodeMixin(object):
 
                  # -----------------------     # label information
 
-                 label_links       = False,    # label links (by color_by... if link_color is 'vary'... and label only is empty or contains the label)
+                 link_labels       = False,    # label links (by color_by... if link_color is 'vary'... and label only is empty or contains the label)
 
                  # -----------------------     # timing information
 
@@ -550,6 +550,136 @@ class RTLinkNodeMixin(object):
                  txt_h                 = 12,     # text height for labeling
                  draw_labels           = False,  # draw labels flag # not implemented yet
                  draw_border           = True):  # draw a border around the graph
+        """Implementation of a link node diagram in SVG.
+
+        Required Parameters
+        -------------------
+
+        df : pandas.DataFrame | polars.DataFrame
+            The data frame to be drawn
+
+        relationships : list[tuple]
+            The list of relationships to be drawn.  Examples include:
+            [('fm','to')]                # single relationship
+            [('fm','to'), ('src','dst')] # multiple relationships
+            [(('fm','fm_sub'),'to')]     # multi-field from relationship with single field to relationship
+
+        Useful Parameters
+        -----------------
+
+        pos : dict[key:tuple(float,float)]
+            The positions for the nodes.  Examples include:
+            {'node1':(0.0,0.0), 'node2':(0.0,100.0)}
+            Note:  any nodes not in the position list will be assigned a random position.
+            Note:  for link(), the coordinates must be float values.
+
+        color_by : str | None
+            The field to be used to color the nodes or links.  node_color and/or link_color must be set to "vary" to use this.
+
+        count_by : str | None
+            The field to be used to count the nodes or links.  node_size and/or link_size must be set to "vary" to use this.
+
+        Node Parameters
+        ---------------
+
+        node_color : None | str | hex-color-string | dict[str:hex-color-string]
+
+        node_border_color : None | hex-color-string
+
+        node_size : None | str | int | float
+            'small', 'medium' (default), 'large', 'vary', 'hidden' | None
+
+        node_shape : None | str | dict[str:str] | function
+        
+        node_opacity : float
+
+        node_labels : None | dict[str:str]
+
+        label_only : set[str]
+
+        node_label_max_w : int | float
+
+        node_size_max: int | float
+
+        node_size_min: int | float
+        
+        selected_entities : None | set[str] # should be deprecated
+
+        Link Parameters
+        ---------------
+
+        link_color : None | str | hex-color-string
+        
+        link_size : None | str
+            'nil', 'small' (default), 'medium', 'large', 'vary', 'hidden' | None
+
+        link_opacity : float
+
+        link_shape: str
+            'line' (default), 'curve', 'arrow'
+
+        link_arrow: bool
+
+        link_arrow_style: str
+            'kite', 'kite_v2', 'kite_v3' (default)
+
+        link_arrow_length: int | float
+
+        link_dash: None | str | dict[relationship-tuple:str] | function
+
+        link_max_curvature_px: int | float
+
+        link_parallel_perc: float
+
+        link_ortho_perc: float
+
+        link_size_max: int | float
+
+        link_size_min: int | float
+
+        timing_marks: bool
+            Render timing marks on the links
+        
+        ts_field: str | None
+            The field to use for timing marks
+
+        timing_mark_length: int | float
+            Size of the timing mark in pixels
+
+        Standard Parameters
+        -------------------
+
+        track_state : bool
+            Track state for interactive filtering operations
+        
+        x_view, y_view : int
+            The x and y offset for the SVG view
+
+        w, h : int
+            The width and height of the SVG frame
+
+        x_ins, y_ins : int
+            The x and y spacing to inset the visualization
+
+        txt_h : int
+            The height of the text for node and link labels
+
+        draw_labels : bool
+            Draw the node labels (link labels are enabled by "link_labels" parameter)
+
+        draw_border : bool
+            Draw a border around the visualization
+
+        Background Shapes
+        -----------------
+
+        Convey Hulls
+        ------------
+
+        Small Multiples
+        ---------------
+
+        """
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTLinkNode(self, **_params_)
@@ -781,8 +911,8 @@ class RTLinkNodeMixin(object):
             self.node_labels_only           = kwargs['node_labels_only']
             self.node_label_max_w           = kwargs['node_label_max_w']
             self.label_only                 = kwargs['label_only']             # tied with labelOnly() method
-            self.max_node_size              = kwargs['max_node_size']
-            self.min_node_size              = kwargs['min_node_size']
+            self.node_size_max              = kwargs['node_size_max']
+            self.node_size_min              = kwargs['node_size_min']
             self.selected_entities          = kwargs['selected_entities']
             if self.selected_entities is None: self.selected_entities = set()
             self.link_color                 = kwargs['link_color']
@@ -798,7 +928,7 @@ class RTLinkNodeMixin(object):
             self.link_ortho_perc            = kwargs['link_ortho_perc']
             self.link_size_max              = kwargs['link_size_max']
             self.link_size_min              = kwargs['link_size_min']
-            self.label_links                = kwargs['label_links']
+            self.link_labels                = kwargs['link_labels']
             self.timing_marks               = kwargs['timing_marks']
             self.ts_field                   = kwargs['ts_field']
             self.timing_mark_length         = kwargs['timing_mark_length']
@@ -1306,7 +1436,7 @@ class RTLinkNodeMixin(object):
                             _co = self.rt_self.co_mgr.getTVColor('data','default')
 
                         # Draw the link labels (third part of the relationship tuple or the color_by value)
-                        if self.label_links and ((len(rel_tuple) == 3) or (self.color_by is not None)):
+                        if self.link_labels and ((len(rel_tuple) == 3) or (self.color_by is not None)):
                             _label_field_ = rel_tuple[2] if len(rel_tuple) == 3 else self.color_by
                             _label_set_   = set(k_df[_label_field_])
                             _link_str = _label_set_.pop() if len(_label_set_) == 1 else '*'
@@ -1611,15 +1741,15 @@ class RTLinkNodeMixin(object):
                                     # Determine the size (if it varies)
                                     if self.node_size == 'vary':
                                         if self.count_by is None:
-                                            _sz = self.max_node_size * len(k_df) / self.max_node_value
+                                            _sz = self.node_size_max * len(k_df) / self.max_node_value
                                         elif self.count_by in self.df.columns and self.count_by_set:
-                                            _sz = self.max_node_size * len(set(k_df[self.count_by])) / self.max_node_value
+                                            _sz = self.node_size_max * len(set(k_df[self.count_by])) / self.max_node_value
                                         elif self.count_by in self.df.columns:
-                                            _sz = self.max_node_size * k_df[self.count_by].sum() / self.max_node_value
+                                            _sz = self.node_size_max * k_df[self.count_by].sum() / self.max_node_value
                                         else:
                                             _sz = 1
-                                        if _sz < self.min_node_size:
-                                            _sz = self.min_node_size
+                                        if _sz < self.node_size_min:
+                                            _sz = self.node_size_min
                                     
                                     # Determine the node shape
                                     # ... by dictionary... into either a shape string... or into an SVG string

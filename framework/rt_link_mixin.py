@@ -114,8 +114,8 @@ class RTLinkMixin(object):
              label_only        = set(),    # label only set - only label these nodes
              node_label_max_w  = 64,       # max label width for a node in pixels -- None means no limit
 
-             max_node_size     = 4,        # for node vary...
-             min_node_size     = 0.3,      # for node vary...
+             node_size_max     = 4,        # for node vary...
+             node_size_min     = 0.3,      # for node vary...
 
              selected_entities = None,     # list of selected node names
 
@@ -137,7 +137,7 @@ class RTLinkMixin(object):
 
              # -----------------------     # label information
 
-             label_links       = False,    # label links (by color_by... if link_color is 'vary'... and label only is empty or contains the label)
+             link_labels       = False,    # label links (by color_by... if link_color is 'vary'... and label only is empty or contains the label)
 
              # -----------------------     # timing information
 
@@ -186,6 +186,15 @@ class RTLinkMixin(object):
              txt_h                 = 12,     # text height for labeling
              draw_labels           = False,  # draw labels flag # not implemented yet
              draw_border           = True):  # draw a border around the graph
+        """
+        See documentation for linkNode().
+
+        Notes:
+        - link is a syntactic equivalent call as linkNode()
+        - However, link does not fully implement all of the functionality of linkNode()
+        - Notable differences include:
+        -- link() only works with Polars dataframes -- for example, mixed types are not supported due to Polars optimizations
+        """
         _params_ = locals().copy()
         _params_.pop('self')
         if self.isPandas(df): return self.RTLinkNode(self, **_params_)
@@ -225,8 +234,8 @@ class RTLinkMixin(object):
             self.node_labels_only           = kwargs['node_labels_only']
             self.node_label_max_w           = kwargs['node_label_max_w']
             self.label_only                 = kwargs['label_only']             # tied with labelOnly() method
-            self.max_node_size              = kwargs['max_node_size']
-            self.min_node_size              = kwargs['min_node_size']
+            self.node_size_max              = kwargs['node_size_max']
+            self.node_size_min              = kwargs['node_size_min']
             self.selected_entities          = kwargs['selected_entities']
             if self.selected_entities is None: self.selected_entities = set()
             self.link_color                 = kwargs['link_color']
@@ -242,7 +251,7 @@ class RTLinkMixin(object):
             self.link_ortho_perc            = kwargs['link_ortho_perc']
             self.link_size_max              = kwargs['link_size_max']
             self.link_size_min              = kwargs['link_size_min']
-            self.label_links                = kwargs['label_links']
+            self.link_labels                = kwargs['link_labels']
             self.timing_marks               = kwargs['timing_marks']
             self.ts_field                   = kwargs['ts_field']
             self.timing_mark_length         = kwargs['timing_mark_length']
@@ -742,7 +751,7 @@ class RTLinkMixin(object):
                 df_node_multis  = self.df_node.filter(pl.col('__nodes__')>1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_.extend(list(set(df_node_multis.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique())))
             elif self.node_size == 'vary':
-                self.df_node = self.df_node.with_columns((self.min_node_size + (self.max_node_size - self.min_node_size) * (pl.col('__count__') - pl.col('__count__').min()) / (0.01 + pl.col('__count__').max() - pl.col('__count__').min())).alias('__sz__'))
+                self.df_node = self.df_node.with_columns((self.node_size_min + (self.node_size_max - self.node_size_min) * (pl.col('__count__') - pl.col('__count__').min()) / (0.01 + pl.col('__count__').max() - pl.col('__count__').min())).alias('__sz__'))
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
                             pl.lit('" r="'), pl.col('__sz__'), pl.lit(f'" fill="'), pl.col('__color_nodes_final__'), pl.lit('" stroke="#000000" stroke-width="{stroke_width}" />')]
                 self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
