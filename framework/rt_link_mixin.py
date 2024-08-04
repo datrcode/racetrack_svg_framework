@@ -764,7 +764,8 @@ class RTLinkMixin(object):
                 df_node_labels = self.df_node.filter(pl.col('__nodes__') == 1)
                 if self.label_only  is not None and len(self.label_only)  > 0: df_node_labels = self.df_node.filter(pl.col('__first__').is_in(self.label_only)) # Filter
                 df_node_labels = df_node_labels.with_columns(pl.col('__first__').cast(pl.Utf8).alias('__label__'))
-                if self.node_labels is not None and len(self.node_labels) > 0: df_node_labels = df_node_labels.with_columns(pl.col('__first__').replace(self.node_labels).alias('__label__'))
+                if self.node_labels is not None and len(self.node_labels) > 0: 
+                    df_node_labels = df_node_labels.with_columns(pl.col('__first__').map_elements(lambda x: self.node_labels[x] if x in self.node_labels else None, return_dtype=pl.Utf8).alias('__label__'))
                 df_node_labels = df_node_labels.with_columns(pl.col('__label__').str.replace_all('&','&amp').str.replace_all('<','&lt;').str.replace_all('>','&gt;'))
                 _str_op_ = [pl.lit('<text x="'), pl.col('__sx__'), pl.lit('" y="'), pl.col('__sy__') + pl.col('__sz__') + self.txt_h,
                             pl.lit(f'" font-size="{self.txt_h}px" text-anchor="middle">'), pl.col('__label__'),
