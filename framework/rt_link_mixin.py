@@ -185,6 +185,7 @@ class RTLinkMixin(object):
              y_ins                 = 3,
              txt_h                 = 12,     # text height for labeling
              draw_labels           = False,  # draw labels flag # not implemented yet
+             draw_performance      = True,   # draw performance information
              draw_border           = True):  # draw a border around the graph
         """
         See documentation for linkNode().
@@ -283,6 +284,7 @@ class RTLinkMixin(object):
             self.x_ins                      = kwargs['x_ins']
             self.y_ins                      = kwargs['y_ins']
             self.txt_h                      = kwargs['txt_h']
+            self.draw_performance           = kwargs['draw_performance']
             self.draw_labels                = kwargs['draw_labels']  # tied with drawLabels() method
             self.draw_border                = kwargs['draw_border']
 
@@ -825,9 +827,10 @@ class RTLinkMixin(object):
                 svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />')
 
             t_svg_1 = time.time()
-            t_svg   = t_svg_1 - t_svg_0
-            _color_ = '#8B0000' if t_svg > 0.2 else '#013220'
-            svg.append(self.rt_self.svgText(f'{t_svg:.2f}s', self.w-self.y_ins, self.h-self.y_ins, 10, color=_color_, anchor='end'))
+            if self.draw_performance:
+                t_svg   = t_svg_1 - t_svg_0
+                _color_ = '#8B0000' if t_svg > 0.2 else '#013220'
+                svg.append(self.rt_self.svgText(f'{t_svg:.2f}s', self.w-3, self.h-3, 10, color=_color_, anchor='end'))
             svg.append('</svg>')
             self.last_render = ''.join(svg)
             return self.last_render

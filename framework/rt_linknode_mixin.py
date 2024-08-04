@@ -548,6 +548,7 @@ class RTLinkNodeMixin(object):
                  x_ins                 = 3,
                  y_ins                 = 3,
                  txt_h                 = 12,     # text height for labeling
+                 draw_performance      = True,   # draw performance information (not implemented yet)
                  draw_labels           = False,  # draw labels flag # not implemented yet
                  draw_border           = True):  # draw a border around the graph
         """Implementation of a link node diagram in SVG.
@@ -663,6 +664,9 @@ class RTLinkNodeMixin(object):
 
         txt_h : int
             The height of the text for node and link labels
+
+        draw_performance : bool
+            Draw the performance information
 
         draw_labels : bool
             Draw the node labels (link labels are enabled by "link_labels" parameter)
