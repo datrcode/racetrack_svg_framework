@@ -347,7 +347,7 @@ class RTLinkMixin(object):
                     self.df = self.df.with_columns(pl.col(self.color_by).map_elements(lambda x: self.rt_self.co_mgr.getColor(x), return_dtype=pl.String).alias('__color_links__'))
 
             # Handle fixed color for nodes
-            if self.node_color is not None and self.node_color.startswith('#') and len(self.node_color) == 7:
+            if self.node_color is not None and type(self.node_color) is str and self.node_color.startswith('#') and len(self.node_color) == 7:
                 self.df = self.df.with_columns(pl.lit(self.node_color).alias('__color_nodes__'))
             
             # Make sure there's something for node colors
@@ -355,7 +355,7 @@ class RTLinkMixin(object):
                 self.df = self.df.with_columns(pl.lit('#ffffff').alias('__color_nodes__'))
 
             # Handle fixed color for links
-            if self.link_color is not None and self.link_color.startswith('#') and len(self.link_color) == 7:
+            if self.link_color is not None and type(self.link_color) is str and self.link_color.startswith('#') and len(self.link_color) == 7:
                 self.df = self.df.with_columns(pl.lit(self.link_color).alias('__color_links__'))
             
             # Make sures there's something for link colors
