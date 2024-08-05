@@ -583,7 +583,7 @@ class RTLinkNodeMixin(object):
         Node Parameters
         ---------------
 
-        node_color : None | str | hex-color-string | dict[str:hex-color-string]
+        node_color : None | 'vary' | hex-color-string | dict[str:hex-color-string]
 
         node_border_color : None | hex-color-string
 
@@ -591,18 +591,24 @@ class RTLinkNodeMixin(object):
             'small', 'medium' (default), 'large', 'vary', 'hidden' | None
 
         node_shape : None | str | dict[str:str] | function
+            Shapes to use for nodes.
         
         node_opacity : float
 
         node_labels : None | dict[str:str]
+            Alternative labels to use for nodes.
 
         label_only : set[str]
+            If set and not None, only the specified nodes will be labeled.
 
         node_label_max_w : int | float
+            Maximum label width for node labels.
 
         node_size_max: int | float
-
+            Maximum size of a node for variable size nodes.
+        
         node_size_min: int | float
+            Minimum size of a node for variable size nodes.
         
         selected_entities : None | set[str] # should be deprecated
 
@@ -627,6 +633,7 @@ class RTLinkNodeMixin(object):
         link_arrow_length: int | float
 
         link_dash: None | str | dict[relationship-tuple:str] | function
+            SVG dash patterns for links
 
         link_max_curvature_px: int | float
 
@@ -635,8 +642,10 @@ class RTLinkNodeMixin(object):
         link_ortho_perc: float
 
         link_size_max: int | float
+            Maximum size of a link for variable size links.
 
         link_size_min: int | float
+            Minimum size of a link for variable size links.
 
         timing_marks: bool
             Render timing marks on the links
@@ -677,8 +686,34 @@ class RTLinkNodeMixin(object):
         Background Shapes
         -----------------
 
+        bg_shape_lu : None | dict[str:list[tuple(float,float)]] | dict[str:str]
+            The lookup table for background shapes.
+            - key is the shape name
+            - value is a list of (x,y) tuples
+            - value is an svg-compliant path string
+
+        bg_shape_label_color : None | 'vary' | hex-color-string | dict[str:hex-color-string]
+            - color to use for background shape labels
+
+        bg_shape_fill : None | 'vary' | hex-color-string | dict[str:hex-color-string]
+            The background shape fill color
+
+        bg_shape_stroke : None | 'default' | hex-color-string | dict[str:hex-color-string]
+            The background shape stroke color
+
+        bg_shape_stroke_w : None | int | float | dict[str:int | float]
+            The background shape stroke width
+        
         Convey Hulls
         ------------
+
+        convex_hull_lu : None
+
+        convex_hull_opacity : float
+
+        convex_hull_labels : bool
+
+        convex_hull_stroke_width : None | int | float
 
         Small Multiples
         ---------------
