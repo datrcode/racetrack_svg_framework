@@ -195,6 +195,7 @@ class RTLinkMixin(object):
         - However, link does not fully implement all of the functionality of linkNode()
         - Notable differences include:
         -- link() only works with Polars dataframes -- for example, mixed types are not supported due to Polars optimizations
+        -- link() requires both relatonship fields to be the same type.
         """
         _params_ = locals().copy()
         _params_.pop('self')

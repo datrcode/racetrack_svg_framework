@@ -707,7 +707,9 @@ class RTLinkNodeMixin(object):
         Convey Hulls
         ------------
 
-        convex_hull_lu : None
+        convex_hull_lu : dict[str:str] | None
+            The keys are the regex strings to match against node names.  The values
+            are the names to use for the convex hulls.
 
         convex_hull_opacity : float
 
