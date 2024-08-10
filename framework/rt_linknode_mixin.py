@@ -557,7 +557,7 @@ class RTLinkNodeMixin(object):
         -------------------
 
         df : pandas.DataFrame | polars.DataFrame
-            The data frame to be drawn
+            Dataframe to render.
 
         relationships : list[tuple]
             The list of relationships to be drawn.  Examples include:

@@ -95,6 +95,80 @@ class RTHistogramMixin(object):
                   draw_labels        = True,   # draw labels flag
                   draw_border        = True    # draw a border around the histogram
                  ):
+        """Implementation of a histogram in SVG.
+
+        Required Parameters
+        -------------------
+        df : pandas.DataFrame | polars.DataFrame
+            Dataframe to render
+
+        bin_by : str | list[str]
+            Field(s) to bin by
+
+        Useful Parameters
+        -----------------
+
+        color_by : str | None
+            The field to be used to color the bars
+
+        count_by : str | None
+            The field to be used to count the bins
+        
+        count_by_set : bool
+            If True, use a set operation to count the items in a bin
+        
+        first_line_i : int
+            The first bar index to render
+
+        draw_distribution : bool
+            If True, draw the distribution of the bars
+
+        labels : dict
+            A dictionary of labels to be used in place of the dataframe cell values
+
+        Globalization Parameters
+        ------------------------
+
+        global_color_order : list
+            The order to use for the color palette within each bar
+
+        global_max : int
+            The maximum to use for the bar length calculation
+
+        global_min : int
+            The minimum to use for the bar length calculation
+
+        just_calc_max : bool
+            Forces return of the maximum for this render config... which will then be used for the global max across bar charts
+
+        Standard Parameters
+        -------------------
+
+        widget_id : str
+            The id of the SVG widget.  If set to None, a random id will be generated.
+
+        track_state : bool
+            Track state for interactive filtering operations
+        
+        x_view, y_view : int
+            The x and y offset for the SVG view
+
+        w, h : int
+            The width and height of the SVG frame
+
+        bar_h : int
+            The height of individual bars and the height of the text
+
+        v_gap : int
+            The vertical gap between bars
+
+        draw_labels : bool
+            Draw the node labels (link labels are enabled by "link_labels" parameter)
+
+        draw_border : bool
+            Draw a border around the visualization
+
+        """
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTHistogram(self, **_params_)
