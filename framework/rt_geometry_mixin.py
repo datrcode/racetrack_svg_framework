@@ -410,7 +410,14 @@ class RTGeometryMixin(object):
     #
     # pointOnLine()
     #
-    def pointOnLine(self, x, y, x0, y0, x1, y1):
+    def pointOnLine(self, point, line) -> tuple[bool, float]:
+        """ Determine if a point is on a line.  Returns True if the point is on the line, False otherwise and the fraction along the line.
+        :param point: a tuple of (x,y)
+        :param line: a tuple of ((x0,y0), (x1,y1))
+        :return: True if the point is on the line, False otherwise and the fraction along the line
+        """
+        x0, y0, x1, y1 = line[0][0], line[0][1], line[1][0], line[1][1]
+        x,  y          = point[0], point[1]
         dx, dy = x1 - x0, y1 - y0
         # xp = x0 + t * dx
         # yp = y0 + t * dy
@@ -435,6 +442,12 @@ class RTGeometryMixin(object):
     # - return BOOLEAN, x_intersect, y_intersect, t_for_s0, t_for_s1 # I think :(
     #
     def segmentsIntersect(self, s0, s1):
+        """
+        Determine if two segments intersect.
+        :param s0: a tuple of ((x0,y0), (x1,y1))
+        :param s1: a tuple of ((x2,y2), (x3,y3))
+        :return: True if the segments intersect, False otherwise, the x and the y coordinates of the intersection, and the fractions along each of the segments
+        """
         x0, y0, x1, y1 = s0[0][0], s0[0][1], s0[1][0], s0[1][1]
         x2, y2, x3, y3 = s1[0][0], s1[0][1], s1[1][0], s1[1][1]
         _xmin, _ymin, _amin, _bmin = min(x0, x1), min(y0, y1), min(x2, x3), min(y2, y3)
@@ -464,8 +477,8 @@ class RTGeometryMixin(object):
         # Deal with parallel lines
         denom = B * D - A * C                # Cross Product
         if denom == 0.0:                     # Parallel...  and if co-linear, overlap because of the previous bounds test...
-            online0, t0 = self.pointOnLine(x2, y2, x0, y0, x1, y1)
-            online1, t1 = self.pointOnLine(x0, y0, x2, y2, x3, y3)
+            online0, t0 = self.pointOnLine((x2, y2), ((x0, y0), (x1, y1)))
+            online1, t1 = self.pointOnLine((x0, y0), ((x2, y2), (x3, y3)))
             if online0 or online1:
                 onseg, t = self.pointWithinSegment(x0, y0, x2, y2, x3, y3)
                 if onseg: return True, x0, y0, 0.0, t
@@ -497,6 +510,11 @@ class RTGeometryMixin(object):
     # https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm
     #
     def segmentIntersectsCircle(self, segment, circle):
+        """ Determines if a line segment intersects with a circle.
+        :param segment: a tuple of ((x0,y0),(x1,y1))
+        :param circle:  a tuple of (cx, cy, r)
+        :return:        distance (from what?) ... and an xy tuple (of something)
+        """
         A, B, C = segment[0], segment[1], (circle[0], circle[1])
         sub  = lambda a, b: (a[0] - b[0], a[1] - b[1])
         AC, AB = sub(C, A), sub(B, A)
@@ -530,6 +548,14 @@ class RTGeometryMixin(object):
                                              clip_rect       = None,
                                              fill            = '#000000',
                                              naming          = None):
+        """ Create a background lookup table (and the fill table) from a shape file...
+        :param shape_file: path to shape file
+        :param keep_as_shapely: keep as the shapely polygon
+        :param clip_rect: 4-tuple of x0, y0, x1, y1
+        :param fill: hex color string
+        :param naming: naming function for series from geopandas dataframe
+        :return: tuple of (bg_shape_lu, bg_fill_lu)
+        """
         import geopandas as gpd
         gdf = gdf_orig = gpd.read_file(shape_file)
         if clip_rect is not None:
@@ -564,6 +590,10 @@ class RTGeometryMixin(object):
     # - if there's no shape in _poly, will return None
     #
     def shapelyPolygonToSVGPathDescription(self, _poly):
+        """ Converts a shapely polygon to an SVG path...
+        :param _poly: shapely polygon
+        :return: SVG path string
+        """
         #
         # MultiPolygon -- just break into individual polygons...
         #
@@ -633,6 +663,11 @@ class RTGeometryMixin(object):
     # https://en.wikipedia.org/wiki/Graham_scan
     #
     def grahamScan(self, pos):
+        """ Compute the convex hull of x,y points in a lookup table using the Graham Scan algorithm
+        https://en.wikipedia.org/wiki/Graham_scan
+        :param pos: lookup table of keys to xy tuples
+        :return: convex hull as a list of xy tuples
+        """
         # Find the lowest point... if same y coordinate, find the leftmost point
         pt_low = None
         for k in pos.keys():
@@ -683,7 +718,12 @@ class RTGeometryMixin(object):
                         pts,   # return value from grahamScan()
                         pos,   # original lookup passed into the grahamScan() algorithm
                         r=8):  # radius of the extrusion
-
+        """ Extrude the polyline returned by the grahamScan() method
+        :param pts: return value from grahamScan()
+        :param pos: original lookup passed into the grahamScan() algorithm
+        :param r: radius of the extrusion
+        :return: string designed for the path svg element
+        """
         d_str = ''
 
         for i in range(0, len(pts)):
@@ -741,6 +781,18 @@ class RTGeometryMixin(object):
     #
     def levelSetFast(self,
                      _raster):
+        """ Perform a level set operation on an integer raster (2d array of integers).
+
+        Within the raster parameter, the following schema is used:
+        - "0" or None means to calculate
+        - "-1" means a wall / immovable object
+        - "> 0" means the class to expand
+
+        Faster version doesn't correctly model obstacles... slower version is more precise
+
+        :param _raster: 2d array of integers
+        :return: 2d array of integers (class), 2d array of floats (time found or distance), and 2d array of xy tuples (origin of class)
+        """
         h, w = len(_raster), len(_raster[0])
 
         # Allocate the level set
@@ -849,6 +901,18 @@ class RTGeometryMixin(object):
     # - "> 0" means the class to expand
     #
     def levelSet(self, _raster):
+        """ Perform a level set operation on an integer raster (2d array of integers).
+
+        Within the raster parameter, the following schema is used:
+        - "0" or None means to calculate
+        - "-1" means a wall / immovable object
+        - "> 0" means the class to expand
+
+        This is the slower version and (more) precisely models obstacles.  Use levelSetFast() if possible.
+
+        :param _raster: 2d array of integers
+        :return: 2d array of integers (class), 2d array of floats (time found or distance), and 2d array of xy tuples (origin of class)
+        """
         h, w = len(_raster), len(_raster[0])
 
         # Allocate the level set
@@ -935,6 +999,10 @@ class RTGeometryMixin(object):
     # smoothSegments() - smooth out segments with a 3 window kernel.
     #
     def smoothSegments(self, segments):
+        """ Smooth out a list of segments with a 3 window kernel.
+        :param segments: list of (x, y) tuples (not segments as the name would imply)
+        :return:         smoothed list of (x, y) tuples 
+        """
         smoothed = [segments[0]]
         for i in range(1, len(segments)-1):
             x, y = (segments[i-1][0] + segments[i][0] + segments[i+1][0])/3.0, (segments[i-1][1] + segments[i][1] + segments[i+1][1])/3.0
@@ -965,6 +1033,12 @@ class RTGeometryMixin(object):
     # - expand segments into piecewise segments
     #
     def expandSegmentsIntoPiecewiseCurvedParts(self, segments, amp=5.0, ampends=20.0, max_travel=2.0):
+        """ Expand linear segments into curved bezier segments by using the before and after segments to control the curve.
+        :param segments: list of (x, y) tuples (not segments as the name would imply)
+        :param amp:      how much to expand the curve in the before and after segments
+        :param ampends:  how much to expand the curve in the ends
+        :return:         list of (x, y) tuples
+        """
         _piecewise_ = [segments[0], segments[1]]
         for i in range(1, len(segments)-2):
             _amp_ = ampends if ((i == 1) or (i == len(segments)-3)) else amp
