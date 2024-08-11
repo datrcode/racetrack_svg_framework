@@ -438,6 +438,14 @@ class RTOntology(object):
         self.time_lu    = {}
         for x in ['fill.trace_json_paths', 'fill.collapse', 'fill.parse']: self.time_lu[x] = 0
 
+    #
+    # __repr__()
+    #
+    def __repr__(self):
+        _strs_ = [f'RTOntology(triple_count={len(self.df_triples)}, buffered_triple_count={len(self.buffered_triples["uid"])}, uids={len(self.uid_lu)}, rev_uids={len(self.rev_uid_lu)})']
+        for x in self.validation_errors: _strs_.append(f'  Validation Error: "{x}"')
+        return '\n'.join(_strs_)
+
     # to_files() - write state to several files
     def to_files(self, _base_name_):
         # RDF triples
@@ -490,6 +498,8 @@ class RTOntology(object):
             pl.DataFrame(_lu_).write_parquet(f'{_base_name_}.table_mappings.parquet')
             for _table_id_ in self.tables:
                 self.tables[_table_id_].write_parquet(f'{_base_name_}.{_table_id_}.parquet')
+        
+        return self
 
     # fm_files() - read state from several files
     def fm_files(self, _base_name_):
@@ -531,6 +541,8 @@ class RTOntology(object):
 
             for _table_id_ in self.tables:
                 self.tables[_table_id_] = pl.read_parquet(f'{_base_name_}.{_table_id_}.parquet')
+        
+        return self
 
     # __substituteDefines__() - subsitute defines
     def __substituteDefines__(self, _txt_):
