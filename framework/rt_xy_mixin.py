@@ -1197,6 +1197,12 @@ class RTXYMixin(object):
             self.last_render = None
 
         #
+        # print() version of class
+        #
+        def __repr__(self):
+            return f'xy(df.len={len(self.df)}, x_field={self.x_field}, y_field={self.y_field})'
+            
+        #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
