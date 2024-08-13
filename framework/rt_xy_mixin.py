@@ -1200,7 +1200,7 @@ class RTXYMixin(object):
         # print() version of class
         #
         def __repr__(self):
-            return f'xy(df.len={len(self.df)}, x_field={self.x_field}, y_field={self.y_field})'
+            return f'xy(df.len={len(self.df)}, x_field={self.x_field}, y_field={self.y_field}, {self.w}x{self.h})'
             
         #
         # SVG Representation Renderer

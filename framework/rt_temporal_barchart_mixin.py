@@ -445,11 +445,17 @@ class RTTemporalBarChartMixin(object):
             self.last_render = None
 
         #
+        # print() version of class
+        #
+        def __repr__(self):
+            def tQontQ(t): return 'None' if t is None else "'" + str(t) + "'"
+            return f'temporalBarChart(df.len={len(self.df)}, ts_field=\'{self.ts_field}\', count_by={tQontQ(self.count_by)}, color_by={tQontQ(self.color_by)}, {self.w}x{self.h})'
+        
+        #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
-            if self.last_render is None:
-                self.renderSVG()
+            if self.last_render is None: self.renderSVG()
             return self.last_render
 
         #

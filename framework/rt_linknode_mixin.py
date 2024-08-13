@@ -1946,6 +1946,15 @@ class RTLinkNodeMixin(object):
             return _svg_
 
         #
+        # print() version of class
+        #
+        def __repr__(self):
+            _s_ = []
+            for k in self.relationships: _s_.append(str(k[0]) + '->' + str(k[1]))
+            _relates_ = ' | '.join(_s_)
+            return f'linkNode(df.len={len(self.df)}, relationships={_relates_}, {self.w}x{self.h})'
+
+        #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
