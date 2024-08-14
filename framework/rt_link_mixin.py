@@ -364,7 +364,8 @@ class RTLinkMixin(object):
             
             # Make sure there's something for node colors
             if '__color_nodes__' not in self.df.columns:
-                self.df = self.df.with_columns(pl.lit('#ffffff').alias('__color_nodes__'))
+                _co_ = self.rt_self.co_mgr.getTVColor('background','default')
+                self.df = self.df.with_columns(pl.lit(_co_).alias('__color_nodes__'))
 
             # Handle fixed color for links
             if self.link_color is not None and type(self.link_color) is str and self.link_color.startswith('#') and len(self.link_color) == 7:
@@ -372,7 +373,8 @@ class RTLinkMixin(object):
             
             # Make sures there's something for link colors
             if '__color_links__' not in self.df.columns:
-                self.df = self.df.with_columns(pl.lit('#000000').alias('__color_links__'))
+                _co_ = self.rt_self.co_mgr.getTVColor('data','default')
+                self.df = self.df.with_columns(pl.lit(_co_).alias('__color_links__'))
 
             # Check the node information... make sure the parameters are set
             if self.sm_type is not None and self.sm_mode == 'node':                   self.node_shape = 'small_multiple'
@@ -830,7 +832,7 @@ class RTLinkMixin(object):
             t_svg_1 = time.time()
             if self.draw_performance:
                 t_svg   = t_svg_1 - t_svg_0
-                _color_ = '#8B0000' if t_svg > 0.2 else '#013220'
+                _color_ = self.rt_self.co_mgr.getTVColor('performance','warning') if t_svg > 0.2 else self.rt_self.co_mgr.getTVColor('performance','default')
                 svg.append(self.rt_self.svgText(f'{t_svg:.2f}s', self.w-3, self.h-3, 10, color=_color_, anchor='end'))
             svg.append('</svg>')
             self.last_render = ''.join(svg)

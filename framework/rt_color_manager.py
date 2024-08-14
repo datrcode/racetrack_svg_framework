@@ -1,4 +1,4 @@
-# Copyright 2022 David Trimm
+# Copyright 2024 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -79,6 +79,10 @@ class RTColorManager:
         self.type_color_lu['context']['text']       = '#808080'
         self.type_color_lu['context']['highlight']  = '#ff0000'
         
+        self.type_color_lu['performance'] = {}
+        self.type_color_lu['performance']['default'] = '#000000'
+        self.type_color_lu['performance']['warning'] = '#8b0000' # dark red
+
         # Fix Some specific colors // mostly just for testing...
         self.str_to_color_lu['blue']   = '#0000ff'
         self.str_to_color_lu['red']    = '#ff0000'
