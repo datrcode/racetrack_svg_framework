@@ -557,7 +557,7 @@ class RTChordDiagramMixin(object):
 
     #
     # createConcatColumn() - concatenate multiple columns together into a single column
-    # - should be refactored with method of same name in base racetrack.py file // 2024-05-18
+    # - should be refactored with method of same name in base rtsvg.py file // 2024-05-18
     #
     def createConcatColumn(self, df, columns, new_column):
         def catFields(x, flds):

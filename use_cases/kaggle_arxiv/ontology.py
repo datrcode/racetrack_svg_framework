@@ -7,7 +7,7 @@ import time
 import os
 import sys
 sys.path.insert(1, '../../framework')
-from racetrack import *
+from rtsvg import *
 from rt_ontologies_mixin import jsonAbsolutePath, fillJSONPathElements
 rt = RACETrack()
 

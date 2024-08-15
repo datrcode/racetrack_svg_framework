@@ -45,10 +45,10 @@ class RTColorManager:
     #
     # Initialize the type value colors
     #
-    def __init__(self, racetrack):
+    def __init__(self, rt_self):
         self.str_to_color_lu = {}
         self.type_color_lu   = {}
-        self.racetrack       = racetrack
+        self.rt_self         = rt_self
 
         self.highlights_flag = False
         self.highlights_lu   = {}
@@ -204,7 +204,7 @@ class RTColorManager:
                 if type(s) == str and len(s) == 7 and s[0] == '#' and self.__allhex__(s[1:]):
                     self.str_to_color_lu[s] = s
                 else:    
-                    hc = self.racetrack.hashcode(s)
+                    hc = self.rt_self.hashcode(s)
 
                     # Updated Mixtures // 2022-11-27
                     h  =             ((hc>>16)&0x00ffff)/65535.0
@@ -336,7 +336,7 @@ class RTColorManager:
     #
     def optimizeCategoricalColors(self, cats):
         cat_ordered = sorted(list(set(cats))) # want it to be the same
-        hc = self.racetrack.hashcode('|'.join(cat_ordered)) & 0x00ffff
+        hc = self.rt_self.hashcode('|'.join(cat_ordered)) & 0x00ffff
         cs = self.brewerColors('qualitative',len(cats),hc)
         for i in range(0,len(cat_ordered)):
             self.str_to_color_lu[cat_ordered[i]] = cs[i]
@@ -443,8 +443,8 @@ class RTColorManagerDarkTheme(RTColorManager):
     #
     # Initialize the type value colors
     #
-    def __init__(self, racetrack):
-        super().__init__(racetrack)
+    def __init__(self, rt_self):
+        super().__init__(rt_self)
 
         self.type_color_lu['label']['defaultfg']    = '#afafaf'
         self.type_color_lu['label']['defaultbg']    = '#000000'

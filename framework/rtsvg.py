@@ -62,7 +62,7 @@ from rt_timeline_mixin          import RTTimelineMixin
 from rt_wordcloud_mixin         import RTWordCloudMixin
 from rt_xy_mixin                import RTXYMixin
 
-__name__ = 'racetrack'
+__name__ = 'rtsvg'
 
 class RACETrack(RTAnnotationsMixin,
                 RTArtMixin,
@@ -424,7 +424,7 @@ class RACETrack(RTAnnotationsMixin,
                     as_int = ord(c)
                     _enc += ':'+str(as_int)+':'
         else:
-            raise Exception('racetrack.encSVGID() -- only strings and ints supported')
+            raise Exception('rtsvg.encSVGID() -- only strings and ints supported')
         return _enc
 
     #
