@@ -6,7 +6,7 @@ import json
 import time
 import os
 import sys
-sys.path.insert(1, '../../framework')
+sys.path.insert(1, '../../rtsvg')
 from rtsvg import *
 from rt_ontologies_mixin import jsonAbsolutePath, fillJSONPathElements
 rt = RACETrack()
