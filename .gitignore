@@ -20,3 +20,5 @@ use_cases/2014_vast_challenge/phi_small_2014_vast_sbs.csv.partial
 use_cases/2014_vast_challenge/llama3_8b_sbs_layout.csv
 use_cases/2014_vast_challenge/phi_small_sbs_layout.csv
 .venv
+dist
+rtsvg.egg-info
