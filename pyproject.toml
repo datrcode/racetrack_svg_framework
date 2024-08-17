@@ -1,19 +1,6 @@
 [build-system]
-requires = [
-  "geopandas",
-  "jupyter_bokeh",
-  "networkx",
-  "numpy",
-  "pandas",
-  "panel",
-  "pyarrow",
-  "polars",
-  "shapely",
-  "squarify",
-  "svglib",
-  "umap-learn",
-  "wordcloud"
+requires = ["setuptools>=46.0","wheel"]
+build-backend = "setuptools.build_meta"
+dependencies = [
+  'polars'
 ]
-
-# For SpaCy, still need to also download the configuration file:
-# python -m spacy download en_core_web_sm

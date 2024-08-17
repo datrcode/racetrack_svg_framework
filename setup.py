@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 setup(
 name='rtsvg',
-version='0.1.0',
+version='0.1.15',
 author='D. Trimm',
 author_email='dave.trimm@gmail.com',
 description='Visualization Package Leveraging SVG in Jupyter Notebooks',
-packages=find_packages(),
+packages=['rtsvg'],
 classifiers=[
 'Programming Language :: Python :: 3',
 'License :: OSI Approved :: Apache Software License',
@@ -14,3 +14,4 @@ classifiers=[
 python_requires='>=3.11',
 url='https://github.com/datrcode/racetrack_svg_framework'
 )
+
