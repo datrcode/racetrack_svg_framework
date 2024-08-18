@@ -24,7 +24,7 @@ from math import sqrt, pi, cos, sin, floor, ceil
 
 import random
 
-from rt_component import RTComponent
+from .rt_component import RTComponent
 
 __name__ = 'rt_piechart_mixin'
 

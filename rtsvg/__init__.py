@@ -1,1 +1,1 @@
-from rtsvg import RACETrack
+from .rtsvg import RACETrack

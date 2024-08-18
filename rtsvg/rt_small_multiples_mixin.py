@@ -23,7 +23,7 @@ import inspect
 
 from shapely.geometry import Polygon
 
-from rt_component import RTComponent
+from .rt_component import RTComponent
 
 __name__ = 'rt_small_multiples_mixin'
 

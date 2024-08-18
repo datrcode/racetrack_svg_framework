@@ -24,7 +24,7 @@ import numpy as np
 from shapely.affinity import translate
 from shapely.geometry import Polygon, Point
 
-from rt_component import RTComponent
+from .rt_component import RTComponent
 
 from math import ceil
 

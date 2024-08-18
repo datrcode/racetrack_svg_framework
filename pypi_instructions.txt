@@ -1,0 +1,14 @@
+# From: https://packaging.python.org/en/latest/tutorials/packaging-projects/
+
+# Tests (from a clean pip config)
+python -m pip install .
+pip list
+
+# Builds
+python3 -m pip install --upgrade build
+python3 -m build
+
+# Uploads
+python3 -m pip install --upgrade twine
+python3 -m twine upload dist/*
+

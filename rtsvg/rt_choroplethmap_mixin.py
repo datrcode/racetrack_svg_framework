@@ -25,7 +25,7 @@ from math import sqrt
 
 from shapely.geometry import Polygon,LineString
 
-from rt_component import RTComponent
+from .rt_component import RTComponent
 
 __name__ = 'rt_choroplethmap_mixin'
 

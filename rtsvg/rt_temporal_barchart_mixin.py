@@ -26,7 +26,7 @@ from shapely.geometry import Polygon
 
 from math import sqrt
 
-from rt_component import RTComponent
+from .rt_component import RTComponent
 
 __name__ = 'rt_temporal_barchart_mixin'
 

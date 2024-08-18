@@ -33,34 +33,34 @@ from IPython.core import display as ipc_display
 
 from IPython.display import Javascript, HTML, display
 
-from rt_annotations_mixin       import RTAnnotationsMixin
-from rt_art_mixin               import RTArtMixin
-from rt_boxplot_mixin           import RTBoxplotMixin
-from rt_calendarheatmap_mixin   import RTCalendarHeatmapMixin
-from rt_chord_diagram_mixin     import RTChordDiagramMixin
-from rt_choroplethmap_mixin     import RTChoroplethMapMixin
-from rt_color_manager           import RTColorManager
-from rt_datamanip_mixin         import RTDataManipMixin
-from rt_geomaps_mixin           import RTGeoMapsMixin
-from rt_geometry_mixin          import RTGeometryMixin
-from rt_graph_layouts_mixin     import RTGraphLayoutsMixin
-from rt_histogram_mixin         import RTHistogramMixin
-from rt_json_mixin              import RTJSONMixin
-from rt_layouts_mixin           import RTLayoutsMixin
-from rt_link_mixin              import RTLinkMixin
-from rt_linknode_mixin          import RTLinkNodeMixin
-from rt_linknodeshortest_mixin  import RTLinkNodeShortestMixin
-from rt_ontologies_mixin        import RTOntologiesMixin
-from rt_panel_mixin             import RTPanelMixin
-from rt_periodic_barchart_mixin import RTPeriodicBarChartMixin
-from rt_piechart_mixin          import RTPieChartMixin
-from rt_shapes_mixin            import RTShapesMixin
-from rt_small_multiples_mixin   import RTSmallMultiplesMixin
-from rt_temporal_barchart_mixin import RTTemporalBarChartMixin
-from rt_text_mixin              import RTTextMixin
-from rt_timeline_mixin          import RTTimelineMixin
-from rt_wordcloud_mixin         import RTWordCloudMixin
-from rt_xy_mixin                import RTXYMixin
+from .rt_annotations_mixin      import RTAnnotationsMixin
+from .rt_art_mixin               import RTArtMixin
+from .rt_boxplot_mixin           import RTBoxplotMixin
+from .rt_calendarheatmap_mixin   import RTCalendarHeatmapMixin
+from .rt_chord_diagram_mixin     import RTChordDiagramMixin
+from .rt_choroplethmap_mixin     import RTChoroplethMapMixin
+from .rt_color_manager           import RTColorManager
+from .rt_datamanip_mixin         import RTDataManipMixin
+from .rt_geomaps_mixin           import RTGeoMapsMixin
+from .rt_geometry_mixin          import RTGeometryMixin
+from .rt_graph_layouts_mixin     import RTGraphLayoutsMixin
+from .rt_histogram_mixin         import RTHistogramMixin
+from .rt_json_mixin              import RTJSONMixin
+from .rt_layouts_mixin           import RTLayoutsMixin
+from .rt_link_mixin              import RTLinkMixin
+from .rt_linknode_mixin          import RTLinkNodeMixin
+from .rt_linknodeshortest_mixin  import RTLinkNodeShortestMixin
+from .rt_ontologies_mixin        import RTOntologiesMixin
+from .rt_panel_mixin             import RTPanelMixin
+from .rt_periodic_barchart_mixin import RTPeriodicBarChartMixin
+from .rt_piechart_mixin          import RTPieChartMixin
+from .rt_shapes_mixin            import RTShapesMixin
+from .rt_small_multiples_mixin   import RTSmallMultiplesMixin
+from .rt_temporal_barchart_mixin import RTTemporalBarChartMixin
+from .rt_text_mixin              import RTTextMixin
+from .rt_timeline_mixin          import RTTimelineMixin
+from .rt_wordcloud_mixin         import RTWordCloudMixin
+from .rt_xy_mixin                import RTXYMixin
 
 __name__ = 'rtsvg'
 

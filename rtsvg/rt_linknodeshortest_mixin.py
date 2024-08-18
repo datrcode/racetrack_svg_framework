@@ -22,8 +22,8 @@ import random
 
 from math import ceil, floor
 
-from rt_component import RTComponent
-from rt_entity_position import RTEntityPosition
+from .rt_component import RTComponent
+from .rt_entity_position import RTEntityPosition
 
 __name__ = 'rt_linknodeshortest_mixin'
 

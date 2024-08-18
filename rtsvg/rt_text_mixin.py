@@ -24,7 +24,7 @@ import re
 
 import networkx as nx # for TextRank
 
-from rt_component import RTComponent # Unused?
+from .rt_component import RTComponent # Unused?
 
 from shapely.geometry import Polygon, MultiPolygon
 import shapely.affinity as affinity

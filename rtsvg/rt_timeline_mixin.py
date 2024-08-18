@@ -23,7 +23,7 @@ from dateutil.relativedelta import relativedelta
 
 import random
 
-from rt_component import RTComponent
+from .rt_component import RTComponent
 
 __name__ = 'rt_timeline_mixin'
 

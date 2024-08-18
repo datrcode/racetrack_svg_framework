@@ -1,6 +1,40 @@
 [build-system]
-requires = ["setuptools>=46.0","wheel"]
-build-backend = "setuptools.build_meta"
-dependencies = [
-  'polars'
+requires      = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name            = "rtsvg"
+version         = "0.1.20"
+authors         = [{ name = "D. Trimm", email = "dave.trimm+rtsvg@gmail.com" }]
+description     ="Visualization Package Leveraging SVG in Jupyter Notebooks"
+readme          = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license         = { file = "LICENSE" }
+dependencies    = [
+  "geopandas",
+  "hdbscan",
+  "jupyter_bokeh",
+  "networkx",
+  "numpy",
+  "pandas",
+  "panel",
+  "pyarrow",
+  "polars",
+  "shapely",
+  "squarify",
+  "svglib",
+  "umap-learn",
+  "wordcloud",
 ]
+
+classifiers=[
+"Programming Language :: Python :: 3",
+"License :: OSI Approved :: Apache Software License",
+"Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage   = "https://github.com/datrcode/racetrack_svg_framework"
+Repository = "https://github.com/datrcode/racetrack_svg_framework"
+
+

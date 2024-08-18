@@ -23,7 +23,7 @@ from shapely.geometry import Polygon
 
 import random
 
-from rt_component import RTComponent
+from .rt_component import RTComponent
 
 __name__ = 'rt_wordcloud_mixin'
 

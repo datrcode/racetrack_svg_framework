@@ -21,8 +21,8 @@ import random
 from shapely.geometry import Polygon
 from math import sqrt, floor, ceil
 
-from rt_component import RTComponent
-from rt_entity_position import RTEntityPosition
+from .rt_component import RTComponent
+from .rt_entity_position import RTEntityPosition
 
 __name__ = 'rt_histogram_mixin'
 

@@ -21,7 +21,7 @@ import re
 
 from shapely.geometry import Polygon
 
-from rt_component import RTComponent
+from .rt_component import RTComponent
 
 __name__ = 'rt_boxplot_mixin'
 

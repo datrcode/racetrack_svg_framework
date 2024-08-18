@@ -28,7 +28,7 @@ import copy
 
 from shapely import Polygon
 
-from rt_layouts_mixin import RTComponentsLayout
+from .rt_layouts_mixin import RTComponentsLayout
 
 __name__ = 'rt_panel_mixin'
 
