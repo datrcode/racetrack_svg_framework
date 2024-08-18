@@ -1240,7 +1240,7 @@ for (i=32;i<128;i++) {
         if self._font_metrics_ is None:
             _rt_dir   = os.path.dirname(os.path.abspath(__file__))
             # _filename = os.path.join(_rt_dir, "../config", "20230629_ariel_14.txt")
-            _filename = os.path.join(_rt_dir, "../config", "20230628_times_serif_14.txt")
+            _filename = os.path.join(_rt_dir, "config", "20230628_times_serif_14.txt")
             with open(_filename) as file:
                 lines = [line.rstrip() for line in file]
             self._font_metrics_ = {}
