@@ -37,4 +37,8 @@ classifiers=[
 Homepage   = "https://github.com/datrcode/racetrack_svg_framework"
 Repository = "https://github.com/datrcode/racetrack_svg_framework"
 
-
+[tool.coverage.run]
+branch = true
+include = ["rtsvg/*"]
+command_line = "-m unittest discover -s tests/"
+source = ["."]

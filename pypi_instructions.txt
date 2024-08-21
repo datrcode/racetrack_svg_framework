@@ -1,8 +1,12 @@
 # From: https://packaging.python.org/en/latest/tutorials/packaging-projects/
 
-# Tests (from a clean pip config)
+# Installs Current Package Locally
 python -m pip install .
 pip list
+
+# Unit Tests (*AFTER* you do the local install)
+coverage run
+coverage report
 
 # Builds
 python3 -m pip install --upgrade build
