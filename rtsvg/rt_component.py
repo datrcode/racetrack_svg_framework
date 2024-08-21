@@ -33,7 +33,7 @@ class RTComponent(object):
         # - for Jupyter integration, SVG must have the xmlns XML tag
         #
         def _repr_svg_(self):
-            pass
+            raise NotImplementedError('RTComponent._repr_svg_() not implemented')
 
         #
         # invalidateRender() - invalidate the last render forcing the component to re-render
@@ -63,7 +63,7 @@ class RTComponent(object):
         # - return value is an svg string
         #
         def renderSVG(self, just_calc_max=False):
-            pass
+            raise NotImplementedError('RTComponent.renderSVG() not implemented')
 
         # ===========================================================================================
         # Feature Vector Related Methods
@@ -74,7 +74,7 @@ class RTComponent(object):
         # ... feature vector for comparison with other small multiple instances of this class
         #
         def smallMultipleFeatureVector(self):
-            pass
+            raise NotImplementedError('RTComponent.smallMultipleFeatureVector() not implemented')
 
         # ===========================================================================================
         # Interactivity Related Methods
