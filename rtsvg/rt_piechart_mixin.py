@@ -66,26 +66,26 @@ class RTPieChartMixin(object):
     # Make the SVG for a piechart
     #    
     def pieChart(self,
-                 df,                               # dataframe to render
-                 # ------------------------------- # everything else is a default...
-                 color_by             = None,      # just the default color or a string for a field
-                 global_color_order   = None,      # color by ordering... if none (default), will be created and filled in...
-                 count_by             = None,      # none means just count rows, otherwise, use a field to sum by # Not Implemented
-                 count_by_set         = False,     # count by summation (by default)... column is checked
-                 widget_id            = None,      # naming the svg elements
-                 # ------------------------------- # custom render for this component
-                 style                = 'pie',     # 'pie' or 'waffle'
-                 min_render_angle_deg = 5,         # minimum render angle
-                 # ------------------------------- # visualization geometry / etc.
-                 track_state          = False,     # track state for interactive filtering
-                 x_view               = 0,         # x offset for the view
-                 y_view               = 0,         # y offset for the view
-                 x_ins                = 3,         # side inserts
-                 y_ins                = 3,         # top & bottom inserts
-                 w                    = 256,       # width of the view
-                 h                    = 256,       # height of the view
-                 draw_border          = True,      # draw a border around the histogram
-                 draw_background      = False):    # useful to turn off in small multiples settings
+                 df                   : pd.DataFrame | pl.DataFrame, # dataframe to render
+                 # ------------------------------------------------- # everything else is a default...
+                 color_by             : str    | None   = None,      # just the default color or a string for a field
+                 global_color_order   : list   | None   = None,      # color by ordering... if none (default), will be created and filled in...
+                 count_by             : str    | None   = None,      # none means just count rows, otherwise, use a field to sum by # Not Implemented
+                 count_by_set         : bool   | None   = False,     # count by summation (by default)... column is checked
+                 widget_id            : str    | None   = None,      # naming the svg elements
+                 # ------------------------------------------------- # custom render for this component
+                 style                : str             = 'pie',     # 'pie' or 'waffle'
+                 min_render_angle_deg : int             = 5,         # minimum render angle
+                 # ------------------------------------------------- # visualization geometry / etc.
+                 track_state          : bool            = False,     # track state for interactive filtering
+                 x_view               : int             = 0,         # x offset for the view
+                 y_view               : int             = 0,         # y offset for the view
+                 x_ins                : int             = 3,         # side inserts
+                 y_ins                : int             = 3,         # top & bottom inserts
+                 w                    : int             = 256,       # width of the view
+                 h                    : int             = 256,       # height of the view
+                 draw_border          : bool            = True,      # draw a border around the histogram
+                 draw_background      : bool            = False):    # useful to turn off in small multiples settings
         """
         Required Parameters
         -------------------
