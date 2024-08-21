@@ -367,9 +367,10 @@ class RTBoxplotMixin(object):
                 x,i = x_start,0
                 while x < (self.w - self.x_ins) and i < len(order):
                     if self.rt_self.isPandas(self.df):
-                        _index = order.index[i]
-                        _value = order.iloc[i]
-                        _df    = gb.get_group(_index)
+                        _index    = order.index[i]
+                        _value    = order.iloc[i]
+                        _as_tuple = (_index,) if type(_index) is not tuple else _index
+                        _df    = gb.get_group(_as_tuple)
                     elif self.rt_self.isPolars(self.df):
                         _index = order[i].rows()[0][:len(self.bin_by)]
                         if len(self.bin_by) == 1:
@@ -424,9 +425,10 @@ class RTBoxplotMixin(object):
             x,i = x_start,0
             while x < (self.w - self.x_ins) and i < len(order):
                 if self.rt_self.isPandas(self.df):
-                    _index = order.index[i]
-                    _value = order.iloc[i]
-                    _df    = gb.get_group(_index)
+                    _index    = order.index[i]
+                    _value    = order.iloc[i]
+                    _as_tuple = (_index,) if type(_index) is not tuple else _index
+                    _df    = gb.get_group(_as_tuple)
                 elif self.rt_self.isPolars(self.df):
                     _index = order[i].rows()[0][:len(self.bin_by)]
                     if len(self.bin_by) == 1:
