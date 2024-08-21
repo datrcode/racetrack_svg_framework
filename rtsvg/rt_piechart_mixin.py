@@ -86,6 +86,65 @@ class RTPieChartMixin(object):
                  h                    = 256,       # height of the view
                  draw_border          = True,      # draw a border around the histogram
                  draw_background      = False):    # useful to turn off in small multiples settings
+        """
+        Required Parameters
+        -------------------
+
+        df : pandas.DataFrame | polars.DataFrame
+            Dataframe to render.
+
+        Useful Parameters
+        -----------------
+
+        color_by : str | None
+            The field to be used to individualize the pie slices.
+
+        count_by : str | None
+            The field to be used to determine the size of the pie slices.
+
+        count_by_set : bool
+            Use a set operation to determine the size of the pie slices in combination with "count_by".
+
+        style : str
+            The style of the chart.  Either 'pie' or 'waffle'.  Pie is the default and handles more cases.
+
+        min_render_angle_deg : int
+            The minimum angle in degrees to render a slice.  The default is 5 degrees.
+        
+        
+        Other Parameters
+        -----------------
+
+        global_color_order : list
+            The list of colors to use for the pie slices.  If not specified, will be created from the dataframe.
+
+            This parameter is primarily used for small multiple renders.
+            
+        Standard Parameters
+        -------------------
+
+        widget_id : str | None
+            The id of the widget.
+
+        track_state : bool
+            Track state for interactive filtering operations
+        
+        x_view, y_view : int
+            The x and y offset for the SVG view
+
+        w, h : int
+            The width and height of the SVG frame
+
+        x_ins, y_ins : int
+            The x and y spacing to inset the visualization
+
+        draw_labels : bool
+            Draw the node labels (link labels are enabled by "link_labels" parameter)
+
+        draw_border : bool
+            Draw a border around the visualization
+
+        """
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTPieChart(self, **_params_)
