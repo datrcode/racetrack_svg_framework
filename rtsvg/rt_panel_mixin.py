@@ -732,6 +732,37 @@ class LayoutPanel(ReactiveHTML):
 #
 class RTGraphInteractiveLayout(ReactiveHTML):
     #
+    # Print Representation
+    #
+    def __str__(self): return """
+-------------------------------------------------
+Interactivity Key Commands
+----+--------------------------------------------
+c   | reset view or focus view on selected
+C   | focus view on selected + neighbors
+e   | expand selection
+E   | expand selection (directed graph)
+g   | next mouse press is layout
+G   | cycle through layout modes
+n   | cycle through node selection modes
+p   | keep only selected nodes (push stack)
+P   | pop stack
+q   | invert selection
+Q   | common neighbors
+s   | set sticky labels
+S   | remove sticky labels from selected
+t   | consolidate all nodes at the mouse location
+w   | add selected nodes to sticky labels
+W   | cycle label visibility (all | sticky | none)
+y   | vertical layout
+Y   | horizontal layout
+1-6 | select numbered degree
+7   | select degree 10 -> 20
+8   | select degree 20 -> 50
+9   | select degree 50 -> 100
+0   | select degree 100 -> inf    
+    """
+    #
     # Inner Modification for RT SVG Render
     #
     mod_inner = param.String(default="""<circle cx="300" cy="200" r="10" fill="red" />""")
