@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pandas as pd
+import polars as pl
+import numpy as np
 
 from shapely.geometry              import Polygon, LineString, GeometryCollection, MultiLineString
 from shapely.geometry.multipolygon import MultiPolygon
-from math import sqrt, acos
+from math import sqrt, acos, pi, cos, sin
 import random
 
 import heapq
@@ -27,6 +30,76 @@ __name__ = 'rt_geometry_mixin'
 # Geometry Methods
 #
 class RTGeometryMixin(object):
+    #
+    # Converted from the following description
+    # https://stackoverflow.com/questions/5736398/how-to-calculate-the-svg-path-for-an-arc-of-a-circle
+    #
+    # - angle in degrees (0 degrees is 12 o'clock)
+    #
+    def polarToCartesian(self, cx, cy, r, deg):
+        rads = (deg-90) * pi / 180.0
+        return cx + (r*cos(rads)), cy + (r*sin(rads))
+    def pieSlice(self, cx, cy, r, deg0, deg1, color='#000000'):
+        x0,y0 = self.polarToCartesian(cx,cy,r,deg1)
+        x1,y1 = self.polarToCartesian(cx,cy,r,deg0)
+        flag = "0" if (deg1 - deg0) <= 180.0 else "1"
+        return f'<path d="M {cx} {cy} L {x0} {y0} A {r} {r} 0 {flag} 0 {x1} {y1}" fill="{color}" stroke="{color}" stroke-width="2" />'
+    
+    #
+    # genericArc()
+    # - angles in degrees (0 degrees is 3 o'clock)
+    #
+    def genericArc(self, cx, cy, a0, a1, r_inner, r_outer):
+        _fn_ = lambda a,r: (cx + r * cos(a * pi / 180.0), cy + r * sin(a * pi / 180.0))
+        x0_out,  y0_out  = _fn_(a0, r_outer)
+        x0_in,   y0_in   = _fn_(a0, r_inner)
+        x1_out,  y1_out  = _fn_(a1, r_outer)
+        x1_in,   y1_in   = _fn_(a1, r_inner)
+        large_arc = 0 if (a1-a0) <= 180.0 else 1
+        _path_ = f'M {x0_out} {y0_out} A {r_outer} {r_outer} 0 {large_arc} 1 {x1_out} {y1_out} L {x1_in} {y1_in} ' + \
+                                    f' A {r_inner} {r_inner} 0 {large_arc} 0 {x0_in}  {y0_in}  Z'
+        return _path_
+
+    #
+    # concentricGlyphCircumference() - forms the circular circumference around a glyph
+    # - assumes that df has already been grouped -- i.e., no duplicate nbors
+    #
+    def concentricGlyphCircumference(self, df, cx, cy, r_inner, r_outer, order=None, nbor='__nbor__', count_by='__count__', count_by_set=False, angle_min=10.0):
+        if order is None: order = self.colorRenderOrder(df, nbor, count_by, count_by_set)
+        order = order.with_row_index('__sorter__')
+        df    = df.join(order.drop(['count']), left_on=nbor, right_on='index').sort('__sorter__')
+        total = df[count_by].sum()
+        df    = df.with_columns((360.0 * pl.col(count_by)/total).alias('__angle__')).filter(pl.col('__angle__') > angle_min)
+        # df.with_columns(pl.col('__angle__').cum_sum().alias('__cumsum__'))
+        angle = 270.0 # start at the top... like a clock...
+        svgs  = []
+        for i in range(len(df)):
+            angle_to = angle + df['__angle__'][i]
+            _color_  = self.co_mgr.getColor(df[nbor][i])
+            _path_   = self.genericArc(cx, cy, angle, angle_to, r_inner, r_outer)
+            svgs.append(f'<path d="{_path_}" stroke="white" stroke-width="1" fill="{_color_}" />')
+            angle    = angle_to
+        return ''.join(svgs)
+
+    #
+    # concentricGlyph() - complete concentric glyph code
+    # ... not all that efficient
+    # ... df and df_outer should already be grouiped -- i.e., no duplicate nbors
+    #
+    def concentricGlyph(self, df, cx, cy, r_norm, pie_perc, pie_color=None, r_min=7.4, r_max=14.6, bar_w=4.5, df_outer=None, order=None, nbor='__nbor__', count_by='__count__', count_by_set=False, angle_min=10.0):
+        r      = r_min + r_norm * (r_max - r_min)
+        rp     = r + 2*bar_w if df_outer is not None else r + bar_w
+        bg     = self.co_mgr.getTVColor('background','default')
+        pie_co = self.co_mgr.getTVColor('axis','default') if pie_color is None else pie_color
+        svgs   = [f'<circle cx="{cx}" cy="{cy}" r="{rp}" fill="{bg}" stroke="{bg}" stroke-width="1" />']
+        if   pie_perc == 1.0: svgs.append(f'<circle cx="{cx}" cy="{cy}" r="{r-2}" fill="{pie_co}" stroke="{pie_co}" stroke-width="2" />')
+        elif pie_perc == 0.0: pass 
+        else:                 svgs.append(self.pieSlice(cx, cy, r-2, 0, 360*pie_perc, color=pie_co))
+        svgs.append(self.concentricGlyphCircumference(df, cx, cy, r, r+bar_w, order=order, nbor=nbor, count_by=count_by, count_by_set=count_by_set, angle_min=angle_min))
+        if df_outer is not None:
+            svgs.append(self.concentricGlyphCircumference(df_outer, cx, cy, r+bar_w, r+2*bar_w, order=order, nbor=nbor, count_by=count_by, count_by_set=count_by_set, angle_min=angle_min))
+        return ''.join(svgs)
+
     #
     # crunchCircles() - compress circles with a packing algorithm
     #
