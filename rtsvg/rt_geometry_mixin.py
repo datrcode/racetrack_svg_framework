@@ -923,6 +923,129 @@ class RTGeometryMixin(object):
 
         return state, found_time, origin
 
+
+    #
+    # levelSetBalanced() - grow a balanced level set from a set of origins
+    # ... results are not guaranteed to have the origin in the nodes found by that origin..
+    # ... this occurs because upto 3 originals may be located on the same raster coordinate
+    #
+    def levelSetBalanced(self,
+                        raster,      # raster[y][x]  - either None, empty set, or a set of integers
+                        origins,     # origins       - list of origins (as integer indices)
+                        epsilon=3):  # epsilon       - max delta in set sizes
+        h, w = len(raster), len(raster[0])
+        origins_as_set = set(origins)
+
+        # Allocate the level set
+        state      = [[None for x in range(w)] for y in range(h)]  # node that found the pixel
+        found_time = [[None for x in range(w)] for y in range(h)]  # time when pixel was found
+
+        # Distance lambda function
+        dist = lambda _xy0_, _xy1_: sqrt((_xy0_[0]-_xy1_[0])**2+(_xy0_[1]-_xy1_[1])**2)
+
+        # Copy the raster
+        node_to_xy = {} 
+        for x in range(0, len(raster[0])):
+            for y in range(0, len(raster)):
+                if raster[y][x] is not None:
+                    for node in raster[y][x]: node_to_xy[node] = (x, y)
+
+        # Every origin gets it's own heap
+        heaps       = {} # for each origin, a priority queue of the current frontier
+        finds       = {} # for each origin, a set of nodes that have been found
+        progress_lu = {'origin':[], 'iteration':[], 'heapsize':[]}
+        for o in origins_as_set: 
+            heaps[o] = []
+            finds[o] = set()
+            progress_lu['origin'].append(o), progress_lu['iteration'].append(0), progress_lu['heapsize'].append(0)
+
+        # Initialize the heaps
+        for x in range(0, len(raster[0])):
+            for y in range(0, len(raster)):
+                if raster[y][x] is not None:
+                    origins_here = list(raster[y][x] & origins_as_set)
+                    if len(origins_here) > 3: raise Exception(f'levelSetBalanced() - too many origins {origins_here} at ({x}, {y}) (no more than 3)')
+                    if len(origins_here) > 0:
+                        if len(origins_here) == 1: heapq.heappush(heaps[origins_here[0]], (0.0, (x, y), origins_here[0], (x, y)))
+                        else:
+                            if x == 0 or y == 0 or x == w-1 or y == h-1:
+                                raise Exception('levelSetBalanced() - 2 --> 8 not implemented if the origin node is on the edge of the raster')
+                            if   len(origins_here) == 2:
+                                heapq.heappush(heaps[origins_here[0]], (0.0, (x,   y), origins_here[0], (x,   y)))
+                                heapq.heappush(heaps[origins_here[1]], (0.0, (x+1, y), origins_here[1], (x+1, y)))
+                            elif len(origins_here) == 3:
+                                heapq.heappush(heaps[origins_here[0]], (0.0, (x,   y),   origins_here[0], (x,   y)))
+                                heapq.heappush(heaps[origins_here[1]], (0.0, (x+1, y),   origins_here[1], (x+1, y)))
+                                heapq.heappush(heaps[origins_here[2]], (0.0, (x,   y+1), origins_here[2], (x ,  y+1)))
+                                
+        def maxInFinds(): return max(len(finds[o]) for o in origins_as_set) # what is the max number of finds from any origin?
+
+        # Main loop
+        def anyHeapsHaveElements(): return any(len(heap) > 0 for heap in heaps.values()) # do any of the heaps have elements to process?
+        iterations = 0
+        while anyHeapsHaveElements(): # and iterations < len(origins)*w*h:
+            # What is the maximum size of any of the finds?
+            _max_ = maxInFinds()
+
+            # Determine which origins will progress -- anything smaller than the _max_ found (plus the epsilon)
+            # ... in cases, where nothing meets that criteria, only progress the smallest one that still has a heap
+            _origins_to_progress_ = []
+            for o in origins_as_set:
+                if len(heaps[o]) > 0 and len(finds[o]) < _max_ + epsilon: 
+                    _origins_to_progress_.append(o)
+
+            if len(_origins_to_progress_) == 0: # pick the smallest one to progress
+                _sz_, _best_ = 1e9, None
+                for o in origins:
+                    if len(heaps[o]) > 0:
+                        if   _best_ is None:       _best_, _sz_ = o, len(finds[o])
+                        elif _sz_ > len(finds[o]): _best_, _sz_ = o, len(finds[o])
+                _origins_to_progress_ = [_best_]
+            
+            # Progress the selected origins
+            for o in _origins_to_progress_:
+                if len(heaps[o]) == 0: continue
+                t, xyi, _, xyo = heapq.heappop(heaps[o])
+                if state[xyi[1]][xyi[0]] is None or found_time[xyi[1]][xyi[0]] > t: # either not found (None) or found later than this origin would have found it in...
+                    for dx in range(-1, 2):
+                        for dy in range(-1, 2):
+                            if dx == 0 and dy == 0: continue
+                            xn  = xyi[0] + dx
+                            yn  = xyi[1] + dy
+                            xyn = (xn,yn)
+                            if xn < 0 or xn >= w or yn < 0 or yn >= h: continue # off edge... skip
+                            t_found = dist(xyo,xyn)
+                            if state[yn][xn] is None or t_found < found_time[yn][xn]: # if not found or found earlier (by this origin)
+                                heapq.heappush(heaps[o], (t_found, xyn, o, xyo))
+                    if raster[xyi[1]][xyi[0]] is not None and (len(raster[xyi[1]][xyi[0]])) > 0: # finds to add
+                        if state[xyi[1]][xyi[0]] is not None: # need to remove them from the other finder...
+                            _other_finder_ = state[xyi[1]][xyi[0]]
+                            for _finds_ in raster[xyi[1]][xyi[0]]: finds[_other_finder_].remove(_finds_) # removal
+                        for _finds_ in raster[xyi[1]][xyi[0]]: finds[o].add(_finds_) # add to the new finder
+
+                    state[xyi[1]][xyi[0]], found_time[xyi[1]][xyi[0]] = o, t
+
+            for o in origins_as_set: 
+                progress_lu['iteration'].append(iterations+1) # because zero was initialized earlier...
+                progress_lu['origin'].append(o)
+                progress_lu['heapsize'].append(len(heaps[o]))
+
+            iterations += 1
+
+        if anyHeapsHaveElements():
+            for x in heaps:
+                print(f'heap for {x} has {len(heaps[x])} elements')
+
+        all_finds = set()
+        for x in finds: all_finds = all_finds.union(finds[x])
+        if len(all_finds) != len(node_to_xy.keys()):
+            print(finds)
+            raise Exception(f'levelSetBalanced() - not all nodes found {all_finds} != {node_to_xy.keys()}')
+
+        # progress_lu is just for debug...
+        # ... recommended usage:  rt.xy(pl.DataFrame(my_progress_lu), x_field='iteration', y_field='heapsize', color_by='origin', dot_size='small', w=1024, h=128)
+        return state, found_time, finds, progress_lu
+
     #
     # Implemented from pseudocode on https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
     #
