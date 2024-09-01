@@ -485,14 +485,14 @@ class RTBoxplotMixin(object):
             if self.draw_labels:
                 # Max Label
                 _str_max,_str_min = f'{group_by_max:{self.rt_self.fformat}}',''
-                if re.match('.*\.0*',_str_max):
+                if re.match(r'.*\.0*',_str_max):
                     _str_max = _str_max[:_str_max.index('.')]
                 svg += self.rt_self.svgText(_str_max,     self.x_ins+self.txt_h-2, self.y_ins + self.sm_h,             self.txt_h, anchor='end',    rotation=-90)
 
                 # Min Label (for boxplot only)
                 if self.style.startswith('boxplot'):
                     _str_min = f'{group_by_min:{self.rt_self.fformat}}'
-                    if re.match('.*\.0*',_str_min):
+                    if re.match(r'.*\.0*',_str_min):
                         _str_min = _str_min[:_str_min.index('.')]
                     svg += self.rt_self.svgText(_str_min, self.x_ins+self.txt_h-2, self.y_ins + self.sm_h + max_bar_h, self.txt_h, anchor='start',  rotation=-90)
 

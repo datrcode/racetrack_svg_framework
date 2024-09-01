@@ -960,6 +960,7 @@ class RTLinkNodeMixin(object):
             self.link_size                  = kwargs['link_size']
             self.link_opacity               = kwargs['link_opacity']
             self.link_shape                 = kwargs['link_shape']
+            if self.link_shape is None: self.link_shape = 'line'
             self.link_arrow                 = kwargs['link_arrow']
             self.link_arrow_style           = kwargs['link_arrow_style']
             self.link_arrow_length          = kwargs['link_arrow_length']

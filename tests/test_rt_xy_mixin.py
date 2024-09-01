@@ -53,8 +53,8 @@ class Testrt_xy_mixin(unittest.TestCase):
 
     def test_dot_shapes(self):
         def _my_shape_func(_df, _tuple, _x, _y, _w, _color, _opacity):
-            if   rt.isPandas(_df): v = _df.iloc[0]['s']
-            elif rt.isPolars(_df): v = _df['s'][0]
+            if   self.rt_self.isPandas(_df): v = _df.iloc[0]['s']
+            elif self.rt_self.isPolars(_df): v = _df['s'][0]
             if   v == 0: return 'plus'
             elif v == 1: return 'x'
             elif v == 2: return 'ellipse'
