@@ -933,11 +933,11 @@ class RACETrack(RTAnnotationsMixin,
             color_by = 'color_by'
 
         if count_by is None:            
-            _df_ = df.group_by(color_by).agg(pl.count()) # .sort('count', descending=True)
+            _df_ = df.group_by(color_by).agg(pl.len().alias('count')) # .sort('count', descending=True)
         elif count_by_set:
             _df_ = df.group_by(color_by).n_unique() # .sort(count_by,descending=True)
         elif count_by == color_by:
-            _df_ = df.group_by(color_by).agg(pl.count())
+            _df_ = df.group_by(color_by).agg(pl.len().alias('count'))
             _df_ = _df_.with_columns(pl.col(color_by).mul(pl.col('count')).alias('__mult__'))
             _df_ = _df_.sort('__mult__',descending=True)
             _df_ = _df_.drop('count')

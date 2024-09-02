@@ -304,7 +304,7 @@ class RTHistogramMixin(object):
         def __binOrder_polars__(self):
             self.df = self.df.sort(self.bin_by) # not necessary... but makes the bins that are equal ordered alphabetically/naturally
             if   self.count_by is None:
-                order = self.df.group_by(self.bin_by, maintain_order=True).agg(pl.count().alias('__count__')).sort('__count__', descending=True)
+                order = self.df.group_by(self.bin_by, maintain_order=True).agg(pl.len().alias('__count__')).sort('__count__', descending=True)
             elif self.count_by_set:
                 if self.count_by in self.bin_by:
                     df_min  = self.df.drop(set(self.df.columns) - set(self.bin_by))
