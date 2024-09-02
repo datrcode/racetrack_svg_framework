@@ -37,6 +37,23 @@ class TestRTSVG(unittest.TestCase):
         self.assertFalse(self.rt_self.isPolars(self.df_pd))
         self.assertTrue (self.rt_self.isPolars(self.df_pl))
 
+    def test_polarsCounter(self):
+        df = pl.DataFrame({'a':[ 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5],
+                           'b': 'a  b  c  d  e  f  g  h  i  j  k  l  m  m'.split(),
+                           'c': 'a  a  a  a  a  a  b  b  b  b  b  c  c  c'.split(),
+                           'd':[ 10,11,12,13,14,15,16,17,18,19,20,21,22,23]})
+        # Count By Rows (into column 'a')
+        _df_ = self.rt_self.polarsCounter(df, 'a')
+        self.assertEqual(_df_.shape, (5, 2))
+        _lu_ = {}
+        for i in range(len(_df_)): _lu_[_df_['a'][i]] = _df_['__count__'][i]
+        _luc_ = {}
+        for _tuple_ in [(5,1), (4,4), (3,3), (2,3), (1,3)]: _luc_[_tuple_[0]] = _tuple_[1]
+        self.assertEqual(_lu_, _luc_)
+
+        # MANY MORE NEEDED
+        # MANY MORE NEEDED
+        # MANY MORE NEEDED
+
 if __name__ == '__main__':
     unittest.main()
-
