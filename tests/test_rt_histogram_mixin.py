@@ -16,7 +16,6 @@ import unittest
 import pandas as pd
 import polars as pl
 import numpy as np
-import networkx as nx
 import datetime
 
 from rtsvg import *
