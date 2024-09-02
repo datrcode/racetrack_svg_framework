@@ -24,4 +24,5 @@ use_cases/2014_vast_challenge/phi_small_sbs_layout.csv
 .venv
 dist
 .coverage
+coverage
 tests/__pycache__
