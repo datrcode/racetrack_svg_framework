@@ -430,3 +430,6 @@ class Testrt_xy_mixin(unittest.TestCase):
         svgs = []
         self.rt_self.xy(df, **params).renderSVG()
         self.rt_self.xy(pl.DataFrame(df), **params).renderSVG()
+
+if __name__ == '__main__':
+    unittest.main()

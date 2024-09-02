@@ -497,7 +497,7 @@ class RTTemporalBarChartMixin(object):
             _sorted_ = self.df.sort(self.ts_field)
             if   self.count_by is None:
                 _min_ = _sorted_.drop(set(self.df.columns) - set([self.ts_field]))
-                order = _min_.group_by_dynamic(self.ts_field, every=self.rt_self.time_rezes_polars[time_rez_i]).agg(pl.count().alias('__count__'))
+                order = _min_.group_by_dynamic(self.ts_field, every=self.rt_self.time_rezes_polars[time_rez_i]).agg(pl.len().alias('__count__'))
                 group_by_min, group_by_max = 0, order['__count__'].max()
             elif self.count_by_set:
                 _min_ = _sorted_.drop(set(self.df.columns) - set([self.ts_field]) - set([self.count_by]))
