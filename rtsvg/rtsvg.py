@@ -783,7 +783,7 @@ class RACETrack(RTAnnotationsMixin,
             if self.fieldIsArithmetic(df, count_by) == False:
                 count_by_set = True
         if count_by is None:
-            return df.group_by(fields).agg(pl.count().alias('__count__'))
+            return df.group_by(fields).agg(pl.len().alias('__count__'))
         elif count_by_set and count_by in fields:
             df_min = df.drop(set(df.columns) - set(fields) - set([count_by]))
             df_dupe = df_min.with_columns(pl.col(count_by).alias('__count__'))

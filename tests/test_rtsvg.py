@@ -45,15 +45,27 @@ class TestRTSVG(unittest.TestCase):
         # Count By Rows (into column 'a')
         _df_ = self.rt_self.polarsCounter(df, 'a')
         self.assertEqual(_df_.shape, (5, 2))
-        _lu_ = {}
+        _lu_, _luc_ = {}, {}        
         for i in range(len(_df_)): _lu_[_df_['a'][i]] = _df_['__count__'][i]
-        _luc_ = {}
         for _tuple_ in [(5,1), (4,4), (3,3), (2,3), (1,3)]: _luc_[_tuple_[0]] = _tuple_[1]
         self.assertEqual(_lu_, _luc_)
 
-        # MANY MORE NEEDED
-        # MANY MORE NEEDED
-        # MANY MORE NEEDED
+        # Count by Numbers (into column 'a' ... from column 'a')
+        _df_ = self.rt_self.polarsCounter(df,'a', count_by='a')
+        _lu_, _luc_ = {}, {}        
+        for i in range(len(_df_)): _lu_[_df_['a'][i]] = _df_['__count__'][i]
+        for _tuple_ in [(5,5), (4,16), (3,9), (2,6), (1,3)]: _luc_[_tuple_[0]] = _tuple_[1]
+        self.assertEqual(_lu_, _luc_)
+
+        # Count by Numbers (into column 'a' ... from column 'a')
+        _df_ = self.rt_self.polarsCounter(df,'a', count_by='a', count_by_set=True)
+        _lu_, _luc_ = {}, {}
+        for i in range(len(_df_)): _lu_[_df_['a'][i]] = _df_['__count__'][i]
+        for _tuple_ in [(5,1), (4,1), (3,1), (2,1), (1,1)]: _luc_[_tuple_[0]] = _tuple_[1]
+        self.assertEqual(_lu_, _luc_)
+
+        # MANY MORE NEEDED ...
+
 
 if __name__ == '__main__':
     unittest.main()

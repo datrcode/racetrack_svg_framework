@@ -74,7 +74,7 @@ class RTSmallMultiplesMixin(object):
         elif type(sort_by) == list: # (Y)
             cat_order = pl.DataFrame({'category_by':sort_by})
         elif sort_by == 'records' or sort_by_field is None or sort_by_field in category_by: # (Y_check)
-            cat_order = df.group_by(category_by, maintain_order=True).agg(pl.count().alias('__count__')).sort('__count__', descending=True)
+            cat_order = df.group_by(category_by, maintain_order=True).agg(pl.len().alias('__count__')).sort('__count__', descending=True)
         elif sort_by == 'field': # (Y)
             # Count by numeric summation
             if self.fieldIsArithmetic(df, sort_by_field): # (Y_check)

@@ -2002,12 +2002,9 @@ class RTXYMixin(object):
 
             # Count By Calc
             if _local_dot_w < 0 or self.vary_opacity or self.color_magnitude is not None:
-                if   self.count_by is None:
-                    proc.append(pl.count().alias('__countby__'))
-                elif self.count_by_set:
-                    proc.append(pl.n_unique(self.count_by).alias('__countby__'))
-                else:
-                    proc.append(pl.sum(self.count_by).alias('__countby__'))
+                if   self.count_by is None: proc.append(pl.len().alias('__countby__'))
+                elif self.count_by_set:     proc.append(pl.n_unique(self.count_by).alias('__countby__'))
+                else:                       proc.append(pl.sum(self.count_by).alias('__countby__'))
             
             # Color By Calc
             color, color_by_field = None, '__colorby__'
