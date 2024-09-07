@@ -707,9 +707,14 @@ class RTLinkNodeMixin(object):
         Convey Hulls
         ------------
 
-        convex_hull_lu : dict[str:str] | None
+        convex_hull_lu : dict[str:str] | dict[str:list[str]]
             The keys are the regex strings to match against node names.  The values
             are the names to use for the convex hulls.
+
+            OR
+
+            The keys are the convex hull names and the values are the nodes names part of
+            the convex hull.
 
         convex_hull_opacity : float
 
@@ -1156,48 +1161,62 @@ class RTLinkNodeMixin(object):
 
         #
         # __renderConvexHull__() - render the convex hull
+        # (copied directly into the link() code -- any mods should be replicated there)
         #
         def __renderConvexHull__(self):
             # Render the convex hulls
             svg = ''
-            if self.convex_hull_lu is not None:
-                _pt_lu = {} # pt_lu[convex_hull_name][node_str][x,y]
+            if self.convex_hull_lu is not None and len(self.convex_hull_lu) > 0:
+                _pt_lu = {} # pt_lu[convex_hull_name][node_str] = [x,y]
+                for x in self.convex_hull_lu:
+                    _first_value_ = self.convex_hull_lu[x]
+                    break
 
                 # Determine the points for each convex hull
-                for rel_tuple in self.relationships:
-                    if len(rel_tuple) < 2 or len(rel_tuple) > 3:
-                        raise Exception(f'linkNode(): relationship tuples should have two or three parts "{rel_tuple}"')
-                    fm_flds = [rel_tuple[0]]
-                    to_flds = [rel_tuple[1]]                
-                    gb = self.df.groupby(list(rel_tuple[:2])) if self.rt_self.isPandas(self.df) else self.df.group_by(list(rel_tuple[:2])) if self.rt_self.isPolars(self.df) else None
-                    for k,k_df in gb:
-                        k_fm   = k[:len(fm_flds)]
-                        k_to   = k[len(fm_flds):]
+                if type(_first_value_) is list or type(_first_value_) is set: # convex_hull_lu[name] = list | set of node names
+                    for convex_hull_name in self.convex_hull_lu:
+                        possibles = {}
+                        for node_str in self.convex_hull_lu[convex_hull_name]:
+                            if node_str in self.pos.keys():
+                                possibles[node_str] = (self.xT(self.pos[node_str][0]), self.yT(self.pos[node_str][1]))
+                        # only if something was found
+                        if len(possibles) > 0: _pt_lu[convex_hull_name] = possibles
 
-                        fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
-                        to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
+                else: # regex version
+                    for rel_tuple in self.relationships:
+                        if len(rel_tuple) < 2 or len(rel_tuple) > 3:
+                            raise Exception(f'linkNode(): relationship tuples should have two or three parts "{rel_tuple}"')
+                        fm_flds = [rel_tuple[0]]
+                        to_flds = [rel_tuple[1]]                
+                        gb = self.df.groupby(list(rel_tuple[:2])) if self.rt_self.isPandas(self.df) else self.df.group_by(list(rel_tuple[:2])) if self.rt_self.isPolars(self.df) else None
+                        for k,k_df in gb:
+                            k_fm   = k[:len(fm_flds)]
+                            k_to   = k[len(fm_flds):]
 
-                        x1 = self.xT(self.pos[fm_str][0])
-                        x2 = self.xT(self.pos[to_str][0])
-                        y1 = self.yT(self.pos[fm_str][1])
-                        y2 = self.yT(self.pos[to_str][1])
+                            fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
+                            to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
 
-                        for i in range(0,2):
-                            if i == 0:
-                                _str = fm_str
-                                _x   = x1
-                                _y   = y1
-                            else:
-                                _str = to_str
-                                _x   = x2
-                                _y   = y2
+                            x1 = self.xT(self.pos[fm_str][0])
+                            x2 = self.xT(self.pos[to_str][0])
+                            y1 = self.yT(self.pos[fm_str][1])
+                            y2 = self.yT(self.pos[to_str][1])
 
-                            for my_regex in self.convex_hull_lu.keys():
-                                my_regex_name = self.convex_hull_lu[my_regex]
-                                if re.match(my_regex, _str):
-                                    if my_regex_name not in _pt_lu.keys():
-                                        _pt_lu[my_regex_name] = {}
-                                    _pt_lu[my_regex_name][_str] = [_x,_y]
+                            for i in range(0,2):
+                                if i == 0:
+                                    _str = fm_str
+                                    _x   = x1
+                                    _y   = y1
+                                else:
+                                    _str = to_str
+                                    _x   = x2
+                                    _y   = y2
+
+                                for my_regex in self.convex_hull_lu.keys():
+                                    my_regex_name = self.convex_hull_lu[my_regex]
+                                    if re.match(my_regex, _str):
+                                        if my_regex_name not in _pt_lu.keys():
+                                            _pt_lu[my_regex_name] = {}
+                                        _pt_lu[my_regex_name][_str] = [_x,_y]
 
                 # Render each convex hull
                 for my_regex_name in _pt_lu.keys():

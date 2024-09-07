@@ -581,6 +581,186 @@ class RTLinkMixin(object):
             self.df = self.df.with_columns(*_operations_)
 
         #
+        # __renderConvexHull__() - render the convex hull
+        #
+        def __renderConvexHull__(self):
+            # Render the convex hulls
+            svg = ''
+            if self.convex_hull_lu is not None and len(self.convex_hull_lu) > 0:
+                _pt_lu = {} # pt_lu[convex_hull_name][node_str] = [x,y]
+                for x in self.convex_hull_lu:
+                    _first_value_ = self.convex_hull_lu[x]
+                    break
+
+                # Determine the points for each convex hull
+                if type(_first_value_) is list or type(_first_value_) is set: # convex_hull_lu[name] = list | set of node names
+                    for convex_hull_name in self.convex_hull_lu:
+                        possibles = {}
+                        for node_str in self.convex_hull_lu[convex_hull_name]:
+                            if node_str in self.pos.keys():
+                                possibles[node_str] = (self.xT(self.pos[node_str][0]), self.yT(self.pos[node_str][1]))
+                        # only if something was found
+                        if len(possibles) > 0: _pt_lu[convex_hull_name] = possibles
+
+                else: # regex version
+                    for rel_tuple in self.relationships:
+                        if len(rel_tuple) < 2 or len(rel_tuple) > 3:
+                            raise Exception(f'linkNode(): relationship tuples should have two or three parts "{rel_tuple}"')
+                        fm_flds = [rel_tuple[0]]
+                        to_flds = [rel_tuple[1]]                
+                        gb = self.df.groupby(list(rel_tuple[:2])) if self.rt_self.isPandas(self.df) else self.df.group_by(list(rel_tuple[:2])) if self.rt_self.isPolars(self.df) else None
+                        for k,k_df in gb:
+                            k_fm   = k[:len(fm_flds)]
+                            k_to   = k[len(fm_flds):]
+
+                            fm_str = self.rt_self.nodeStringAndFillPos(k_fm, self.pos)
+                            to_str = self.rt_self.nodeStringAndFillPos(k_to, self.pos)
+
+                            x1 = self.xT(self.pos[fm_str][0])
+                            x2 = self.xT(self.pos[to_str][0])
+                            y1 = self.yT(self.pos[fm_str][1])
+                            y2 = self.yT(self.pos[to_str][1])
+
+                            for i in range(0,2):
+                                if i == 0:
+                                    _str = fm_str
+                                    _x   = x1
+                                    _y   = y1
+                                else:
+                                    _str = to_str
+                                    _x   = x2
+                                    _y   = y2
+
+                                for my_regex in self.convex_hull_lu.keys():
+                                    my_regex_name = self.convex_hull_lu[my_regex]
+                                    if re.match(my_regex, _str):
+                                        if my_regex_name not in _pt_lu.keys():
+                                            _pt_lu[my_regex_name] = {}
+                                        _pt_lu[my_regex_name][_str] = [_x,_y]
+
+                # Render each convex hull
+                for my_regex_name in _pt_lu.keys():
+                    _color = self.rt_self.co_mgr.getColor(my_regex_name)
+                    _pts   = _pt_lu[my_regex_name] # dictionary of node names to [x,y]
+                    #
+                    # Single Point
+                    #
+                    if   len(_pts.keys()) == 1:
+                        _pt    = next(iter(_pts))
+                        _x,_y  = _pts[_pt][0],_pts[_pt][1]
+                        svg += f'<circle cx="{_x}" cy="{_y}" r="8" fill="{_color}" fill-opacity="{self.convex_hull_opacity}" />'
+                        if self.convex_hull_stroke_width is not None:
+                            _opacity = self.convex_hull_opacity + 0.2
+                            if _opacity > 1:
+                                _opacity = 1
+                            svg += f'<circle cx="{_x}" cy="{_y}" r="8" fill-opacity="0.0" stroke="{_color}" stroke-width="{self.convex_hull_stroke_width}" stroke-opacity="{_opacity}" />'
+
+                        # Defer labels                    
+                        if self.convex_hull_labels:
+                            svg_text = self.rt_self.svgText(my_regex_name, _x, self.txt_h+_y, self.txt_h, anchor='middle')
+                            self.defer_render.append(svg_text)
+
+                    #
+                    # Two Points
+                    #
+                    elif len(_pts.keys()) == 2:
+                        _my_iter = iter(_pts)
+                        _pt0     = next(_my_iter)
+                        _pt1     = next(_my_iter)
+
+                        _x0,_y0  = _pts[_pt0][0],_pts[_pt0][1]
+                        _x1,_y1  = _pts[_pt1][0],_pts[_pt1][1]
+
+                        if _x0 == _x1 and _y0 == _y1:
+                            svg += f'<circle cx="{_x0}" cx="{_y0}" r="8" fill="{_color}" fill-opacity="{self.convex_hull_opacity}" />'
+                            if self.convex_hull_stroke_width is not None:
+                                _opacity = self.convex_hull_opacity + 0.2
+                                if _opacity > 1:
+                                    _opacity = 1
+                                svg += f'<circle cx="{_x0}" cy="{_y0}" r="8" fill-opacity="0.0" stroke="{_color}" stroke-width="{self.convex_hull_stroke_width}" stroke-opacity="{_opacity}" />'
+                        else:
+                            _dx  = _x1 - _x0
+                            _dy  = _y1 - _y0
+                            _len = sqrt(_dx*_dx+_dy*_dy)
+                            if _len < 0.001:
+                                _len = 0.001
+                            _dx /= _len
+                            _dy /= _len
+                            _pdx =  _dy
+                            _pdy = -_dx
+
+                            # oblong path connecting two semicircles
+                            svg_path  = ''
+                            svg_path += '<path d="'
+                            svg_path += f'M {_x0 + _pdx*8} {_y0 + _pdy*8} '
+                            cx0 = _x0+_pdx*8 - _dx*12
+                            cy0 = _y0+_pdy*8 - _dy*12
+                            cx1 = _x0-_pdx*8 - _dx*12
+                            cy1 = _y0-_pdy*8 - _dy*12
+                            svg_path += f'C {cx0} {cy0} {cx1} {cy1} {_x0-_pdx*8} {_y0-_pdy*8} '
+                            svg_path += f'L {_x1 - _pdx*8} {_y1 - _pdy*8} '
+                            cx0 = _x1-_pdx*8 + _dx*12
+                            cy0 = _y1-_pdy*8 + _dy*12
+                            cx1 = _x1+_pdx*8 + _dx*12
+                            cy1 = _y1+_pdy*8 + _dy*12
+                            svg_path += f'C {cx0} {cy0} {cx1} {cy1} {_x1+_pdx*8} {_y1+_pdy*8} '
+                            svg_path += f'Z" '
+                            
+                            svg += svg_path + f'fill="{_color}" fill-opacity="{self.convex_hull_opacity}" />'
+                            
+                            if self.convex_hull_stroke_width is not None:
+                                _opacity = self.convex_hull_opacity + 0.2
+                                if _opacity > 1:
+                                    _opacity = 1
+                                svg += svg_path + f'fill-opacity="0.0" stroke="{_color}" stroke-width="{self.convex_hull_stroke_width}" stroke-opacity="{_opacity}" />'
+
+                        # Defer labels                    
+                        if self.convex_hull_labels:
+                            svg_text  = self.rt_self.svgText(my_regex_name, (_x0+_x1)/2, self.txt_h/2+(_y0+_y1)/2, self.txt_h)
+                            self.defer_render.append(svg_text)
+
+                    #
+                    # Three or More Points
+                    #
+                    else:
+                        _poly_pts = self.rt_self.grahamScan(_pts)
+                        svg_path = ''
+                        svg_path += '<path d="'
+                        svg_path += self.rt_self.extrudePolyLine(_poly_pts, _pts, r=8) + '"'
+                        svg += svg_path + f' fill="{_color}" fill-opacity="{self.convex_hull_opacity}" />'
+
+                        if self.convex_hull_stroke_width is not None:
+                            _opacity = self.convex_hull_opacity + 0.2
+                            if _opacity > 1:
+                                _opacity = 1
+                            svg += svg_path + f'fill-opacity="0.0" stroke="{_color}" stroke-width="{self.convex_hull_stroke_width}" stroke-opacity="{_opacity}" />'
+
+                        # Defer labels
+                        if self.convex_hull_labels:
+                            _chl_x0,_chl_x1,chl_y0,chl_y1 = None,None,None,None
+                            for _poly_pt in _poly_pts:
+                                _xy = _pts[_poly_pt]
+                                _x  = _xy[0]
+                                _y  = _xy[1]
+                                if _chl_x0 is None:
+                                    _chl_x0 = _chl_x1 = _xy[0]
+                                    _chl_y0 = _chl_y1 = _xy[1]
+                                else:
+                                    if  _chl_x0 > _xy[0]:
+                                        _chl_x0 = _xy[0]
+                                    if  _chl_y0 > _xy[1]:
+                                        _chl_y0 = _xy[1]
+                                    if  _chl_x1 < _xy[0]:
+                                        _chl_x1 = _xy[0]
+                                    if  _chl_y1 < _xy[1]:
+                                        _chl_y1 = _xy[1]
+
+                            svg_text = self.rt_self.svgText(my_regex_name, (_chl_x0+_chl_x1)/2, self.txt_h/2 + (_chl_y0+_chl_y1)/2, self.txt_h, anchor='middle')
+                            self.defer_render.append(svg_text)
+
+            return svg
+
+        #
         # __renderBackgroundShapes__() - render background shapes
         # - mostly a copy of the xy implementation
         #
@@ -816,13 +996,18 @@ class RTLinkMixin(object):
             svg.append(self.rt_self.iconCloud(id="cloud")) # behind the background...
             background_color = self.rt_self.co_mgr.getTVColor('background','default')
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
+            self.defer_render = [] # Any deferred rendering (compatibility with linkNode)
 
-            # Add background shapes
+            # Add background shapes & convex hulls
             svg.append(self.__renderBackgroundShapes__())
+            svg.append(self.__renderConvexHull__())
 
             # Links and Nodes
             svg.extend(self.__renderLinks__())
             svg.extend(self.__renderNodes__())
+
+            # Add any deferred rendering
+            svg.extend(self.defer_render)
 
             # Draw the border
             if self.draw_border:

@@ -408,5 +408,18 @@ class Testrt_liknode_mixin(unittest.TestCase):
         self.rt_self.link(**params, label_only={'fetch','walk'}).renderSVG()
         self.rt_self.link(**params, label_only={'fetch','dog','stick'}).renderSVG()
 
+    def test_convexHullsAsLists(self):
+        lu = {'fm':'a b c d e f g h i j'.split(), 
+              'to':'b c a e f d h i j g'.split()}
+        df      = pl.DataFrame(lu)
+        relates = [('fm','to')]
+        pos = {"a":(0.58, 0.40), "e":(0.07, 0.31), "i":(0.25, 0.19), "d":(0.25, 0.40), "b":(0.43, 0.40),
+               "c":(0.58, 0.31), "g":(0.07, 0.07), "f":(0.07, 0.40), "j":(0.07, 0.19), "h":(0.25, 0.07) }
+        convex_hull_lu = {'abc':['a','b','c'], 'def':['d','e','f','x','y','z'], 'nothere':['m','n','o'], 'h_only':['h'], 'empty':[], 'as_set':set(['g','i','j'])}
+        self.rt_self.linkNode(df, relates, pos, bounds_percent=0.2, node_size='small', convex_hull_lu=convex_hull_lu).renderSVG()
+        self.rt_self.link    (df, relates, pos, bounds_percent=0.2, node_size='small', convex_hull_lu=convex_hull_lu).renderSVG()
+        self.rt_self.linkNode(df, relates, pos, bounds_percent=0.2, node_size='small', convex_hull_lu=convex_hull_lu, convex_hull_labels=True).renderSVG()
+        self.rt_self.link    (df, relates, pos, bounds_percent=0.2, node_size='small', convex_hull_lu=convex_hull_lu, convex_hull_labels=True).renderSVG()
+
 if __name__ == '__main__':
     unittest.main()
