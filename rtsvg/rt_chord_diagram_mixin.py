@@ -114,7 +114,7 @@ class RTChordDiagramMixin(object):
         # concats two strings together in alphabetical order
         df = self.copyDataFrame(df)
         __lambda__ = lambda x: self.__den_fromToString__(x, fm, to)
-        df = df.with_columns(pl.struct([fm,to]).map_elements(__lambda__).alias('__fmto__'))
+        df = df.with_columns(pl.struct([fm,to]).map_elements(__lambda__, return_dtype=pl.String).alias('__fmto__'))
         df_den = self.polarsCounter(df, '__fmto__', count_by, count_by_set)
 
         # create the initial graph and heap
@@ -886,7 +886,7 @@ class RTChordDiagramMixin(object):
             # Counting methodologies
             df_fm = self.rt_self.polarsCounter(self.df, self.fm, count_by=self.count_by, count_by_set=self.count_by_set).rename({'__count__':'__fmcount__', self.fm:'__node__'})
             df_to = self.rt_self.polarsCounter(self.df, self.to, count_by=self.count_by, count_by_set=self.count_by_set).rename({'__count__':'__tocount__', self.to:'__node__'})
-            df_counter = df_fm.join(df_to, on='__node__', how='outer_coalesce').fill_null(0).with_columns((pl.col('__fmcount__') + pl.col('__tocount__')).alias('__count__'))
+            df_counter = df_fm.join(df_to, on='__node__', how='full', coalesce=True).fill_null(0).with_columns((pl.col('__fmcount__') + pl.col('__tocount__')).alias('__count__'))
 
             # Transposition into a dictionary
             counter_lu = {}
