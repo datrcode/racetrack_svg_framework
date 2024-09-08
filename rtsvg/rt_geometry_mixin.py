@@ -84,7 +84,8 @@ class RTGeometryMixin(object):
     #
     # concentricGlyph() - complete concentric glyph code
     # ... not all that efficient
-    # ... df and df_outer should already be grouiped -- i.e., no duplicate nbors
+    # ... df and df_outer should already be grouped -- i.e., no duplicate nbors
+    # ... only accepts polars
     #
     def concentricGlyph(self, df, cx, cy, r_norm, pie_perc, pie_color=None, r_min=7.4, r_max=14.6, bar_w=4.5, df_outer=None, order=None, nbor='__nbor__', count_by='__count__', count_by_set=False, angle_min=10.0):
         r      = r_min + r_norm * (r_max - r_min)
