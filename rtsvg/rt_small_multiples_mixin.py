@@ -87,6 +87,7 @@ class RTSmallMultiplesMixin(object):
                 cat_order = cat_order.rename({sort_by_field:'__count__'}).sort('__count__', descending=True)
         else:
             raise Exception('smallMultiples() - sort by must be "records", "field", "alpha", "similarity", or a list')
+        
         return df.partition_by(category_by, as_dict=True), cat_order
 
     #
@@ -436,8 +437,12 @@ class RTSmallMultiplesMixin(object):
                         row_lu[row_sort['field'][i]] = i
                         row_order.append(row_sort['field'][i])
 
-                for key,key_df in cat_gb:
-                    grid_lu[key] = (col_lu[key[1]], row_lu[key[0]])
+                if self.isPandas(df):
+                    for key, key_df in cat_gb: # this is a groupby generator
+                        grid_lu[key] = (col_lu[key[1]], row_lu[key[0]])
+                else:
+                    for key in cat_gb: # because this is actually a dictionary
+                        grid_lu[key] = (col_lu[key[1]], row_lu[key[0]])
 
                 if draw_labels:
                     my_txt_h = txt_h
@@ -1499,8 +1504,11 @@ def __fieldOrder_polars__(rt_self,
                           sort_by_field):
     # Sort by rows
     if   sort_by == 'records' or (sort_by == 'field' and sort_by_field is None):
-        df_min = df.drop(set(df.columns) - set([sort_by])).rename({sort_by:'field'})    
-        return df_min.group_by('field', maintain_order=True).agg(pl.count().alias('__count__')).sort('__count__', descending=True)
+        return df.drop(set(df.columns) - set([field]))   \
+                 .rename({field:'field'})                \
+                 .group_by('field', maintain_order=True) \
+                 .agg(pl.count().alias('__count__'))     \
+                 .sort('__count__', descending=True)
     # Sort by a field
     elif sort_by == 'field':        
         if rt_self.fieldIsArithmetic(df,sort_by_field):
