@@ -54,34 +54,34 @@ class RTColorManager:
         self.highlights_lu   = {}
 
         self.type_color_lu['label'] = {}
-        self.type_color_lu['label']['defaultfg']    = '#000000'
-        self.type_color_lu['label']['defaultbg']    = '#ffffff'
-        self.type_color_lu['label']['error']        = '#ff0000'
+        self.type_color_lu['label']['defaultfg']    = '#000000' # 10 uses
+        self.type_color_lu['label']['defaultbg']    = '#ffffff' # never used
+        self.type_color_lu['label']['error']        = '#ff0000' # 8 uses
 
         self.type_color_lu['axis'] = {}
-        self.type_color_lu['axis']['default']       = '#101010'
-        self.type_color_lu['axis']['major']         = '#909090'
-        self.type_color_lu['axis']['minor']         = '#c0c0c0'
+        self.type_color_lu['axis']['default']       = '#101010' # 6 uses
+        self.type_color_lu['axis']['major']         = '#909090' # 7 uses
+        self.type_color_lu['axis']['minor']         = '#c0c0c0' # 4 uses
 
         self.type_color_lu['border'] = {}
-        self.type_color_lu['border']['default']     = '#000000'        
+        self.type_color_lu['border']['default']     = '#000000' # 9 uses
 
         self.type_color_lu['background'] = {}
-        self.type_color_lu['background']['default'] = '#ffffff'        
+        self.type_color_lu['background']['default'] = '#ffffff' # 33 uses
 
         self.type_color_lu['data'] = {}
-        self.type_color_lu['data']['default']        = '#4988b6'
-        self.type_color_lu['data']['default_border'] = '#2f54d0'
-        self.type_color_lu['data']['alternate']      = '#1fd655' # only for the y-axis distribution in the xy plot...
+        self.type_color_lu['data']['default']        = '#4988b6' # 59 uses
+        self.type_color_lu['data']['default_border'] = '#2f54d0' # 2 uses
+        self.type_color_lu['data']['alternate']      = '#1fd655' # never? unclear -- only for the y-axis distribution in the xy plot...
         
         self.type_color_lu['context'] = {}
-        self.type_color_lu['context']['default']    = '#eeeeee'
-        self.type_color_lu['context']['text']       = '#808080'
-        self.type_color_lu['context']['highlight']  = '#ff0000'
+        self.type_color_lu['context']['default']    = '#eeeeee' # 5 uses
+        self.type_color_lu['context']['text']       = '#808080' # 8 uses
+        self.type_color_lu['context']['highlight']  = '#ff0000' # never used
         
         self.type_color_lu['performance'] = {}
-        self.type_color_lu['performance']['default'] = '#000000'
-        self.type_color_lu['performance']['warning'] = '#8b0000' # dark red
+        self.type_color_lu['performance']['default'] = '#000000' # never used
+        self.type_color_lu['performance']['warning'] = '#8b0000' # used once (dark red)
 
         # Fix Some specific colors // mostly just for testing...
         self.str_to_color_lu['blue']   = '#0000ff'
