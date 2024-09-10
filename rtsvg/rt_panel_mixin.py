@@ -910,13 +910,14 @@ Y   | horizontal layout
             _lu_['node'].append(_node_)
             _lu_['x'].append(self.pos[_node_][0])
             _lu_['y'].append(self.pos[_node_][1])
-        pd.DataFrame(_lu_).to_csv(filename, index=False)
+        pd.DataFrame(_lu_).to_parquet(filename)
 
     #
     # loadLayout() - load a layout
     #
     def loadLayout(self, filename):
-        _df_ = pd.read_csv(filename)
+        if filename.lower().endswith('.csv'): _df_ = pd.read_csv(filename)
+        else:                                 _df_ = pd.read_parquet(filename)
         for row_i, row in _df_.iterrows(): self.pos[row['node']] = (float(row['x']), float(row['y']))
         self.__refreshView__(info=False)
 
