@@ -336,7 +336,10 @@ class RTColorManager:
     #
     def optimizeCategoricalColors(self, cats):
         cat_ordered = sorted(list(set(cats))) # want it to be the same
-        hc = self.rt_self.hashcode('|'.join(cat_ordered)) & 0x00ffff
+        if type(cats[0]) is not str:
+            hc = self.rt_self.hashcode('|'.join([str(x) for x in cat_ordered])) & 0x00ffff
+        else:
+            hc = self.rt_self.hashcode('|'.join(cat_ordered)) & 0x00ffff
         cs = self.brewerColors('qualitative',len(cats),hc)
         for i in range(0,len(cat_ordered)):
             self.str_to_color_lu[cat_ordered[i]] = cs[i]
