@@ -279,7 +279,7 @@ class RTPeriodicBarChartMixin(object):
             if   self.count_by is None:
                 tmp_df = self.df.drop(set(self.df.columns) - set([period_field])) \
                                 .group_by(period_field)                           \
-                                .agg(pl.count()                                   \
+                                .agg(pl.len()                                     \
                                        .alias('__count__'))
                 group_by_max = tmp_df['__count__'].max()
             elif self.count_by_set:
