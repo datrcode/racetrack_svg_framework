@@ -66,5 +66,40 @@ class Testrt_ontologies_mixin(unittest.TestCase):
       _results_ = fillJSONPathElements(["$.more-stuff[*].jobs[5]", "$.more-stuff[*].id"], self.my_json)
       self.assertDictEqual(_results_, {'$.more-stuff[*].jobs[5]': [], '$.more-stuff[*].id': []})
 
+    def test_mappingAlgorithm(self):
+      _json_txt_ = '''
+      {"id":1,
+      "people":[{"first":"John", "last":"Smith", "id":10, "citescore":2.3, "age":30, "city":"nyc",          "state":"ny", "country":"us"},
+                {"first":"Joe",  "last":"Smith", "id":20, "citescore":1.8, "age":35,                        "state":"ny", "country":"us"},
+                {"first":"Mary", "last":"Jones", "id":30, "age":32, "city":"philadelphia", "state":"pa", "country":"us"}],
+      "knowsFrom":[[10, 20, "Conference A"], 
+                    [20, 30, "Conference B"]],
+      "education":[{"id":10, "degreeReceived":"Ph.D. in Computer Science",   "university":"Stanford University"},
+                    {"id":10, "degreeReceived":"Masters in Computer Science", "university":"University of Pennsylvania"}],
+      "total_people":3
+      }'''
+      _json_simple_  = json.loads(_json_txt_)
+
+      def concatNames(_last_,_first_):
+          return _last_ + ' ' + _first_
+      def combineAddress(_city_,_state_,_country_):
+          s = ''
+          if _city_    is not None: s += _city_
+          if _state_   is not None: s += ', ' + _state_    if (len(s) > 0) else _state_
+          if _country_ is not None: s += ', ' + _country_  if (len(s) > 0) else _country_
+          return s if (len(s) > 0) else 'Not Supplied'
+      _xform_simple_ = '''
+      _id_ = '$.people[*].id' | PersonID | uniq
+      '$.id'                                --- "hasEntryCount"    --- '$.total_people' | xsd:integer                                                                           ^^^ "IN_TEMPLATE"
+      _id_                                  --- "hasName"          --- concatNames('$.people[*].last', '$.people[*].first') | xsd:string                                        ^^^ "IN_TEMPLATE"
+      _id_                                  --- "hasCitationScore" --- '$.people[*].citescore' | xsd:float   | valu                                                             ^^^ '$.id'    
+      _id_                                  --- "hasAge"           --- '$.people[*].age'       | xsd:integer | valu                                                             ^^^ '$.id'
+      _id_                                  --- "isFrom"           --- combineAddress('$.people[*].city', '$.people[*].state', '$.people[*].country') | CityStateCountry | uniq ^^^ '$.id'
+      _id_                                  --- "isFromCity"       --- '$.people[*].city'      | City                                                                           ^^^ '$.id'
+      '$.knowsFrom[*][0]' | PersonID | uniq --- "knows"            --- '$.knowsFrom[*][1]'     | PersonID    | uniq                 @@@ '$.knowsFrom[*][2]' | xsd:string | uniq ^^^ '$.id'
+      '''
+      ofv_simple = self.rt_self.ontologyFrameworkInstance(xform_spec=_xform_simple_, funcs={'concatNames': concatNames, 'combineAddress': combineAddress})
+      ofv_simple.parse(_json_simple_)
+
 if __name__ == '__main__':
     unittest.main()
