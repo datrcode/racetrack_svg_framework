@@ -4,15 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name            = "rtsvg"
-version         = "0.1.23.20240911"
+version         = "0.1.23.20240912"
 authors         = [{ name = "D. Trimm", email = "dave.trimm+rtsvg@gmail.com" }]
 description     ="Visualization Package Leveraging SVG in Jupyter Notebooks"
 readme          = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.11"
+requires-python = ">=3.8"
 license         = { file = "LICENSE" }
 dependencies    = [
   "geopandas",
-  "hdbscan",
   "jupyter_bokeh",
   "networkx",
   "numpy",

@@ -20,7 +20,6 @@ import copy
 import random
 import heapq
 import time
-import hdbscan
 import networkx as nx
 
 from math import pi, sin, cos, ceil, floor, sqrt
@@ -274,6 +273,7 @@ class RTChordDiagramMixin(object):
                 return 2.0
         
         # Cluster the fms/tos...
+        import hdbscan
         clusterer = hdbscan.HDBSCAN(metric=__dist__)
         clusterer.fit(items)
 
@@ -1397,6 +1397,7 @@ class RTChordDiagramMixin(object):
             l_fmtos_angles, l_fmtos_poses = fmtos_angles, fmtos_pos
             for _ring_ in range(1, self.skeleton_rings): # ring 0 is the outer ring
                 # Cluster the fm-to angle tuples
+                import hdbscan
                 clusterer = hdbscan.HDBSCAN()
                 clusterer.fit(l_fmtos_angles)
                 _labels_  = clusterer.labels_
@@ -1473,6 +1474,7 @@ class RTChordDiagramMixin(object):
             skeleton_svg = []
             fmto_entry, fmto_exit  = {}, {}
 
+            import hdbscan
             clusterer = hdbscan.HDBSCAN()
             clusterer.fit(fmtos_angles)
             self.clusterer = clusterer

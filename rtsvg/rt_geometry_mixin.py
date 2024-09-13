@@ -106,7 +106,7 @@ class RTGeometryMixin(object):
     #
     def crunchCircles(self,
                       circles: list[tuple[float, float, float]],
-                      min_d:   float = 20) -> list[tuple[float, float, float]]:
+                      min_d:   float = 20):
         """
         Compress circles with a packing algorithm.
         :param circles: list of circle x, y, and r as individual tuples
@@ -306,7 +306,7 @@ class RTGeometryMixin(object):
     # segmentLength()
     # - _segment_ = [(x0,y0),(x1,y1)]
     #
-    def segmentLength(self, _segment_: tuple[tuple[float, float], tuple[float, float]]) -> float:
+    def segmentLength(self, _segment_: tuple[tuple[float, float], tuple[float, float]]):
         """
         Returns the length of the segment.
         :param _segment_: a tuple of ((x0,y0), (x1,y1))
@@ -319,7 +319,7 @@ class RTGeometryMixin(object):
     # unitVector()
     # - _segment_ = [(x0,y0),(x1,y1)]
     #
-    def unitVector(self, _segment_: tuple[tuple[float, float], tuple[float, float]]) -> tuple[float, float]:
+    def unitVector(self, _segment_: tuple[tuple[float, float], tuple[float, float]]):
         """
         Returns the unit vector of the segment.
         :param _segment_: a tuple of ((x0,y0), (x1,y1))
@@ -339,7 +339,7 @@ class RTGeometryMixin(object):
                     pt1:  tuple[float, float],
                     pt1p: tuple[float, float],
                     pt2p: tuple[float, float],
-                    pt2:  tuple[float, float]) -> object:
+                    pt2:  tuple[float, float]):
         """
         Returns the parametric bezier curve object.
         :param pt1: point 1
@@ -364,7 +364,7 @@ class RTGeometryMixin(object):
     # ... for example:  10, (1,2)
     def closestPointOnSegment(self,
                               _segment_: tuple[tuple[float, float], tuple[float, float]],
-                              _pt_:      tuple[float, float]) -> tuple[float, tuple[float, float]]:
+                              _pt_:      tuple[float, float]):
         """
         :param _segment_: a tuple of ((x0,y0), (x1,y1))
         :param _pt_: a tuple of (x,y)
@@ -406,7 +406,7 @@ class RTGeometryMixin(object):
     #
     def intersectionPoint(self, 
                           line1: tuple[tuple[float, float], tuple[float, float]], 
-                          line2: tuple[tuple[float, float], tuple[float, float]]) -> tuple[float, float] | None:
+                          line2: tuple[tuple[float, float], tuple[float, float]]):
         """
         Determine where two lines intersect.
         :param line1: a tuple of ((x0,y0), (x1,y1))
@@ -429,7 +429,7 @@ class RTGeometryMixin(object):
     #
     def lineSegmentIntersectionPoint(self, 
                                      line:    tuple[tuple[float, float], tuple[float, float]], 
-                                     segment: tuple[tuple[float, float], tuple[float, float]]) -> tuple[float, float] | None:
+                                     segment: tuple[tuple[float, float], tuple[float, float]]):
         """
         Determine where a line intersects a segment.
         :param line: a tuple of ((x0,y0), (x1,y1))
@@ -448,7 +448,7 @@ class RTGeometryMixin(object):
     #
     # pointWithinSegment()
     #
-    def pointWithinSegment(self, x: float, y: float, x0: float, y0: float, x1: float, y1: float) -> tuple[bool, float]:
+    def pointWithinSegment(self, x: float, y: float, x0: float, y0: float, x1: float, y1: float):
         """
         Determine if a point is within a segment.
         :param x: x coordinate
@@ -484,7 +484,7 @@ class RTGeometryMixin(object):
     #
     # pointOnLine()
     #
-    def pointOnLine(self, point, line) -> tuple[bool, float]:
+    def pointOnLine(self, point, line):
         """ Determine if a point is on a line.  Returns True if the point is on the line, False otherwise and the fraction along the line.
         :param point: a tuple of (x,y)
         :param line: a tuple of ((x0,y0), (x1,y1))
