@@ -383,18 +383,21 @@ class RTOntology(object):
         else:                      self.xform_spec_lines = []
         if funcs is not None:      self.funcs = funcs
         else:                      self.funcs = {}
+        self.df_triples_schema = {'uid':   pl.Int64,
+                                  'sbj':   pl.Int64,
+                                  'stype': pl.String,
+                                  'sdisp': pl.String,
+                                  'vrb':   pl.String,
+                                  'obj':   pl.Int64,
+                                  'otype': pl.String,
+                                  'odisp': pl.String,
+                                  'grp':   pl.Int64,
+                                  'gdisp': pl.String,
+                                  'src':   pl.String}
+
         # RDF triples
-        self.df_triples = pl.DataFrame(schema={'uid':    pl.Int64,
-                                               'sbj':    pl.Int64,
-                                               'stype':  pl.String,
-                                               'sdisp':  pl.String,
-                                               'vrb':    pl.String,
-                                               'obj':    pl.Int64,
-                                               'otype':  pl.String,
-                                               'odisp':  pl.String,
-                                               'grp':    pl.Int64,
-                                               'gdisp':  pl.String,
-                                               'src':    pl.String})
+        self.df_triples = pl.DataFrame(schema=self.df_triples_schema)
+
         # Needs to match the df_triples schema
         # Needs to be the same as what is cleared later in the appendBufferedTriplesAndClearBuffer()
         self.buffered_triples = {'uid':  [],
@@ -642,8 +645,18 @@ class RTOntology(object):
         self.time_lu['fill.collapse'] += (t1-t0)
 
         t0 = time.time()
-        for_df = {'sbj': [], 'stype': [], 'sdisp': [], 'vrb': [], 'obj': [], 'otype': [], 'odisp': [], 'grp':[], 'gdisp':[], 'src':[]}
+        for_df = {'uid': [], 'sbj': [], 'stype': [], 'sdisp': [], 'vrb': [], 'obj': [], 'otype': [], 'odisp': [], 'grp':[], 'gdisp':[], 'src':[]}
         for i in range(l):
+            #
+            # UID (for this table row)
+            # ... needs to be refactored for consistency across uses...
+            #
+            my_uid = 100_000 + len(self.uid_lu.keys())
+            for_df['uid'].append(my_uid)
+            _tuple_ = (my_uid, '__triple__', 'uniq')
+            self.uid_lu[my_uid]      = _tuple_
+            self.rev_uid_lu[_tuple_] = my_uid
+
             #
             # Subject (Required)
             #
@@ -717,7 +730,7 @@ class RTOntology(object):
         t1 = time.time()
         self.time_lu['fill.parse'] += (t1-t0)
 
-        _df_ = pl.DataFrame(for_df)
+        _df_ = pl.DataFrame(for_df, schema=self.df_triples_schema)
         return _df_
 
     #
@@ -937,10 +950,10 @@ class RTOntology(object):
                 else:
                     raise Exception(f'RTOntology.parse() - line "{l}" does not have three parts')
 
-        # print out the counts
-        for spec in spec_to_parse_count:
-            counts = spec_to_parse_count[spec]
-            print(f'{" ".join(spec.split())} - sum:{sum(counts)} | min:{min(counts)} | max:{max(counts)} | avg:{sum(counts) / len(counts):0.2f} | files:{len(counts)})')
+        # print out the counts (more for debugging)
+        #for spec in spec_to_parse_count:
+            #counts = spec_to_parse_count[spec]
+            # print(f'{" ".join(spec.split())} - sum:{sum(counts)} | min:{min(counts)} | max:{max(counts)} | avg:{sum(counts) / len(counts):0.2f} | files:{len(counts)})')
 
         # put it all together at once
         parsed_len = 0
