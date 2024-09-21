@@ -445,8 +445,8 @@ class RTGeometryMixin(object):
         if results is None: return None
         # They intersect as lines... are the results on the segment?
         x, y = results
-        if x >= min(segment[0][0], segment[1][0]) and x <= max(segment[0][0], segment[1][0]): return x,y
-        if y >= min(segment[0][1], segment[1][1]) and y <= max(segment[0][1], segment[1][1]): return x,y
+        if x >= min(segment[0][0], segment[1][0]) and x <= max(segment[0][0], segment[1][0]) and \
+           y >= min(segment[0][1], segment[1][1]) and y <= max(segment[0][1], segment[1][1]): return x,y
         # That test should usually work... but rounding errors can cause it to fail...
         dx, dy = segment[1][0] - segment[0][0], segment[1][1] - segment[0][1] # x_t = x0 + t * dx and y_t = y0 + t * dy for t in [0,1]
         if abs(dx) >= 0.000001:
@@ -856,6 +856,214 @@ class RTGeometryMixin(object):
             d_str += f'L {x1+pdx2*r} {y1+pdy2*r} '
 
         return d_str
+
+    #
+    # Algorithm source & description from:
+    # "A simple algorithm for 2D Voronoi diagrams"
+    # https://www.youtube.com/watch?v=I6Fen2Ac-1U
+    # https://gist.github.com/isedgar/d445248c9ff6c61cef44fc275cb2398f
+    #
+    def isedgarVoronoi(self, S, Box=None, pad = 10):
+        # return bisector of points p0 and p1 -- bisector is ((x,y),(u,v)) where u,v is the vector of the bisector
+        def bisector(p0, p1):
+            x, y     = (p0[0] + p1[0])/2.0, (p0[1] + p1[1])/2.0
+            uv       = self.unitVector((p0, p1))
+            pdx, pdy = uv[1], -uv[0]
+            return ((x,y), (pdx,pdy))
+        # returns vertices that intersect the polygon
+        def intersects(bisects, poly):
+            inters = []
+            for i in range(0, len(poly)):
+                p0, p1 = poly[i], poly[(i+1)%len(poly)]
+                xy = self.lineSegmentIntersectionPoint((bisects[0], (bisects[0][0] + bisects[1][0], bisects[0][1] + bisects[1][1])),
+                                                       (p0, p1))
+                if xy is not None and xy != p1: inters.append((xy, i, (i+1)%len(poly)))
+            return inters
+        # conctenate a point, a list, and a point into a new list
+        def createCell(my_cell, p0, p1, i0, i1, sign):
+            l = [p0]
+            i = i0
+            while i != i1:
+                l.append(my_cell[i])
+                i += sign
+                if i < 0:             i += len(my_cell)
+                if i >= len(my_cell): i -= len(my_cell)
+            l.append(my_cell[i1])
+            l.append(p1)
+            return l
+        # contain true if pt is in poly
+        def contains(poly, pt):
+            inter_count = 0
+            for i in range(len(poly)):
+                p0, p1 = poly[i], poly[(i+1)%len(poly)]
+                _tuple_ = self.segmentsIntersect((pt,(pt[0]+1e9,pt[1])),(p0,p1)) # use a ray from the pt to test
+                if _tuple_[0] and (_tuple_[1], _tuple_[2]) != p1: inter_count += 1
+            if inter_count%2 == 1: return True
+            return False
+        # actual algorithm
+        if Box is None:
+            x_l, x_r, y_t, y_b = S[0][0], S[0][0], S[0][1], S[0][1]
+            for pt in S: x_l, x_r, y_t, y_b = min(x_l, pt[0]), max(x_r, pt[0]), max(y_t, pt[1]), min(y_b, pt[1])
+            Box = [(x_l-pad, y_t+pad), (x_r+pad, y_t+pad), (x_r+pad, y_b-pad), (x_l-pad, y_b-pad)]
+        cells = []
+        for i in range(len(S)):
+            p    = S[i]
+            cell = Box
+            for q in S:
+                if p == q: continue
+                B            = bisector(p,q)
+                B_intersects = intersects(B, cell)
+                if len(B_intersects) == 2:
+                    t1, t2 = B_intersects[0][0], B_intersects[1][0]
+                    xi, xj = B_intersects[0][2], B_intersects[1][1]
+                    newCell      = createCell(cell, t1, t2, xi, xj, 1)
+                    xi, xj = B_intersects[0][1], B_intersects[1][2]
+                    otherNewCell = createCell(cell, t1, t2, xi, xj, -1)
+                    if contains(newCell, p) == False: newCell = otherNewCell
+                    cell = newCell
+            cells.append(cell)
+        return cells
+
+    #
+    # threePointCircle() - given three points, determine the circle that passes through those points
+    # ... does not check for collinearity ... just fails ungracefully :(
+    #
+    # Derived From:
+    # https://math.stackexchange.com/questions/213658/get-the-equation-of-a-circle-when-given-3-points
+    #
+    # Original Source (from that page):
+    # https://web.archive.org/web/20161011113446/http://www.abecedarical.com/zenosamples/zs_circle3pts.html
+    #
+    def threePointCircle(self, p1, p2, p3):
+        x1,y1 = p1
+        x2,y2 = p2
+        x3,y3 = p3
+        _denom_ = np.linalg.det([[x1, y1, 1.0],
+                                [x2, y2, 1.0],
+                                [x3, y3, 1.0]])
+        _x_num_ = np.linalg.det([[x1**2 + y1**2, y1, 1.0],
+                                [x2**2 + y2**2, y2, 1.0], 
+                                [x3**2 + y3**2, y3, 1.0]])
+        _y_num_ = np.linalg.det([[x1**2 + y1**2, x1, 1.0],
+                                [x2**2 + y2**2, x2, 1.0], 
+                                [x3**2 + y3**2, x3, 1.0]])    
+        x0 = ( 1.0/2.0) * _x_num_/_denom_
+        y0 = (-1.0/2.0) * _y_num_/_denom_
+        r0 = np.sqrt((x0 - x1)**2 + (y0 - y1)**2)
+        return (x0, y0, r0)
+
+    #
+    # counterClockwiseOrder() - arrange the pts in counter-clockwise order
+    # pts = [(x0,y0), (x1,y1) ...]
+    # c   = (x,y,r) # circle
+    #
+    # Derived From:
+    # https://stackoverflow.com/questions/6989100/sort-points-in-clockwise-order
+    #
+    def counterClockwiseOrder(self, pts, c):
+        det = lambda xy0, xy1: (xy0[0] - c[0]) * (xy1[1] - c[1]) - (xy1[0] - c[0]) * (xy0[1] - c[1])
+        def less(xy0, xy1):
+            if xy0[0] - c[0] >= 0 and xy1[0] - c[0] < 0:  return False
+            if xy0[0] - c[0] <  0 and xy1[0] - c[0] >= 0: return True
+            if xy0[0] - c[0] == 0 and xy1[0] - c[0] == 0:
+                if xy0[1] - c[1] >= 0 or xy1[1] - c[1] >= 0: return xy0[1] <= xy1[1]
+                return xy1[1] < xy0[1]
+            if det(xy0,xy1) >= 0: return True
+            else:                 return False
+        # insertion sort
+        ordered = [pts[0]]
+        for i in range(1, len(pts)):
+            j = 0
+            while j < len(ordered) and less(ordered[j], pts[i]): j += 1
+            ordered.insert(j, pts[i])
+        # reverse
+        return ordered[::-1]
+
+    #
+    # should be called "pointWithinCircumcircle" # but i'll never remember what that means
+    # ... is this really faster than doing a square root?
+    #
+    # Derived From:
+    # https://en.wikipedia.org/wiki/Delaunay_triangulation
+    #
+    def pointWithinThreePointCircle(self, pt, p1, p2, p3):
+        d          = pt
+        x0, y0, r0 = self.threePointCircle(p1, p2, p3)
+        ordered    = self.counterClockwiseOrder([p1, p2, p3], (x0,y0,r0))
+        a, b, c    = ordered[0], ordered[1], ordered[2]
+        return np.linalg.det([[a[0] - d[0], a[1] - d[1], (a[0] - d[0])**2 + (a[1] - d[1])**2],
+                              [b[0] - d[0], b[1] - d[1], (b[0] - d[0])**2 + (b[1] - d[1])**2],
+                              [c[0] - d[0], c[1] - d[1], (c[0] - d[0])**2 + (c[1] - d[1])**2]]) <= 0
+
+    #
+    # bowyerWatson() - O(n^2) delaunay triangulation implementation
+    # -- not sure this is correct
+    #
+    # Derived from:
+    # https://en.wikipedia.org/wiki/Bowyer%E2%80%93Watson_algorithm
+    #
+    def bowyerWatson(self, pts):
+        # Bounds
+        x_min, y_min, x_max, y_max = pts[0][0], pts[0][1], pts[0][0], pts[0][1]
+        for i in range(1, len(pts)):
+            x_min, y_min = min(x_min, pts[i][0]), min(y_min, pts[i][1])
+            x_max, y_max = max(x_max, pts[i][0]), max(y_max, pts[i][1])
+
+        # Super triangle
+        _tip_                 = ((x_min+x_max)/2.0, (y_min - (y_max-y_min)))
+        _y_base_              = y_max + (y_max-y_min)
+        _x0_base_, _x1_base_  = x_min - (x_max-x_min), x_max + (x_max-x_min)
+        super_triangle        = (_tip_, (_x0_base_, _y_base_), (_x1_base_, _y_base_))
+
+        # Triangulation
+        triangulation = set()
+        triangulation.add(super_triangle)
+
+        # Main loop
+        for point in pts:
+            # Find triangles that contain this point in their circumcircles
+            bad_triangles = set()
+            for triangle in triangulation:
+                xy0, xy1, xy2 = triangle
+                if self.pointWithinThreePointCircle(point, xy0, xy1, xy2):
+                    bad_triangles.add(triangle)
+            # Normalize an edge
+            def normEdge(p0, p1):
+                if   p0[0] < p1[0]: return (p0, p1)
+                elif p0[0] > p1[0]: return (p1, p0)
+                elif p0[1] < p1[1]: return (p0, p1)
+                else:               return (p1, p0)
+            # Determine which edges are unique by filling in the edge lookup w/ points to their associated triangles
+            edge_lu = {}
+            for triangle in bad_triangles:
+                xy0, xy1, xy2 = triangle
+                e0, e1, e2 = normEdge(xy0, xy1), normEdge(xy1, xy2), normEdge(xy2, xy0)
+                if e0 not in edge_lu: edge_lu[e0] = set()
+                if e1 not in edge_lu: edge_lu[e1] = set()
+                if e2 not in edge_lu: edge_lu[e2] = set()
+                edge_lu[e0].add(triangle), edge_lu[e1].add(triangle), edge_lu[e2].add(triangle)
+
+            # Construct a polygon of the unique edges
+            polygon = set()
+            for edge in edge_lu:
+                if len(edge_lu[edge]) == 1: polygon.add(edge)
+            
+            # Remove all bad triangles from the triangulation
+            triangulation = triangulation - bad_triangles
+
+            # For each edge in the polygon, add a new triangle
+            for edge in polygon:
+                xy0, xy1 = edge
+                triangulation.add((xy0, xy1, point))
+        
+        # Remove any triangles that had a vertex from the super triangle
+        to_remove = set()
+        for triangle in triangulation:
+            if triangle[0] in super_triangle or triangle[1] in super_triangle or triangle[2] in super_triangle:
+                to_remove.add(triangle)
+        triangulation = triangulation - to_remove
+        
+        return triangulation
 
     #
     # levelSetFast()

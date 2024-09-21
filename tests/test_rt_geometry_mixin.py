@@ -175,3 +175,60 @@ class Testrt_geometry_mixin(unittest.TestCase):
 
         my_state, my_found_time, my_finds, my_progress_lu = self.rt_self.levelSetBalanced(my_raster, my_origins, 0)
 
+    # Copied from voronoi.ipynb
+    def test_circleOrdering(self):
+        n,w,h = 10, 600, 500
+        c     = (300,250,200)
+        _svg_ = [f'<svg x="0" y="0" width="{w}" height="{h}">']
+        _svg_.append('<rect x="0" y="0" width="{w}" height="{h}" fill="#ffffff" />')
+        _svg_.append(f'<circle cx="{c[0]}" cy="{c[1]}" r="{c[2]}" stroke="#000000" fill="none" />')
+        pts   = []
+        for i in range(n):
+            _angle_ = 2.0 * pi * random.random()
+            x, y = c[0] + c[2] * cos(_angle_), c[1] + c[2] * sin(_angle_)
+            pts.append((x,y))
+            #_svg_.append(f'<text x="{x}" y="{y}" font-size="20" fill="#000000" text-anchor="middle">{i}</text>')
+        for i in range(20):
+            x, y = random.randint(0,w), random.randint(0,h)
+            if self.rt_self.pointWithinThreePointCircle((x,y), pts[0], pts[1], pts[2]): _co_ = '#ff0000'
+            else:                                                                       _co_ = '#a0a0a0'
+            _svg_.append(f'<circle cx="{x}" cy="{y}" r="2" fill="{_co_}" stroke="none" />')
+
+        ordered_pts = self.rt_self.counterClockwiseOrder(pts, c)
+        for i in range(len(ordered_pts)):
+            x,y = ordered_pts[i]
+            _svg_.append(f'<text x="{x}" y="{y}" font-size="14" fill="#ff0000" text-anchor="middle">{i}</text>')
+
+    # Copied from voronoi.ipynb
+    def test_bowyerWatson(self):
+        _n_, w, h = 5, 400, 300
+        pts = []
+        for i in range(_n_):
+            x, y = random.randint(20,w-20), random.randint(20,h-20)
+            pts.append((x,y))
+
+        _triangulation_ = self.rt_self.bowyerWatson(pts)
+        _triangles_ = []
+        for t in _triangulation_:
+            _triangles_.append(f'<polygon points="{t[0][0]},{t[0][1]} {t[1][0]},{t[1][1]} {t[2][0]},{t[2][1]}" fill="none" stroke="#ff0000" />')
+
+    # Copied from voronoi.ipynb
+    def test_isEdgarVoronoi(self):
+        _n_, w, h = 5, 400, 300
+        pts = []
+        for i in range(_n_):
+            x, y = random.randint(20,w-20), random.randint(20,h-20)
+            pts.append((x,y))
+
+        polys = self.rt_self.isedgarVoronoi(pts)
+        _voronoi_svg_ = []
+        for i in range(len(polys)):
+            poly, _co_ = polys[i], self.rt_self.co_mgr.getColor(i)
+            l = [f'M {poly[0][0]} {poly[0][1]}']
+            for j in range(1, len(poly)): l.append(f'L {poly[j][0]} {poly[j][1]}')
+            l.append('Z')
+            _voronoi_svg_.append(f'<path d="{"".join(l)}" fill="{_co_}" stroke="{_co_}" fill-opacity="0.25" stroke-width="2"/>')
+            _voronoi_svg_.append(f'<circle cx="{pts[i][0]}" cy="{pts[i][1]}" r="5" fill="none" stroke="{_co_}" stroke-width="2"/>')
+
+if __name__ == '__main__':
+    unittest.main()
