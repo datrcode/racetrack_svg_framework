@@ -413,6 +413,8 @@ class RTGeometryMixin(object):
         :param line2: a tuple of ((x0,y0), (x1,y1))
         :return: intersection point in (x,y) tuple or None if the lines do not intersect
         """
+        def floatify(line): return (float(line[0][0]), float(line[0][1])), (float(line[1][0]), float(line[1][1]))
+        line1, line2 = floatify(line1), floatify(line2)
         xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
         ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
         def det(a, b): return a[0] * b[1] - a[1] * b[0]
@@ -436,14 +438,24 @@ class RTGeometryMixin(object):
         :param segment: a tuple of ((x0,y0), (x1,y1))
         :return: intersection point in (x,y) tuple or None if the line does not intersect the segment
         """
+        def floatify(line): return (float(line[0][0]), float(line[0][1])), (float(line[1][0]), float(line[1][1]))
+        line, segment = floatify(line), floatify(segment)
         # Would they intersect if they were both lines?
         results = self.intersectionPoint(line, segment)
         if results is None: return None
         # They intersect as lines... are the results on the segment?
         x, y = results
-        if x < min(segment[0][0], segment[1][0]) or x > max(segment[0][0], segment[1][0]): return None
-        if y < min(segment[0][1], segment[1][1]) or y > max(segment[0][1], segment[1][1]): return None
-        return x, y
+        if x >= min(segment[0][0], segment[1][0]) and x <= max(segment[0][0], segment[1][0]): return x,y
+        if y >= min(segment[0][1], segment[1][1]) and y <= max(segment[0][1], segment[1][1]): return x,y
+        # That test should usually work... but rounding errors can cause it to fail...
+        dx, dy = segment[1][0] - segment[0][0], segment[1][1] - segment[0][1] # x_t = x0 + t * dx and y_t = y0 + t * dy for t in [0,1]
+        if abs(dx) >= 0.000001:
+            t = (x - segment[0][0]) / dx
+            if t >= 0.0 and t <= 1.0: return x, segment[0][1] + t * dy
+        if abs(dy) >= 0.000001:
+            t = (y - segment[0][1]) / dy
+            if t >= 0.0 and t <= 1.0: return segment[0][0] + t * dx, y
+        return None
 
     #
     # pointWithinSegment()
