@@ -336,7 +336,7 @@ class RTColorManager:
     #
     def optimizeCategoricalColors(self, cats):
         cat_ordered = sorted(list(set(cats))) # want it to be the same
-        if type(cats[0]) is not str:
+        if type(cat_ordered[0]) is not str:
             hc = self.rt_self.hashcode('|'.join([str(x) for x in cat_ordered])) & 0x00ffff
         else:
             hc = self.rt_self.hashcode('|'.join(cat_ordered)) & 0x00ffff

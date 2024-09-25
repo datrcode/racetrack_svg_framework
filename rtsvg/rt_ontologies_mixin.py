@@ -812,7 +812,8 @@ class RTOntology(object):
         self.df_triples = pl.concat([self.df_triples, df_buffered])
 
         # Clear the buffer / needs to be the same as the initialization
-        self.buffered_triples = {'sbj':   [],
+        self.buffered_triples = {'uid':  [],
+                                 'sbj':  [],
                                  'stype': [],
                                  'sdisp': [],
                                  'vrb':   [],
