@@ -711,6 +711,16 @@ class RACETrack(RTAnnotationsMixin,
     # Create a tranformation field (tfield)
     #
     def createTField(self,field,trans):
+        ''' Create a Transformation Field (tfield)  -- print rt.transforms to see option.
+
+            Parameters
+            ----------
+            field : str
+                The field to be transformed
+            trans : str
+                The transformation to be applied to the field
+                See rt.transforms
+        '''
         if trans in self.transforms:
             tfield = '|tr|'+trans+'|'+field
         else:

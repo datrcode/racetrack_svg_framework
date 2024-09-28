@@ -857,6 +857,40 @@ class RTSmallMultiplesMixin(object):
                        background_override   = None,       # Override the background color
                        draw_labels           = True,       # Draw label under each small multiple
                        draw_border           = True):      # Draw border around the whole chart
+        ''' smallMultiples() - create a small multiples representation of the specified visualization component.
+
+            Parameters
+            ----------
+            df                    : Pandas  or Polars DataFrame
+            category_by           : Field(s) to separate small multiples by
+            sm_type               : Visualization type (e.g., 'xy', 'linkNode', ...)
+            sm_params             : Dictionary for customizing widget -- should be parameters for the specific component
+
+            ts_field              : For any temporal components
+            count_by              : Passed to the widgets (field to count by)
+            count_by_set          : Passed to the widgets (use a set operation for counting)
+            color_by              : Passed to the widgets (field to color_by)
+
+            h_sm_override         : Override the small multiple height
+            w_sm_override         : Override the small multiple width
+            x_axis_independent    : Use independent axis for x (xy, temporal, and linkNode)
+            y_axis_independent    : Use independent axis for y (xy, temporal, periodic, pie)
+
+            draw_labels           : Draw label under each small multiple
+
+            show_df_multiple      : Show the "all data" version small multiple
+            max_categories        : Limit the number of small multiples shown
+            grid_view             : For two category fields, make it into a grid
+            shrink_wrap_rows      : For a grid view, shrink wrap rows
+            sort_by               : 'records','alpha','field', 'similarity', or a list in the category_by schema
+            sort_by_field         : For sort_by == 'field', the field name... for 'similarity', the exemplar key
+
+            global_color_order    : color by ordering... if none (default), will be calculated
+            customize_params_fn   : Customize the parameters function
+            faded_sm_set          : small multiple labels to render as faded -- stored in a set as the string label (not the index tuple)
+            faded_opacity         : ... opacity to use when fading
+            temporal_granularity  : Minimum temporal granularity for the temporalBarChart component            
+        '''
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTSmallMultiples(self, **_params_)
