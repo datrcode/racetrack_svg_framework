@@ -423,6 +423,114 @@ class RTXYMixin(object):
            draw_labels               = True,          # draw labels flag
            draw_border               = True,          # draw a border around the histogram
            draw_context              = True):         # draw temporal context information if (and only if) x_axis is time
+        ''' xy() - xy scatter plot
+
+        Parameters
+        ----------
+
+        df                      : pandas or polars dataframe
+        x,y_field               : x and y axes fields
+
+        x,y_field_is_scalar     : treat x and y axes field as a scalar
+
+        color_by                : color by field
+        color_magnitude         : Only applies when color_by is None, options: None / 'linear' / 'log' / 'stretch'
+        opacity                 : Opacity of the dots
+        vary_opacity            : If true, vary opacity by the count_by # Not Implemented
+
+        count_by                : none means just count rows, otherwise, use a field to sum by # Not Implemented
+        count_by_set            : count by set operation
+
+        dot_size                : Dot size - ['tiny', 'small', 'medium', 'large', 'huge', 'vary', 'hidden'/None]
+        dot_shape               : Dot shape - ['square', 'ellipse', 'triangle, 'utriangle', 'diamond', 'plus', x', 'small_multiple', function_pointer]
+        max_dot_size            : Max dot size (used when the dot sz varies)
+
+        align_pixels            : Align pixels to integer values
+        widget_id               : svg element id
+
+        line_groupby_field      : will use a field to perform a groupby for a line chart
+        line_groupby_w          : width of the line for the line chart
+
+        draw_context            : draw temporal context information if (and only if) x_axis is time
+
+        Parameters (Distributions)
+        --------------------------
+
+        render_x_distribution       : number of x distribution buckets ... None == don't render
+        render_y_distribution       : number of x distribution buckets ... None == don't render
+        render_distribution_opacity : Opacity of the distribution render
+        distribution_h_perc         : height of the distribution as a function of the overall h of xy chart     
+        distribution_style          : 'outside' - outside of xy... 'inside' - inside of xy
+
+        Secondary Axis Parameters
+        -------------------------
+
+        df2                     : secondary axis dataframe ... if not set but y2_field is, then this will be set to df field
+        x2_field                : x2 field ... if not set but the y2_field is, then this be set to the x_field
+        x2_field_is_scalar      : x2 field is scalar
+        x2_axis_col             : x2 axis column name
+        y2_field                : secondary axis field ... if this is set, then df2 will be set to df // only required field really...
+        y2_field_is_scalar      : default... logic will check in the method to determine if this is true
+        y2_axis_col             : y2 axis column name
+        line2_groupby_field     : secondary line field ... will NOT be set
+        line2_groupby_w         : secondary line field width
+        line2_groupby_color     : line2 color... if none, pulls from the color_by field
+        line2_groupby_dasharray : line2 dasharray
+        dot2_size               : 'inherit',  # dot2 size... 'inherit' means take from the dot_size...
+
+        poly_fit_degree         : integer value for polynomial degree -- will overrride all of the other df2 settings if set...
+
+        Parameters (Views That Share Parameters)
+        ----------------------------------------
+
+        x,y_axis_col            : axis column name
+        x,y_is_time             : is time flag
+        x,y_label_min           : min label on the x axis
+        x,y_label_max           : max label on the x axis
+        x,y_trans_func          : lambda transform function for x axis
+        x,y_order               : order of categorical values on the x axis
+        x,y_fill_transforms     : for t-fields, fill in all the values to properly space out data
+
+        Parameters (Small Multiples Options)
+        ------------------------------------
+
+        sm_type                 : should be the method name // similar to the smallMultiples method
+        sm_w,h                  : override the width/height of the small multiple
+        sm_params               : dictionary of parameters for the small multiples
+        sm_x,y_axis_independent : use independent axis for x/y
+
+        Parameters (Background Options)
+        -------------------------------
+
+        bg_shape_lu           : lookup for background shapes -- key will be used for varying colors (if bg_shape_label_color == 'vary')
+                                ['key'] = [(x0,y0),(x1,y1),...] OR
+                                ['key'] = svg path description
+        bg_shape_label_color  : None = no label, 'vary', lookup to hash color, or a hash color
+        bg_shape_opacity      : None (== 0.0), number, lookup to opacity
+        bg_shape_fill         : None, 'vary', lookup to hash color, or a hash color
+        bg_shape_stroke_w     : None, number, lookup to width
+        bg_shape_stroke       : None, 'default', lookup to hash color, or a hash color
+
+
+        Parameters (Generic)
+        --------------------
+
+        track_state              : state tracking for interactive filtering
+        x_view                   : x offset for the view
+        y_view                   : y offset for the view
+        x_ins                    : side inserts
+        y_ins                    : top & bottom inserts
+        w                        : width of the view
+        h                        : height of the view
+        txt_h                    : text height for labeling
+        background_opacity       : opacity for entire plot
+        background_override      : override the background color // hex value
+        plot_background_override : override the background for the plot area // hex value
+        draw_x_gridlines         : draw the x gridlines for scalar values
+        draw_y_gridlines         : draw the y gridlines for scalar values
+        draw_labels              : draw labels flag
+        draw_border              : draw a border around the xy chart
+        '''
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTXy(self, **_params_)
