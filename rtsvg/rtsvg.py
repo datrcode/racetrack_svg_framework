@@ -863,24 +863,21 @@ class RACETrack(RTAnnotationsMixin,
     # Determine color ordering based on quantity
     #
     def colorRenderOrder(self, 
-                         df,                   # dataframe
-                         color_by,             # color_by field
-                         count_by,             # count_by field
-                         count_by_set=False):  # for the field set, count by set operation
+                         df,                     # dataframe
+                         color_by,               # color_by field
+                         count_by     = None,    # count_by field (None is equivalent to counting by rows)
+                         count_by_set = False):  # for the field set, count by set operation
+        '''Produce a structure indicating the order in which to colorize a visualization.'''
         # If no color, then return none...
-        if color_by is None:
-            return None
+        if color_by is None: return None
         
         # Make sure we can count by numeric summation
-        if count_by_set == False:
-            count_by_set = self.countBySet(df, count_by)
+        if count_by_set == False: count_by_set = self.countBySet(df, count_by)
         
-        if   self.isPandas(df):      
-            return self.__colorQuantities_pandas__(df, color_by, count_by, count_by_set)
-        elif self.isPolars(df):
-            return self.__colorQuantities_polars__(df, color_by, count_by, count_by_set)
-        else:
-            raise Exception('colorRenderOrder() - not a pandas or polars dataframe')
+        # Do the counting based on the dataframe type
+        if   self.isPandas(df): return self.__colorQuantities_pandas__(df, color_by, count_by, count_by_set)
+        elif self.isPolars(df): return self.__colorQuantities_polars__(df, color_by, count_by, count_by_set)
+        else:                   raise Exception('colorRenderOrder() - not a pandas or polars dataframe')
 
     #
     # Determine color quantities
