@@ -79,6 +79,12 @@ class RTGeometryMixin(object):
             _path_   = self.genericArc(cx, cy, angle, angle_to, r_inner, r_outer)
             svgs.append(f'<path d="{_path_}" stroke="white" stroke-width="1" fill="{_color_}" />')
             angle    = angle_to
+        
+        # The above doesn't work for a single arc
+        if len(df) == 1:
+            _color_  = self.co_mgr.getColor(df[nbor][0])
+            svgs.append(f'<circle cx="{cx}" cy="{cy}" r="{(r_inner + r_outer)/2.0}" fill="none" stroke-width="{r_outer - r_inner}" stroke="{_color_}" />')
+
         return ''.join(svgs)
 
     #
@@ -93,12 +99,15 @@ class RTGeometryMixin(object):
         bg     = self.co_mgr.getTVColor('background','default')
         pie_co = self.co_mgr.getTVColor('axis','default') if pie_color is None else pie_color
         svgs   = [f'<circle cx="{cx}" cy="{cy}" r="{rp}" fill="{bg}" stroke="{bg}" stroke-width="1" />']
-        if   pie_perc == 1.0: svgs.append(f'<circle cx="{cx}" cy="{cy}" r="{r-2}" fill="{pie_co}" stroke="{pie_co}" stroke-width="2" />')
-        elif pie_perc == 0.0: pass 
-        else:                 svgs.append(self.pieSlice(cx, cy, r-2, 0, 360*pie_perc, color=pie_co))
+
         svgs.append(self.concentricGlyphCircumference(df, cx, cy, r, r+bar_w, order=order, nbor=nbor, count_by=count_by, count_by_set=count_by_set, angle_min=angle_min))
         if df_outer is not None:
             svgs.append(self.concentricGlyphCircumference(df_outer, cx, cy, r+bar_w, r+2*bar_w, order=order, nbor=nbor, count_by=count_by, count_by_set=count_by_set, angle_min=angle_min))
+
+        if   pie_perc == 1.0: svgs.append(f'<circle cx="{cx}" cy="{cy}" r="{r-2}" fill="{pie_co}" stroke="{pie_co}" stroke-width="2" />')
+        elif pie_perc == 0.0: pass 
+        else:                 svgs.append(self.pieSlice(cx, cy, r-2, 0, 360*pie_perc, color=pie_co))
+
         return ''.join(svgs)
 
     #
