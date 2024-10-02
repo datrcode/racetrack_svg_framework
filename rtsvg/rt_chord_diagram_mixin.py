@@ -548,6 +548,7 @@ class RTChordDiagramMixin(object):
                      draw_labels                = False,         # draw labels flag # not implemented yet
                      label_style                = 'radial',      # 'radial' or 'circular'
                      draw_border                = True,          # draw a border around the graph
+                     draw_circular_background   = True,          # draw the background for just the circular part of the graph
                      draw_background            = False):        # useful to turn off in small multiples settings
 
         _params_ = locals().copy()
@@ -631,6 +632,7 @@ class RTChordDiagramMixin(object):
             self.draw_labels            = kwargs['draw_labels']               # done!
             self.label_style            = kwargs['label_style']               # done!
             self.draw_border            = kwargs['draw_border']               # done!
+            self.draw_circular_background = kwargs['draw_circular_background'] # done!
             self.draw_background        = kwargs['draw_background']           # done!
             self.dendrogram_algorithm   = kwargs['dendrogram_algorithm']      # done!
             self.skeleton_algorithm     = kwargs['skeleton_algorithm']        # done!
@@ -1188,15 +1190,15 @@ class RTChordDiagramMixin(object):
                                      f'C {self.cx} {self.cy} {self.cx} {self.cy} {xb0} {yb0} ' + \
                                      f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
 
-                        # should be refactored                        
-                        if   self.link_color is None or self.color_by is None:
+                        # should be refactored
+                        if   self.link_color is not None and type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                            _link_color_ = self.link_color
+                        elif self.link_color is None or self.color_by is None:
                             _link_color_ = self.rt_self.co_mgr.getTVColor('data', 'default')
                         elif self.link_color == 'src':
                             _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
                         elif self.link_color == 'dst':
                             _link_color_ = self.rt_self.co_mgr.getColor(str(_to_))
-                        elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
-                            _link_color_ = self.link_color
                         else: # 'vary'
                             _link_color_ = fmto_color_lu[_fm_][_to_]
 
@@ -1240,14 +1242,14 @@ class RTChordDiagramMixin(object):
                         xarrow1_pt,yarrow1_pt = self.xTarrow(b_avg), self.yTarrow(b_avg)
 
                         # should be refactored (2nd copy)
-                        if   self.link_color is None or self.color_by is None:
+                        if   self.link_color is not None and type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                            _link_color_ = self.link_color
+                        elif self.link_color is None or self.color_by is None:
                             _link_color_ = self.rt_self.co_mgr.getTVColor('data', 'default')
                         elif self.link_color == 'src':
                             _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
                         elif self.link_color == 'dst':
                             _link_color_ = self.rt_self.co_mgr.getColor(str(_to_))
-                        elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
-                            _link_color_ = self.link_color
                         else: # 'vary'
                             _link_color_ = fmto_color_lu[_fm_][_to_]
 
@@ -1694,14 +1696,14 @@ class RTChordDiagramMixin(object):
                                 svg.append(f'<line x1="{_pts_[i][0]}" y1="{_pts_[i][1]}" x2="{_pts_[i+1][0]}" y2="{_pts_[i+1][1]}" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
                         else:
                             # should be refactored (3rd copy)
-                            if   self.link_color is None or self.color_by is None:
+                            if   self.link_color is not None and type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                                _link_color_ = self.link_color
+                            elif self.link_color is None or self.color_by is None:
                                 _link_color_ = self.rt_self.co_mgr.getTVColor('data', 'default')
                             elif self.link_color == 'src':
                                 _link_color_ = self.rt_self.co_mgr.getColor(str(_fm_))
                             elif self.link_color == 'dst':
                                 _link_color_ = self.rt_self.co_mgr.getColor(str(_to_))
-                            elif type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
-                                _link_color_ = self.link_color
                             else: # 'vary'
                                 _link_color_ = fmto_color_lu[_fm_][_to_]
                                 
@@ -1937,6 +1939,8 @@ class RTChordDiagramMixin(object):
             background_color, axis_color = self.rt_self.co_mgr.getTVColor('background','default'), self.rt_self.co_mgr.getTVColor('axis','default')
             if self.draw_background:
                 svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
+            if self.draw_circular_background:
+                svg.append(f'<circle cx="{self.cx}" cy="{self.cy}" r="{self.r}" fill="{background_color}" stroke="{background_color}" />')
 
             self.xTo     = lambda a: self.cx + self.r                   * cos(pi*a/180.0) # Outer Circle - x transform
             self.xTi     = lambda a: self.cx + (self.r - self.node_h)   * cos(pi*a/180.0) # Inner Circle - x transform

@@ -53,6 +53,21 @@ class RTPanelMixin(object):
     # interactiveGraphLayout()
     #
     def interactiveGraphLayout(self, df, ln_params, w=600, h=400, **kwargs):
+        ''' Interactive Graph Layout using Panel Architecture
+
+        Parameters
+        ----------
+        df : DataFrame
+            The dataframe to be rendered
+        ln_params : dict
+            Should include relationships and pos (both same as linkNode)
+            Will be passed without modification to link()
+        
+        w, h : int
+            Width and height of the layout
+
+        Use saveLayout() and loadLayout() to store and retrieve layouts in parquet format
+        '''
         return RTGraphInteractiveLayout(self, df, ln_params, w, h, **kwargs)
 
     #
@@ -70,6 +85,21 @@ class RTPanelMixin(object):
                          widget_h_gap   = 1,    # Horizontal gap between widgets
                          widget_v_gap   = 1,    # Vertical gap between widgets
                          **kwargs):             # Other arguments to pass to the layout instance
+
+        ''' Interactive Panel Layout using Panel Architecture
+
+        Parameters
+        ----------
+        df : DataFrame
+            The dataframe to be rendered
+        spec : dict
+            Layout specification
+        w, h : int
+            Width and height of the layout
+        rt_params : dict
+        h_gap, v_gap, widget_h_gap, widget_v_gap : int
+            Horizontal, vertical, and widget gap between views
+        '''
         return RTReactiveHTML(df, self, spec, w, h, rt_params, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
 
     #
