@@ -1515,19 +1515,35 @@ class RTTextBlock(object):
     # pixelRepr() - return a pixel level representation of the document
     # - see the highlights() function below for regex formatting
     #
-    def pixelRepr(self, lu, w=64):
+    def pixelRepr(self, lu, w=64, draw_context=False, context_opacity=0.4, draw_background=True):
         bounds_x,bounds_y,bounds_w,bounds_h = self.bounds
         scale = w / bounds_w
         h = w * bounds_h / bounds_w
         _co  = self.rt_self.co_mgr.getTVColor('background','default')
-        svg  = f'<svg x="0" y="0" width="{w}" height="{h}">'
-        svg += f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />'
+        svg  = [f'<svg x="0" y="0" width="{w}" height="{h}">']
+
+        # Draw the background (if selected)
+        if draw_background: svg.append(f'<rect x="0" y="0" width="{w}" height="{h}" fill="{_co}" />')
+
+        # Draw the context (if selected)
+        if draw_context:
+            svg.append(f'<g opacity="{context_opacity}">')
+            sentence_tuples = self.rt_self.textExtractSentences(self.txt)
+            for _tuple_ in sentence_tuples:
+                _poly        = self.spanGeometry(_tuple_[1],_tuple_[2])
+                _poly_scaled = affinity.scale(_poly,xfact=scale,yfact=scale,origin=(0,0,0))
+                _co_shade_   = ((_tuple_.__hash__()%8) * 16 + 128) & 0x00ff
+                _co          = f'#{_co_shade_:02x}{_co_shade_:02x}{_co_shade_:02x}'
+                svg.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill="{_co}" />')
+            svg.append('</g>')
+
+        # Draw the highlights
         for k in lu.keys():
             if   type(k) == tuple:
                 _poly        = self.spanGeometry(k[0],k[1])
                 _poly_scaled = affinity.scale(_poly,xfact=scale,yfact=scale,origin=(0,0,0))
                 _co          = self.rt_self.co_mgr.getColor(lu[k])
-                svg += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill="{_co}" />'
+                svg.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill="{_co}" />')
             elif type(k) == str:
                 re_match = re.findall(k,self.txt)
                 if re_match is not None and len(re_match) > 0:
@@ -1540,12 +1556,11 @@ class RTTextBlock(object):
                         _poly        = self.spanGeometry(i,j)
                         _poly_scaled = affinity.scale(_poly,xfact=scale,yfact=scale,origin=(0,0,0))
                         _co          = self.rt_self.co_mgr.getColor(lu[k])
-                        svg += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill="{_co}" />'
+                        svg.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill="{_co}" />')
                         i += len(_match)
-            else:
-                raise Exception(f'RTTextBlock.pixelRepr() -- unknown key in lookups {k}')
-        svg +=  '</svg>'
-        return svg
+            else: raise Exception(f'RTTextBlock.pixelRepr() -- unknown key in lookups {k}')
+        svg.append('</svg>')
+        return ''.join(svg)
 
     #
     # highlights() - highlight user-specified text.
