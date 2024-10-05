@@ -1506,4 +1506,62 @@ for (i=32;i<128;i++) {
             return True
         except:
             return False
+    
+    #
+    # spacer() - simple spacer object -- mostly for tiling
+    #
+    def spacer(self, w, h, _color_='#000000'):
+        ''' Render a spacer -- usually for a tile '''
+        return f'<svg x="0" y="0" width="{w}" height="{h}"><rect x="0" y="0" width="{w}" height="{h}" fill="{_color_}" /></svg>'
+
+
+    def labeler(self, text_tuples, w, h=None, txt_h=16, x_ins=2, y_ins=4, h_gap=2):
+        '''
+        labeler - create an svg label from a list of text tuples
+
+        parameters
+        ----------
+        text_tuples - list of text tuples, examples are as follows
+            ['this', 'is', 'a', 'test'] # simple strings for labels -- defaults for all other values
+            - or -
+            a tuple consisting of the following items...
+            ('my string')
+            ('my string', my_txt_h)
+            ('my string', my_txt_h, my_hex_color)
+            ('my_string', my_txt_h, my_hex_color, my_h_gap)
+            ('my_string', my_txt_h, my_hex_color, my_h_gap, my_top_gap)
+            ('my_string', my_txt_h, my_hex_color, my_h_gap, my_top_gap, my_svg_icon)
+        
+        w     - width (required)
+        h     - height (optional, if not provided will be calculated)  
+        txt_h - default text height
+        x_ins - x insert (left and right)
+        y_ins - y insert (top and bottom)
+        h_gap - horizontal gap between txt strings
+        '''
+        svg = []
+        y_so_far = y_ins
+        for _tuple_ in text_tuples:
+            if   type(_tuple_) is str:
+                svg.append(self.svgText(_tuple_, x_ins, y_so_far + txt_h, txt_h))
+                y_so_far += txt_h + h_gap
+            elif type(_tuple_) is tuple:
+                my_str      = _tuple_[0]
+                my_txt_h    = _tuple_[1] if len(_tuple_) >= 2 else txt_h
+                my_color    = _tuple_[2] if len(_tuple_) >= 3 else None
+                my_h_gap    = _tuple_[3] if len(_tuple_) >= 4 else h_gap
+                my_top_gap  = _tuple_[4] if len(_tuple_) >= 5 else 0
+                my_svg_icon = _tuple_[5] if len(_tuple_) >= 6 else None
+                icon_w      = 0
+                if my_svg_icon is not None:
+                    icon_w, icon_h = self.__extractSVGWidthAndHeight__(my_svg_icon)
+                    svg.append(self.__overwriteSVGXAndY__(my_svg_icon, (x_ins, my_top_gap + y_so_far + my_txt_h/2.0 - icon_h/2.0)))
+                    icon_w += x_ins
+                svg.append(self.svgText(my_str, x_ins + icon_w, my_top_gap + y_so_far + my_txt_h, my_txt_h, my_color))
+                y_so_far += my_txt_h + my_h_gap
+            else: raise Exception("Only Strings or Tuples Supported")
+
+        my_h = h if h is not None else y_so_far + y_ins
+
+        return f'<svg x="0" y="0" width="{w}" height="{my_h}">' + ''.join(svg) + '</svg>'
 
