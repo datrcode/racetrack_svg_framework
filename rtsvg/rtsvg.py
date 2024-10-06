@@ -158,8 +158,7 @@ class RACETrack(RTAnnotationsMixin,
     # Render the SVG as HTML and display it within a notebook
     #
     def displaySVG(self,_svg):
-        if type(_svg) != str:
-            _svg = _svg._repr_svg_()
+        if type(_svg) is not str: _svg = _svg._repr_svg_()
         return display(HTML(_svg))
 
     #
@@ -168,8 +167,7 @@ class RACETrack(RTAnnotationsMixin,
     # - Image form should save processing power for complicated SVGs
     #
     def displaySVGAsImage(self, _svg):
-        if type(_svg) != str:
-            _svg = _svg._repr_svg_()
+        if type(_svg) is not str: _svg = _svg._repr_svg_()
         b = io.BytesIO()
         renderPM.drawToFile(svg2rlg(io.StringIO(_svg)), b, 'PNG')
         return ipc_display.Image(data=b.getvalue(),format='png',embed=True)
@@ -178,13 +176,13 @@ class RACETrack(RTAnnotationsMixin,
     # isPandas() - is this a pandas dataframe?
     #
     def isPandas(self, df):
-        return type(df) == pd.core.frame.DataFrame
+        return type(df) is pd.core.frame.DataFrame
 
     #
     # isPolars() - is this a polars dataframe?
     #
     def isPolars(self, df):
-        return type(df) == pl.dataframe.frame.DataFrame
+        return type(df) is pl.dataframe.frame.DataFrame
 
     #
     # copyDataFrame() - copy/clone a dataframe
@@ -206,7 +204,7 @@ class RACETrack(RTAnnotationsMixin,
     def flattenTuple(self, _tuple_):
         _ls_ = []
         for x in _tuple_:
-            if type(x) == tuple:
+            if type(x) is tuple:
                 _ls_.extend(self.flattenTuple(x))
             else:
                 _ls_.append(x)
@@ -263,7 +261,7 @@ class RACETrack(RTAnnotationsMixin,
     # - "format" parameter only applies to the polars typing method
     #
     def columnsAreTimestamps(self, df, columns, format=None):
-        if type(columns) != list:
+        if type(columns) is not list:
             columns = [columns]
         for _column_ in columns:
             if   self.isPandas(df):
@@ -376,7 +374,7 @@ class RACETrack(RTAnnotationsMixin,
     # Return a consistent hashcode for a string
     #
     def hashcode(self,s):
-        if type(s) != str: # Force non-strings to be strings
+        if type(s) is not str: # Force non-strings to be strings
             s = str(s)
         if s not in RACETrack.hashcode_lu.keys(): # Cache the results so that we don't have to redo the calculation
             my_bytes = hashlib.sha256(s.encode('utf-8')).digest()
@@ -408,10 +406,10 @@ class RACETrack(RTAnnotationsMixin,
     #
     def encSVGID(self, s):
         _enc = 'encsvgid_'
-        if   type(s) == int:
+        if   type(s) is int:
             _enc += f'i_{s}'
             
-        elif type(s) == str:        
+        elif type(s) is str:        
             _enc += 's_'
             for c in s:
                 if (c >= 'a' and c <= 'z') or \
@@ -476,7 +474,7 @@ class RACETrack(RTAnnotationsMixin,
         # Perform the transforms
         new_field_list = []
         for x in field_list:
-            if type(x) == list:
+            if type(x) is list:
                 new_list = []
                 for y in x:
                     if self.isTField(y) and y not in df.columns:
@@ -497,7 +495,7 @@ class RACETrack(RTAnnotationsMixin,
     # Determine if a field is a tfield
     #
     def isTField(self,tfield):
-        return tfield is not None and type(tfield) == str and tfield.startswith('|tr|')      
+        return tfield is not None and type(tfield) is str and tfield.startswith('|tr|')      
     
     #
     # Return the applicable field for this transformation field (tfiled)
@@ -762,14 +760,14 @@ class RACETrack(RTAnnotationsMixin,
             self.__recursiveDecompose__(v, columns_set)
 
     def __recursiveDecompose__(self, something, columns_set):
-        if   type(something) == str:
+        if   type(something) is str:
             columns_set.add(something)
-        elif type(something) == bool: # unclear why None may be converted to False // is that what's happening?
+        elif type(something) is bool: # unclear why None may be converted to False // is that what's happening?
             pass # do nothing
-        elif type(something) == list or type(something) == tuple:
+        elif type(something) is list or type(something) is tuple:
             for x in something:
                 self.__recursiveDecompose__(x, columns_set)
-        elif type(something) == dict:
+        elif type(something) is dict:
             pass # do nothing
         else:
             raise Exception(f'Unknown type ("{type(something)}") for ("{something}") encountered in identifyColumnsFromParameters()')
@@ -788,7 +786,7 @@ class RACETrack(RTAnnotationsMixin,
     # polarsCounter() -- return a dataframe with fields and an __count__ column.
     #
     def polarsCounter(self, df, fields, count_by=None, count_by_set=False):
-        fields = [fields] if type(fields) != list else fields
+        fields = [fields] if type(fields) is not list else fields
         if count_by is not None and count_by_set == False:
             if self.fieldIsArithmetic(df, count_by) == False:
                 count_by_set = True
@@ -817,15 +815,15 @@ class RACETrack(RTAnnotationsMixin,
                    count_by):  # field to check
         if count_by is None:
             return False
-        if type(df) == list:
+        if type(df) is list:
             for _df in df:
                 if self.isPandas(_df):
                     if count_by in _df.columns:
                         if _df[count_by].dtypes != np.int64   and \
-                        _df[count_by].dtypes != np.int32   and \
-                        _df[count_by].dtypes != np.float64 and \
-                        _df[count_by].dtypes != np.float32:
-                            return True
+                           _df[count_by].dtypes != np.int32   and \
+                           _df[count_by].dtypes != np.float64 and \
+                           _df[count_by].dtypes != np.float32:
+                                return True
                 elif self.isPolars(_df):
                     if _df[count_by].is_float() == False and _df[count_by].is_integer() == False:
                         return True
