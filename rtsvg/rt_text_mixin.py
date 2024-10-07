@@ -53,7 +53,7 @@ class RTTextMixin(object):
                   x_ins=5,
                   y_ins=3):
         
-        svg,x,y,line = '',x_ins,y_ins+txt_h,''
+        svg,x,y,line = [],x_ins,y_ins+txt_h,''
         last_was_space = True
         line_lu = {}
 
@@ -118,7 +118,7 @@ class RTTextMixin(object):
         orig_to_xy,i = {},0
         for k in line_lu:
             line = line_lu[k]
-            svg += self.svgText(line_lu[k], x_ins, k, txt_h, color='#b0b0b0')
+            svg.append(self.svgText(line_lu[k], x_ins, k, txt_h, color='#b0b0b0'))
             x = x_ins
             for c in line:
                 orig_to_xy[i] = (x,k)
@@ -133,7 +133,7 @@ class RTTextMixin(object):
             x,j  = x_ins,0
             while j < len(line):
                 c = line[j]
-                svg += self.svgText(c, x, y, txt_h)
+                svg.append(self.svgText(c, x, y, txt_h))
                 orig_to_xy[i] = (x,y)
                 j += 1
                 i += 1
@@ -168,7 +168,7 @@ class RTTextMixin(object):
                 i = i1
 
         bounds = (0,0,w,y-txt_h+y_ins)
-        return RTTextBlock(self, txt, txt_h, line_space_px, word_wrap, w, x_ins, y_ins, svg, bounds, geom_to_word, orig_to_xy)
+        return RTTextBlock(self, txt, txt_h, line_space_px, word_wrap, w, x_ins, y_ins, ''.join(svg), bounds, geom_to_word, orig_to_xy)
 
     # Is character whitespace?
     def __whitespace__ (self, c):
