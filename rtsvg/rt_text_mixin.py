@@ -1900,3 +1900,120 @@ class RTTextBlock(object):
 
         my_svg += '</svg>'
         return my_svg
+
+    #
+    #
+    #
+    def highlightsComparison(self, 
+                             highlights_dict, 
+                             opacity           = 0.2,  # opacity of the highlights
+                             y_merge_threshold = 1.0,  # multiple of txt_h
+                             y_keep            = 2.0,  # multiple of txt_h
+                             y_render_gap      = 2.0): # multiple of txt_h
+        y_merge_threshold *= self.txt_h
+        y_keep            *= self.txt_h
+        y_render_gap      *= self.txt_h
+        # Find all text spans first
+        location_lookups = {} # a highlight to the text spans that it covers
+        color_lookups    = {}
+        for highlighters in highlights_dict:
+            highlight_locations = list(highlights_dict[highlighters].keys())
+            for highlight_location in highlight_locations:
+                color_lookups[highlight_location] = highlights_dict[highlighters][highlight_location]
+                if highlight_location not in location_lookups:
+                    location_lookups[highlight_location] = []
+                    if   type(highlight_location) is tuple: location_lookups[highlight_location].append(highlight_location) # it's already a span
+                    elif type(highlight_location) is str:
+                        re_match = re.findall(highlight_location,self.txt)
+                        if re_match is not None and len(re_match) > 0:
+                            for _match in re_match:
+                                if type(_match) == tuple: _match = _match[0]
+                                i = 0
+                                while i < len(self.txt) and _match in self.txt[i:]:
+                                    i = self.txt.index(_match, i)
+                                    j = i + len(_match)
+                                    location_lookups[highlight_location].append((i,j))
+                                    i = j
+                    else: raise Exception('unknown highlight type: ' + str(type(highlight_location)))
+
+        _svg_ = []
+
+        # Convert to y coordinates pairs
+        y_coord_pairs = []
+        for k in location_lookups:
+            for _span_ in location_lookups[k]:
+                _poly_ = self.spanGeometry(_span_[0], _span_[1])
+                x0, y0, x1, y1 = _poly_.bounds
+                y_coord_pairs.append((y0, y1))
+        y_coord_pairs = sorted(y_coord_pairs)
+
+        # Consolidate
+        y_consolidated_pairs, i = [], 0
+        while i < len(y_coord_pairs):
+            j = i + 1
+            while j <  len(y_coord_pairs) and y_coord_pairs[j][0] - y_coord_pairs[j-1][1] < y_merge_threshold: j += 1
+            y_consolidated_pairs.append((y_coord_pairs[i][0], y_coord_pairs[j-1][1]))
+            i = j
+
+        # Render the text in a consolidated format
+        new_y_lu   = {}
+        max_y_seen = 0
+        max_x_rendered, max_y_rendered = 128, 128
+        for _poly_ in self.geom_to_word:
+            x0, y0, x1, y1 = _poly_.bounds
+            max_y_seen     = max(max_y_seen, y1)
+            y_mid          = (y0 + y1) / 2.0
+            i              = None
+            for j in range(len(y_consolidated_pairs)):
+                if y_mid >= (y_consolidated_pairs[j][0] - y_keep) and y_mid <= (y_consolidated_pairs[j][1] + y_keep): i = j
+            if i is not None:
+                rendered_so_far = 0 if y_consolidated_pairs[0][0] == 0.0 else y_render_gap + y_keep
+                for j in range(0, i): rendered_so_far += y_consolidated_pairs[j][1] - y_consolidated_pairs[j][0] + y_render_gap + 2.0 * y_keep
+                _y_ = y1 - 2*self.y_ins - y_consolidated_pairs[i][0] + rendered_so_far
+                new_y_lu[y1] = _y_
+                _svg_.append(self.rt_self.svgText(self.geom_to_word[_poly_], x0, _y_, self.txt_h))
+                if x1  > max_x_rendered: max_x_rendered = x1
+                if _y_ > max_y_rendered: max_y_rendered = _y_
+
+        if y_consolidated_pairs[-1][1] != max_y_seen: max_y_rendered += y_render_gap
+
+        # Render symbols to indicate breaks in the text
+        y_set = set()
+        for _y_ in new_y_lu: y_set.add(new_y_lu[_y_])
+        y_list = sorted(list(y_set))
+        for i in range(len(y_list) - 1):
+            if (y_list[i+1] - y_list[i]) > y_render_gap:
+                y_avg = (y_list[i] + y_list[i+1]) / 2.0
+                x     =  self.x_ins
+                d     =  f'M {x} {y_avg} '
+                count = 1
+                while x < max_x_rendered - self.txt_h:
+                    x += self.txt_h
+                    if count % 2 == 0: d += f'L {x} {y_avg} '
+                    else:              d += f'L {x} {y_avg-self.txt_h/2.0} '
+                    count += 1
+                _svg_.append(f'<path d="{d}" stroke="#a0a0a0" stroke-width="0.5" fill="none" dasharray="5,5" />')
+
+        # For each highlighter, render a different highlight overlap for the consolidated text
+        svg_dict = {}
+        for highlighter in highlights_dict:
+            svg_for_this_highlighter = []
+            for _highlight_ in highlights_dict[highlighter]:
+                _color_ = highlights_dict[highlighter][_highlight_]
+                _spans_ = location_lookups[_highlight_]
+                for _span_ in _spans_:
+                    _poly_ = self.spanGeometry(_span_[0], _span_[1])
+                    x0, y0, x1, y1 = _poly_.bounds
+                    closest_y = None
+                    for _y_ in new_y_lu:
+                        if   closest_y is None: closest_y = _y_
+                        elif abs(_y_ - y1) < abs(closest_y - y1): closest_y = _y_
+                    new_y = new_y_lu[closest_y]
+                    _poly_translated_ = affinity.translate(_poly_, 0, new_y - y1 + 2)
+                    svg_for_this_highlighter.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_translated_)}" fill="{_color_}" opacity="{opacity}" />')
+            _background_color_ = self.rt_self.co_mgr.getTVColor('background','default')
+            svg_dict[highlighter] = f'<svg x="0" y="0" width="{max_x_rendered + self.x_ins}" height="{max_y_rendered + self.y_ins}">' + \
+                                    f'<rect x="0" y="0" width="{max_x_rendered + self.x_ins}" height="{max_y_rendered + self.y_ins}" fill="{_background_color_}" />' + \
+                                    ''.join(_svg_) + ''.join(svg_for_this_highlighter) + '</svg>'
+
+        return svg_dict
