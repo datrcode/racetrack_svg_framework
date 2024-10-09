@@ -140,12 +140,21 @@ class RTTextMixin(object):
                 x += self.textLength(c, txt_h)
         y += txt_h + line_space_px
 
-        # Calculate geom_to_word
-        geom_to_word = {}
+        # Calculate geom_to_word and geom_to_punctuation
+        geom_to_word, geom_to_punctuation = {}, {}
         i,last_was_space = 0,True
         _dn = 4 # downward shift...
         while i < len(txt):
             if self.__whitespace__(txt[i]) or self.__punctuation__(txt[i]):
+                if self.__punctuation__(txt[i]):
+                    x0,y0 =  orig_to_xy[i]
+                    x1,y1 =  orig_to_xy[i]
+                    x1    += self.textLength(txt[i],txt_h)
+                    _polygon = Polygon([[x0,y0+line_space_px+_dn], 
+                                        [x1,y1+line_space_px+_dn], 
+                                        [x1,y1-txt_h+_dn], 
+                                        [x0,y1-txt_h+_dn]])
+                    geom_to_punctuation[_polygon] = txt[i:i+1]
                 last_was_space = True
                 i += 1
             else:
@@ -168,7 +177,7 @@ class RTTextMixin(object):
                 i = i1
 
         bounds = (0,0,w,y-txt_h+y_ins)
-        return RTTextBlock(self, txt, txt_h, line_space_px, word_wrap, w, x_ins, y_ins, ''.join(svg), bounds, geom_to_word, orig_to_xy)
+        return RTTextBlock(self, txt, txt_h, line_space_px, word_wrap, w, x_ins, y_ins, ''.join(svg), bounds, geom_to_word, orig_to_xy, geom_to_punctuation)
 
     # Is character whitespace?
     def __whitespace__ (self, c):
@@ -1439,30 +1448,32 @@ class RTTextBlock(object):
     # Constructor
     #
     def __init__(self,
-                 rt_self,           # Reference to parent class instance
-                 txt,               # Original text string
-                 txt_h,             # Text height in pixels
-                 line_space_px,     # Pixel space between paragraphs
-                 word_wrap,         # Word wrap flag
-                 w,                 # Width of SVG results
-                 x_ins,             # x insert left & right
-                 y_ins,             # y insert top & bottom
-                 svg,               # rendered svg (w/out svg begin/end wrapper)
-                 bounds,            # Four tuple of x,y,w,h
-                 geom_to_word,      # Shapely polygon to word
-                 orig_to_xy):       # Original text index to xy-tuple
-        self.rt_self        = rt_self
-        self.txt            = txt
-        self.txt_h          = txt_h
-        self.line_space_px  = line_space_px
-        self.word_wrap      = word_wrap
-        self.w              = w
-        self.x_ins          = x_ins
-        self.y_ins          = y_ins
-        self.svg            = svg
-        self.bounds         = bounds
-        self.geom_to_word   = geom_to_word
-        self.orig_to_xy     = orig_to_xy
+                 rt_self,              # Reference to parent class instance
+                 txt,                  # Original text string
+                 txt_h,                # Text height in pixels
+                 line_space_px,        # Pixel space between paragraphs
+                 word_wrap,            # Word wrap flag
+                 w,                    # Width of SVG results
+                 x_ins,                # x insert left & right
+                 y_ins,                # y insert top & bottom
+                 svg,                  # rendered svg (w/out svg begin/end wrapper)
+                 bounds,               # Four tuple of x,y,w,h
+                 geom_to_word,         # Shapely polygon to word
+                 orig_to_xy,           # Original text index to xy-tuple
+                 geom_to_punctuation): # Shapely polygon to punctuation
+        self.rt_self             = rt_self
+        self.txt                 = txt
+        self.txt_h               = txt_h
+        self.line_space_px       = line_space_px
+        self.word_wrap           = word_wrap
+        self.w                   = w
+        self.x_ins               = x_ins
+        self.y_ins               = y_ins
+        self.svg                 = svg
+        self.bounds              = bounds
+        self.geom_to_word        = geom_to_word
+        self.orig_to_xy          = orig_to_xy
+        self.geom_to_punctuation = geom_to_punctuation
         
     #
     # spanGeometry() - return a polygon that covers a specified text span.
@@ -1972,6 +1983,23 @@ class RTTextBlock(object):
                 _y_ = y1 - 2*self.y_ins - y_consolidated_pairs[i][0] + rendered_so_far
                 new_y_lu[y1] = _y_
                 _svg_.append(self.rt_self.svgText(self.geom_to_word[_poly_], x0, _y_, self.txt_h))
+                if x1  > max_x_rendered: max_x_rendered = x1
+                if _y_ > max_y_rendered: max_y_rendered = _y_
+
+        # Needs to be refactored into the above (almost an exact copy)
+        for _poly_ in self.geom_to_punctuation:
+            x0, y0, x1, y1 = _poly_.bounds
+            max_y_seen     = max(max_y_seen, y1)
+            y_mid          = (y0 + y1) / 2.0
+            i              = None
+            for j in range(len(y_consolidated_pairs)):
+                if y_mid >= (y_consolidated_pairs[j][0] - y_keep) and y_mid <= (y_consolidated_pairs[j][1] + y_keep): i = j
+            if i is not None:
+                rendered_so_far = 0 if y_consolidated_pairs[0][0] == 0.0 else y_render_gap + y_keep
+                for j in range(0, i): rendered_so_far += y_consolidated_pairs[j][1] - y_consolidated_pairs[j][0] + y_render_gap + 2.0 * y_keep
+                _y_ = y1 - 2*self.y_ins - y_consolidated_pairs[i][0] + rendered_so_far
+                new_y_lu[y1] = _y_
+                _svg_.append(self.rt_self.svgText(self.geom_to_punctuation[_poly_], x0, _y_, self.txt_h))
                 if x1  > max_x_rendered: max_x_rendered = x1
                 if _y_ > max_y_rendered: max_y_rendered = _y_
 
