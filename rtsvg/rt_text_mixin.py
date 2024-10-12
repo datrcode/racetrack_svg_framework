@@ -1921,12 +1921,15 @@ class RTTextBlock(object):
                              y_merge_threshold = 1.0,  # multiple of txt_h
                              y_keep            = 2.0,  # multiple of txt_h
                              y_render_gap      = 2.0): # multiple of txt_h
+        if y_render_gap < 2.0: raise Exception('RTTextBlock.highlightsComparison() - y_render_gap must be >= 2.0')
+        if y_keep       < 1.0: raise Exception('RTTextBlock.highlightsComparison() - y_keep must be >= 1.0')
         y_merge_threshold *= self.txt_h
         y_keep            *= self.txt_h
         y_render_gap      *= self.txt_h
         # Find all text spans first
         location_lookups = {} # a highlight to the text spans that it covers
         color_lookups    = {}
+        already_matched  = set()
         for highlighters in highlights_dict:
             highlight_locations = list(highlights_dict[highlighters].keys())
             for highlight_location in highlight_locations:
@@ -1939,6 +1942,8 @@ class RTTextBlock(object):
                         if re_match is not None and len(re_match) > 0:
                             for _match in re_match:
                                 if type(_match) == tuple: _match = _match[0]
+                                if _match in already_matched: continue
+                                already_matched.add(_match)
                                 i = 0
                                 while i < len(self.txt) and _match in self.txt[i:]:
                                     i = self.txt.index(_match, i)
@@ -1955,14 +1960,14 @@ class RTTextBlock(object):
             for _span_ in location_lookups[k]:
                 _poly_ = self.spanGeometry(_span_[0], _span_[1])
                 x0, y0, x1, y1 = _poly_.bounds
-                y_coord_pairs.append((y0, y1))
+                y_coord_pairs.append((y0-y_keep, y1+y_keep))
         y_coord_pairs = sorted(y_coord_pairs)
 
         # Consolidate
         y_consolidated_pairs, i = [], 0
         while i < len(y_coord_pairs):
             j = i + 1
-            while j <  len(y_coord_pairs) and y_coord_pairs[j][0] - y_coord_pairs[j-1][1] < y_merge_threshold: j += 1
+            while j <  len(y_coord_pairs) and (y_coord_pairs[j][0] - y_coord_pairs[j-1][1]) < y_merge_threshold: j += 1
             y_consolidated_pairs.append((y_coord_pairs[i][0], y_coord_pairs[j-1][1]))
             i = j
 
@@ -1970,36 +1975,20 @@ class RTTextBlock(object):
         new_y_lu   = {}
         max_y_seen = 0
         max_x_rendered, max_y_rendered = 128, 128
-        for _poly_ in self.geom_to_word:
+        all_polys = self.geom_to_word | self.geom_to_punctuation
+        for _poly_ in all_polys:
             x0, y0, x1, y1 = _poly_.bounds
             max_y_seen     = max(max_y_seen, y1)
             y_mid          = (y0 + y1) / 2.0
             i              = None
             for j in range(len(y_consolidated_pairs)):
-                if y_mid >= (y_consolidated_pairs[j][0] - y_keep) and y_mid <= (y_consolidated_pairs[j][1] + y_keep): i = j
+                if y_mid >= y_consolidated_pairs[j][0] and y_mid <= y_consolidated_pairs[j][1]: i = j
             if i is not None:
                 rendered_so_far = 0 if y_consolidated_pairs[0][0] == 0.0 else y_render_gap + y_keep
                 for j in range(0, i): rendered_so_far += y_consolidated_pairs[j][1] - y_consolidated_pairs[j][0] + y_render_gap + 2.0 * y_keep
                 _y_ = y1 - 2*self.y_ins - y_consolidated_pairs[i][0] + rendered_so_far
                 new_y_lu[y1] = _y_
-                _svg_.append(self.rt_self.svgText(self.geom_to_word[_poly_], x0, _y_, self.txt_h))
-                if x1  > max_x_rendered: max_x_rendered = x1
-                if _y_ > max_y_rendered: max_y_rendered = _y_
-
-        # Needs to be refactored into the above (almost an exact copy)
-        for _poly_ in self.geom_to_punctuation:
-            x0, y0, x1, y1 = _poly_.bounds
-            max_y_seen     = max(max_y_seen, y1)
-            y_mid          = (y0 + y1) / 2.0
-            i              = None
-            for j in range(len(y_consolidated_pairs)):
-                if y_mid >= (y_consolidated_pairs[j][0] - y_keep) and y_mid <= (y_consolidated_pairs[j][1] + y_keep): i = j
-            if i is not None:
-                rendered_so_far = 0 if y_consolidated_pairs[0][0] == 0.0 else y_render_gap + y_keep
-                for j in range(0, i): rendered_so_far += y_consolidated_pairs[j][1] - y_consolidated_pairs[j][0] + y_render_gap + 2.0 * y_keep
-                _y_ = y1 - 2*self.y_ins - y_consolidated_pairs[i][0] + rendered_so_far
-                new_y_lu[y1] = _y_
-                _svg_.append(self.rt_self.svgText(self.geom_to_punctuation[_poly_], x0, _y_, self.txt_h))
+                _svg_.append(self.rt_self.svgText(all_polys[_poly_], x0, _y_, self.txt_h))
                 if x1  > max_x_rendered: max_x_rendered = x1
                 if _y_ > max_y_rendered: max_y_rendered = _y_
 
