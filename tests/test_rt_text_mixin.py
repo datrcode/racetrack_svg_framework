@@ -116,7 +116,7 @@ class Testrt_text_mixin(unittest.TestCase):
 
         passage = makePassage(my_markers)
         _tb_          = self.rt_self.textBlock(passage, word_wrap=True, w=300)
-        my_svg_dict   = _tb_.highlightsComparison(my_markups, y_keep=0.0)
+        my_svg_dict   = _tb_.highlightsComparison(my_markups, y_keep=4.0)
         _tb2_         = self.rt_self.textBlock(passage, word_wrap=True, w=700)
         my_svg_dict   = _tb2_.highlightsComparison(my_markups)
 
