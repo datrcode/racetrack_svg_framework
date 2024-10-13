@@ -1416,15 +1416,19 @@ class RTChordDiagramMixin(object):
                 # For each label, calculate the sum of the angles and the number of samples
                 _last_negative_label_ = -1
                 fm_angle_sum, to_angle_sum, samples, _labels_updated_ = {}, {}, {}, []
+                fm_angle_list, to_angle_list = {}, {}
                 for i in range(len(_labels_)):
                     _label_ = _labels_[i]
                     if _label_ == -1: # -1 means unclustered... just make it its own cluster
                         _label_ = _last_negative_label_ - 1
                         _last_negative_label_ -= 1
                     if _label_ not in fm_angle_sum:
-                        fm_angle_sum[_label_], to_angle_sum[_label_], samples[_label_] = 0, 0, 0
+                        fm_angle_sum[_label_],  to_angle_sum[_label_], samples[_label_] = 0, 0, 0
+                        fm_angle_list[_label_], to_angle_list[_label_] = [], []
                     fm_angle_sum[_label_] += l_fmtos_angles[i][0]
-                    to_angle_sum[_label_] += l_fmtos_angles[i][0]
+                    to_angle_sum[_label_] += l_fmtos_angles[i][1] # or is it 0?
+                    fm_angle_list[_label_].append(l_fmtos_angles[i][0])
+                    to_angle_list[_label_].append(l_fmtos_angles[i][1]) # or is it 0?
                     samples[_label_]      += 1
                     _labels_updated_.append(_label_)
 
@@ -1432,7 +1436,8 @@ class RTChordDiagramMixin(object):
                 fmtos_angles, fmtos_pos, label_to_i, angle_to_pos = [], [], {}, {}
                 for _label_ in fm_angle_sum.keys():
                     label_to_i[_label_] = len(fmtos_angles)                    
-                    fm_angle_avg, to_angle_avg = fm_angle_sum[_label_]/samples[_label_], to_angle_sum[_label_]/samples[_label_]
+                    # fm_angle_avg, to_angle_avg = fm_angle_sum[_label_]/samples[_label_], to_angle_sum[_label_]/samples[_label_]
+                    fm_angle_avg, to_angle_avg = self.rt_self.averageDegrees(fm_angle_list[_label_]), self.rt_self.averageDegrees(to_angle_list[_label_])
                     fmtos_angles.append((fm_angle_avg, to_angle_avg))
                     fmtos_pos.append(((self.cx + _r_*cos(to_deg(fm_angle_avg)), self.cy + _r_*sin(to_deg(fm_angle_avg))),
                                       (self.cx + _r_*cos(to_deg(to_angle_avg)), self.cy + _r_*sin(to_deg(to_angle_avg)))))

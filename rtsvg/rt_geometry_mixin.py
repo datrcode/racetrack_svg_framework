@@ -31,6 +31,22 @@ __name__ = 'rt_geometry_mixin'
 #
 class RTGeometryMixin(object):
     #
+    # Derived from the following article:
+    # https://stackoverflow.com/questions/5343629/averaging-angles
+    #
+    def averageDegrees(self, angles): # list of angles in degrees
+        def normAngle(a):
+            while a <  0:   a += 360
+            while a >= 360: a -= 360
+            return a
+        avg_angle = sum(angles)/len(angles)
+        diff      = 180.0 - avg_angle
+        shifted   = []
+        for angle in angles: shifted.append(normAngle(angle + diff))
+        shifted_avg_angle = sum(shifted)/len(shifted)
+        return shifted_avg_angle - diff
+
+    #
     # Converted from the following description
     # https://stackoverflow.com/questions/5736398/how-to-calculate-the-svg-path-for-an-arc-of-a-circle
     #
