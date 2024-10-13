@@ -1916,11 +1916,13 @@ class RTTextBlock(object):
     #
     #
     def highlightsComparison(self, 
-                             highlights_dict, 
-                             opacity           = 0.2,  # opacity of the highlights
-                             y_merge_threshold = 1.0,  # multiple of txt_h
-                             y_keep            = 2.0,  # multiple of txt_h
-                             y_render_gap      = 2.0): # multiple of txt_h
+                             highlights_dict,
+                             render_all        = True,  # render version with all highlighters on same copy
+                             opacity           = 0.4,   # opacity of the highlights
+                             opacity_all       = 0.3,   # opacity for the "render all" version
+                             y_merge_threshold = 1.0,   # multiple of txt_h
+                             y_keep            = 2.0,   # multiple of txt_h
+                             y_render_gap      = 2.0):  # multiple of txt_h
         if y_render_gap < 2.0: raise Exception('RTTextBlock.highlightsComparison() - y_render_gap must be >= 2.0')
         if y_keep       < 1.0: raise Exception('RTTextBlock.highlightsComparison() - y_keep must be >= 1.0')
         y_merge_threshold *= self.txt_h
@@ -1928,12 +1930,10 @@ class RTTextBlock(object):
         y_render_gap      *= self.txt_h
         # Find all text spans first
         location_lookups = {} # a highlight to the text spans that it covers
-        color_lookups    = {}
         already_matched  = set()
         for highlighters in highlights_dict:
             highlight_locations = list(highlights_dict[highlighters].keys())
             for highlight_location in highlight_locations:
-                color_lookups[highlight_location] = highlights_dict[highlighters][highlight_location]
                 if highlight_location not in location_lookups:
                     location_lookups[highlight_location] = []
                     if   type(highlight_location) is tuple: location_lookups[highlight_location].append(highlight_location) # it's already a span
@@ -2012,7 +2012,8 @@ class RTTextBlock(object):
                 _svg_.append(f'<path d="{d}" stroke="#a0a0a0" stroke-width="0.5" fill="none" dasharray="5,5" />')
 
         # For each highlighter, render a different highlight overlap for the consolidated text
-        svg_dict = {}
+        svg_dict            = {}
+        svg_for_render_all  = []
         for highlighter in highlights_dict:
             svg_for_this_highlighter = []
             for _highlight_ in highlights_dict[highlighter]:
@@ -2027,10 +2028,18 @@ class RTTextBlock(object):
                         elif abs(_y_ - y1) < abs(closest_y - y1): closest_y = _y_
                     new_y = new_y_lu[closest_y]
                     _poly_translated_ = affinity.translate(_poly_, 0, new_y - y1 + 2)
-                    svg_for_this_highlighter.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_translated_)}" fill="{_color_}" opacity="{opacity}" />')
+                    _svg_element_ = f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_translated_)}" fill="{_color_}" ' 
+                    svg_for_this_highlighter.append(_svg_element_ + f'opacity="{opacity}" />')
+                    svg_for_render_all      .append(_svg_element_ + f'opacity="{opacity_all}" />')
             _background_color_ = self.rt_self.co_mgr.getTVColor('background','default')
             svg_dict[highlighter] = f'<svg x="0" y="0" width="{max_x_rendered + self.x_ins}" height="{max_y_rendered + self.y_ins}">' + \
                                     f'<rect x="0" y="0" width="{max_x_rendered + self.x_ins}" height="{max_y_rendered + self.y_ins}" fill="{_background_color_}" />' + \
                                     ''.join(_svg_) + ''.join(svg_for_this_highlighter) + '</svg>'
+
+        # Add the render all version
+        if render_all:
+            svg_dict['__all__'] = f'<svg x="0" y="0" width="{max_x_rendered + self.x_ins}" height="{max_y_rendered + self.y_ins}">' + \
+                                  f'<rect x="0" y="0" width="{max_x_rendered + self.x_ins}" height="{max_y_rendered + self.y_ins}" fill="{_background_color_}" />' + \
+                                  ''.join(_svg_) + ''.join(svg_for_render_all) + '</svg>'
 
         return svg_dict
