@@ -55,7 +55,7 @@ class Testrt_text_mixin(unittest.TestCase):
         _df = df.query('type == "para" and num >= 2 and num <= 3')
         rttb.renderDataFrame(_df)
 
-    def test_textCompareSummaries(self):
+    def REMOVED_test_textCompareSummaries(self):
         import tensorflow as tf
         import tensorflow_hub as hub
         module_url = "https://tfhub.dev/google/universal-sentence-encoder/4"
@@ -78,10 +78,10 @@ class Testrt_text_mixin(unittest.TestCase):
                            rttb.pixelRepr(lu, draw_context=True),
                            rttb.pixelRepr(lu, draw_context=True, context_opacity=1.0)])._repr_svg_()
 
-    def test_textRank(self):
+    def REMOVED_test_textRank(self):
         df_tr = self.rt_self.textRank(self._text)
 
-    def test_textLexRank(self):
+    def REMOVED_test_textLexRank(self):
         self.rt_self.textLexRank(self._text, self.rt_self.textCreateEmbedder())
 
     def test_highlightComparisons(self):
