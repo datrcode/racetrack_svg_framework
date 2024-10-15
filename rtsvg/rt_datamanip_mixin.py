@@ -1,4 +1,4 @@
-# Copyright 2023 David Trimm
+# Copyright 2024 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,14 +15,61 @@
 
 import pandas as pd
 import numpy as np
+import random
 
 __name__ = 'rt_datamanip_mixin'
 
 #
 # Data Manipulation Mixin
 # ... utilities for preparing a dataframe for the visualization components
+# ... and other useful utilities
 #
 class RTDataManipMixin(object):
+
+    #
+    # kMeans2D() - perform k-means on 2d tuples
+    #
+    def kMeans2D(self, points, k=6, iterations=100):
+        sx_min, sx_max, sy_min, sy_max = points[0][0], points[0][0], points[0][1], points[0][1]
+        for _xy_ in points:
+            sx, sy = _xy_[0], _xy_[1]
+            sx_min, sx_max = min(sx_min, sx), max(sx_max, sx)
+            sy_min, sy_max = min(sy_min, sy), max(sy_max, sy)
+
+        # Make random cluster centers
+        cluster_centers = {}
+        for i in range(k): 
+            sx, sy = random.random() * (sx_max - sx_min) + sx_min, random.random() * (sy_max - sy_min) + sy_min
+            cluster_centers[i] = (sx, sy)
+
+        # Iterate K-Means
+        for _iter_ in range(iterations):
+            # Assign nodes to their closest center
+            center_assignments = {}
+            for j in range(len(points)):
+                _xy_                     = points[j]
+                min_dist, closest_center = (_xy_[0] - cluster_centers[0][0])**2 + (_xy_[1] - cluster_centers[0][1])**2, 0
+                for i in range(1, k):
+                    dist = (_xy_[0] - cluster_centers[i][0])**2 + (_xy_[1] - cluster_centers[i][1])**2
+                    if dist < min_dist:
+                        min_dist, closest_center = dist, i
+                if closest_center not in center_assignments: 
+                    center_assignments[closest_center] = []
+                center_assignments[closest_center].append(_xy_)
+            # If there are any centers without nodes, assign a random node to them
+            if _iter_ != (iterations-1): # don't do this on the last run -- every point assigned to a single cluster
+                for i in range(k): 
+                    if i not in center_assignments: 
+                        center_assignments[i] = [random.choice(points)]
+            # Update centers
+            for i in range(k):
+                sx, sy = 0, 0
+                for _xy_ in center_assignments[i]: 
+                    sx, sy = sx + _xy_[0], sy + _xy_[1]
+                cluster_centers[i] = (sx/len(center_assignments[i]), sy/len(center_assignments[i]))
+
+        return cluster_centers, center_assignments
+    
     #
     # temporalStatsAggregation()
     # ... Produces a variety of stats based on specified temporal frequency, a list of fields, and stat names

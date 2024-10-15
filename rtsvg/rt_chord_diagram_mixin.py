@@ -1372,6 +1372,155 @@ class RTChordDiagramMixin(object):
             return skeleton, skeleton_svg, fmto_entry, fmto_exit
         
         #
+        # __renderEdges_createSkeletonKMeans__() - create the skeleton graph using the kmeans clustering algorithm
+        #
+        def __renderEdges_createSkeletonKMeans__(self, 
+                                                 fmtos,          # array of fmto tuples ('fm','to')
+                                                 fmtos_angles,   # array of fmto angles tuples (fm_angle, to_angle)
+                                                 fmto_fm_angle,  # dictionary [_fmto_] = (min_angle, max_angle) # for the from portion
+                                                 fmto_to_angle,  # dictionary [_fmto_] = (min_angle, max_angle) # for the to portion
+                                                 fmto_fm_pos,    # dictionary -- to be filled in by the method - fmto_fm_pos[_fmto_] = (x,y)
+                                                 fmto_to_pos):   # dictionary -- to be filled in by the method - fmto_to_pos[_fmto_] = (x,y)
+            to_rad = lambda angle: pi*angle/180.0            
+            skeleton_svg, fmto_entry, fmto_exit, skeleton  = [], {}, {}, nx.Graph()
+
+            adj_r  = self.r - self.node_h
+
+            # Gather the initial points
+            points, pos_fms, pos_tos, fmto_to_i = [], {}, {}, {}
+            for i in range(len(fmtos)):
+                _fmto_                         = fmtos[i]
+                _fm_avg_angle_, _to_avg_angle_ = fmtos_angles[i]
+                fmto_to_i[_fmto_]              = i
+                fm_pos              = (self.cx + adj_r*cos(to_rad(_fm_avg_angle_)), self.cy + adj_r*sin(to_rad(_fm_avg_angle_)))
+                fmto_fm_pos[_fmto_] = fm_pos
+                if fm_pos not in pos_fms: pos_fms[fm_pos] = []
+                pos_fms[fm_pos].append(_fmto_)
+                points.append(fm_pos)
+                to_pos              = (self.cx + adj_r*cos(to_rad(_to_avg_angle_)), self.cy + adj_r*sin(to_rad(_to_avg_angle_)))
+                fmto_to_pos[_fmto_] = to_pos
+                if to_pos not in pos_tos: pos_tos[to_pos] = []
+                pos_tos[to_pos].append(_fmto_)
+                points.append(to_pos)
+
+            #        outermost circle ...                    innermost circle
+            radii = [3.0 * self.r / 4.0, 2.0 * self.r / 4.0, 1.0 * self.r / 4.0]
+            ks    = [30,                 10,                 5]          
+
+            # First stage clustering of the initial points
+            all_angles, angle_to_pos = set(), {}
+            cluster_centers, center_assignments = self.rt_self.kMeans2D(points, k=ks[0])
+            for _center_ in center_assignments:
+                if len(center_assignments[_center_]) == 0: continue
+                fm_angles, to_angles = [], []
+                for _pos_ in center_assignments[_center_]:
+                    if _pos_ in pos_fms:
+                        for _fmto_ in pos_fms[_pos_]: 
+                            fm_angles.append(fmtos_angles[fmto_to_i[_fmto_]][0])
+                    if _pos_ in pos_tos: 
+                        for _fmto_ in pos_tos[_pos_]:
+                            to_angles.append(fmtos_angles[fmto_to_i[_fmto_]][1])
+
+                if len(fm_angles) > 0:
+                    fm_avg_angle     = self.rt_self.averageDegrees(fm_angles)
+                    fm_avg_angle_pos = (self.cx + radii[0]*cos(to_rad(fm_avg_angle)), self.cy + radii[0]*sin(to_rad(fm_avg_angle)))
+                    all_angles.add(fm_avg_angle)
+                    angle_to_pos[fm_avg_angle] = fm_avg_angle_pos
+
+
+                if len(to_angles) > 0:
+                    to_avg_angle     = self.rt_self.averageDegrees(to_angles)
+                    to_avg_angle_pos = (self.cx + radii[0]*cos(to_rad(to_avg_angle)), self.cy + radii[0]*sin(to_rad(to_avg_angle)))
+                    all_angles.add(to_avg_angle)
+                    angle_to_pos[to_avg_angle] = to_avg_angle_pos
+
+                for _pos_ in center_assignments[_center_]:
+                    if _pos_ in pos_fms:
+                        for _fmto_ in pos_fms[_pos_]:
+                            _fm_avg_angle_, _to_avg_angle_ = fmtos_angles[fmto_to_i[_fmto_]]
+                            _xy_             = (self.cx + adj_r*cos(to_rad(_fm_avg_angle_)), self.cy + adj_r*sin(to_rad(_fm_avg_angle_)))
+                            fmto_entry[_xy_] = fm_avg_angle_pos
+                    if _pos_ in pos_tos: 
+                        for _fmto_ in pos_tos[_pos_]:
+                            _fm_avg_angle_, _to_avg_angle_ = fmtos_angles[fmto_to_i[_fmto_]]
+                            _xy_             = (self.cx + adj_r*cos(to_rad(_to_avg_angle_)), self.cy + adj_r*sin(to_rad(_to_avg_angle_)))
+                            fmto_exit [_xy_] = to_avg_angle_pos
+            
+            # Connect the first ring of points
+            _sorted_ = sorted(list(all_angles))
+            for i in range(len(_sorted_)):
+                a0, a1   = _sorted_[i], _sorted_[(i+1)%len(_sorted_)]
+                xy0, xy1 = angle_to_pos[a0], angle_to_pos[a1]
+                #skeleton.add_edge(xy0, xy1, weight=self.rt_self.segmentLength((xy0, xy1)))
+                #skeleton_svg.append(f'<line x1="{xy0[0]}" y1="{xy0[1]}" x2="{xy1[0]}" y2="{xy1[1]}" stroke="black" />')
+
+            # Second stage clustering for the intermediate ring
+            points, pos_to_angle = [], {}
+            for _angle_ in angle_to_pos: 
+                points.append(angle_to_pos[_angle_])
+                pos_to_angle[angle_to_pos[_angle_]] = _angle_
+            all_angles = set()
+            cluster_centers, center_assignments = self.rt_self.kMeans2D(points, k=ks[1])
+            for _center_ in center_assignments:
+                if len(center_assignments[_center_]) == 0: continue
+                angles = []
+                for _pos_ in center_assignments[_center_]: angles.append(pos_to_angle[_pos_])
+                avg_angle = self.rt_self.averageDegrees(angles)
+                all_angles.add(avg_angle)
+                _xy_      = (self.cx + radii[1]*cos(to_rad(avg_angle)), self.cy + radii[1]*sin(to_rad(avg_angle)))
+                for _pos_ in center_assignments[_center_]:
+                    skeleton.add_edge(_pos_, _xy_, weight=self.rt_self.segmentLength((_pos_, _xy_)))
+                    skeleton_svg.append(f'<line x1="{_pos_[0]}" y1="{_pos_[1]}" x2="{_xy_[0]}" y2="{_xy_[1]}" stroke="black" />')
+
+            # Connect the second ring of points
+            angle_to_pos = {}
+            _sorted_ = sorted(list(all_angles))
+            for i in range(len(_sorted_)):
+                a0, a1   = _sorted_[i], _sorted_[(i+1)%len(_sorted_)]
+                xy0 = (self.cx + radii[1]*cos(to_rad(a0)), self.cy + radii[1]*sin(to_rad(a0)))
+                angle_to_pos[a0] = xy0
+                xy1 = (self.cx + radii[1]*cos(to_rad(a1)), self.cy + radii[1]*sin(to_rad(a1)))
+                angle_to_pos[a1] = xy1
+                skeleton.add_edge(xy0, xy1, weight=self.rt_self.segmentLength((xy0, xy1)))
+                skeleton_svg.append(f'<line x1="{xy0[0]}" y1="{xy0[1]}" x2="{xy1[0]}" y2="{xy1[1]}" stroke="black" />')
+
+            # final stage clustering for the intermediate ring
+            points, pos_to_angle = [], {}
+            for _angle_ in angle_to_pos: 
+                points.append(angle_to_pos[_angle_])
+                pos_to_angle[angle_to_pos[_angle_]] = _angle_
+            all_angles = set()
+            cluster_centers, center_assignments = self.rt_self.kMeans2D(points, k=ks[1])
+            for _center_ in center_assignments:
+                if len(center_assignments[_center_]) == 0: continue
+                angles = []
+                for _pos_ in center_assignments[_center_]: angles.append(pos_to_angle[_pos_])
+                avg_angle = self.rt_self.averageDegrees(angles)
+                all_angles.add(avg_angle)
+                _xy_      = (self.cx + radii[2]*cos(to_rad(avg_angle)), self.cy + radii[2]*sin(to_rad(avg_angle)))
+                for _pos_ in center_assignments[_center_]:
+                    skeleton.add_edge(_pos_, _xy_, weight=self.rt_self.segmentLength((_pos_, _xy_)))
+                    skeleton_svg.append(f'<line x1="{_pos_[0]}" y1="{_pos_[1]}" x2="{_xy_[0]}" y2="{_xy_[1]}" stroke="black" />')
+
+            # Connect the final ring of points -- and connect them to the center
+            angle_to_pos = {}
+            _sorted_ = sorted(list(all_angles))
+            for i in range(len(_sorted_)):
+                a0, a1   = _sorted_[i], _sorted_[(i+1)%len(_sorted_)]
+                xy0 = (self.cx + radii[2]*cos(to_rad(a0)), self.cy + radii[2]*sin(to_rad(a0)))
+                angle_to_pos[a0] = xy0
+                xy1 = (self.cx + radii[2]*cos(to_rad(a1)), self.cy + radii[2]*sin(to_rad(a1)))
+                angle_to_pos[a1] = xy1
+                skeleton.add_edge(xy0, xy1, weight=self.rt_self.segmentLength((xy0, xy1)))
+                skeleton_svg.append(f'<line x1="{xy0[0]}" y1="{xy0[1]}" x2="{xy1[0]}" y2="{xy1[1]}" stroke="black" />')
+                _center_ = (self.cx, self.cy)
+                skeleton.add_edge(xy0, _center_, weight=self.rt_self.segmentLength((xy0, _center_)))
+                skeleton_svg.append(f'<line x1="{xy0[0]}" y1="{xy0[1]}" x2="{_center_[0]}" y2="{_center_[1]}" stroke="black" />')
+
+
+            return skeleton, skeleton_svg, fmto_entry, fmto_exit
+
+        #
         # __renderEdges_createSkeletonHDBSCAN__() - create the skeleton graph using the hdbscan clustering algorithm
         #
         def __renderEdges_createSkeletonHDBSCAN_v2__(self, 
@@ -1640,12 +1789,15 @@ class RTChordDiagramMixin(object):
             # Skeleton option
             _ts_ = time.time()
             if self.skeleton is None: # if wouldn't be none in the case of small multiples (x-axis dependency)
-                if   self.skeleton_algorithm == 'hdbscan' or self.skeleton_algorithm == 'hdbscanv2':
+                if   self.skeleton_algorithm == 'hdbscan' or self.skeleton_algorithm == 'hdbscanv2' or self.skeleton_algorithm == 'kmeans':
                     if len(fmtos) > 8:
-                        if self.skeleton_algorithm == 'hdbscan':
+                        if   self.skeleton_algorithm == 'hdbscan':
                             skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonHDBSCAN__   (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
-                        else:
+                        elif self.skeleton_algorithm == 'hdbscanv2':
                             skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonHDBSCAN_v2__(fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                        elif self.skeleton_algorithm == 'kmeans':
+                            skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonKMeans__    (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
+                        else: raise Exception('__renderEdges_bundled__() - only skeleton_methodology supported are "hdbscan", "hdbscanv2", or "kmeans"')
                     else:
                         skeleton, skeleton_svg, fmto_entry, fmto_exit = self.__renderEdges_createSkeletonHexagonal__ (fmtos, fmtos_angles, fmto_fm_angle, fmto_to_angle, fmto_fm_pos, fmto_to_pos)
                 elif self.skeleton_algorithm == 'hexagonal' or self.skeleton_algorithm == 'simple':
