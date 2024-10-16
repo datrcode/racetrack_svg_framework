@@ -18,7 +18,7 @@ import numpy as np
 
 from shapely.geometry              import Polygon, LineString, GeometryCollection, MultiLineString
 from shapely.geometry.multipolygon import MultiPolygon
-from math import sqrt, acos, pi, cos, sin
+from math import sqrt, acos, pi, cos, sin, atan2
 import random
 
 import heapq
@@ -31,20 +31,17 @@ __name__ = 'rt_geometry_mixin'
 #
 class RTGeometryMixin(object):
     #
-    # Derived from the following article:
-    # https://stackoverflow.com/questions/5343629/averaging-angles
+    # averageDegrees() - return the average angle for a list of degrees
+    # - not efficient due to use of cos, sin, atan2
     #
     def averageDegrees(self, angles): # list of angles in degrees
-        def normAngle(a):
-            while a <  0:   a += 360
-            while a >= 360: a -= 360
-            return a
-        avg_angle = sum(angles)/len(angles)
-        diff      = 180.0 - avg_angle
-        shifted   = []
-        for angle in angles: shifted.append(normAngle(angle + diff))
-        shifted_avg_angle = sum(shifted)/len(shifted)
-        return shifted_avg_angle - diff
+        to_rad     = lambda angle: pi*angle/180.0
+        xsum, ysum = 0.0, 0.0
+        for angle in angles:
+            xsum += cos(to_rad(angle))
+            ysum += sin(to_rad(angle))
+        avg_angle = atan2(ysum, xsum) * 180.0 / pi
+        return avg_angle
 
     #
     # Converted from the following description

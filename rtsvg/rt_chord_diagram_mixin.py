@@ -1409,7 +1409,7 @@ class RTChordDiagramMixin(object):
 
             # First stage clustering of the initial points
             all_angles, angle_to_pos = set(), {}
-            cluster_centers, center_assignments = self.rt_self.kMeans2D(points, k=ks[0])
+            cluster_centers, center_assignments = self.rt_self.kMeans2D(points, k=ks[0], iterations=20)
             for _center_ in center_assignments:
                 if len(center_assignments[_center_]) == 0: continue
                 fm_angles, to_angles = [], []
@@ -1460,7 +1460,7 @@ class RTChordDiagramMixin(object):
                 points.append(angle_to_pos[_angle_])
                 pos_to_angle[angle_to_pos[_angle_]] = _angle_
             all_angles = set()
-            cluster_centers, center_assignments = self.rt_self.kMeans2D(points, k=ks[1])
+            cluster_centers, center_assignments = self.rt_self.kMeans2D(points, k=ks[1], iterations=20)
             for _center_ in center_assignments:
                 if len(center_assignments[_center_]) == 0: continue
                 angles = []
@@ -1490,7 +1490,7 @@ class RTChordDiagramMixin(object):
                 points.append(angle_to_pos[_angle_])
                 pos_to_angle[angle_to_pos[_angle_]] = _angle_
             all_angles = set()
-            cluster_centers, center_assignments = self.rt_self.kMeans2D(points, k=ks[1])
+            cluster_centers, center_assignments = self.rt_self.kMeans2D(points, k=ks[1], iterations=20)
             for _center_ in center_assignments:
                 if len(center_assignments[_center_]) == 0: continue
                 angles = []
