@@ -40,7 +40,10 @@ class RTGeometryMixin(object):
         for angle in angles:
             xsum += cos(to_rad(angle))
             ysum += sin(to_rad(angle))
-        avg_angle = atan2(ysum, xsum) * 180.0 / pi
+        if xsum == 0.0 and ysum == 0.0:
+            avg_angle = sum(angles)/len(angles)
+        else:    
+            avg_angle = atan2(ysum, xsum) * 180.0 / pi
         return avg_angle
 
     #

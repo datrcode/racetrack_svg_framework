@@ -27,6 +27,12 @@ class Testrt_geometry_mixin(unittest.TestCase):
         super().__init__(*args, **kwargs)
         self.rt_self = RACETrack()
 
+    def test_averagDegrees(self):
+        self.assertEqual(self.rt_self.averageDegrees([180]), 180)
+        self.assertEqual(self.rt_self.averageDegrees([180,190]), 185)
+        self.assertEqual(self.rt_self.averageDegrees([358,0]), 359)
+        self.assertEqual(self.rt_self.averageDegrees([90,270]), 180)
+
     def test_concetricCirclesGlyph(self):
         _lu_ = {'__count__':[ 5,    10,   15,   12,   1,    10],
                 '__dir__'  :['fm', 'to', 'fm', 'to', 'fm', 'to'],
