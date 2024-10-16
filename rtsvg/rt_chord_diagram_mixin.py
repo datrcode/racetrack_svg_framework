@@ -533,8 +533,8 @@ class RTChordDiagramMixin(object):
                      # ----------------------------------------- # small multiples config
                      structure_template         = None,          # existing RTChordDiagram() ... e.g., for small multiples
                      dendrogram_algorithm       = None,          # 'original', 'hdbscan', or None
-                     skeleton_algorithm         = 'hexagonal',   # 'hexagonal', 'hdbscan', 'simple'
-                     skeleton_rings             = 4,             # number of rings
+                     skeleton_algorithm         = 'hexagonal',   # 'hexagonal', 'hdbscan', 'simple', 'kmeans'
+                     skeleton_rings             = 4,             # number of rings in the skeleton
                      # ----------------------------------------- # visualization geometry / etc.
                      track_state                = False,         # track state for interactive filtering
                      x_view                     = 0,             # x offset for the view
@@ -550,7 +550,97 @@ class RTChordDiagramMixin(object):
                      draw_border                = True,          # draw a border around the graph
                      draw_circular_background   = True,          # draw the background for just the circular part of the graph
                      draw_background            = False):        # useful to turn off in small multiples settings
+        '''Implementation of a chord diagram in SVG.
 
+        Required Parameters
+        -------------------
+
+        df : pandas.DataFrame | polars.DataFrame
+            Dataframe to render.
+
+        relationships : list[tuple]
+            The list of relationships to be drawn.  Examples include:
+            [('fm','to')]                # single relationship
+            [('fm','to'), ('src','dst')] # multiple relationships
+            [(('fm','fm_sub'),'to')]     # multi-field from relationship with single field to relationship
+
+        Useful Parameters
+        -----------------
+
+        color_by : str
+            Field name to color the edges by.
+
+        count_by : str
+            Field name to count the edges by.  None indicates count by rows.
+
+        count_by_set : bool
+            Count by set operation when set to True.  Otherwise, count by summation.
+
+        skeleton_algorithm : str
+            'hexagonal', 'hdbscan', 'simple', 'kmeans'
+
+        skeleton_rings : int
+            number of rings (for hdbscan only)
+        
+        label_style
+            'radial' (default) or 'circular'
+
+        Node Parameters
+        ---------------
+
+        node_color : str          
+            None means color by node name, 'vary' by color_by, or specific color "#xxxxxx"
+
+        node_h : float | int        
+            Height of node from circle edge
+
+        node_gap : float | int
+            Node gap in pixels (gap between the arcs)
+
+        node_labels : dict
+            Replacement labels for the elements found within the dataframe
+
+        order : list
+            Override calculated ordering... "None" in the list means user-specified gaps
+
+        parent_lu : dict
+            Parent lookup (if filled in & order is None, it will be calculated)
+
+        label_only : set
+            Label only set
+
+        equal_size_nodes : bool
+            Use equal size nodes
+            
+
+        Link Parameters
+        ---------------
+
+        link_color : str
+            None, 'src', 'dst', 'vary' by color_by, 'shade_fm_to' to match the hierarchical bundle paper (expensive), or specific color "#xxxxxx"
+
+        link_opacity : float
+            Link opacity
+
+        link_arrow : str
+            None, 'subtle' (default), or 'sharp' - only applies to the "wide" linkstyle
+
+        arrow_px : float | int
+            Arrow size in pixels
+
+        arrow_ratio : float
+            Arrow size as a ratio of the radius
+
+        link_style : str
+            'narrow' (default), 'wide', 'bundled'
+
+        link_size_min : float
+            for 'narrow', min link size
+
+        link_size_max : float
+            for 'narrow', max link size
+
+        '''
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTChordDiagram(self, **_params_)
