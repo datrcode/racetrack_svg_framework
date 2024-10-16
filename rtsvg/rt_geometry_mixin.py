@@ -44,6 +44,7 @@ class RTGeometryMixin(object):
             avg_angle = sum(angles)/len(angles)
         else:    
             avg_angle = atan2(ysum, xsum) * 180.0 / pi
+            if avg_angle < 0.0: avg_angle += 360.0
         return avg_angle
 
     #
