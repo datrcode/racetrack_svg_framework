@@ -537,6 +537,7 @@ class RTChordDiagramMixin(object):
                      skeleton_rings             = 4,             # number of rings in the skeleton
                      # ----------------------------------------- # visualization geometry / etc.
                      track_state                = False,         # track state for interactive filtering
+                     track_routes               = False,         # track routes for skeleton analysis
                      x_view                     = 0,             # x offset for the view
                      y_view                     = 0,             # y offset for the view
                      w                          = 256,           # width of the view
@@ -784,6 +785,12 @@ class RTChordDiagramMixin(object):
             # Tracking state
             self.geom_to_df  = {}
             self.last_render = None
+
+            # Track routes (for bundled edges)
+            self.track_routes              = kwargs['track_routes'] 
+            self.track_routes_segments     = {}
+            self.track_routes_segments_fms = {}
+            self.track_routes_segments_tos = {}
 
             # Geometric construction... these members map the nodes into the circle...
             # ... manipulating these prior to render is how small multiples needs to work
@@ -1897,9 +1904,10 @@ class RTChordDiagramMixin(object):
             self.time_lu['bundler_skeleton'] = time.time() - _ts_
 
             # Bundle the edges
-            use_all_pairs  = False
-            ts_path_calc   = 0.0 
-            ts_edge_render = 0.0
+            use_all_pairs   = False
+            ts_path_calc    = 0.0 
+            ts_edge_render  = 0.0
+            ts_track_routes = 0.0
 
             if use_all_pairs:
                 _ts_ = time.time()
@@ -1936,6 +1944,19 @@ class RTChordDiagramMixin(object):
                             ts_path_calc += time.time() - _ts_
 
                         _ts_ = time.time()
+                        if self.track_routes:
+                            for i in range(1, len(_shortest_)-2):
+                                _segment_ = (_shortest_[i], _shortest_[i+1])
+                                if _segment_ not in self.track_routes_segments: 
+                                    self.track_routes_segments[_segment_] = 0
+                                    self.track_routes_segments_fms[_segment_] = set()
+                                    self.track_routes_segments_tos[_segment_] = set()
+                                self.track_routes_segments[_segment_] += 1
+                                self.track_routes_segments_fms[_segment_].add(_fm_)
+                                self.track_routes_segments_tos[_segment_].add(_to_)
+                        ts_track_routes += time.time() - _ts_
+
+                        _ts_ = time.time()
                         if self.link_color == 'shade_fm_to':
                             _pts_ = self.rt_self.piecewiseCubicBSpline(_shortest_)
                             for i in range(len(_pts_)-1):
@@ -1957,9 +1978,8 @@ class RTChordDiagramMixin(object):
                             svg.append(f'<path d="{self.rt_self.svgPathCubicBSpline(_shortest_)}" fill="none" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
                         ts_edge_render += time.time() - _ts_
 
-            if use_all_pairs == False:
-                self.time_lu['path_calc']    = ts_path_calc
-
+            if use_all_pairs == False: self.time_lu['path_calc'] = ts_path_calc
+            self.time_lu['track_routes'] = ts_track_routes
             self.time_lu['render_links'] = ts_edge_render
 
             self.skeleton     = skeleton
