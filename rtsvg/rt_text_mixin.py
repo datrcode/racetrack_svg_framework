@@ -1970,6 +1970,7 @@ class RTTextBlock(object):
             while j <  len(y_coord_pairs) and (y_coord_pairs[j][0] - y_coord_pairs[j-1][1]) < y_merge_threshold: j += 1
             y_consolidated_pairs.append((y_coord_pairs[i][0], y_coord_pairs[j-1][1]))
             i = j
+        y_consolidated_pairs = sorted(y_consolidated_pairs)
 
         # Render the text in a consolidated format
         new_y_lu   = {}
@@ -1992,15 +1993,16 @@ class RTTextBlock(object):
                 if x1  > max_x_rendered: max_x_rendered = x1
                 if _y_ > max_y_rendered: max_y_rendered = _y_
 
-        if y_consolidated_pairs[-1][1] != max_y_seen: max_y_rendered += y_render_gap
+        if len(y_consolidated_pairs) > 0 and y_consolidated_pairs[-1][1] != max_y_seen: max_y_rendered += y_render_gap
 
-        # Render symbols to indicate breaks in the text
-        y_set = set()
-        for _y_ in new_y_lu: y_set.add(new_y_lu[_y_])
-        y_list = sorted(list(y_set))
-        for i in range(len(y_list) - 1):
-            if (y_list[i+1] - y_list[i]) > y_render_gap:
-                y_avg = (y_list[i] + y_list[i+1]) / 2.0
+        # Create the page break symbols
+        if len(y_consolidated_pairs) > 1:
+            rendered_so_far = 0 if y_consolidated_pairs[0][0] == 0.0 else y_render_gap + y_keep
+            for i in range(len(y_consolidated_pairs)):
+                rendered_so_far += y_consolidated_pairs[i][1] - y_consolidated_pairs[i][0]
+                rendered_next    = rendered_so_far + y_render_gap + 2.0 * y_keep
+
+                y_avg = rendered_so_far + (y_render_gap + 2.0 * y_keep)/2.0
                 x     =  self.x_ins
                 d     =  f'M {x} {y_avg} '
                 count = 1
@@ -2010,6 +2012,8 @@ class RTTextBlock(object):
                     else:              d += f'L {x} {y_avg-self.txt_h/2.0} '
                     count += 1
                 _svg_.append(f'<path d="{d}" stroke="#a0a0a0" stroke-width="0.5" fill="none" dasharray="5,5" />')
+
+                rendered_so_far = rendered_next
 
         # For each highlighter, render a different highlight overlap for the consolidated text
         svg_dict            = {}
