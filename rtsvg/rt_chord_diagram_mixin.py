@@ -1580,6 +1580,14 @@ class RTChordDiagramMixin(object):
                 angle_to_pos[a1] = xy1
                 skeleton.add_edge(xy0, xy1, weight=self.rt_self.segmentLength((xy0, xy1)))
                 skeleton_svg.append(f'<line x1="{xy0[0]}" y1="{xy0[1]}" x2="{xy1[0]}" y2="{xy1[1]}" stroke="black" />')
+                a2  = _sorted_[(i+2)%len(_sorted_)]
+                xy2 = (self.cx + radii[1]*cos(to_rad(a2)), self.cy + radii[1]*sin(to_rad(a2)))
+                skeleton.add_edge(xy0, xy2, weight=self.rt_self.segmentLength((xy0, xy2)))
+                skeleton_svg.append(f'<line x1="{xy0[0]}" y1="{xy0[1]}" x2="{xy2[0]}" y2="{xy2[1]}" stroke="black" />')
+                a3  = _sorted_[(i+3)%len(_sorted_)]
+                xy3 = (self.cx + radii[1]*cos(to_rad(a3)), self.cy + radii[1]*sin(to_rad(a3)))
+                skeleton.add_edge(xy0, xy3, weight=self.rt_self.segmentLength((xy0, xy3)))
+                skeleton_svg.append(f'<line x1="{xy0[0]}" y1="{xy0[1]}" x2="{xy3[0]}" y2="{xy3[1]}" stroke="black" />')
 
             # final stage clustering for the intermediate ring
             points, pos_to_angle = [], {}
