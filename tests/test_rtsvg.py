@@ -37,6 +37,22 @@ class TestRTSVG(unittest.TestCase):
         self.assertFalse(self.rt_self.isPolars(self.df_pd))
         self.assertTrue (self.rt_self.isPolars(self.df_pl))
 
+    def test_columnsAreTimestamps(self):
+        _examples_ = ['2001', 
+                    '2003-02', 
+                    '2004-05-01', 
+                    '1998-12-01T00',           '1998-12-02 00', 
+                    '1998-12-05T23:12',        '1998-12-06 02:59', 
+                    '2024-12-10T13:59:50Z',    '2024-12-11 13:59:50Z',
+                    '2024-12-20T00:00:00.000Z']
+        # Single types
+        for _ts_ in _examples_:
+            self.rt_self.columnsAreTimestamps(pd.DataFrame({'timestamp':[_ts_]}), 'timestamp')
+            self.rt_self.columnsAreTimestamps(pl.DataFrame({'timestamp':[_ts_]}), 'timestamp')
+        # Mixed types
+        self.rt_self.columnsAreTimestamps(pd.DataFrame({'timestamp':_examples_}), 'timestamp')
+        self.rt_self.columnsAreTimestamps(pl.DataFrame({'timestamp':_examples_}), 'timestamp')
+
     def test_polarsCounter(self):
         df = pl.DataFrame({'a':[ 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5],
                            'b': 'a  b  c  d  e  f  g  h  i  j  k  l  m  m'.split(),
