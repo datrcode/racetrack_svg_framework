@@ -214,21 +214,9 @@ class RACETrack(RTAnnotationsMixin,
     # concatDataFrames() - concatenate dataframes
     #
     def concatDataFrames(self, dfs):
-        if   self.isPandas(dfs[0]):
-            return pd.concat(dfs)
-        elif self.isPolars(dfs[0]):
-            # Which columns are in common? // issue is that each component modifies the dataframe for the rendering...
-            commons = set(dfs[0].columns)
-            for _df_ in dfs:
-                commons = commons & set(_df_.columns)
-            # Make each dataframe conform to the common columns
-            dfs_new = []
-            for _df_ in dfs:
-                dfs_new.append(_df_.drop(set(_df_.columns) - commons))
-            # Perform the concatenate
-            return pl.concat(dfs_new)
-        else:
-            raise Exception('concatDataFrames() - accepts only pandas or polars dataframes')
+        if   self.isPandas(dfs[0]): return pd.concat(dfs)
+        elif self.isPolars(dfs[0]): return pl.concat(dfs, how='diagonal_relaxed')
+        else: raise Exception('concatDataFrames() - accepts only pandas or polars dataframes')
 
     #
     # createConcatColumn() - concatenate multiple columns together into a single column

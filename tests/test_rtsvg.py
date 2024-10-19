@@ -16,6 +16,8 @@ import pandas as pd
 import numpy  as np
 import polars as pl
 import unittest
+import random
+from math import sin, cos, pi
 
 from rtsvg import *
 
@@ -37,14 +39,38 @@ class TestRTSVG(unittest.TestCase):
         self.assertFalse(self.rt_self.isPolars(self.df_pd))
         self.assertTrue (self.rt_self.isPolars(self.df_pl))
 
+    def test_flattenTuple(self):
+        self.assertEqual(self.rt_self.flattenTuple(('fm','to'))                , ('fm', 'to'))
+        self.assertEqual(self.rt_self.flattenTuple(('fm','to','other'))        , ('fm', 'to', 'other'))
+        self.assertEqual(self.rt_self.flattenTuple(('a', ('b','c',('d','e')))) , ('a', 'b', 'c', 'd', 'e'))
+
+    def test_concatDataFrames(self):
+        _lu_a_ = {'a':[1,2,3], 'x':['a','b','c']}
+        _lu_b_ = {'b':[4,5,6], 'y':['e','f','g']}
+        _lu_c_ = {'c':[7,8,9], 'x':['x','y','z'], 'a':[11,12,13]}
+
+        _lu_merged_ = {'a':[1,    2,    3,    None, None, None, 11,   12,   13], 
+                    'x':['a',  'b',  'c',  None, None, None, 'x',  'y',  'z'],
+                    'b':[None, None, None, 4,    5,    6,    None, None, None], 
+                    'y':[None, None, None, 'e',  'f',  'g',  None, None, None],
+                    'c':[None, None, None, None, None, None, 7,    8,    9]}
+
+        df = self.rt_self.concatDataFrames([pd.DataFrame(_lu_a_), pd.DataFrame(_lu_b_), pd.DataFrame(_lu_c_)]).reset_index(drop=True)
+        self.assertTrue(df.equals(pd.DataFrame(_lu_merged_)))
+
+        df = self.rt_self.concatDataFrames([pl.DataFrame(_lu_a_), pl.DataFrame(_lu_b_), pl.DataFrame(_lu_c_)])
+        self.assertTrue(df.equals(pl.DataFrame(_lu_merged_)))
+
     def test_columnsAreTimestamps(self):
         _examples_ = ['2001', 
-                    '2003-02', 
-                    '2004-05-01', 
-                    '1998-12-01T00',           '1998-12-02 00', 
-                    '1998-12-05T23:12',        '1998-12-06 02:59', 
-                    '2024-12-10T13:59:50Z',    '2024-12-11 13:59:50Z',
-                    '2024-12-20T00:00:00.000Z']
+                      '2003-02', 
+                      '2004-05-01', 
+                      '1998-12-01T00',            '1998-12-02 00', 
+                      '1998-12-05T23:12',         '1998-12-06 02:59', 
+                      '2024-12-10T13:59:50',      '2024-12-11 13:59:50',
+                      '2024-12-10T13:59:50Z',     '2024-12-11 13:59:50Z',
+                      '2024-12-20T00:00:00.000',  '2024-12-20 00:00:00.000',
+                      '2024-12-20T00:00:00.000Z', '2024-12-20 00:00:00.000Z']
         # Single types
         for _ts_ in _examples_:
             self.rt_self.columnsAreTimestamps(pd.DataFrame({'timestamp':[_ts_]}), 'timestamp')
@@ -52,6 +78,20 @@ class TestRTSVG(unittest.TestCase):
         # Mixed types
         self.rt_self.columnsAreTimestamps(pd.DataFrame({'timestamp':_examples_}), 'timestamp')
         self.rt_self.columnsAreTimestamps(pl.DataFrame({'timestamp':_examples_}), 'timestamp')
+
+        # This comes from the tests in the temporal_barchart_mixin but fails for certain configurations on macos (homebrew python maybe?)
+        _ts_, _td_, d = pd.to_datetime('2023-01-01'), pd.Timedelta(days=1), 0.0
+        timestamps, colors, counts = [], [], []
+        for i in range(360):
+            timestamps.append(_ts_), counts.append(2.4 + sin(d)),            colors.append('red')
+            timestamps.append(_ts_), counts.append(2.8 + cos(d)),            colors.append('green')
+            timestamps.append(_ts_), counts.append(3   + cos(d) + 2*sin(d)), colors.append('blue')
+            d    += pi/16
+            _ts_ += _td_
+        self.df    = pd.DataFrame({'timestamp':timestamps, 'count':counts, 'color':colors})
+        self.df    = self.rt_self.columnsAreTimestamps(self.df, 'timestamp')
+        self.df_pl = pl.DataFrame(self.df)
+        self.df_pl = self.rt_self.columnsAreTimestamps(self.df_pl, 'timestamp')
 
     def test_polarsCounter(self):
         df = pl.DataFrame({'a':[ 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5],
@@ -81,7 +121,6 @@ class TestRTSVG(unittest.TestCase):
         self.assertEqual(_lu_, _luc_)
 
         # MANY MORE NEEDED ...
-
 
 if __name__ == '__main__':
     unittest.main()
