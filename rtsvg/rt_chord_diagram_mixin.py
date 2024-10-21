@@ -535,6 +535,8 @@ class RTChordDiagramMixin(object):
                      dendrogram_algorithm       = None,          # 'original', 'hdbscan', or None
                      skeleton_algorithm         = 'hexagonal',   # 'hexagonal', 'hdbscan', 'simple', 'kmeans'
                      skeleton_rings             = 4,             # number of rings in the skeleton
+                     beta                       = 0.8,           # cubic b-spline smoothing
+                     t_inc                      = 0.1,           # cubic b-spline increment (for piecewise only)
                      # ----------------------------------------- # visualization geometry / etc.
                      track_state                = False,         # track state for interactive filtering
                      track_routes               = False,         # track routes for skeleton analysis
@@ -728,6 +730,8 @@ class RTChordDiagramMixin(object):
             self.dendrogram_algorithm   = kwargs['dendrogram_algorithm']      # done!
             self.skeleton_algorithm     = kwargs['skeleton_algorithm']        # done!
             self.skeleton_rings         = kwargs['skeleton_rings']            # done!
+            self.beta                   = kwargs['beta']                      # done!
+            self.t_inc                  = kwargs['t_inc']                     # done!
             self.time_lu                = {}
 
             # Apply count-by transforms
@@ -1543,7 +1547,7 @@ class RTChordDiagramMixin(object):
                             _xy_             = (self.cx + adj_r*cos(to_rad(_to_avg_angle_)), self.cy + adj_r*sin(to_rad(_to_avg_angle_)))
                             fmto_exit [_xy_] = to_avg_angle_pos
             
-            # Connect the first ring of points
+            # Connect the first ring of points // avoiding connecting because this routing is too close...
             _sorted_ = sorted(list(all_angles))
             for i in range(len(_sorted_)):
                 a0, a1   = _sorted_[i], _sorted_[(i+1)%len(_sorted_)]
@@ -1568,6 +1572,10 @@ class RTChordDiagramMixin(object):
                 for _pos_ in center_assignments[_center_]:
                     skeleton.add_edge(_pos_, _xy_, weight=self.rt_self.segmentLength((_pos_, _xy_)))
                     skeleton_svg.append(f'<line x1="{_pos_[0]}" y1="{_pos_[1]}" x2="{_xy_[0]}" y2="{_xy_[1]}" stroke="black" />')
+                    for _other_pos_ in center_assignments[_center_]:
+                        if _other_pos_ == _pos_: continue
+                        skeleton.add_edge(_pos_, _other_pos_, weight=self.rt_self.segmentLength((_pos_, _other_pos_)))
+                        skeleton_svg.append(f'<line x1="{_pos_[0]}" y1="{_pos_[1]}" x2="{_other_pos_[0]}" y2="{_other_pos_[1]}" stroke="black" />')
 
             # Connect the second ring of points
             angle_to_pos = {}
@@ -1966,7 +1974,7 @@ class RTChordDiagramMixin(object):
 
                         _ts_ = time.time()
                         if self.link_color == 'shade_fm_to':
-                            _pts_ = self.rt_self.piecewiseCubicBSpline(_shortest_)
+                            _pts_ = self.rt_self.piecewiseCubicBSpline(_shortest_, beta=self.beta, t_inc=self.t_inc)
                             for i in range(len(_pts_)-1):
                                 _link_color_ = self.rt_self.co_mgr.spectrum(i, 0, len(_pts_))
                                 svg.append(f'<line x1="{_pts_[i][0]}" y1="{_pts_[i][1]}" x2="{_pts_[i+1][0]}" y2="{_pts_[i+1][1]}" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
@@ -1983,7 +1991,7 @@ class RTChordDiagramMixin(object):
                             else: # 'vary'
                                 _link_color_ = fmto_color_lu[_fm_][_to_]
                                 
-                            svg.append(f'<path d="{self.rt_self.svgPathCubicBSpline(_shortest_)}" fill="none" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
+                            svg.append(f'<path d="{self.rt_self.svgPathCubicBSpline(_shortest_, beta=self.beta)}" fill="none" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
                         ts_edge_render += time.time() - _ts_
 
             if use_all_pairs == False: self.time_lu['path_calc'] = ts_path_calc
