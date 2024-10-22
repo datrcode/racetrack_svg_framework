@@ -1,4 +1,4 @@
-# Copyright 2023 David Trimm
+# Copyright 2024 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,6 +40,77 @@ class RTTextMixin(object):
     # 
     def __text_mixin_init__(self):
         self.spacy_loaded_flag = False
+
+    #
+    # Modified from Original Source:  https://www.geeksforgeeks.org/longest-common-substring-dp-29/
+    # - now returns the indices for each of the strings
+    #
+    def longestCommonSubstring(self, s1, s2):
+        '''
+        Returns the length of the longest common substring in s1 and s2 and the indices of the substring in s1 and s2
+        (_length_, s1_index, s2_index)
+        '''
+        m = len(s1)
+        n = len(s2)
+        i_cap, j_cap = None, None
+        # Create a 1D array to store the previous row's results
+        prev = [0] * (n + 1)
+        
+        res = 0
+        for i in range(1, m + 1):
+            # Create a temporary array to store the current row
+            curr = [0] * (n + 1)
+            for j in range(1, n + 1):
+                if s1[i - 1] == s2[j - 1]:
+                    curr[j] = prev[j - 1] + 1
+                    res_before = res
+                    res = max(res, curr[j])
+                    if res_before != res:
+                        i_cap, j_cap = i, j
+                else:
+                    curr[j] = 0
+            
+            # Move the current row's data to the previous row
+            prev = curr
+        
+        if i_cap is None or j_cap is None: return 0, -1, -1
+        return res, i_cap - res, j_cap - res
+
+    #
+    # iterativelyFindAllCommonSubstrings() - iteratively find the longest common substring that's left
+    #
+    def iterativelyFindAllCommonSubstrings(self, _longer_, _shorter_, longer_delimiter='###', shorter_delimiter='|||', min_length=8):
+        '''Iteratively find all common substrings longer than the minimum length.
+
+        Args:
+            _longer_          (str):            The longer string
+            _shorter_         (str):            The shorter string
+            longer_delimiter  (str, optional):  The delimiter to use for the longer string. Defaults to '###'.
+            shorter_delimiter (str, optional):  The delimiter to use for the shorter string. Defaults to '|||'.
+            min_length        (int, optional):  The minimum length of the common substring. Defaults to 8.
+        
+        Returns:
+            results (list):  The list of common substrings as tuples:
+                (length, longer_index, shorter_index)
+        '''
+        if longer_delimiter in _longer_:   print('iterativelyFindAllCommonSubstrings() - longer_delimiter in _longer_')
+        if shorter_delimiter in _shorter_: print('iterativelyFindAllCommonSubstrings() - shorter_delimiter in _shorter_')
+        shorter_indices = [x for x in range(len(_shorter_))]
+        longer_indices  = [x for x in range(len(_longer_))]
+        shorter_blanks = []
+        for i in range(len(shorter_delimiter)): shorter_blanks.append(None)
+        longer_blanks  = []
+        for i in range(len(longer_delimiter)):  longer_blanks.append(None)
+        results = []
+        _len_, i, j = self.longestCommonSubstring(_longer_, _shorter_)
+        while _len_ >= min_length:
+            results.append((_len_, longer_indices[i], shorter_indices[j]))
+            _shorter_       = _shorter_[:j]       + shorter_delimiter + _shorter_[j+_len_:]
+            shorter_indices = shorter_indices[:j] + shorter_blanks    + shorter_indices[j+_len_:]
+            _longer_        = _longer_[:i]        + longer_delimiter  + _longer_[i+_len_:]
+            longer_indices  = longer_indices[:i]  + longer_blanks     + longer_indices[i+_len_:]
+            _len_, i, j = self.longestCommonSubstring(_longer_, _shorter_)
+        return results , _longer_.replace(longer_delimiter,'') , _shorter_.replace(shorter_delimiter,'')
 
     #
     # textBlock() - render a textblock and track positional information of characters and words.

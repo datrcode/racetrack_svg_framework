@@ -34,6 +34,27 @@ class Testrt_text_mixin(unittest.TestCase):
         from la grippe; grippe being then a new word in St. Petersburg, used
         only by the elite.""")
 
+    def test_longestCommonSubstring(self):
+        s1 = "once upon a time... there was a programmer... named john..."
+        s2 = "there was a programmeronce upon a timenamed john"
+        _len_, _i_, _j_ = self.rt_self.longestCommonSubstring(s1, s2)
+        self.assertEqual(s1[_i_:_i_+_len_], s2[_j_:_j_+_len_])
+
+        my_results, s1_leftovers, s2_leftovers = self.rt_self.iterativelyFindAllCommonSubstrings(s1, s2, min_length=4)
+        for _tuple_ in my_results:
+            _len_, _i_, _j_ = _tuple_
+            self.assertEqual(s1[_i_:_i_+_len_], s2[_j_:_j_+_len_])
+        self.assertEqual(s1_leftovers, '... ... ...') 
+        self.assertEqual(s2_leftovers, '')
+
+        my_longer  = 'abcdefxyzmno'
+        my_shorter = 'abcdefghimno'
+        my_results, my_longer_leftovers, my_shorter_leftovers = self.rt_self.iterativelyFindAllCommonSubstrings(my_longer, my_shorter, min_length=2)
+        for _tuple_ in my_results:
+            _len_, _i_, _j_ = _tuple_
+            self.assertEqual(my_longer[_i_:_i_+_len_], my_shorter[_j_:_j_+_len_])
+        self.assertEqual(my_longer_leftovers,  'xyz')
+        self.assertEqual(my_shorter_leftovers, 'ghi')
 
     def test_textExtractEntities(self):
         rttb        = self.rt_self.textBlock(self._text, word_wrap=True, txt_h=18, x_ins=3)
