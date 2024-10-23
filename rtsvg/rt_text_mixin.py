@@ -179,8 +179,8 @@ class RTTextMixin(object):
                   w=512,
                   x_ins=5,
                   y_ins=3):
-        
-        svg,x,y,line = [],x_ins,y_ins+txt_h,''
+        svg = [f'<g text-anchor="start" font-family="{self.default_font}" font-size="{txt_h}px">']
+        x,y,line = x_ins,y_ins+txt_h,''
         last_was_space = True
         line_lu = {}
 
@@ -260,7 +260,7 @@ class RTTextMixin(object):
             x,j  = x_ins,0
             while j < len(line):
                 c = line[j]
-                svg.append(self.svgText(c, x, y, txt_h))
+                svg.append(self.svgText(c, x, y, just_xy=True))
                 orig_to_xy[i] = (x,y)
                 j += 1
                 i += 1
@@ -302,7 +302,7 @@ class RTTextMixin(object):
                     geom_to_word[_polygon] = txt[i0:i1]
                 last_was_space = False
                 i = i1
-
+        svg.append('</g>')
         bounds = (0,0,w,y-txt_h+y_ins)
         return RTTextBlock(self, txt, txt_h, line_space_px, word_wrap, w, x_ins, y_ins, ''.join(svg), bounds, geom_to_word, orig_to_xy, geom_to_punctuation)
 

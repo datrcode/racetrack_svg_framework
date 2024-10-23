@@ -1065,12 +1065,14 @@ class RACETrack(RTAnnotationsMixin,
                 txt,
                 x,
                 y,
-                txt_h,
+                txt_h    = 12,
+                just_xy  = False,   # for the text block widget -- that will use an SVG group to consolidate the rendering
                 color    = None,
                 anchor   = 'start',
                 font     = None,
                 rotation = None):
-        if font  is None: font = self.default_font
+        if txt == '\n' or txt == '' or txt == '\r' or txt == '\t': return ''
+        if font  is None: font  = self.default_font
         if color is None: color = self.co_mgr.getTVColor('label','defaultfg')
         txt = str(txt)
 
@@ -1079,7 +1081,9 @@ class RACETrack(RTAnnotationsMixin,
         #if ' ' in _html_txt:
         #    _html_txt = _html_txt.replace(' ','&nbsp;')
 
-        if rotation is not None:
+        if   just_xy:
+            return f'<text x="{x:0.2f}" y="{y:0.2f}">{_html_txt}</text>'
+        elif rotation is not None:
             return f'<text x="{x}" text-anchor="{anchor}" y="{y}" font-family="{font}" fill="{color}" font-size="{txt_h}px"' + \
                    f' transform="rotate({rotation},{x},{y})">{_html_txt}</text>'
         else:
