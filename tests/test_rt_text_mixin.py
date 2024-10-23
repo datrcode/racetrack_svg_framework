@@ -47,6 +47,11 @@ class Testrt_text_mixin(unittest.TestCase):
         self.assertEqual(s1_leftovers, '... ... ...') 
         self.assertEqual(s2_leftovers, '')
 
+        other_my_results, other_s1_leftovers, other_s2_leftovers = self.rt_self.iterativeLongestCommonSubstrings(s1, s2, min_length=4)
+        self.assertEqual(my_results,   other_my_results) 
+        self.assertEqual(s1_leftovers, other_s1_leftovers) 
+        self.assertEqual(s2_leftovers, other_s2_leftovers)
+
         my_longer  = 'abcdefxyzmno'
         my_shorter = 'abcdefghimno'
         my_results, my_longer_leftovers, my_shorter_leftovers = self.rt_self.iterativelyFindAllCommonSubstrings(my_longer, my_shorter, min_length=2)
@@ -55,6 +60,11 @@ class Testrt_text_mixin(unittest.TestCase):
             self.assertEqual(my_longer[_i_:_i_+_len_], my_shorter[_j_:_j_+_len_])
         self.assertEqual(my_longer_leftovers,  'xyz')
         self.assertEqual(my_shorter_leftovers, 'ghi')
+
+        other_my_results, other_longer_leftovers, other_shorter_leftovers = self.rt_self.iterativeLongestCommonSubstrings(my_longer, my_shorter, min_length=2)
+        self.assertEqual(my_results,   other_my_results) 
+        self.assertEqual(my_longer_leftovers,  other_longer_leftovers) 
+        self.assertEqual(my_shorter_leftovers, other_shorter_leftovers)
 
     def test_textExtractEntities(self):
         rttb        = self.rt_self.textBlock(self._text, word_wrap=True, txt_h=18, x_ins=3)

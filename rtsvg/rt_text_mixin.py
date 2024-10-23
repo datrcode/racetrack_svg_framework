@@ -77,10 +77,66 @@ class RTTextMixin(object):
         return res, i_cap - res, j_cap - res
 
     #
-    # iterativelyFindAllCommonSubstrings() - iteratively find the longest common substring that's left
+    # iterativeLongestCommonSubstrings() - iteratively find the longest common substring and return leftovers
+    # - replacement for iterativelyFindAllCommonSubstrings()
+    #
+    def iterativeLongestCommonSubstrings(self, s1, s2, min_length=8):
+        '''Iteratively find all common substrings longer than the minimum length.
+
+        Args:
+            s1          (str):            First string
+            s2          (str):            Second string
+            min_length  (int, optional):  The minimum length of the common substring. Defaults to 8.
+        
+        Returns:
+            results (list):  The list of common substrings as tuples:
+                (length, longer_index, shorter_index)
+        '''
+        bin1, bin2 = [s1],                            [s2]
+        ind1, ind2 = [[x for x in range(len(s1))]],   [[x for x in range(len(s2))]]
+        def longestAcrossBins():
+            longest_tuple = (0,0,0,0,0) # length | bin1 number | bin1 index | b2 number | bin2 index
+            for b1 in range(len(bin1)):
+                for b2 in range(len(bin2)):
+                    _length_, _i1_, _i2_ = self.longestCommonSubstring(bin1[b1], bin2[b2])
+                    if _length_ > longest_tuple[0]:
+                        longest_tuple = (_length_, b1, _i1_, b2, _i2_)
+            return longest_tuple
+        results = []
+        _tup_   = longestAcrossBins()
+        while _tup_[0] >= min_length and _tup_[0] != 0:
+            results.append((_tup_[0], ind1[_tup_[1]][_tup_[2]], ind2[_tup_[3]][_tup_[4]]))
+            new_bin1, new_ind1, new_bin2, new_ind2 = [], [], [], []
+            for b1 in range(len(bin1)):
+                if b1 == _tup_[1]:
+                    bin, ind = bin1[b1], ind1[b1]
+                    first_bin,  first_ind  = bin[:_tup_[2]],          ind[:_tup_[2]]
+                    second_bin, second_ind = bin[_tup_[2]+_tup_[0]:], ind[_tup_[2]+_tup_[0]:]
+                    new_bin1.append(first_bin),  new_ind1.append(first_ind)
+                    new_bin1.append(second_bin), new_ind1.append(second_ind)
+                else:
+                    new_bin1.append(bin1[b1]), new_ind1.append(ind1[b1])
+            for b2 in range(len(bin2)):
+                if b2 == _tup_[3]:
+                    bin, ind = bin2[b2], ind2[b2]
+                    first_bin,  first_ind  = bin[:_tup_[4]],          ind[:_tup_[4]]
+                    second_bin, second_ind = bin[_tup_[4]+_tup_[0]:], ind[_tup_[4]+_tup_[0]:]
+                    new_bin2.append(first_bin),  new_ind2.append(first_ind)
+                    new_bin2.append(second_bin), new_ind2.append(second_ind)
+                else:
+                    new_bin2.append(bin2[b2]), new_ind2.append(ind2[b2])
+            bin1, ind1, bin2, ind2 = new_bin1, new_ind1, new_bin2, new_ind2
+            _tup_ = longestAcrossBins()
+        
+        return results, ''.join(bin1), ''.join(bin2)
+
+    #
+    # iterativelyFindAllCommonSubstrings() - iteratively find the longest common substring and what's left
     #
     def iterativelyFindAllCommonSubstrings(self, _longer_, _shorter_, longer_delimiter='###', shorter_delimiter='|||', min_length=8):
         '''Iteratively find all common substrings longer than the minimum length.
+
+        Recommend using iterativeLongestCommonSubstrings() instead // deals better with a corner case cased by the delimiters
 
         Args:
             _longer_          (str):            The longer string
