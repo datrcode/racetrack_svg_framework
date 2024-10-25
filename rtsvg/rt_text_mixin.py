@@ -2042,6 +2042,98 @@ class RTTextBlock(object):
     #
     #
     #
+    def condenseText(self, y_keeps):
+        y_keeps = sorted(y_keeps)
+        # Group originals by y coordinates
+        y_to_orig      = {}
+        for _orig_ in self.orig_to_xy:   
+            _xy_ = self.orig_to_xy[_orig_]
+            if _xy_[1] not in y_to_orig: y_to_orig[_xy_[1]] = []
+            y_to_orig[_xy_[1]].append(_orig_)
+        y_sort         = sorted(list(y_to_orig.keys()))
+        # Find the characters to keep and shift them by the correct amount
+
+        new_svg = [f'<g text-anchor="start" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px">']
+
+        y_keeps_i      = 0
+        y_render       = self.y_ins + self.txt_h
+        new_orig_to_xy = {}
+        for i in range(len(y_sort)):
+            _y_ = y_sort[i]
+            while y_keeps_i < len(y_keeps) and _y_ > y_keeps[y_keeps_i][1]: y_keeps_i += 1
+            if y_keeps_i < len(y_keeps) and _y_ >= y_keeps[y_keeps_i][0] and _y_ < y_keeps[y_keeps_i][1]:
+                for _orig_ in y_to_orig[_y_]:
+                    new_orig_to_xy[_orig_] = (self.orig_to_xy[_orig_][0], y_render)
+                    new_x, new_y           = new_orig_to_xy[_orig_]
+                    new_svg.append(self.rt_self.svgText(self.txt[_orig_], new_x, new_y, just_xy=True))
+                if (i+1) < len(y_sort): y_render += y_sort[i+1] - y_sort[i]
+                else:                   y_render += self.txt_h
+                if (i+1) < len(y_sort) and y_sort[i+1] > y_keeps[y_keeps_i][1]:
+                    y_keeps_i += 1
+                    y_render  += self.txt_h*1.5
+                    _wavy_    = 'l 10 -5 l 10 5 '*20
+                    new_svg.append(f'<path d="M {self.x_ins} {y_render-self.txt_h} {_wavy_}" fill="none" stroke="#000000" stroke-width="1" />')
+                    y_render  += self.txt_h*1.5
+
+        new_svg.append('</g>')
+
+        # Fill in originals not included into an offscreen location
+        for _orig_ in self.orig_to_xy:
+            if _orig_ not in new_orig_to_xy:
+                new_orig_to_xy[_orig_] = (-100,-100)
+        # Create the new geometries ## refactor -- almost an exact copy of the textBlock() function 
+        new_geom_to_word, new_geom_to_punctuation = {}, {}
+        i,last_was_space = 0,True
+        _dn = 4 # downward shift...
+        while i < len(self.txt):
+            if self.rt_self.__whitespace__(self.txt[i]) or self.rt_self.__punctuation__(self.txt[i]):
+                if self.rt_self.__punctuation__(self.txt[i]):
+                    x0,y0 =  new_orig_to_xy[i]
+                    x1,y1 =  new_orig_to_xy[i]
+                    x1    += self.rt_self.textLength(self.txt[i],self.txt_h)
+                    _polygon = Polygon([[x0,y0+self.line_space_px+_dn], 
+                                        [x1,y1+self.line_space_px+_dn], 
+                                        [x1,y1-self.txt_h+_dn], 
+                                        [x0,y1-self.txt_h+_dn]])
+                    new_geom_to_punctuation[_polygon] = self.txt[i:i+1]
+                last_was_space = True
+                i += 1
+            else:
+                if last_was_space and self.rt_self.__whitespace__(self.txt[i]) == False and self.rt_self.__punctuation__(self.txt[i]) == False:
+                    i0 = i
+                    while i < len(self.txt)                        and \
+                            self.rt_self.__whitespace__ (self.txt[i])  == False and \
+                            self.rt_self.__punctuation__(self.txt[i])  == False:
+                        i += 1
+                        i1 = i
+                    x0,y0 =  new_orig_to_xy[i0]
+                    x1,y1 =  new_orig_to_xy[i1-1]
+                    x1    += self.rt_self.textLength(self.txt[i-1],self.txt_h)
+                    _polygon = Polygon([[x0,y0+self.line_space_px+_dn], 
+                                        [x1,y1+self.line_space_px+_dn], 
+                                        [x1,y1-self.txt_h+_dn], 
+                                        [x0,y1-self.txt_h+_dn]])
+                    new_geom_to_word[_polygon] = self.txt[i0:i1]
+                last_was_space = False
+                i = i1
+        new_bounds = (0, 0, self.bounds[2], y_render+self.y_ins)
+        return RTTextBlock(self.rt_self,
+                           self.txt,
+                           self.txt_h,
+                           self.line_space_px,
+                           self.word_wrap,
+                           self.w,
+                           self.x_ins,
+                           self.y_ins,
+                           ''.join(new_svg),
+                           new_bounds,
+                           new_geom_to_word,
+                           new_orig_to_xy,
+                           new_geom_to_punctuation)
+
+    #
+    #
+    #
     def highlightsComparison(self, 
                              highlights_dict,
                              render_all        = True,  # render version with all highlighters on same copy
