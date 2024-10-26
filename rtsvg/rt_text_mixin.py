@@ -2043,6 +2043,12 @@ class RTTextBlock(object):
     #
     #
     def condenseText(self, y_keeps):
+        '''condenseText(y_keeps) - condense text to only keep the characters in y_keeps
+
+        y_keeps is a list of y coordinates tuples to keep
+
+        [(y0,y1),(y2,y3),(y4,y5),...]
+        '''
         y_keeps = sorted(y_keeps)
         # Group originals by y coordinates
         y_to_orig      = {}
@@ -2131,9 +2137,7 @@ class RTTextBlock(object):
                            new_orig_to_xy,
                            new_geom_to_punctuation)
 
-    #
-    #
-    #
+
     def highlightsComparison(self, 
                              highlights_dict,
                              render_all        = True,  # render version with all highlighters on same copy
@@ -2142,13 +2146,90 @@ class RTTextBlock(object):
                              y_merge_threshold = 1.0,   # multiple of txt_h
                              y_keep            = 2.0,   # multiple of txt_h
                              y_render_gap      = 2.0):  # multiple of txt_h
-        if y_render_gap < 2.0: raise Exception('RTTextBlock.highlightsComparison() - y_render_gap must be >= 2.0')
-        if y_keep       < 1.0: raise Exception('RTTextBlock.highlightsComparison() - y_keep must be >= 1.0')
         y_merge_threshold *= self.txt_h
         y_keep            *= self.txt_h
         y_render_gap      *= self.txt_h
+
         # Find all text spans first
-        location_lookups = {} # a highlight to the text spans that it covers
+        location_lookups = self.__findTextSpans__(highlights_dict)
+
+        # Convert to y coordinate pairs
+        y_pairs = []
+        for location_lookup in location_lookups:
+            for location in location_lookups[location_lookup]:
+                i0, i1 = location
+                y0, y1 = self.orig_to_xy[i0][1]-y_keep, self.orig_to_xy[i1-1][1]+y_keep
+                if y0 < 0.0:            y0 = 0.0
+                if y1 > self.bounds[3]: y1 = self.bounds[3]
+                y_pairs.append((y0, y1))
+
+        #svg_debug = [self.unwrappedText()]
+        #for i in range(len(y_pairs)):
+        #    y0, y1 = y_pairs[i]
+        #    svg_debug.append(f'<line x1="{5+i*4}" y1="{y0}" x2="{5+i*4}" y2="{y1}" stroke="red" stroke-width="3.0" />')
+        #print(sorted(y_pairs))
+
+        # Merge y coordinate pairs
+        y_pairs, y_merged = sorted(y_pairs), []
+        while len(y_pairs) >= 2:
+            ya0, ya1, yb0, yb1 = y_pairs[0][0], y_pairs[0][1], y_pairs[1][0], y_pairs[1][1]
+            if yb0 < (ya1 + y_merge_threshold):
+                merged_span = (min(ya0, yb0), max(ya1, yb1))
+                y_pairs = [merged_span] + y_pairs[2:]
+            else:
+                y_merged.append(y_pairs[0])
+                y_pairs = y_pairs[1:]
+        if len(y_pairs) > 0: y_merged.append(y_pairs[0])
+        
+        #for i in range(len(y_merged)):
+        #    y0, y1 = y_merged[i]
+        #    svg_debug.append(f'<rect x="1" y="{y0}" width="{self.bounds[2]-3}" height="{y1-y0}" stroke="green" fill="none"stroke-width="1.5" />')
+        #print(y_merged)
+
+        # Create the condensed version of the text block
+        _tb_    = self.condenseText(y_merged)
+
+        # Render the highlights
+        svg_results = {}
+        svg_all     = [_tb_.unwrappedText()]
+        # For each highlighter
+        for highlighter in highlights_dict:
+            svg_this = [_tb_.unwrappedText()]
+            # For each highlighted span...
+            for _span_ in highlights_dict[highlighter]:
+                # Resolve the color
+                _color_str_ = highlights_dict[highlighter][_span_]
+                if len(_color_str_) == 7 and _color_str_[0] == '#': _color_ = _color_str_
+                else:                                               _color_ = self.rt_self.co_mgr.getColor(_color_str_) 
+                # Determine the type of span
+                if   type(_span_) is tuple:
+                    _poly_ = _tb_.spanGeometry(_span_[0],_span_[1])
+                    svg_this.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_)}" fill="{_color_}" opacity="{opacity}" />')
+                    svg_all. append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_)}" fill="{_color_}" opacity="{opacity_all}" />')
+                elif type(_span_) is str:
+                    i = 0
+                    while _span_ in _tb_.txt[i:]:
+                        _index_ = _tb_.txt.index(_span_, i)
+                        _poly_  = _tb_.spanGeometry(_index_,_index_+len(_span_))
+                        svg_this.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_)}" fill="{_color_}" opacity="{opacity}" />')
+                        svg_all. append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_)}" fill="{_color_}" opacity="{opacity_all}" />')
+                        i = _index_ + 1
+                else: raise Exception(f'RTTextBlock.highlightsComparison() - unknown span type {type(_span_)}')
+            # Append the results
+            svg_results[highlighter] = _tb_.wrap(''.join(svg_this))
+
+        # if render_all, add the "all" version
+        if render_all: svg_results['__all__'] = _tb_.wrap(''.join(svg_all))
+
+        #svg_results['__debug__'] = self.wrap(''.join(svg_debug))
+
+        return svg_results
+
+    #
+    # __findTextSpans__(self, highlights_dict) - helper for the highlight Comparison() utility
+    #
+    def __findTextSpans__(self, highlights_dict):
+        location_lookups = {}
         already_matched  = set()
         for highlighters in highlights_dict:
             highlight_locations = list(highlights_dict[highlighters].keys())
@@ -2157,20 +2238,32 @@ class RTTextBlock(object):
                     location_lookups[highlight_location] = []
                     if   type(highlight_location) is tuple: location_lookups[highlight_location].append(highlight_location) # it's already a span
                     elif type(highlight_location) is str:
-                        re_match = re.findall(highlight_location,self.txt)
-                        if re_match is not None and len(re_match) > 0:
-                            for _match in re_match:
-                                if type(_match) == tuple: _match = _match[0]
-                                if _match in already_matched: continue
-                                already_matched.add(_match)
-                                i = 0
-                                while i < len(self.txt) and _match in self.txt[i:]:
-                                    i = self.txt.index(_match, i)
-                                    j = i + len(_match)
-                                    location_lookups[highlight_location].append((i,j))
-                                    i = j
+                        _str_, i = highlight_location, 0
+                        while _str_ in self.txt[i:]:
+                            _index_ = self.txt.index(_str_, i)
+                            location_lookups[highlight_location].append((_index_, _index_+len(_str_)))
+                            i = _index_ + 1
                     else: raise Exception('unknown highlight type: ' + str(type(highlight_location)))
+        return location_lookups
 
+    #
+    #
+    #
+    def BROKEN__highlightsComparison(self, 
+                                     highlights_dict,
+                                     render_all        = True,  # render version with all highlighters on same copy
+                                     opacity           = 0.4,   # opacity of the highlights
+                                     opacity_all       = 0.3,   # opacity for the "render all" version
+                                     y_merge_threshold = 1.0,   # multiple of txt_h
+                                     y_keep            = 2.0,   # multiple of txt_h
+                                     y_render_gap      = 2.0):  # multiple of txt_h
+        if y_render_gap < 2.0: raise Exception('RTTextBlock.highlightsComparison() - y_render_gap must be >= 2.0')
+        if y_keep       < 1.0: raise Exception('RTTextBlock.highlightsComparison() - y_keep must be >= 1.0')
+        y_merge_threshold *= self.txt_h
+        y_keep            *= self.txt_h
+        y_render_gap      *= self.txt_h
+        # Find all text spans first
+        location_lookups = self.__findTextSpans__(highlights_dict)
         _svg_ = []
 
         # Convert to y coordinates pairs
