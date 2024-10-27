@@ -602,11 +602,11 @@ class RACETrack(RTAnnotationsMixin,
                 elif transform == 'log_bins':
                     df = df.with_columns(pl.col(field).apply(lambda x: self.transformLogBins(x)).alias(tfield))
                 elif transform == 'ipv4_cidr_24': # ipv4_cidr_24
-                    df = df.with_columns(pl.col(field).map_elements(lambda x: ipv4CIDR24(x)).alias(tfield))
+                    df = df.with_columns(pl.col(field).map_elements(lambda x: ipv4CIDR24(x), return_dtype=pl.String).alias(tfield))
                 elif transform == 'ipv4_cidr_16': # ipv4_cidr_16
-                    df = df.with_columns(pl.col(field).map_elements(lambda x: ipv4CIDR16(x)).alias(tfield))
+                    df = df.with_columns(pl.col(field).map_elements(lambda x: ipv4CIDR16(x), return_dtype=pl.String).alias(tfield))
                 elif transform == 'ipv4_cidr_08': # ipv4_cidr_08
-                    df = df.with_columns(pl.col(field).map_elements(lambda x: ipv4CIDR08(x)).alias(tfield))
+                    df = df.with_columns(pl.col(field).map_elements(lambda x: ipv4CIDR08(x), return_dtype=pl.String).alias(tfield))
             else:
                 raise Exception('applyTransform() - df is neither a pandas nor a polars dataframe')
 
