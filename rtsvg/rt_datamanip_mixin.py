@@ -30,6 +30,15 @@ class RTDataManipMixin(object):
     # kMeans2D() - perform k-means on 2d tuples
     #
     def kMeans2D(self, points, k=6, iterations=100):
+        # degenerative case
+        if len(points) <= k:
+            cluster_centers    = {}
+            center_assignments = {}
+            for i in range(len(points)):
+                cluster_centers[i]    = points[i]
+                center_assignments[i] = [points[i]]
+            return cluster_centers, center_assignments
+
         sx_min, sx_max, sy_min, sy_max = points[0][0], points[0][0], points[0][1], points[0][1]
         for _xy_ in points:
             sx, sy = _xy_[0], _xy_[1]
@@ -62,7 +71,9 @@ class RTDataManipMixin(object):
                     if i not in center_assignments: 
                         center_assignments[i] = [random.choice(points)]
             # Update centers
+            cluster_centers = {}
             for i in range(k):
+                if i not in center_assignments: continue # last run may not have included all centers
                 sx, sy = 0, 0
                 for _xy_ in center_assignments[i]: 
                     sx, sy = sx + _xy_[0], sy + _xy_[1]
