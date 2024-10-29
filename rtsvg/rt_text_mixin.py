@@ -2187,14 +2187,17 @@ class RTTextBlock(object):
         #print(y_merged)
 
         # Create the condensed version of the text block
-        _tb_    = self.condenseText(y_merged)
+        _tb_      = self.condenseText(y_merged)
 
         # Render the highlights
         svg_results = {}
-        svg_all     = [_tb_.unwrappedText()]
+        _bgcolor_   = self.rt_self.co_mgr.getTVColor('background','default')
+        svg_all     = [f'<rect x="0" y="0" width="{self.bounds[2]}" height="{self.bounds[3]}" fill="{_bgcolor_}" />',
+                       _tb_.unwrappedText()]
         # For each highlighter
         for highlighter in highlights_dict:
-            svg_this = [_tb_.unwrappedText()]
+            svg_this = [f'<rect x="0" y="0" width="{self.bounds[2]}" height="{self.bounds[3]}" fill="{_bgcolor_}" />',
+                        _tb_.unwrappedText()]
             # For each highlighted span...
             for _span_ in highlights_dict[highlighter]:
                 # Resolve the color
