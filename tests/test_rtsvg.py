@@ -139,31 +139,48 @@ class TestRTSVG(unittest.TestCase):
         self.assertEqual(_txt_, _dec_)
 
     def test_transforms(self):
-        _lu_ = {'timestamp':['2022-03-01 12:32:08','2020-12-30 02:08:59']}
+        _lu_      = {'timestamp':['2022-03-01 12:32:08','2020-12-30 02:08:59']}
         _answers_ = {"day_of_week":['Tue', 'Wed'],
-                    "day_of_week_hour":['Tue-12', 'Wed-02'],
-                    "year":['2022', '2020'],
-                    "quarter":['Q1', 'Q4'],
-                    "year_quarter":['2022Q1', '2020Q4'],
-                    "month":['Mar', 'Dec'],
-                    "year_month":['2022-03', '2020-12'],
-                    "year_month_day":['2022-03-01', '2020-12-30'],
-                    "year_month_day_hour":['2022-03-01 12', '2020-12-30 02'],
-                    "day":['01', '30'],
-                    "day_of_year":['060', '365'],
-                    "day_of_year_hour":['060_12', '365_02'],
-                    "hour":['12', '02'],
-                    "minute":['32', '08'],
-                    "second":['08', '59'],}
+                     "day_of_week_hour":['Tue-12', 'Wed-02'],
+                     "year":['2022', '2020'],
+                     "quarter":['Q1', 'Q4'],
+                     "year_quarter":['2022Q1', '2020Q4'],
+                     "month":['Mar', 'Dec'],
+                     "year_month":['2022-03', '2020-12'],
+                     "year_month_day":['2022-03-01', '2020-12-30'],
+                     "year_month_day_hour":['2022-03-01 12', '2020-12-30 02'],
+                     "day":['01', '30'],
+                     "day_of_year":['060', '365'],
+                     "day_of_year_hour":['060_12', '365_02'],
+                     "hour":['12', '02'],
+                     "minute":['32', '08'],
+                     "second":['08', '59'],}
         df_pd = self.rt_self.columnsAreTimestamps(pd.DataFrame(_lu_), 'timestamp')
         df_pl = self.rt_self.columnsAreTimestamps(pl.DataFrame(_lu_), 'timestamp')
         for _transform_ in self.rt_self.transforms:
             if _transform_.startswith('ipv4') or _transform_ == 'log_bins': continue
             tfield           = self.rt_self.createTField('timestamp', _transform_)
+            self.assertTrue(self.rt_self.isTField(tfield))
             _df_ , new_field = self.rt_self.applyTransform(df_pd, tfield)
             self.assertEqual(list(_df_[new_field]), _answers_[_transform_])
             _df_, new_field = self.rt_self.applyTransform(df_pl, tfield)
             self.assertEqual(list(_df_[new_field]), _answers_[_transform_])
+
+    def test_transforms_ipv4(self):
+        _lu_      = {'ipv4':['127.0.0.1', '1.2.3.4', '10.11.12.13']}
+        _answers_ = {'ipv4_cidr_24':['127.0.0', '1.2.3', '10.11.12'],
+                     'ipv4_cidr_16':['127.0',   '1.2',   '10.11'],
+                     'ipv4_cidr_08':['127',     '1',     '10']}
+        df_pd = pd.DataFrame(_lu_)
+        df_pl = pl.DataFrame(_lu_)
+        for _transform_ in self.rt_self.transforms:
+            if _transform_.startswith('ipv4'):
+                tfield           = self.rt_self.createTField('ipv4', _transform_)
+                self.assertTrue(self.rt_self.isTField(tfield))
+                _df_ , new_field = self.rt_self.applyTransform(df_pd, tfield)
+                self.assertEqual(list(_df_[new_field]), _answers_[_transform_])
+                _df_, new_field = self.rt_self.applyTransform(df_pl, tfield)
+                self.assertEqual(list(_df_[new_field]), _answers_[_transform_])
 
 if __name__ == '__main__':
     unittest.main()
