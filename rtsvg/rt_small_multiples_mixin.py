@@ -1383,44 +1383,43 @@ class RTSmallMultiplesMixin(object):
     #
     # Tile a list of SVG's
     #
-    def tile(self, svg_list, horz=True):
+    def tile(self, svg_list, horz=True, spacer=0):
+        svg = []
         if horz:
             w_overall,h_max = 0,0
             for _svg in svg_list:
-                if type(_svg) != str:
-                    _svg = _svg._repr_svg_()
-                w,h = self.__extractSVGWidthAndHeight__(_svg)
-                w_overall += w
-                if h > h_max:
-                    h_max = h
-            svg = f'<svg width="{w_overall}" height="{h_max}" x="0" y="0" xmlns="http://www.w3.org/2000/svg">'
+                if type(_svg) != str: _svg = _svg._repr_svg_()
+                w,h       =  self.__extractSVGWidthAndHeight__(_svg)
+                w_overall += w+spacer
+                h_max     =  max(h_max, h)
+            w_overall = w_overall - spacer # there will be an extra one that needs to be deleted
+            svg.append(f'<svg width="{w_overall}" height="{h_max}" x="0" y="0" xmlns="http://www.w3.org/2000/svg">')
+            svg.append(f'<rect width="{w_overall}" height="{h_max}" x="0" y="0" fill="{self.co_mgr.getTVColor("border","default")}" />')
             w_overall = 0
             for _svg in svg_list:
-                if type(_svg) != str:
-                    _svg = _svg._repr_svg_()
-                w,h = self.__extractSVGWidthAndHeight__(_svg)
-                svg += self.__overwriteSVGOriginPosition__(_svg, (w_overall + w/2, h/2), w, h)
-                w_overall += w
-            return self.svgObject(svg + '</svg>')
+                if type(_svg) != str: _svg = _svg._repr_svg_()
+                w,h  = self.__extractSVGWidthAndHeight__(_svg)
+                svg.append(self.__overwriteSVGOriginPosition__(_svg, (w_overall + w/2, h/2), w, h))
+                w_overall += w+spacer
+            svg.append('</svg>')
         else:
             w_max,h_overall = 0,0
             for _svg in svg_list:
-                if type(_svg) != str:
-                    _svg = _svg._repr_svg_()
-                w,h = self.__extractSVGWidthAndHeight__(_svg)
-                h_overall += h
-                if w > w_max:
-                    w_max = w
-            svg = f'<svg width="{w_max}" height="{h_overall}" x="0" y="0" xmlns="http://www.w3.org/2000/svg">'
+                if type(_svg) != str: _svg = _svg._repr_svg_()
+                w,h       =  self.__extractSVGWidthAndHeight__(_svg)
+                h_overall += h+spacer
+                w_max     =  max(w_max, w)
+            h_overall = h_overall - spacer
+            svg.append(f'<svg width="{w_max}" height="{h_overall}" x="0" y="0" xmlns="http://www.w3.org/2000/svg">')
+            svg.append(f'<rect width="{w_max}" height="{h_overall}" x="0" y="0" fill="{self.co_mgr.getTVColor("border","default")}" />')
             h_overall = 0
             for _svg in svg_list:
-                if type(_svg) != str:
-                    _svg = _svg._repr_svg_()
-                w,h = self.__extractSVGWidthAndHeight__(_svg)
-                svg += self.__overwriteSVGOriginPosition__(_svg, (w/2, h_overall + h/2), w, h)
-                h_overall += h
-            return self.svgObject(svg + '</svg>')
-
+                if type(_svg) != str: _svg = _svg._repr_svg_()
+                w,h  = self.__extractSVGWidthAndHeight__(_svg)
+                svg.append(self.__overwriteSVGOriginPosition__(_svg, (w/2, h_overall + h/2), w, h))
+                h_overall += h+spacer
+            svg.append('</svg>')
+        return self.svgObject(''.join(svg))
 
     #
     # xyGrid() in the style of the all parameters?
