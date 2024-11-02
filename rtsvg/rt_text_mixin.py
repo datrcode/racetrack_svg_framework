@@ -1653,7 +1653,7 @@ class RTTextBlock(object):
     # pixelRepr() - return a pixel level representation of the document
     # - see the highlights() function below for regex formatting
     #
-    def pixelRepr(self, lu, w=64, draw_context=False, context_opacity=0.4, draw_background=True):
+    def pixelRepr(self, lu, w=64, draw_context=False, opacity=0.8, context_opacity=0.4, draw_background=True):
         bounds_x,bounds_y,bounds_w,bounds_h = self.bounds
         scale = w / bounds_w
         h = w * bounds_h / bounds_w
@@ -1681,7 +1681,7 @@ class RTTextBlock(object):
                 _poly        = self.spanGeometry(k[0],k[1])
                 _poly_scaled = affinity.scale(_poly,xfact=scale,yfact=scale,origin=(0,0,0))
                 _co          = self.rt_self.co_mgr.getColor(lu[k])
-                svg.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill="{_co}" />')
+                svg.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill-opacity="{opacity}" fill="{_co}" />')
             elif type(k) == str:
                 re_match = re.findall(k,self.txt)
                 if re_match is not None and len(re_match) > 0:
@@ -1694,7 +1694,7 @@ class RTTextBlock(object):
                         _poly        = self.spanGeometry(i,j)
                         _poly_scaled = affinity.scale(_poly,xfact=scale,yfact=scale,origin=(0,0,0))
                         _co          = self.rt_self.co_mgr.getColor(lu[k])
-                        svg.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill="{_co}" />')
+                        svg.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill-opacity="{opacity}" fill="{_co}" />')
                         i += len(_match)
             else: raise Exception(f'RTTextBlock.pixelRepr() -- unknown key in lookups {k}')
         svg.append('</svg>')
@@ -2136,6 +2136,22 @@ class RTTextBlock(object):
                            new_geom_to_word,
                            new_orig_to_xy,
                            new_geom_to_punctuation)
+
+    def highlightsComparisonPixelRepr(self, 
+                                      highlights_dict,
+                                      render_all        = True,  # render version with all highlighters on same copy
+                                      w                 = None,
+                                      opacity           = 0.4,   # opacity of the highlights
+                                      opacity_all       = 0.3):  # opacity for the "render all" version
+        if w is None: w = self.w/3.0
+        svg_results = {}
+        all_dict    = {}
+        for k in highlights_dict:
+            svg_results[k] = self.pixelRepr(highlights_dict[k], w=w, opacity=opacity)
+            all_dict       = all_dict | highlights_dict[k]
+        if render_all:
+            svg_results['__all__'] = self.pixelRepr(all_dict, w=w, opacity=opacity_all)
+        return svg_results
 
 
     def highlightsComparison(self, 
