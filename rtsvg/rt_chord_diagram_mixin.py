@@ -1483,7 +1483,7 @@ class RTChordDiagramMixin(object):
                                                  fmto_fm_pos,    # dictionary -- to be filled in by the method - fmto_fm_pos[_fmto_] = (x,y)
                                                  fmto_to_pos):   # dictionary -- to be filled in by the method - fmto_to_pos[_fmto_] = (x,y)
             to_rad = lambda angle: pi*angle/180.0            
-            skeleton_svg, fmto_entry, fmto_exit, skeleton  = [], {}, {}, nx.Graph()
+            skeleton_svg, fmto_entry, fmto_exit, skeleton  = [f'<rect x="0" y="0" width="{self.w}" height="{self.h}" fill="#ffffff" />'], {}, {}, nx.Graph()
 
             adj_r  = self.r - self.node_h
 
@@ -1528,7 +1528,6 @@ class RTChordDiagramMixin(object):
                     all_angles.add(fm_avg_angle)
                     angle_to_pos[fm_avg_angle] = fm_avg_angle_pos
 
-
                 if len(to_angles) > 0:
                     to_avg_angle     = self.rt_self.averageDegrees(to_angles)
                     to_avg_angle_pos = (self.cx + radii[0]*cos(to_rad(to_avg_angle)), self.cy + radii[0]*sin(to_rad(to_avg_angle)))
@@ -1547,6 +1546,13 @@ class RTChordDiagramMixin(object):
                             _xy_             = (self.cx + adj_r*cos(to_rad(_to_avg_angle_)), self.cy + adj_r*sin(to_rad(_to_avg_angle_)))
                             fmto_exit [_xy_] = to_avg_angle_pos
             
+            # If track routes, record the first layer of the routing (this state only applies to kmean)
+            if self.track_routes:
+                self.fmto_exit   = fmto_exit
+                self.fmto_entry  = fmto_entry
+                self.fmto_fm_pos = fmto_fm_pos
+                self.fmto_to_pos = fmto_to_pos
+
             # Connect the first ring of points // avoiding connecting because this routing is too close...
             _sorted_ = sorted(list(all_angles))
             for i in range(len(_sorted_)):
