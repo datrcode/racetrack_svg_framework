@@ -317,18 +317,22 @@ class RTColorManager:
     # Enable Highlight Coloring
     #
     def enableHighlights(self,
-                        entities,
-                        scale_type='qualitative'):
+                         entities,
+                         scale_type='qualitative'):
+        '''For a list (or set) of entities, set their color to a categorical color scale.
+        Only works with a small number of entities.
+        Call disableHighlights() to turn it off.'''
         self.highlights_lu   = {}
         colors = self.brewerColors(scale_type,len(entities))
         for i in range(0,len(entities)):
-            self.highlights_lu[entities[i]] = colors[i]
+            self.highlights_lu[entities[i]] = colors[i%len(colors)]
         self.highlights_flag = True
 
     #
     # Disable Highlight Coloring
     #
     def disableHighlights(self):
+        '''Turn off highlighting.'''
         self.highlights_flag = False
 
     #
@@ -360,6 +364,7 @@ class RTColorManager:
                            scale_type='qualitative',
                            n=20,
                            alt=0):
+        '''Return a list of colorgorical colors (colors for qualitative separation).  Returns a max of 20 colors (parameter "n").'''
         if scale_type == 'qualitative' and n <= 20:
             categories = {}
             categories[20] = ["#a0e85b", "#288753", "#7cd3eb", "#0362a0", "#f6adff", "#c02a85", "#9e73b8", "#513886", "#c1c2f5", "#8033cb", 
@@ -392,6 +397,13 @@ class RTColorManager:
                      scale_type, # 'sequential, 'diverging', or 'qualitative'
                      n,          # number of colors needed
                      alt=0):     # alternative versions
+        '''Return a list of brewer colors (colors for sequential, diverging, or qualitative separation).  Returns a max of 12 colors (parameter "n").
+
+        scale_type = 'sequential', 'diverging', or 'qualitative'
+
+        Citation:
+        - https://colorbrewer2.org/
+        - © Cynthia Brewer, Mark Harrower and The Pennsylvania State University'''
         if   scale_type == 'sequential':
             sequential_5      = {}
             sequential_5[0]   = ['#ffffcc','#a1dab4','#41b6c4','#2c7fb8','#253494']
