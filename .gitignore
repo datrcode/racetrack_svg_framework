@@ -26,3 +26,4 @@ dist
 .coverage
 coverage
 tests/__pycache__
+use_cases/2014_vast_challenge/articles.pkl
