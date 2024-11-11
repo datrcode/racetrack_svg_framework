@@ -1360,16 +1360,16 @@ class RTSmallMultiplesMixin(object):
     # - for equal sized elements (doesn't really need to be...  but let's just assume)
     # - place into a grid
     #
-    def table(self, svg_list, per_row=4):
+    def table(self, svg_list, per_row=4, spacer=0):
         rows,so_far = [],[]
         for _svg_ in svg_list:
             so_far.append(_svg_)
             if len(so_far) >= per_row:
-                rows.append(self.tile(so_far)._repr_svg_())
+                rows.append(self.tile(so_far, spacer=spacer)._repr_svg_())
                 so_far = []
         if len(so_far) > 0:
-            rows.append(self.tile(so_far)._repr_svg_())
-        return self.tile(rows, horz=False)
+            rows.append(self.tile(so_far, spacer=spacer)._repr_svg_())
+        return self.tile(rows, horz=False, spacer=spacer)
 
     #
     # svgObject() - simple container to return an svg string
