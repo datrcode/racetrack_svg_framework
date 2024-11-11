@@ -38,13 +38,13 @@ __name__ = 'rt_graph_layouts_mixin'
 class RTGraphLayoutsMixin(object):
 
     #
-    # collapseGraph()
+    # collapseDataFrameGraphByClusters()
     # - only works with polars at the moment
     # - limitations -- only single field from/tos can be used (i.e., no multifield nodes)
     # - multirelationships get collapsed down to one relationships
     # - __fm__, __to__, __count__, __color__
     #
-    def collapseGraph(self, df, relationships, node_clusters, count_by=None, count_by_set=False, color_by=None):
+    def collapseDataFrameGraphByClusters(self, df, relationships, node_clusters, count_by=None, count_by_set=False, color_by=None):
         # Create the reverse maps
         rev_map = {}
         for k, v in node_clusters.items():
