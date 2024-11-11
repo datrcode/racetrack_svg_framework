@@ -15,6 +15,10 @@
 
 import heapq
 
+import pandas as pd
+import polars as pl
+import numpy as np
+
 import networkx as nx
 import numpy as np
 
@@ -32,6 +36,56 @@ __name__ = 'rt_graph_layouts_mixin'
 # Graph Layouts Methods
 #
 class RTGraphLayoutsMixin(object):
+
+    #
+    # collapseGraph()
+    # - only works with polars at the moment
+    # - limitations -- only single field from/tos can be used (i.e., no multifield nodes)
+    # - multirelationships get collapsed down to one relationships
+    # - __fm__, __to__, __count__, __color__
+    #
+    def collapseGraph(self, df, relationships, node_clusters, count_by=None, count_by_set=False, color_by=None):
+        # Create the reverse maps
+        rev_map = {}
+        for k, v in node_clusters.items():
+            for v_ in v: rev_map[v_] = k 
+        
+        # Per relationship
+        __dfs__ = []
+        for _relates_ in relationships:
+            _fm_, _to_ = _relates_[0], _relates_[1]
+            all_nodes  = set(df[_fm_]) | set(df[_to_])
+            # fill in the reverse map
+            for n in all_nodes:
+                if n not in rev_map: rev_map[n] = n
+            # remap the nodes in the dataframe
+            rev_map_fn = lambda x: rev_map[x]
+            df_tmp     = df.with_columns(pl.col(_fm_).replace_strict(rev_map).alias('__fm__'),
+                                         pl.col(_to_).replace_strict(rev_map).alias('__to__'))
+            df_counter = self.polarsCounter(df_tmp, ['__fm__','__to__'], count_by, count_by_set)
+
+            if color_by is None:
+                df_counter = df_counter.with_columns(pl.lit(self.co_mgr.getTVColor('data','default')).alias('__color__'))
+            else:
+                df_colors  = df_tmp.group_by(['__fm__','__to__']).agg(pl.col(color_by).len()  .alias('__color_nuniq__'),
+                                                                      pl.col(color_by).first().alias('__color_first_item__'))
+                
+                if   color_by == _fm_: df_colors = df_colors.with_columns(pl.col('__fm__').alias(_fm_))
+                elif color_by == _to_: df_colors = df_colors.with_columns(pl.col('__to__').alias(_to_))
+
+                df_colors = df_colors.with_columns(pl.lit(self.co_mgr.getTVColor('data','default')).alias('__color_default__'))
+                df_colors = df_colors.with_columns(pl.col('__color_first_item__').map_elements(self.co_mgr.getColor, return_dtype=pl.String).alias('__color_first__'))
+                df_colors = df_colors.with_columns(pl.when(pl.col('__color_nuniq__')==1).then(pl.col('__color_first__')).otherwise(pl.col('__color_default__')).alias('__color__'))
+                df_colors = df_colors.drop(['__color_nuniq__', '__color_first_item__', '__color_default__', '__color_first__'])
+
+                if   color_by == _fm_: df_colors = df_colors.drop([_fm_])
+                elif color_by == _to_: df_colors = df_colors.drop([_to_])
+
+                df_counter = df_counter.join(df_colors, on=['__fm__','__to__'])
+            __dfs__.append(df_counter)
+
+        return pl.concat(__dfs__)
+
     #
     # positionExtents()
     # - extents of all the nodes in the positions dictionary
