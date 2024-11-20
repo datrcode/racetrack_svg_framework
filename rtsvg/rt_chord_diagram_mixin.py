@@ -885,6 +885,18 @@ class RTChordDiagramMixin(object):
                     
             return new_order
 
+        #
+        # entitiesOnArc() - return set of entities on an arc
+        # - a0 <= entity_arc < a1
+        # - entity_arc will be the average in degrees
+        def entitiesOnArc(self, a0, a1):
+            _entities_ = set()
+            for entity in self.node_to_arc:
+                _a0_, _a1_ = self.node_to_arc[entity]
+                _a_avg_    = (_a0_ + _a1_) / 2
+                if a0 <= _a_avg_ < a1: _entities_.add(entity)
+            return _entities_
+
         # __entityPositions__() - return information about the entity geometry for rendering
         # - return the positions of the entity ... rendering had to have happened first
         # - list with the following tuples:
