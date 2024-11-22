@@ -131,8 +131,8 @@ class RTGeometryMixin(object):
     # crunchCircles() - compress circles with a packing algorithm
     #
     def crunchCircles(self,
-                      circles: list[tuple[float, float, float]],
-                      min_d:   float = 20):
+                      circles,
+                      min_d = 20):
         """
         Compress circles with a packing algorithm.
         :param circles: list of circle x, y, and r as individual tuples
@@ -332,7 +332,7 @@ class RTGeometryMixin(object):
     # segmentLength()
     # - _segment_ = [(x0,y0),(x1,y1)]
     #
-    def segmentLength(self, _segment_: tuple[tuple[float, float], tuple[float, float]]):
+    def segmentLength(self, _segment_):
         """
         Returns the length of the segment.
         :param _segment_: a tuple of ((x0,y0), (x1,y1))
@@ -345,7 +345,7 @@ class RTGeometryMixin(object):
     # unitVector()
     # - _segment_ = [(x0,y0),(x1,y1)]
     #
-    def unitVector(self, _segment_: tuple[tuple[float, float], tuple[float, float]]):
+    def unitVector(self, _segment_):
         """
         Returns the unit vector of the segment.
         :param _segment_: a tuple of ((x0,y0), (x1,y1))
@@ -389,8 +389,8 @@ class RTGeometryMixin(object):
     # returns distance, point
     # ... for example:  10, (1,2)
     def closestPointOnSegment(self,
-                              _segment_: tuple[tuple[float, float], tuple[float, float]],
-                              _pt_:      tuple[float, float]):
+                              _segment_,
+                              _pt_):
         """
         :param _segment_: a tuple of ((x0,y0), (x1,y1))
         :param _pt_: a tuple of (x,y)
@@ -431,8 +431,8 @@ class RTGeometryMixin(object):
     # From https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines
     #
     def intersectionPoint(self, 
-                          line1: tuple[tuple[float, float], tuple[float, float]], 
-                          line2: tuple[tuple[float, float], tuple[float, float]]):
+                          line1, 
+                          line2):
         """
         Determine where two lines intersect.
         :param line1: a tuple of ((x0,y0), (x1,y1))
@@ -456,8 +456,8 @@ class RTGeometryMixin(object):
     # - returns None if the line does not intersect the segment
     #
     def lineSegmentIntersectionPoint(self, 
-                                     line:    tuple[tuple[float, float], tuple[float, float]], 
-                                     segment: tuple[tuple[float, float], tuple[float, float]]):
+                                     line, 
+                                     segment):
         """
         Determine where a line intersects a segment.
         :param line: a tuple of ((x0,y0), (x1,y1))

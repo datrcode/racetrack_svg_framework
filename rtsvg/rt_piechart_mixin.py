@@ -66,7 +66,7 @@ class RTPieChartMixin(object):
     # Make the SVG for a piechart
     #    
     def pieChart(self,
-                 df                   : pd.DataFrame | pl.DataFrame, # dataframe to render
+                 df,                                                 # dataframe to render
                  # ------------------------------------------------- # everything else is a default...
                  color_by             : str    | None   = None,      # just the default color or a string for a field
                  global_color_order   : list   | None   = None,      # color by ordering... if none (default), will be created and filled in...
