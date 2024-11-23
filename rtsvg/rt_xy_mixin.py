@@ -557,12 +557,11 @@ class RTXYMixin(object):
                            axis           = None,   # 'x', 'y', or None (default / doesn't matter)
                            _dx            = None,   # data x delta
                            _dy            = None,   # data y delta
-                           ratio_data     = None,   # Ratio of the data between the two axes
                            ratio_svg      = None):  # Ratio of the svg between the two axes
         if self.isPandas(df):
-            return self.__xyCreateAxisColumn_pandas__(df, field, is_scalar, new_axis_field, order, fill_transform, timestamp_min, timestamp_max, _min, _max, axis, _dx, _dy, ratio_data, ratio_svg)
+            return self.__xyCreateAxisColumn_pandas__(df, field, is_scalar, new_axis_field, order, fill_transform, timestamp_min, timestamp_max, _min, _max, axis, _dx, _dy, ratio_svg)
         elif self.isPolars(df):
-            return self.__xyCreateAxisColumn_polars__(df, field, is_scalar, new_axis_field, order, fill_transform, timestamp_min, timestamp_max, _min, _max, axis, _dx, _dy, ratio_data, ratio_svg)
+            return self.__xyCreateAxisColumn_polars__(df, field, is_scalar, new_axis_field, order, fill_transform, timestamp_min, timestamp_max, _min, _max, axis, _dx, _dy, ratio_svg)
         else:
             raise Exception('RTXY.xyCreateAxisColumn() - only pandas and polars is supported')
 
@@ -581,7 +580,6 @@ class RTXYMixin(object):
                                       axis           = None,   # 'x', 'y', or None (default / doesn't matter)
                                       _dx            = None,   # data x delta
                                       _dy            = None,   # data y delta
-                                      ratio_data     = None,   # Ratio of the data between the two axes
                                       ratio_svg      = None):  # Ratio of the svg between the two axes
         if type(field) != list:
             field = [field]
@@ -597,7 +595,11 @@ class RTXYMixin(object):
             if my_min == my_max:
                 my_min -= 0.5
                 my_max += 0.5
-            elif axis is not None and ratio_data is not None and ratio_svg is not None:
+                if axis is not None:
+                    if   axis == 'y': _dy = my_max - my_min
+                    elif axis == 'x': _dx = my_max - my_min            
+            if axis is not None and ratio_svg is not None:
+                ratio_data = _dx / _dy
                 if   axis == 'y' and ratio_data > ratio_svg:
                     # ratio_data = dx / dy
                     # ratio_svg  =  w /  h
@@ -722,7 +724,6 @@ class RTXYMixin(object):
                                     axis           = None,   # 'x', 'y', or None (default / doesn't matter)
                                     _dx            = None,   # data x delta
                                     _dy            = None,   # data y delta
-                                    ratio_data     = None,   # Ratio of the data between the two axes
                                     ratio_svg      = None):  # Ratio of the svg between the two axes
         if type(field) != list:
             field = [field]
@@ -738,7 +739,11 @@ class RTXYMixin(object):
             if my_min == my_max:
                 my_min -= 0.5
                 my_max += 0.5
-            elif axis is not None and ratio_data is not None and ratio_svg is not None: # See pandas version for rationale
+                if axis is not None:
+                    if   axis == 'y': _dy = my_max - my_min
+                    elif axis == 'x': _dx = my_max - my_min
+            if axis is not None and ratio_svg is not None: # See pandas version for rationale
+                ratio_data = _dx / _dy
                 if   axis == 'y' and ratio_data > ratio_svg:
                     dy_required = _dx / ratio_svg
                     my_avg      = (my_min + my_max) / 2
@@ -1440,19 +1445,16 @@ class RTXYMixin(object):
                self.y2_field   is None:
                 _dx_            = self.df[self.x_field[0]].max() - self.df[self.x_field[0]].min()
                 _dy_            = self.df[self.y_field[0]].max() - self.df[self.y_field[0]].min()
-                if _dy_ == 0.0 or _dy_ == 0.0: # If either are 0.0, then don't do anything
-                    print('rt.xy() - no aspect ratio fix because either dx or dy is 0.0')
-                    self.ratio_data = None
+                if _dy_ == 0.0 and _dy_ == 0.0: # If both are 0.0, then don't do anything
+                    print('rt.xy() - no aspect ratio fix because dx and dy are both 0.0')
                     self.ratio_svg  = None
                     self.dx_data    = None
                     self.dy_data    = None
                 else:
-                    self.ratio_data = _dx_/_dy_
                     self.ratio_svg  = self.w_usable/self.h_usable
                     self.dx_data    = _dx_
                     self.dy_data    = _dy_
             else:
-                self.ratio_data = None
                 self.ratio_svg  = None
                 self.dx_data    = None
                 self.dy_data    = None
@@ -1463,7 +1465,7 @@ class RTXYMixin(object):
                 self.x_axis_col = 'my_x_' + self.widget_id
                 self.df, self.x_is_time, self.x_label_min, self.x_label_max, self.x_trans_func, self.x_order, self.x_min, self.x_max = self.rt_self.xyCreateAxisColumn(self.df, self.x_field, self.x_field_is_scalar, self.x_axis_col, self.x_order, self.x_fill_transforms, 
                                                                                                                                                                        self.timestamp_min, self.timestamp_max, self.x_min, self.x_max,
-                                                                                                                                                                       axis='x', _dx=self.dx_data, _dy=self.dy_data, ratio_data=self.ratio_data, ratio_svg=self.ratio_svg)
+                                                                                                                                                                       axis='x', _dx=self.dx_data, _dy=self.dy_data, ratio_svg=self.ratio_svg)
             t1_x_create = time.time()
             self.time_lu['x_create'] = t1_x_create - t0_x_create
 
@@ -1471,7 +1473,7 @@ class RTXYMixin(object):
             if self.y_axis_col is None:
                 self.y_axis_col = 'my_y_' + self.widget_id
                 self.df, self.y_is_time, self.y_label_min, self.y_label_max, self.y_trans_func, self.y_order, self.y_min, self.y_max = self.rt_self.xyCreateAxisColumn(self.df, self.y_field, self.y_field_is_scalar, self.y_axis_col, self.y_order, self.y_fill_transforms,
-                                                                                                                                                                       axis='y', _dx=self.dx_data, _dy=self.dy_data, ratio_data=self.ratio_data, ratio_svg=self.ratio_svg)
+                                                                                                                                                                       axis='y', _dx=self.dx_data, _dy=self.dy_data, ratio_svg=self.ratio_svg)
             
             t1_y_create = time.time()
             self.time_lu['y_create'] = t1_y_create - t0_y_create
