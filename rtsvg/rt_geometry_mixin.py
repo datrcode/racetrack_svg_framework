@@ -362,10 +362,10 @@ class RTGeometryMixin(object):
     # - from Bezier Curve on wikipedia.org
     #
     def bezierCurve(self,
-                    pt1:  tuple[float, float],
-                    pt1p: tuple[float, float],
-                    pt2p: tuple[float, float],
-                    pt2:  tuple[float, float]):
+                    pt1,    #:  tuple[float, float],
+                    pt1p,   #:  tuple[float, float],
+                    pt2p,   #:  tuple[float, float],
+                    pt2):   #:  tuple[float, float]):
         """
         Returns the parametric bezier curve object.
         :param pt1: point 1

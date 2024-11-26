@@ -68,11 +68,11 @@ class RTPieChartMixin(object):
     def pieChart(self,
                  df,                                                 # dataframe to render
                  # ------------------------------------------------- # everything else is a default...
-                 color_by             : str    | None   = None,      # just the default color or a string for a field
-                 global_color_order   : list   | None   = None,      # color by ordering... if none (default), will be created and filled in...
-                 count_by             : str    | None   = None,      # none means just count rows, otherwise, use a field to sum by # Not Implemented
-                 count_by_set         : bool   | None   = False,     # count by summation (by default)... column is checked
-                 widget_id            : str    | None   = None,      # naming the svg elements
+                 color_by             : str             = None,      # just the default color or a string for a field
+                 global_color_order   : list            = None,      # color by ordering... if none (default), will be created and filled in...
+                 count_by             : str             = None,      # none means just count rows, otherwise, use a field to sum by # Not Implemented
+                 count_by_set         : bool            = False,     # count by summation (by default)... column is checked
+                 widget_id            : str             = None,      # naming the svg elements
                  # ------------------------------------------------- # custom render for this component
                  style                : str             = 'pie',     # 'pie' or 'waffle'
                  min_render_angle_deg : int             = 5,         # minimum render angle
