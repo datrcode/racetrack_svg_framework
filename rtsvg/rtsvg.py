@@ -22,6 +22,8 @@ import urllib
 import html
 import os
 
+from datetime import datetime
+
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPM
 from PIL import Image
@@ -263,6 +265,7 @@ class RACETrack(RTAnnotationsMixin,
                     _format_ = format
                     if _format_ is None:
                         _format_ = self.guessTimestampFormat(str(df[_column_][0]))
+                    if '.%f' in _format_: _format_ = _format_.replace('.%f', '%.f')
                     df = df.with_columns(pl.col(_column_).str.strptime(pl.Datetime, format=_format_).cast(pl.Datetime))
                 except:
                     print(f"columnsAreTimestamps() - fail over conversion for datetime (polars) - example '{str(df[_column_][0])}'")
@@ -277,45 +280,53 @@ class RACETrack(RTAnnotationsMixin,
 
     #
     # guessTimestampFormat()
-    # ... warning: bad code ahead :(
-    # ... i hate timestamps
+    # ... slightly better code... but
+    # ... i [still] hate timestamps
     #
     def guessTimestampFormat(self, sample):
-        if (sample[-1] == 'z' or sample[-1] == 'Z') and ('t' in sample or 'T' in sample):
-            if    len(sample) >= 22:  return "%Y-%m-%dT%H:%M:%S%.fZ"
-            elif  len(sample) == 20:  return "%Y-%m-%dT%H:%M:%SZ"
-            elif  len(sample) == 17:  return "%Y-%m-%dT%H:%MZ"
-            else: raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [1]')
-        elif 't' in sample or 'T' in sample:
-            if    len(sample) >  23: return "%Y-%m-%dT%H:%M:%S%.f"
-            elif  len(sample) == 23: return "%Y-%m-%dT%H:%M:%S%.f"
-            elif  len(sample) == 19: return "%Y-%m-%dT%H:%M:%S"
-            elif  len(sample) == 16: return "%Y-%m-%dT%H:%M"
-            elif  len(sample) == 13: return "%Y-%m-%dT%H"
-            else: raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [2]')
-        elif ' ' in sample:
-            if    len(sample) >= 20:
-                if '/' in sample: return "%Y/%m/%d %H:%M:%S%.f"
-                else:             return "%Y-%m-%d %H:%M:%S%.f"
-            elif  len(sample) == 19:
-                if '/' in sample: return "%Y/%m/%d %H:%M:%S"
-                else:             return "%Y-%m-%d %H:%M:%S"
-            elif  len(sample) == 16:
-                if '/' in sample: return "%Y/%m/%d %H:%M"
-                else:             return "%Y-%m-%d %H:%M"
-            elif  len(sample) == 13:  # Doesn't seem to work in polars... wants both hour and minute
-                if '/' in sample: return "%Y/%m/%d %H"
-                else:             return "%Y-%m-%d %H"
-            else: raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [3]')
-        elif '/' in sample:
-            if    len(sample) == 10: return "%Y/%m/%d"
-            elif  len(sample) == 7:  return "%Y/%m"
-            else: raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [4]')
-        else:
-            if    len(sample) == 10: return "%Y-%m-%d"
-            elif  len(sample) ==  7: return "%Y-%m"
-            elif  len(sample) ==  4: return "%Y"
-            else: raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [5]')
+        def endsWithOffset(s):
+            def isNumber(c): return c >= '0' and c <= '9'
+            if len(s) < 8: return False
+            return isNumber(s[-1]) and \
+                isNumber(s[-2]) and \
+                s[-3] == ':'    and \
+                isNumber(s[-4]) and \
+                isNumber(s[-5]) and \
+                (s[-6] == '-' or s[-6] == '+')
+        def formatIsValid(format):
+            try:
+                datetime.strptime(sample, format)
+                return True
+            except:
+                return False
+        
+        bases = [
+            "%Y-%m-%dT%H:%M:%S.%f",
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%dT%H:%M",
+            "%Y-%m-%dT%H",
+            "%Y-%m-%d",
+            "%Y-%m",
+            "%Y"
+        ]
+
+        suffix = ''
+        if   'z'   in sample: suffix = 'z'
+        elif 'Z'   in sample: suffix = 'Z'
+        elif 'UTC' in sample: suffix = ' UTC'
+        elif 'utc' in sample: suffix = ' utc'
+        elif 'GMT' in sample: suffix = ' GMT'
+        elif 'gmt' in sample: suffix = ' gmt'
+        elif endsWithOffset(sample): suffix = '%z'
+
+        for base in bases:
+            if '/' in sample:      base = base.replace('-','/')
+            if ' ' in sample[:12]: base = base.replace('T',' ') # could be a space before timezone, so truncating it
+            if (':' in base) ^ (':' in sample): continue       # both have to have a colon ... or neither
+            base += suffix
+            if formatIsValid(base): return base
+
+        raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}"')
 
     #
     # guessTimestampField() - guess the timestamp field
