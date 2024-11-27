@@ -262,10 +262,10 @@ class RACETrack(RTAnnotationsMixin,
                 try:
                     _format_ = format
                     if _format_ is None:
-                        _format_ = self.guessTimestampFormat(str(df[0][_column_][0]))
+                        _format_ = self.guessTimestampFormat(str(df[_column_][0]))
                     df = df.with_columns(pl.col(_column_).str.strptime(pl.Datetime, format=_format_).cast(pl.Datetime))
                 except:
-                    print("columnsAreTimestamps() - fail over conversion for datetime (polars)")
+                    print(f"columnsAreTimestamps() - fail over conversion for datetime (polars) - example '{str(df[_column_][0])}'")
                     df = df.with_columns(pl.col(_column_).map_elements(lambda x: pd.to_datetime(x, utc=True).tz_convert(None), return_dtype=pl.Datetime))
                     #as_series = df[_column_].map_elements(lambda x: pd.to_datetime(x, utc=True).tz_convert(None), return_dtype=pl.Datetime)
                     #_format_  = self.guessTimestampFormat(str(as_series[0]))
@@ -282,34 +282,21 @@ class RACETrack(RTAnnotationsMixin,
     #
     def guessTimestampFormat(self, sample):
         if (sample[-1] == 'z' or sample[-1] == 'Z') and ('t' in sample or 'T' in sample):
-            if    len(sample) >= 22:
-                return "%Y-%m-%dT%H:%M:%S.%fZ"
-            elif  len(sample) == 20:
-                return "%Y-%m-%dT%H:%M:%SZ"
-            elif  len(sample) == 17: # Does this really occur?
-                return "%Y-%m-%dT%H:%MZ"
-            else:
-                raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [1]')
+            if    len(sample) >= 22:  return "%Y-%m-%dT%H:%M:%S%.fZ"
+            elif  len(sample) == 20:  return "%Y-%m-%dT%H:%M:%SZ"
+            elif  len(sample) == 17:  return "%Y-%m-%dT%H:%MZ"
+            else: raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [1]')
         elif 't' in sample or 'T' in sample:
-            if    len(sample) >  23:
-                return "%Y-%m-%dT%H:%M:%S.%f"
-            elif  len(sample) == 23:
-                return "%Y-%m-%dT%H:%M:%S.%f"
-            elif  len(sample) == 19:
-                return "%Y-%m-%dT%H:%M:%S"
-            elif  len(sample) == 16:
-                return "%Y-%m-%dT%H:%M"
-            elif  len(sample) == 13: # Doesn't seem to work in polars... wants both hour and minute
-                return "%Y-%m-%dT%H"
-            else:
-                raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [2]')
+            if    len(sample) >  23: return "%Y-%m-%dT%H:%M:%S%.f"
+            elif  len(sample) == 23: return "%Y-%m-%dT%H:%M:%S%.f"
+            elif  len(sample) == 19: return "%Y-%m-%dT%H:%M:%S"
+            elif  len(sample) == 16: return "%Y-%m-%dT%H:%M"
+            elif  len(sample) == 13: return "%Y-%m-%dT%H"
+            else: raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [2]')
         elif ' ' in sample:
             if    len(sample) >= 20:
-                if '/' in sample: return "%Y-%m-%d %H:%M:%S.%f"
-                else:             return "%Y/%m/%d %H:%M:%S.%f"
-            elif  len(sample) == 19:
-                if '/' in sample: return "%Y/%m/%d %H:%M:%S"
-                else:             return "%Y-%m-%d %H:%M:%S"
+                if '/' in sample: return "%Y/%m/%d %H:%M:%S%.f"
+                else:             return "%Y-%m-%d %H:%M:%S%.f"
             elif  len(sample) == 19:
                 if '/' in sample: return "%Y/%m/%d %H:%M:%S"
                 else:             return "%Y-%m-%d %H:%M:%S"
@@ -319,24 +306,16 @@ class RACETrack(RTAnnotationsMixin,
             elif  len(sample) == 13:  # Doesn't seem to work in polars... wants both hour and minute
                 if '/' in sample: return "%Y/%m/%d %H"
                 else:             return "%Y-%m-%d %H"
-            else:
-                raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [3]')
+            else: raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [3]')
         elif '/' in sample:
-            if    len(sample) == 10:
-                return "%Y/%m/%d"
-            elif  len(sample) == 7:
-                return "%Y/%m"
-            else:
-                raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [4]')
+            if    len(sample) == 10: return "%Y/%m/%d"
+            elif  len(sample) == 7:  return "%Y/%m"
+            else: raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [4]')
         else:
-            if    len(sample) == 10:
-                return "%Y-%m-%d"
-            elif  len(sample) == 7:
-                return "%Y-%m"
-            elif  len(sample) == 4:
-                return "%Y"
-            else:
-                raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [5]')
+            if    len(sample) == 10: return "%Y-%m-%d"
+            elif  len(sample) ==  7: return "%Y-%m"
+            elif  len(sample) ==  4: return "%Y"
+            else: raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}" [5]')
 
     #
     # guessTimestampField() - guess the timestamp field
