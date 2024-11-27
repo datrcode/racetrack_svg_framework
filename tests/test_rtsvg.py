@@ -66,7 +66,17 @@ class TestRTSVG(unittest.TestCase):
                       '2003-02',
                       '2003/02', 
                       '2004-05-01',
-                      '2004/05/01', 
+                      '2004/05/01',
+                      '1997-07-16T19:20:30+01:00',     # https://www.w3.org/TR/NOTE-datetime
+                      '1997-07-16T19:20:30.45+01:00',  # https://www.w3.org/TR/NOTE-datetime
+                      '1994-11-05T08:15:30-05:00',     # https://www.w3.org/TR/NOTE-datetime
+                      '1994-11-05T13:15:30Z',          # https://www.w3.org/TR/NOTE-datetime
+                      '2005-10-30T10:45 UTC',          # https://en.wikipedia.org/wiki/Timestamp
+                      '2007-11-09T11:20 UTC',          # https://en.wikipedia.org/wiki/Timestamp
+                      '2009-10-31T01:48:52Z',          # https://en.wikipedia.org/wiki/Timestamp
+                      '2009-10-31 01:48:52Z',          # https://en.wikipedia.org/wiki/Timestamp
+                      '1969-07-21T02:56 UTC',          # https://en.wikipedia.org/wiki/Timestamp
+                      '2025-05-25',                    # https://en.wikipedia.org/wiki/Timestamp
                       '1998-12-01T00',            '1998-12-02 00', 
                       '1998-12-05T23:12',         '1998-12-06 02:59', 
                       '2024-12-10T13:59:50',      '2024-12-11 13:59:50',
