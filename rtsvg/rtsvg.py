@@ -302,6 +302,7 @@ class RACETrack(RTAnnotationsMixin,
         
         bases = [
             "%Y-%m-%dT%H:%M:%S.%f",
+            "%m-%d-%YT%H:%M:%S", # will actually be with slashes...
             "%Y-%m-%dT%H:%M:%S",
             "%Y-%m-%dT%H:%M",
             "%Y-%m-%dT%H",
