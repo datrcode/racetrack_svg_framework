@@ -14,6 +14,7 @@
 #
 
 import pandas as pd
+import polars as pl
 import numpy as np
 import random
 
@@ -25,6 +26,54 @@ __name__ = 'rt_datamanip_mixin'
 # ... and other useful utilities
 #
 class RTDataManipMixin(object):
+    #
+    # polarsGroupOverlappingTimeframes()
+    # - Based on this Stack Overflow question & answer:
+    #   https://stackoverflow.com/questions/73222000/polars-conditional-merge-of-rows
+    # - Modified to work w/ multiple fields (upto 3) and to sort the type field prior to grouping
+    #
+    def polarsGroupOverlappingTimeframes(self, _df_, _time_start_, _time_end_, fields, threshold='15m'):
+        if type(fields) is not list: fields = [fields]
+        if len(fields) == 1:
+            return (_df_.sort([fields[0], _time_start_])
+                        .with_columns(((pl.col(_time_end_).dt.offset_by(threshold) < pl.col(_time_start_).shift(-1)) | (pl.col(fields[0]) != pl.col(fields[0]).shift(-1)))
+                        .shift(1, fill_value=False)
+                        .cum_sum()
+                        .alias('run_nbr'),
+                )       .group_by('run_nbr')
+                        .agg(pl.col(_time_start_).min()  .alias(_time_start_),
+                             pl.col(_time_end_)  .max()  .alias(_time_end_),
+                             pl.col(fields[0])   .first().alias(fields[0]),)
+                        .sort([fields[0], _time_start_]))
+        elif len(fields) == 2:
+            return (_df_.sort([fields[0], fields[1], _time_start_])
+                        .with_columns(((pl.col(_time_end_).dt.offset_by(threshold) < pl.col(_time_start_).shift(-1)) | (pl.col(fields[0]) != pl.col(fields[0]).shift(-1)) | 
+                                                                                                                    (pl.col(fields[1]) != pl.col(fields[1]).shift(-1)) )
+                        .shift(1, fill_value=False)
+                        .cum_sum()
+                        .alias('run_nbr'),
+                )       .group_by('run_nbr')
+                        .agg(pl.col(_time_start_).min()  .alias(_time_start_),
+                             pl.col(_time_end_)  .max()  .alias(_time_end_),
+                             pl.col(fields[0])   .first().alias(fields[0]),
+                             pl.col(fields[1])   .first().alias(fields[1]),)
+                        .sort([fields[0], fields[1], _time_start_]))
+        elif len(fields) == 3:
+            return (_df_.sort([fields[0], fields[1], fields[2], _time_start_])
+                        .with_columns(((pl.col(_time_end_).dt.offset_by(threshold) < pl.col(_time_start_).shift(-1)) | (pl.col(fields[0]) != pl.col(fields[0]).shift(-1)) | 
+                                                                                                                    (pl.col(fields[1]) != pl.col(fields[1]).shift(-1)) |
+                                                                                                                    (pl.col(fields[2]) != pl.col(fields[2]).shift(-1)) )
+                        .shift(1, fill_value=False)
+                        .cum_sum()
+                        .alias('run_nbr'),
+                )       .group_by('run_nbr')
+                        .agg(pl.col(_time_start_).min()  .alias(_time_start_),
+                             pl.col(_time_end_)  .max()  .alias(_time_end_),
+                             pl.col(fields[0])   .first().alias(fields[0]),
+                             pl.col(fields[1])   .first().alias(fields[1]),
+                             pl.col(fields[2])   .first().alias(fields[2]),)
+                        .sort([fields[0], fields[1], fields[2], _time_start_]))
+        else: raise Exception('polarsGroupOverlappingTimeframes() -- only handles 1, 2, or 3 fields')
 
     #
     # kMeans2D() - perform k-means on 2d tuples
