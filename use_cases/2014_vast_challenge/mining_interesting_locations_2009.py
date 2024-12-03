@@ -120,6 +120,13 @@ class MiningInterestingLocations2009(object):
         self.df_stay_points_combined = self.rt.polarsGroupOverlappingTimeframes(self.df_stay_points, 'ts_arrive', 'ts_leave', ['id','cluster_label'])
         print(f'MiningInterestingLocations2009 | Stay Points {len(self.df_stay_points):_} | Combined Stay Points {len(self.df_stay_points_combined):_}')
         self.df_stay_points_combined = self.df_stay_points_combined.sort(['id', 'ts_arrive'])
+        self.df_hierarchical_graph = self.df_stay_points_combined.sort(['id','ts_arrive']) \
+                                                                 .with_columns(pl.col('cluster_label').shift(-1, fill_value=-1).alias('next_cluster_label'),
+                                                                               pl.col('id')           .shift(-1, fill_value=-1).alias('next_id')) \
+                                                                 .filter(pl.col('id') == pl.col('next_id')) \
+                                                                 .drop(['run_nbr', 'next_id']) \
+                                                                 .rename({'cluster_label':'fm_location', 'next_cluster_label':'to_location'})
+
 
     #
     # __stayPointDetectionGolden__()
