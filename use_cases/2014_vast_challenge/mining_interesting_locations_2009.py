@@ -117,6 +117,9 @@ class MiningInterestingLocations2009(object):
                                                                                          pl.col('lat_ave').mean(),
                                                                                          pl.len().alias('num_points'),
                                                                                          pl.col('id').alias('ids_seen'))
+        self.df_cluster_locations_pos = {}
+        for i in range(len(self.df_cluster_locations)): self.df_cluster_locations_pos[i] = self.df_cluster_locations['lon_ave'][i], self.df_cluster_locations['lat_ave'][i]
+        
         self.df_stay_points_combined = self.rt.polarsGroupOverlappingTimeframes(self.df_stay_points, 'ts_arrive', 'ts_leave', ['id','cluster_label'])
         print(f'MiningInterestingLocations2009 | Stay Points {len(self.df_stay_points):_} | Combined Stay Points {len(self.df_stay_points_combined):_}')
         self.df_stay_points_combined = self.df_stay_points_combined.sort(['id', 'ts_arrive'])
