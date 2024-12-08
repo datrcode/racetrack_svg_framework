@@ -889,12 +889,20 @@ class RTGeometryMixin(object):
     # https://www.youtube.com/watch?v=I6Fen2Ac-1U
     # https://gist.github.com/isedgar/d445248c9ff6c61cef44fc275cb2398f
     #
-    def isedgarVoronoi(self, S, Box=None, pad = 10):
+    def isedgarVoronoi(self, S, Box=None, pad=10, use_circle_radius=False):
         # return bisector of points p0 and p1 -- bisector is ((x,y),(u,v)) where u,v is the vector of the bisector
         def bisector(p0, p1):
             x, y     = (p0[0] + p1[0])/2.0, (p0[1] + p1[1])/2.0
             uv       = self.unitVector((p0, p1))
             pdx, pdy = uv[1], -uv[0]
+            return ((x,y), (pdx,pdy))
+        # For the circle version
+        def bisectorForCircles(c0, c1):
+            uv              = self.unitVector((c0, c1))
+            x0, y0          = c0[0] + uv[0] * c0[2], c0[1] + uv[1] * c0[2]
+            x1, y1          = c1[0] - uv[0] * c1[2], c1[1] - uv[1] * c1[2]
+            x,  y           = (x0+x1)/2.0, (y0+y1)/2.0
+            pdx, pdy        = uv[1], -uv[0]
             return ((x,y), (pdx,pdy))
         # returns vertices that intersect the polygon
         def intersects(bisects, poly):
@@ -937,7 +945,7 @@ class RTGeometryMixin(object):
             cell = Box
             for q in S:
                 if p == q: continue
-                B            = bisector(p,q)
+                B            = bisector(p,q) if use_circle_radius == False else bisectorForCircles(p,q)
                 B_intersects = intersects(B, cell)
                 if len(B_intersects) == 2:
                     t1, t2 = B_intersects[0][0], B_intersects[1][0]
