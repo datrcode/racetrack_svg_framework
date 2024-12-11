@@ -889,7 +889,7 @@ class RTGeometryMixin(object):
     # https://www.youtube.com/watch?v=I6Fen2Ac-1U
     # https://gist.github.com/isedgar/d445248c9ff6c61cef44fc275cb2398f
     #
-    def isedgarVoronoi(self, S, Box=None, pad=10, use_circle_radius=False):
+    def isedgarVoronoi(self, S, Box=None, pad=10, use_circle_radius=False, merge_threshold=0.1):
         # return bisector of points p0 and p1 -- bisector is ((x,y),(u,v)) where u,v is the vector of the bisector
         def bisector(p0, p1):
             x, y     = (p0[0] + p1[0])/2.0, (p0[1] + p1[1])/2.0
@@ -956,6 +956,55 @@ class RTGeometryMixin(object):
                     if contains(newCell, p) == False: newCell = otherNewCell
                     cell = newCell
             cells.append(cell)
+        
+        # Merge similar points by default
+        if use_circle_radius == False:
+            # Gather up the points
+            vpoints_pt = set()
+            for cell in cells:
+                for i in range(len(cell)):
+                    vpoints_pt.add(cell[i])
+            # Determine which pairs need to be merged
+            _merge_pairs_ = set()
+            for a in vpoints_pt:
+                for b in vpoints_pt:
+                    if a != b and self.segmentLength((a,b)) < merge_threshold:
+                        _merge_pairs_.add((a,b))
+            pt_to_merge_pt = {}
+            # Do the merge...
+            for _pair_ in _merge_pairs_:
+                a, b = _pair_
+                if a not in pt_to_merge_pt:
+                    # Loop through all points that need to be merged
+                    # ... keep doing that until the merge set stabilizes
+                    _to_merge_          = set([a,b])
+                    _last_to_merge_len_ = len(_to_merge_)
+                    _to_merge_len_      = 0
+                    while _last_to_merge_len_ != _to_merge_len_:
+                        _last_to_merge_len_ = len(_to_merge_)
+                        for _pair_ in _merge_pairs_:
+                            a, b = _pair_
+                            if a in _to_merge_ or b in _to_merge_: _to_merge_ |= set([a,b])
+                        _to_merge_len_ = len(_to_merge_)
+                # Average Point
+                _x_, _y_ = 0.0, 0.0
+                for _xy_ in _to_merge_:
+                    _x_, _y_ = _x_ + _xy_[0], _y_ + _xy_[1]
+                _x_, _y_ = _x_ / len(_to_merge_), _y_ / len(_to_merge_)
+                # Setup the lookup
+                for _xy_ in _to_merge_: pt_to_merge_pt[_xy_] = (_x_, _y_)
+            # Add points that don't need to be merged
+            for a in vpoints_pt:
+                if a not in pt_to_merge_pt: pt_to_merge_pt[a] = a
+            # Replace the points in the cells
+            new_cells = []
+            for cell in cells:
+                new_cell = []
+                for i in range(len(cell)):
+                    new_cell.append(pt_to_merge_pt[cell[i]])
+                new_cells.append(new_cell)
+            cells = new_cells
+
         return cells
 
     #
