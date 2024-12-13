@@ -958,52 +958,52 @@ class RTGeometryMixin(object):
             cells.append(cell)
         
         # Merge similar points by default
-        if use_circle_radius == False:
-            # Gather up the points
-            vpoints_pt = set()
-            for cell in cells:
-                for i in range(len(cell)):
-                    vpoints_pt.add(cell[i])
-            # Determine which pairs need to be merged
-            _merge_pairs_ = set()
-            for a in vpoints_pt:
-                for b in vpoints_pt:
-                    if a != b and self.segmentLength((a,b)) < merge_threshold:
-                        _merge_pairs_.add((a,b))
-            pt_to_merge_pt = {}
-            # Do the merge...
-            for _pair_ in _merge_pairs_:
-                a, b = _pair_
-                if a not in pt_to_merge_pt:
-                    # Loop through all points that need to be merged
-                    # ... keep doing that until the merge set stabilizes
-                    _to_merge_          = set([a,b])
+        #if use_circle_radius == False:
+        # Gather up the points
+        vpoints_pt = set()
+        for cell in cells:
+            for i in range(len(cell)):
+                vpoints_pt.add(cell[i])
+        # Determine which pairs need to be merged
+        _merge_pairs_ = set()
+        for a in vpoints_pt:
+            for b in vpoints_pt:
+                if a != b and self.segmentLength((a,b)) < merge_threshold:
+                    _merge_pairs_.add((a,b))
+        pt_to_merge_pt = {}
+        # Do the merge...
+        for _pair_ in _merge_pairs_:
+            a, b = _pair_
+            if a not in pt_to_merge_pt:
+                # Loop through all points that need to be merged
+                # ... keep doing that until the merge set stabilizes
+                _to_merge_          = set([a,b])
+                _last_to_merge_len_ = len(_to_merge_)
+                _to_merge_len_      = 0
+                while _last_to_merge_len_ != _to_merge_len_:
                     _last_to_merge_len_ = len(_to_merge_)
-                    _to_merge_len_      = 0
-                    while _last_to_merge_len_ != _to_merge_len_:
-                        _last_to_merge_len_ = len(_to_merge_)
-                        for _pair_ in _merge_pairs_:
-                            a, b = _pair_
-                            if a in _to_merge_ or b in _to_merge_: _to_merge_ |= set([a,b])
-                        _to_merge_len_ = len(_to_merge_)
-                # Average Point
-                _x_, _y_ = 0.0, 0.0
-                for _xy_ in _to_merge_:
-                    _x_, _y_ = _x_ + _xy_[0], _y_ + _xy_[1]
-                _x_, _y_ = _x_ / len(_to_merge_), _y_ / len(_to_merge_)
-                # Setup the lookup
-                for _xy_ in _to_merge_: pt_to_merge_pt[_xy_] = (_x_, _y_)
-            # Add points that don't need to be merged
-            for a in vpoints_pt:
-                if a not in pt_to_merge_pt: pt_to_merge_pt[a] = a
-            # Replace the points in the cells
-            new_cells = []
-            for cell in cells:
-                new_cell = []
-                for i in range(len(cell)):
-                    new_cell.append(pt_to_merge_pt[cell[i]])
-                new_cells.append(new_cell)
-            cells = new_cells
+                    for _pair_ in _merge_pairs_:
+                        a, b = _pair_
+                        if a in _to_merge_ or b in _to_merge_: _to_merge_ |= set([a,b])
+                    _to_merge_len_ = len(_to_merge_)
+            # Average Point
+            _x_, _y_ = 0.0, 0.0
+            for _xy_ in _to_merge_:
+                _x_, _y_ = _x_ + _xy_[0], _y_ + _xy_[1]
+            _x_, _y_ = _x_ / len(_to_merge_), _y_ / len(_to_merge_)
+            # Setup the lookup
+            for _xy_ in _to_merge_: pt_to_merge_pt[_xy_] = (_x_, _y_)
+        # Add points that don't need to be merged
+        for a in vpoints_pt:
+            if a not in pt_to_merge_pt: pt_to_merge_pt[a] = a
+        # Replace the points in the cells
+        new_cells = []
+        for cell in cells:
+            new_cell = []
+            for i in range(len(cell)):
+                new_cell.append(pt_to_merge_pt[cell[i]])
+            new_cells.append(new_cell)
+        cells = new_cells
 
         return cells
 
