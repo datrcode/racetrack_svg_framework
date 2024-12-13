@@ -1355,30 +1355,32 @@ class RTXYMixin(object):
             t1_y2_setup = time.time()
             self.time_lu['y2_setup'] = t1_y2_setup - t0_y2_setup
 
-            # Geometry lookup for tracking state
-            self.geom_to_df = {}
-            self.last_render = None
+            # Geometry lookup for tracking state & render information
+            self.pixels_rendered = None
+            self.geom_to_df      = {}
+            self.last_render     = None
 
         #
         # print() version of class
         #
         def __repr__(self):
-            return f'xy(df.len={len(self.df)}, x_field={self.x_field}, y_field={self.y_field}, {self.w}x{self.h})'
+            if self.pixels_rendered is None:
+                return f'xy(df.len={len(self.df)}, x_field={self.x_field}, y_field={self.y_field}, {self.w}x{self.h})'
+            else:
+                return f'xy(df.len={len(self.df)}, x_field={self.x_field}, y_field={self.y_field}, {self.w}x{self.h}, pixels_rendered={self.pixels_rendered:_})'
             
         #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
-            if self.last_render is None:
-                self.renderSVG()
+            if self.last_render is None: self.renderSVG()
             return self.last_render
 
         #
         # renderSVG() - render as SVG
         #
         def renderSVG(self, just_calc_max=False):
-            if self.track_state:
-                self.geom_to_df = {}
+            if self.track_state: self.geom_to_df = {}
 
             #
             # Geometry
@@ -1539,10 +1541,8 @@ class RTXYMixin(object):
             # Create the SVG ... render the background
             svg_strs = []
             svg_strs.append(f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">')
-            if self.background_override is None:
-                background_color = self.rt_self.co_mgr.getTVColor('background','default')
-            else:
-                background_color = self.background_override                
+            if self.background_override is None: background_color = self.rt_self.co_mgr.getTVColor('background','default')
+            else:                                background_color = self.background_override                
             svg_strs.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" fill-opacity="{self.background_opacity}" stroke="{background_color}" stroke-opacity="{self.background_opacity}" />')
 
             if self.plot_background_override is not None:
@@ -1653,10 +1653,8 @@ class RTXYMixin(object):
             # Dots / Primary Axis
             elif dot_w is not None and dot_w != 0:
                 t0_render_dots = time.time()
-                if self.rt_self.isPandas(self.df):
-                    svg_strs.append(self.__rendersvg_dots_pandas__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w))
-                elif self.rt_self.isPolars(self.df):
-                    svg_strs.append(self.__rendersvg_dots_polars__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w))
+                if   self.rt_self.isPandas(self.df): svg_strs.append(self.__rendersvg_dots_pandas__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w))
+                elif self.rt_self.isPolars(self.df): svg_strs.append(self.__rendersvg_dots_polars__(self.df,   self.x_axis_col,   self.y_axis_col,   self.color_by,    dot_w))
                 t1_render_dots = time.time()
                 self.time_lu['render_dots'] = t1_render_dots - t0_render_dots
 
@@ -1664,16 +1662,13 @@ class RTXYMixin(object):
             if dot2_w is not None and self.df2 is not None and dot2_w != 0:
                 t0_render_dots2 = time.time()
                 _local_color_by = self.line2_groupby_color if self.line2_groupby_color is not None else self.color_by
-                if self.rt_self.isPandas(self.df):
-                    svg_strs.append(self.__rendersvg_dots_pandas__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w))
-                elif self.rt_self.isPolars(self.df):
-                    svg_strs.append(self.__rendersvg_dots_polars__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w))
+                if   self.rt_self.isPandas(self.df): svg_strs.append(self.__rendersvg_dots_pandas__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w))
+                elif self.rt_self.isPolars(self.df): svg_strs.append(self.__rendersvg_dots_polars__(self.df2,  self.x2_axis_col,  self.y2_axis_col,  _local_color_by,  dot2_w))
                 t1_render_dots2 = time.time()
                 self.time_lu['render_dots2'] = t1_render_dots2 - t0_render_dots2
 
             # Draw labels
-            if self.draw_labels:
-                svg_strs.append(self.__rendersvg_drawlabels__())
+            if self.draw_labels: svg_strs.append(self.__rendersvg_drawlabels__())
                         
             # Draw the border
             if self.draw_border:
@@ -2227,6 +2222,10 @@ class RTXYMixin(object):
             if self.track_state or callable(self.dot_shape):
                 pb = _df.partition_by([_x_axis_col+"_px",_y_axis_col+"_px"], as_dict=True)
 
+            # Count the number of pixels rendered
+            if self.pixels_rendered is None: self.pixels_rendered  = len(gb)
+            else:                            self.pixels_rendered += len(gb)
+            
             # Loop Over The Pixels
             for _index_ in range(len(gb)):
                 # Pixel Coordinates
@@ -2296,28 +2295,22 @@ class RTXYMixin(object):
             if _local_dot_w < 0 or self.vary_opacity or self.color_magnitude is not None:
                 for k,k_df in gb:
                     # count by rows
-                    if   self.count_by is None:
-                        my_count = len(k_df)
+                    if   self.count_by is None:  my_count = len(k_df)
                     # count by set
-                    elif self.count_by_set:
-                        my_count = len(set(k_df[self.count_by]))
+                    elif self.count_by_set:      my_count = len(set(k_df[self.count_by]))
                     # count by summation
-                    else:
-                        my_count = k_df[self.count_by].sum()
+                    else:                        my_count = k_df[self.count_by].sum()
                     
                     if self.color_magnitude == 'stretch':
                         self.stretch_total += my_count
-                        if my_count not in self.stretch_histogram.keys():
-                            self.stretch_histogram[my_count] =  1
-                        else:
-                            self.stretch_histogram[my_count] += 1 
+                        if my_count not in self.stretch_histogram.keys(): self.stretch_histogram[my_count] =  1
+                        else:                                             self.stretch_histogram[my_count] += 1 
                         
                     if max_xy < my_count:
                         max_xy = my_count
 
             # Make sure the max is not zero
-            if max_xy == 0:
-                max_xy = 1
+            if max_xy == 0: max_xy = 1
             
             # Contrast stretch calculation
             self.contrast_stretch = {}
@@ -2328,6 +2321,10 @@ class RTXYMixin(object):
                     _perc = _total_so_far / self.stretch_total
                     self.contrast_stretch[x] = _perc
                     _total_so_far += self.stretch_histogram[x] * x
+
+            # Count the number of pixels rendered
+            if self.pixels_rendered is None: self.pixels_rendered  = len(gb)
+            else:                            self.pixels_rendered += len(gb)
 
             #
             # Render loop
