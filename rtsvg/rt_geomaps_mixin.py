@@ -23,6 +23,29 @@ __name__ = 'rt_geomaps_mixin'
 #
 class RTGeoMapsMixin(object):
     #
+    # toGeoJSONPoints() - converts a Polars DataFrame to GeoJSON points
+    #
+    def toGeoJSONPoints(self, df, lat_field='latitude', lon_field='longitude', id_field='id'):
+        _geojson_ = {"type": "FeatureCollection","features":[]}
+        for k, k_df in df.group_by([lat_field, lon_field]):
+            _id_set_ = set(k_df[id_field].unique())
+            _id_     = _id_set_.pop() if len(_id_set_) == 1 else 'unknown'
+            _dict_   = {'type':'Feature', 'geometry':{'type':'Point', 'coordinates':[k[1], k[0]]}, 'properties':{'id':_id_}}
+            _geojson_['features'].append(_dict_)
+        return _geojson_
+
+    #
+    # toGeoJSONPaths() - converts a Polars DataFrame to GeoJSON paths
+    #
+    def toGeoJSONPaths(self, df, lat_field='latitude', lon_field='longitude', id_field='id', seq_field='timestamp'):
+        _geojson_ = {"type": "FeatureCollection","features":[]}
+        df = df.sort(seq_field) 
+        for k, k_df in df.group_by(id_field, maintain_order=True):
+            _dict_ = {'type':'Feature', 'geometry':{'type':'LineString', 'coordinates':list(zip(k_df[lon_field], k_df[lat_field]))}, 'properties':{'id':k}}
+            _geojson_['features'].append(_dict_)
+        return _geojson_
+
+    #
     # geoMapsUSStates() - returns a 2-digit state lookup for states to their shapely polygon.
     #
     def geoMapsUSStates(self, version='hex'):
