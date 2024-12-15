@@ -412,17 +412,12 @@ class RTGeometryMixin(object):
             if _ret_ is not None:
                 dx, dy = _pt_[0] - _ret_[0], _pt_[1] - _ret_[1]
                 d2 = dx*dx+dy*dy
-                if d2 < d0 and d2 < d1:
-                    return sqrt(d2), _ret_
-                elif d0 < d1:
-                    return sqrt(d0), _segment_[0]
-                else:
-                    return sqrt(d1), _segment_[1]
+                if    d2 < d0 and d2 < d1: return sqrt(d2), _ret_
+                elif  d0 < d1:             return sqrt(d0), _segment_[0]
+                else:                      return sqrt(d1), _segment_[1]
             else:
-                if d0 < d1:
-                    return sqrt(d0), _segment_[0]
-                else:
-                    return sqrt(d1), _segment_[1]
+                if    d0 < d1:             return sqrt(d0), _segment_[0]
+                else:                      return sqrt(d1), _segment_[1]
 
     #
     # intersectionPoint() - determine where two lines intersect
@@ -547,6 +542,28 @@ class RTGeometryMixin(object):
             if xp == x and yp == y:
                 return True, t
         return False, 0.0
+
+    #
+    # segmentsOverlap()
+    #
+    def segmentsOverlap(self, s0, s1, eps=0.01):
+        """
+        Determine if two segments overlap.
+        :param s0: a tuple of ((x0,y0), (x1,y1))
+        :param s1: a tuple of ((x2,y2), (x3,y3))
+        :param eps: tolerance
+        :return: True if the segments overlap, False otherwise
+        """
+        def pointOnSegment(point, segment, eps):
+            _d_, _xy_ = self.closestPointOnSegment(segment,point)
+            return _d_ < eps
+        if pointOnSegment(s0[0], s1, eps) or pointOnSegment(s0[1], s1, eps) or pointOnSegment(s1[0], s0, eps) or pointOnSegment(s1[1], s0, eps):
+            uv0  = self.unitVector(s0)
+            uv1  = self.unitVector(s1)
+            dot  = uv0[0]*uv1[0] + uv0[1]*uv1[1]
+            diff = abs(dot) - 1.0
+            return abs(diff) < eps
+        return False
 
     #
     # segmentsIntersect()
