@@ -556,7 +556,7 @@ class RTGeometryMixin(object):
         """
         def pointOnSegment(point, segment, eps):
             _d_, _xy_ = self.closestPointOnSegment(segment,point)
-            return _d_ < eps
+            return _xy_ != segment[0] and _xy_ != segment[1] and _d_ < eps
         if pointOnSegment(s0[0], s1, eps) or pointOnSegment(s0[1], s1, eps) or pointOnSegment(s1[0], s0, eps) or pointOnSegment(s1[1], s0, eps):
             uv0  = self.unitVector(s0)
             uv1  = self.unitVector(s1)
