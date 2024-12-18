@@ -554,6 +554,11 @@ class RTGeometryMixin(object):
         :param eps: tolerance
         :return: True if the segments overlap, False otherwise
         """
+        def pointsAreTheSame(p0,p1,eps):
+            d = self.segmentLength((p0,p1))
+            return d < eps
+        if (pointsAreTheSame(s0[0],s1[0],eps) and pointsAreTheSame(s0[1],s1[1],eps)) or \
+           (pointsAreTheSame(s0[0],s1[1],eps) and pointsAreTheSame(s0[1],s1[0],eps)): return True  
         def pointOnSegment(point, segment, eps):
             _d_, _xy_ = self.closestPointOnSegment(segment,point)
             return _xy_ != segment[0] and _xy_ != segment[1] and _d_ < eps
