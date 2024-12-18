@@ -15,16 +15,14 @@
 import pandas as pd
 import polars as pl
 import numpy as np
-
+import networkx as nx
 from shapely.geometry              import Polygon, LineString, GeometryCollection, MultiLineString
 from shapely.geometry.multipolygon import MultiPolygon
 from math import sqrt, acos, pi, cos, sin, atan2
 import random
-
 import heapq
 
 __name__ = 'rt_geometry_mixin'
-
 
 #
 # Geometry Methods
@@ -979,8 +977,7 @@ class RTGeometryMixin(object):
                     cell = newCell
             cells.append(cell)
         
-        # Merge similar points by default
-        #if use_circle_radius == False:
+        # Merge similar points
         # Gather up the points
         vpoints_pt = set()
         for cell in cells:
@@ -1026,6 +1023,80 @@ class RTGeometryMixin(object):
                 new_cell.append(pt_to_merge_pt[cell[i]])
             new_cells.append(new_cell)
         cells = new_cells
+
+        # If this is the circle based, version, discontinuities need to be fixed
+        if use_circle_radius:
+            point_to_polys          = {}
+            for i in range(len(cells)):
+                _poly_ = cells[i]
+                for _xy_ in _poly_:
+                    if _xy_ not in point_to_polys: point_to_polys[_xy_] = set()
+                    point_to_polys[_xy_].add(i)
+            poly_connects           = {'__fm__':[], '__to__':[]}
+            overlapping_segments_lu = {}
+            for i in range(len(cells)):
+                _poly0_ = cells[i]
+                for j in range(len(cells)):
+                    if i >= j: continue
+                    _poly1_     = cells[j]
+                    shared_edge = False
+                    for k in range(len(_poly0_)):
+                        _seg0_ = (_poly0_[k], _poly0_[(k+1)%len(_poly0_)])
+                        for l in range(len(_poly1_)):
+                            _seg1_ = (_poly1_[l], _poly1_[(l+1)%len(_poly1_)])
+                            if self.segmentsOverlap(_seg0_, _seg1_): 
+                                shared_edge = True
+                                overlapping_segments_lu[(i,j)] = (_seg0_, _seg1_)
+                                break
+                        if shared_edge: break
+                    if shared_edge:
+                        poly_connects['__fm__'].append(i)
+                        poly_connects['__to__'].append(j)
+
+            def findClosestPoint(_xy_, _points_):
+                closest_xy = _points_[0]
+                closest_d  = self.segmentLength((_xy_, _points_[0]))
+                for i in range(1, len(_points_)):
+                    d = self.segmentLength((_xy_, _points_[i]))
+                    if d < closest_d:
+                        closest_d  = d
+                        closest_xy = _points_[i]
+                return closest_xy
+
+            replacement_lu = {}
+            g_poly = self.createNetworkXGraph(pl.DataFrame(poly_connects), [('__fm__','__to__')])
+            for x in nx.simple_cycles(g_poly, 3):
+                _as_list_ = sorted(list(x))
+                poly_i, poly_j, poly_k = _as_list_[0], _as_list_[1], _as_list_[2]
+                _inter_ = set(cells[poly_i]) & set(cells[poly_j]) & set(cells[poly_k])
+                if len(_inter_) == 0:
+                    _segs0_ = overlapping_segments_lu[(poly_i,poly_j)]
+                    _segs1_ = overlapping_segments_lu[(poly_i,poly_k)]
+                    _segs2_ = overlapping_segments_lu[(poly_j,poly_k)]
+                    _xy0_   = self.intersectionPoint(_segs0_[0],_segs1_[0])
+                    _xy1_   = self.intersectionPoint(_segs0_[0],_segs2_[0])
+                    _xy2_   = self.intersectionPoint(_segs1_[0],_segs2_[0])
+                    _x_sum_ = _xy0_[0] + _xy1_[0] + _xy2_[0]
+                    _y_sum_ = _xy0_[1] + _xy1_[1] + _xy2_[1]
+                    _xy_    = (_x_sum_/3.0, _y_sum_/3.0)
+                    _xy0_   = findClosestPoint(_xy0_, [_segs0_[0][0], _segs0_[1][0], _segs1_[0][0], _segs1_[1][0], 
+                                                       _segs0_[0][1], _segs0_[1][1], _segs1_[0][1], _segs1_[1][1]])
+                    _xy1_   = findClosestPoint(_xy1_, [_segs0_[0][0], _segs0_[1][0], _segs2_[0][0], _segs2_[1][0],
+                                                       _segs0_[0][1], _segs0_[1][1], _segs2_[0][1], _segs2_[1][1]])
+                    _xy2_   = findClosestPoint(_xy2_, [_segs1_[0][0], _segs1_[1][0], _segs2_[0][0], _segs2_[1][0], 
+                                                       _segs1_[0][1], _segs1_[1][1], _segs2_[0][1], _segs2_[1][1]])
+                    replacement_lu[_xy0_] = _xy_
+                    replacement_lu[_xy1_] = _xy_    
+                    replacement_lu[_xy2_] = _xy_
+            # Replace the points in the cells
+            new_cells = []
+            for cell in cells:
+                new_cell = []
+                for i in range(len(cell)):
+                    if cell[i] in replacement_lu: new_cell.append(replacement_lu[cell[i]])
+                    else:                         new_cell.append(cell[i])
+                new_cells.append(new_cell)
+            cells = new_cells
 
         return cells
 
