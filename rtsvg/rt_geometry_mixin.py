@@ -1026,12 +1026,6 @@ class RTGeometryMixin(object):
 
         # If this is the circle based, version, discontinuities need to be fixed
         if use_circle_radius:
-            point_to_polys          = {}
-            for i in range(len(cells)):
-                _poly_ = cells[i]
-                for _xy_ in _poly_:
-                    if _xy_ not in point_to_polys: point_to_polys[_xy_] = set()
-                    point_to_polys[_xy_].add(i)
             poly_connects           = {'__fm__':[], '__to__':[]}
             overlapping_segments_lu = {}
             for i in range(len(cells)):
@@ -1080,13 +1074,13 @@ class RTGeometryMixin(object):
                     _y_sum_ = _xy0_[1] + _xy1_[1] + _xy2_[1]
                     _xy_    = (_x_sum_/3.0, _y_sum_/3.0)
                     _xy0_   = findClosestPoint(_xy0_, [_segs0_[0][0], _segs0_[1][0], _segs1_[0][0], _segs1_[1][0], 
-                                                       _segs0_[0][1], _segs0_[1][1], _segs1_[0][1], _segs1_[1][1]])
+                                                    _segs0_[0][1], _segs0_[1][1], _segs1_[0][1], _segs1_[1][1]])
                     _xy1_   = findClosestPoint(_xy1_, [_segs0_[0][0], _segs0_[1][0], _segs2_[0][0], _segs2_[1][0],
-                                                       _segs0_[0][1], _segs0_[1][1], _segs2_[0][1], _segs2_[1][1]])
+                                                    _segs0_[0][1], _segs0_[1][1], _segs2_[0][1], _segs2_[1][1]])
                     _xy2_   = findClosestPoint(_xy2_, [_segs1_[0][0], _segs1_[1][0], _segs2_[0][0], _segs2_[1][0], 
-                                                       _segs1_[0][1], _segs1_[1][1], _segs2_[0][1], _segs2_[1][1]])
+                                                    _segs1_[0][1], _segs1_[1][1], _segs2_[0][1], _segs2_[1][1]])
                     replacement_lu[_xy0_] = _xy_
-                    replacement_lu[_xy1_] = _xy_    
+                    replacement_lu[_xy1_] = _xy_
                     replacement_lu[_xy2_] = _xy_
             # Replace the points in the cells
             new_cells = []
