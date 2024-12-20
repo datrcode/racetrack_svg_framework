@@ -356,9 +356,9 @@ class RTHistogramMixin(object):
                 self.v_gap       = 0
 
             # Create the SVG ... render the background
-            svg = f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">'
+            svg = [f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">']
             background_color = self.rt_self.co_mgr.getTVColor('background','default')
-            svg += f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />'
+            svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
             
             textfg = self.rt_self.co_mgr.getTVColor('label','defaultfg')
             defer_labels = []
@@ -385,10 +385,8 @@ class RTHistogramMixin(object):
                 # Bin label... used for the id... and used for the labeling (if draw_labels is true)
                 if self.rt_self.isPandas(self.df):
                     px = max_bar_w * order.iloc[i] / max_group_by
-                    if type(order.index[i]) != list and type(order.index[i]) != tuple:
-                        bin_text = str(order.index[i])
-                    else:
-                        bin_text = ' | '.join([str(x) for x in order.index[i]])
+                    if type(order.index[i]) != list and type(order.index[i]) != tuple: bin_text = str(order.index[i])
+                    else:                                                              bin_text = ' | '.join([str(x) for x in order.index[i]])
 
                     _tuple_ = order.index[i]
                     if type(_tuple_) != tuple: _tuple_ = (_tuple_, )
@@ -403,13 +401,6 @@ class RTHistogramMixin(object):
                     bin_text = ' | '.join([str(x) for x in _tuple_])
                     k_df = gb[_tuple_]
 
-                    # 2024-02-07 -- believe polars changed this behavior...
-                    #
-                    #if len(_tuple_) == 1:
-                    #    k_df = gb[_tuple_[0]]
-                    #else:
-                    #    k_df = gb[_tuple_]
-
                 # Make a safe id to reference this element later
                 element_id = self.widget_id + "_" + self.rt_self.encSVGID(bin_text)
 
@@ -417,13 +408,13 @@ class RTHistogramMixin(object):
                 color = self.rt_self.co_mgr.getTVColor('data','default')
 
                 # Render the bar ... next section does the color... but this makes sure it's at least filled in...
-                svg += f'<rect id="{element_id}" width="{px}" height="{self.bar_h}" x="0" y="{y}" fill="{color}" stroke="{color}"/>'
+                svg.append(f'<rect id="{element_id}" width="{px}" height="{self.bar_h}" x="0" y="{y}" fill="{color}" stroke="{color}"/>')
                 self.entity_pos[bin_text] = (y, px, element_id) # for entity positions
                 if self.track_state: self.geom_to_df[Polygon([[0,y],[px,y],[px,y+self.bar_h],[0,y+self.bar_h]])] = k_df
 
                 # 'Color By' options
                 if self.color_by is not None:
-                    svg += self.rt_self.colorizeBar(k_df, self.global_color_order, self.color_by, self.count_by, self.count_by_set, 0, y, px, self.bar_h, True)
+                    svg.append(self.rt_self.colorizeBar(k_df, self.global_color_order, self.color_by, self.count_by, self.count_by_set, 0, y, px, self.bar_h, True))
 
                 # Render the label
                 if self.draw_labels:
@@ -437,32 +428,42 @@ class RTHistogramMixin(object):
                 y += self.bar_h+1+self.v_gap
             
             # Draw the distribution
-            if self.draw_distribution:
-                svg += self.renderDistribution(self.df, order, max_bar_w)
+            if self.draw_distribution: svg.append(self.renderDistribution(self.df, order, max_bar_w))
             
             # Indicate how many more we are missing
             if self.draw_labels and i != len(order):
-                svg += self.rt_self.svgText(f'{len(order)-i} more', 2, self.h-3, self.bar_h-1, color=self.rt_self.co_mgr.getTVColor('label','error'))
+                svg.append(self.rt_self.svgText(f'{len(order)-i} more', 2, self.h-3, self.bar_h-1, color=self.rt_self.co_mgr.getTVColor('label','error')))
             
             # Draws the maximum amount of the histogram
             if self.draw_labels:
                 # Draw deferred labels
-                for _label in defer_labels: svg += _label
+                svg.extend(defer_labels)
 
                 # Draw axes
                 axis_co = self.rt_self.co_mgr.getTVColor('axis', 'default')
-                svg += self.rt_self.svgText(str(max_group_by), max_bar_w-5, self.h-3, self.bar_h-2, anchor='end')
-                svg += f'<line x1="{max_bar_w}" y1="{2}" x2="{max_bar_w}" y2="{self.h}" stroke="{axis_co}" stroke-width="1" stroke-dasharray="3 2" />'
+
+                _available_space_  = max_bar_w - 5
+                _max_group_by_str_ = f'{max_group_by:,}'
+                if self.rt_self.textLength(_max_group_by_str_, self.bar_h-2) < _available_space_:
+                    svg.append(self.rt_self.svgText(_max_group_by_str_, max_bar_w-5, self.h-3, self.bar_h-2, anchor='end'))
+                    _available_space_ -= self.rt_self.textLength(_max_group_by_str_, self.bar_h-2)
+
+                _count_by_str_ = self.count_by if self.count_by is not None else 'Rows'
+                if _available_space_ > 20:
+                    _count_by_str_ = self.rt_self.cropText(_count_by_str_, self.bar_h-2, _available_space_-10)
+                    svg.append(self.rt_self.svgText(_count_by_str_, 5, self.h-3, self.bar_h-2))
+
+                svg.append(f'<line x1="{max_bar_w}" y1="{2}" x2="{max_bar_w}" y2="{self.h}" stroke="{axis_co}" stroke-width="1" stroke-dasharray="3 2" />')
                 bin_by_str = '|'.join(self.bin_by)
-                svg += self.rt_self.svgText(bin_by_str, max_bar_w+4, self.h/2, self.bar_h-2, anchor='middle', rotation=90)
+                svg.append(self.rt_self.svgText(bin_by_str, max_bar_w+4, self.h/2, self.bar_h-2, anchor='middle', rotation=90))
             
             if self.draw_border:
                 border_color = self.rt_self.co_mgr.getTVColor('border','default')
-                svg += f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />'
+                svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />')
             
-            svg += '</svg>'
-            self.last_render = svg
-            return svg
+            svg.append('</svg>')
+            self.last_render = ''.join(svg)
+            return self.last_render
 
         #
         # renderDistribution()
