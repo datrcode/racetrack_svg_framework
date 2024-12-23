@@ -926,12 +926,19 @@ class RTGeometryMixin(object):
             return ((x,y), (pdx,pdy))
         # returns vertices that intersect the polygon
         def intersects(bisects, poly):
-            inters = []
+            inters, already_added = [], set()
             for i in range(0, len(poly)):
                 p0, p1 = poly[i], poly[(i+1)%len(poly)]
-                xy = self.lineSegmentIntersectionPoint((bisects[0], (bisects[0][0] + bisects[1][0], bisects[0][1] + bisects[1][1])),
-                                                       (p0, p1))
-                if xy is not None and xy != p1: inters.append((xy, i, (i+1)%len(poly)))
+                xy = self.lineSegmentIntersectionPoint((bisects[0], (bisects[0][0] + bisects[1][0], bisects[0][1] + bisects[1][1])),(p0, p1))
+                if xy is not None:
+                    too_close = False
+                    for pt in already_added:
+                        if self.segmentLength((pt, xy)) < merge_threshold:
+                            too_close = True
+                            break
+                    if too_close == False:
+                        inters.append((xy, i, (i+1)%len(poly)))
+                        already_added.add(xy)
             return inters
         # conctenate a point, a list, and a point into a new list
         def createCell(my_cell, p0, p1, i0, i1, sign):
@@ -954,6 +961,13 @@ class RTGeometryMixin(object):
                 if _tuple_[0] and (_tuple_[1], _tuple_[2]) != p1: inter_count += 1
             if inter_count%2 == 1: return True
             return False
+        # remove any near duplicate points from the polygon
+        def removeDuplicatePoints(_poly_):
+            _new_ = []
+            _new_.append(_poly_[0])
+            for i in range(1,len(_poly_)):
+                if self.segmentLength((_poly_[i],_new_[-1])) > merge_threshold: _new_.append(_poly_[i])
+            return _new_
         # actual algorithm
         if Box is None:
             x_l, x_r, y_t, y_b = S[0][0], S[0][0], S[0][1], S[0][1]
@@ -974,7 +988,7 @@ class RTGeometryMixin(object):
                     xi, xj = B_intersects[0][1], B_intersects[1][2]
                     otherNewCell = createCell(cell, t1, t2, xi, xj, -1)
                     if contains(newCell, p) == False: newCell = otherNewCell
-                    cell = newCell
+                    cell = removeDuplicatePoints(newCell)
             cells.append(cell)
         
         # Merge similar points
