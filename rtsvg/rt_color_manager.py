@@ -119,7 +119,7 @@ class RTColorManager:
         self.spectrum_palettes.append(['#6E4B6B', '#537197', '#42A1A5', '#CBC2BB', '#BE867E']), # https://colorpalettes.net/color-palette-4410/
         self.spectrum_palettes.append(['#efc67c', '#fcf3b5', '#b1d1ed', '#fca3b5', '#ba83c4']), # https://colorpalettes.net/color-palette-4203/
 
-        self.spectrum_colors_orig = self.spectrum_palettes[0]
+        self.spectrum_colors_orig = self.brewerColors('diverging', 11, 3) # self.spectrum_palettes[0]
         self.spectrum_colors      = self.spectrum_colors_orig
         self.spectrum_colors_bins = None
 
@@ -421,8 +421,10 @@ class RTColorManager:
             diverging_11      = {}
             diverging_11[0]   = ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
             diverging_11[1]   = ['#543005','#8c510a','#bf812d','#dfc27d','#f6e8c3','#f5f5f5','#c7eae5','#80cdc1','#35978f','#01665e','#003c30']
+            diverging_11[2]   = ['#a50026','#d73027','#f46d43','#fdae61','#fee08b','#ffffbf','#d9ef8b','#a6d96a','#66bd63','#1a9850','#006837']
+            diverging_11[3]   = ['#a50026','#d73027','#f46d43','#fdae61','#fee090','#ffffbf','#e0f3f8','#abd9e9','#74add1','#4575b4','#313695']
             if n == 11:
-                return diverging_11[alt%2]
+                return diverging_11[alt%4]
             else:
                 raise Exception(f'brewerColors() - n={n} not supported for diverging - try 11.')
         elif scale_type == 'qualitative':
