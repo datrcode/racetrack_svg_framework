@@ -904,6 +904,64 @@ class RTGeometryMixin(object):
         return d_str
 
     #
+    # approxThreeCirclesCenter()
+    # - approximates the center of three circles... assumes that the circles are not linearly arranged
+    #
+    def approxThreeCirclesCenter(self, c0, c1, c2):
+        if (c1[1] - c0[1])*(c2[0] - c1[0]) == (c2[1] - c1[1]) * (c1[0] - c0[0]): raise Exception('approxThreeCirclesCenter() - circles are linearly arranged')
+        # 0-1 bisector
+        uv01           = self.unitVector((c0,c1))
+        xy0_01         = (c0[0] + uv01[0]*c0[2], c0[1] + uv01[1]*c0[2])
+        xy1_01         = (c1[0] - uv01[0]*c1[2], c1[1] - uv01[1]*c1[2])
+        bisector_01    = ((xy0_01[0] + xy1_01[0])/2, (xy0_01[1] + xy1_01[1])/2)
+        bisector_01_uv = (uv01[1], -uv01[0])
+        # 1-2 bisector
+        uv12           = self.unitVector((c1,c2))
+        xy1_12         = (c1[0] + uv12[0]*c1[2], c1[1] + uv12[1]*c1[2])
+        xy2_12         = (c2[0] - uv12[0]*c2[2], c2[1] - uv12[1]*c2[2])
+        bisector_12    = ((xy1_12[0] + xy2_12[0])/2, (xy1_12[1] + xy2_12[1])/2)
+        bisector_12_uv = (uv12[1], -uv12[0])
+        # 2-0 bisector
+        uv20           = self.unitVector((c2,c0))
+        xy2_20         = (c2[0] + uv20[0]*c2[2], c2[1] + uv20[1]*c2[2])
+        xy0_20         = (c0[0] - uv20[0]*c0[2], c0[1] - uv20[1]*c0[2])
+        bisector_20    = ((xy2_20[0] + xy0_20[0])/2, (xy2_20[1] + xy0_20[1])/2)
+        bisector_20_uv = (uv20[1], -uv20[0])
+        # intersection of bisectors
+        inter_01_12 = self.intersectionPoint((bisector_01, (bisector_01[0] + bisector_01_uv[0], bisector_01[1] + bisector_01_uv[1])),
+                                             (bisector_12, (bisector_12[0] + bisector_12_uv[0], bisector_12[1] + bisector_12_uv[1])))
+        inter_12_20 = self.intersectionPoint((bisector_12, (bisector_12[0] + bisector_12_uv[0], bisector_12[1] + bisector_12_uv[1])),
+                                             (bisector_20, (bisector_20[0] + bisector_20_uv[0], bisector_20[1] + bisector_20_uv[1])))
+        inter_20_01 = self.intersectionPoint((bisector_20, (bisector_20[0] + bisector_20_uv[0], bisector_20[1] + bisector_20_uv[1])),
+                                             (bisector_01, (bisector_01[0] + bisector_01_uv[0], bisector_01[1] + bisector_01_uv[1])))
+        # average of the three intersections
+        return (inter_01_12[0] + inter_12_20[0] + inter_20_01[0])/3.0, (inter_01_12[1] + inter_12_20[1] + inter_20_01[1])/3.0
+
+    #
+    # pointInTriangle()
+    # - determines if a point is within a triangle 
+    #
+    # Based on description found at https://nerdparadise.com/math/pointinatriangle
+    #
+    def pointInTriangle(self, triangle, pt):
+        x_min, y_min, x_max, y_max = triangle[0][0], triangle[0][1], triangle[0][0], triangle[0][1]
+        for i in range(1,3): x_min, y_min, x_max, y_max = min(x_min, triangle[i][0]), min(y_min, triangle[i][1]), max(x_max, triangle[i][0]), max(y_max, triangle[i][1])
+        if pt[0] < x_min or pt[0] > x_max or pt[1] < y_min or pt[1] > y_max: return False
+        def crossProduct(p0,p1,p2): return (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0])
+        cp0 = crossProduct(pt, triangle[0], triangle[1])
+        cp1 = crossProduct(pt, triangle[1], triangle[2])
+        cp2 = crossProduct(pt, triangle[2], triangle[0])
+        if cp0 < 0 and cp1 < 0 and cp2 < 0:         return True
+        if cp0 > 0 and cp1 > 0 and cp2 > 0:         return True
+        if (cp0 == 0 and cp1 == 0) or \
+           (cp1 == 0 and cp2 == 0) or \
+           (cp2 == 0 and cp0 == 0):                 return True
+        if (cp0 == 0 and cp1 > 0 and cp2 > 0) or \
+           (cp1 == 0 and cp2 > 0 and cp0 > 0) or \
+           (cp2 == 0 and cp0 > 0 and cp1 > 0):      return True
+        return False
+
+    #
     # Algorithm source & description from:
     # "A simple algorithm for 2D Voronoi diagrams"
     # https://www.youtube.com/watch?v=I6Fen2Ac-1U
