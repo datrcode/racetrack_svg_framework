@@ -500,6 +500,51 @@ class RTTextMixin(object):
         return sentences
 
     #
+    # textOrderSentencesBySimilarity() - order sentences by similarity
+    # - TF-IDF & Similarity matrix derived from the following:
+    #   https://goodboychan.github.io/python/datacamp/natural_language_processing/2020/07/17/04-TF-IDF-and-similarity-scores.html
+    #
+    def textOrderSentencesBySimilarity(self, sentences, methodology='tfidf', optimal_ordering=True):
+        from sklearn.metrics.pairwise import cosine_similarity
+        from scipy.cluster.hierarchy import linkage
+        if methodology == 'tfidf':
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            # Perform TFIDF and cosine similarity
+            tfidf_vectorizer = TfidfVectorizer()
+            tfidf_matrix = tfidf_vectorizer.fit_transform(sentences)
+            cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
+            # Hierarchical clustering
+            linkage_matrix = linkage(cosine_sim, method='single', optimal_ordering=optimal_ordering)
+        elif methodology == 'jacard': # supposed to be jacard... what google ai generated...
+            from sklearn.feature_extraction.text import CountVectorizer
+            # Perform TFIDF and cosine similarity
+            count_vectorizer = CountVectorizer()
+            count_matrix = count_vectorizer.fit_transform(sentences)
+            cosine_sim = cosine_similarity(count_matrix, count_matrix)
+            # Hierarchical clustering
+            linkage_matrix = linkage(cosine_sim, method='single', optimal_ordering=optimal_ordering)
+        else: raise Exception('Unknown methodology: ' + methodology)
+        # Place into a tree
+        parent_to_children = {}
+        next_node_id       = len(sentences)
+        for row in linkage_matrix:
+            to_merge_0, to_merge_1 = int(row[0]), int(row[1])
+            parent_to_children[next_node_id] = [to_merge_0, to_merge_1]
+            next_node_id += 1
+        root_node = next_node_id - 1
+        # Walk the leaves of the dendrogram
+        def leafWalk(node_id):
+            if node_id < len(sentences):
+                return [node_id]
+            left_child, right_child = parent_to_children[node_id]
+            return leafWalk(left_child) + leafWalk(right_child)
+        order = leafWalk(root_node)
+        # Put them into the returned order
+        ordered_sentences = []
+        for i in order: ordered_sentences.append(sentences[i])
+        return ordered_sentences
+
+    #
     # textExtractSentences() - extract sentences
     # - original version in NLTK... but rewrote in spacy...
     #
