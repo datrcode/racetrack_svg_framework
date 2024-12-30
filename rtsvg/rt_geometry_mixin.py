@@ -568,6 +568,23 @@ class RTGeometryMixin(object):
             return abs(diff) < eps
         return False
 
+    # Assumes rt.segmentsOverlap() is True
+    # ... assumes that the segments all have a non-zero length
+    def segmentDiffPieces(self, s0, s1):
+        if    (s0[0] == s1[0] and s0[1] == s1[1]) or \
+            (s0[0] == s1[1] and s0[1] == s1[0]): return []                         # segments are equal
+        elif   s0[0] == s1[0] or s0[0] == s1[1] or s0[1] == s1[0] or s0[1] == s1[1]: # one point is shared
+            if   s0[0] == s1[0]: pass # orientation that we want
+            elif s0[0] == s1[1]: s1     = (s1[1], s1[0])
+            elif s0[1] == s1[0]: s0     = (s0[1], s0[0])
+            elif s0[1] == s1[1]: s0, s1 = (s0[1], s0[0]), (s1[1], s1[0])
+            uv, l0, l1 = self.unitVector(s0), self.segmentLength(s0), self.segmentLength(s1)
+            return [((s0[0][0] + uv[0]*l1, s0[0][1] + uv[1]*l1),(s0[0][0] + uv[0]*l0, s0[0][1] + uv[1]*l0))]
+        else:                                                                        # it's complicated :(
+            pts = [s0[0], s0[1], s1[0], s1[1]]
+            pts = sorted(pts)
+            return [(pts[0],pts[1]),(pts[2],pts[3])]
+
     #
     # segmentsIntersect()
     # - do two segments intersect?
