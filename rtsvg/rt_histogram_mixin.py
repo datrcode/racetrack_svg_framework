@@ -429,11 +429,7 @@ class RTHistogramMixin(object):
             
             # Draw the distribution
             if self.draw_distribution: svg.append(self.renderDistribution(self.df, order, max_bar_w))
-            
-            # Indicate how many more we are missing
-            if self.draw_labels and i != len(order):
-                svg.append(self.rt_self.svgText(f'{len(order)-i} more', 2, self.h-3, self.bar_h-1, color=self.rt_self.co_mgr.getTVColor('label','error')))
-            
+                        
             # Draws the maximum amount of the histogram
             if self.draw_labels:
                 # Draw deferred labels
@@ -455,8 +451,15 @@ class RTHistogramMixin(object):
 
                 svg.append(f'<line x1="{max_bar_w}" y1="{2}" x2="{max_bar_w}" y2="{self.h}" stroke="{axis_co}" stroke-width="1" stroke-dasharray="3 2" />')
                 bin_by_str = '|'.join(self.bin_by)
-                svg.append(self.rt_self.svgText(bin_by_str, max_bar_w+4, self.h/2, self.bar_h-2, anchor='middle', rotation=90))
+                svg.append(self.rt_self.svgText(bin_by_str, max_bar_w+2, self.h/2, self.bar_h-2, anchor='middle', rotation=90))
             
+                # Indicate how many more we are missing
+                if (len(order)-i) > 0:
+                    _str_ = f'{len(order)-i} more'
+                    svg.append(self.rt_self.svgText(_str_, max_bar_w+2, self.h - 4, self.bar_h - 2, 
+                                                    color=self.rt_self.co_mgr.getTVColor('label','error'),
+                                                    anchor='end', rotation=90))
+
             if self.draw_border:
                 border_color = self.rt_self.co_mgr.getTVColor('border','default')
                 svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill-opacity="0.0" stroke="{border_color}" />')
