@@ -25,6 +25,8 @@ import numpy as np
 import squarify # treemaps
 import random
 
+import os
+
 from math import sqrt, pi, cos, sin, ceil, floor, inf, atan2
 from dataclasses import dataclass
 
@@ -36,6 +38,30 @@ __name__ = 'rt_graph_layouts_mixin'
 # Graph Layouts Methods
 #
 class RTGraphLayoutsMixin(object):
+    #
+    # __graph_layouts_mixin_init__()
+    # - initialize the simple graph templates
+    #
+    def __graph_layouts_mixin_init__(self):
+        _rt_dir_   = os.path.dirname(os.path.abspath(__file__))
+
+        # Graph Templates
+        _filename_ = os.path.join(_rt_dir_, "config", "simple_graph_df.csv")
+        df = pl.read_csv(_filename_)
+        g  = self.createNetworkXGraph(df, [('fm','to')])
+        self.template_lu   = {} # [_nodes_][_edges_] = [g0, g1, g2]
+        for _node_set_ in nx.connected_components(g):
+            _g_              = g.subgraph(_node_set_)
+            _nodes_, _edges_ = _g_.number_of_nodes(), _g_.number_of_edges()
+            if _nodes_ not in self.template_lu:          self.template_lu[_nodes_]          = {}
+            if _edges_ not in self.template_lu[_nodes_]: self.template_lu[_nodes_][_edges_] = []
+            self.template_lu[_nodes_][_edges_].append(_g_)
+
+        # Positioning of the Templates
+        _filename_ = os.path.join(_rt_dir_, "config", "simple_graph_layouts.csv")
+        df = pd.read_csv(_filename_)
+        self.pos_templates = {} # [_node_] = (x, y)
+        for i in range(len(df)): self.pos_templates[df['node'][i]] = [df['x'][i], df['y'][i]]
 
     #
     # collapseDataFrameGraphByClusters()
@@ -810,6 +836,104 @@ class RTGraphLayoutsMixin(object):
             half_angle = (begin_angle + end_angle)/2
             pos[_node] = (cen_x + _depth * _R_ * cos(half_angle) / ht_state.max_depth, cen_y + _depth * _R_ * sin(half_angle) / ht_state.max_depth)
 
+    #
+    # graphRemoveAllOneDegreeNodes() - Remove all one degree nodes
+    #
+    def graphRemoveAllOneDegreeNodes(self, _g_):
+        to_remove, removed_nodes = [], {}
+        for _node_ in _g_.nodes():
+            if _g_.degree(_node_) == 1:
+                to_remove.append(_node_)
+                _still_in_ = list(_g_.neighbors(_node_))[0]
+                if _still_in_ not in removed_nodes: removed_nodes[_still_in_] = set()
+                removed_nodes[_still_in_].add(_node_)
+        g_after_removal = _g_.copy()
+        g_after_removal.remove_nodes_from(to_remove)
+        return g_after_removal, removed_nodes
+
+    #
+    # __oneDegreeNodes_clouds__() - Place one degree nodes
+    #
+    def __oneDegreeNodes_clouds__(self, g_after_removal, removed_nodes, pos, degree_one_method):
+        for _node_ in removed_nodes.keys():
+            # Determine the minimum distance to a neighbor
+            min_distance_to_nbor = 1e9
+            for _nbor_ in g_after_removal.neighbors(_node_):
+                d = self.segmentLength((pos[_node_], pos[_nbor_]))
+                if d < min_distance_to_nbor: min_distance_to_nbor = d
+            if min_distance_to_nbor == 1e9: min_distance_to_nbor = 1.0
+            # Determine the average angle *AWAY* from all the other nodes (on average)
+            uv_sum, uv_samples = (0.0, 0.0), 0
+            for _others_ in g_after_removal.nodes():
+                if _others_ != _node_:
+                    uv         = self.unitVector((pos[_others_], pos[_node_]))
+                    uv_sum     = (uv_sum[0] + uv[0], uv_sum[1] + uv[1])
+                    uv_samples += 1
+            if uv_samples > 0: uv = (uv_sum[0] / uv_samples, uv_sum[1] / uv_samples)
+            else:              uv = (1.0, 0.0)
+            # Apply the different methods
+            if degree_one_method == 'clouds_sunflower':
+                _xy_ = (pos[_node_][0] + uv[0] * min_distance_to_nbor/4.0, pos[_node_][1] + uv[1] * min_distance_to_nbor/4.0)
+                self.sunflowerSeedArrangement(g_after_removal, removed_nodes[_node_], pos, _xy_, min_distance_to_nbor/8.0)
+            else:
+                for _removed_ in removed_nodes[_node_]:
+                    pos[_removed_] = (pos[_node_][0] + uv[0] * min_distance_to_nbor/4.0, pos[_node_][1] + uv[1] * min_distance_to_nbor/4.0)
+    #
+    # layoutSimpleTemplates() -- apply simple templates to small known graphs
+    #
+    def layoutSimpleTemplates(self, g, pos, degree_one_method='clouds'):
+        # Validate input parameters
+        _methods_ = {'clouds', 'clouds_sunflower'}
+        if degree_one_method not in _methods_: raise ValueError(f'Invalid degree one method: {degree_one_method} -- accepted methods: {_methods_}')
+        # For each connected component
+        for _node_set_ in nx.connected_components(g):
+            _g_              = g.subgraph(_node_set_)
+            _nodes_, _edges_ = _g_.number_of_nodes(), _g_.number_of_edges()
+            match_found      = False
+            if _nodes_ in self.template_lu and _edges_ in self.template_lu[_nodes_]:
+                for _g_template_ in self.template_lu[_nodes_][_edges_]:
+                    if nx.is_isomorphic(_g_, _g_template_):
+                        # If pattern matches, copy the template over
+                        gm     = nx.isomorphism.GraphMatcher(_g_, _g_template_)
+                        _dict_ = next(gm.subgraph_isomorphisms_iter())
+                        for k in _dict_.keys(): pos[k] = self.pos_templates[_dict_[k]]
+                        match_found = True
+                        break
+            # if no match was found, try the pattern matching with one degree nodes removed
+            if not match_found:
+                g_after_removal, removed_nodes = self.graphRemoveAllOneDegreeNodes(_g_)
+                _nodes_, _edges_ = g_after_removal.number_of_nodes(), g_after_removal.number_of_edges()
+                if _nodes_ in self.template_lu and _edges_ in self.template_lu[_nodes_]:
+                    for _g_template_ in self.template_lu[_nodes_][_edges_]:
+                        if nx.is_isomorphic(g_after_removal, _g_template_):
+                            # If pattern matches, copy the template over
+                            gm     = nx.isomorphism.GraphMatcher(g_after_removal, _g_template_)
+                            _dict_ = next(gm.subgraph_isomorphisms_iter())
+                            for k in _dict_.keys(): pos[k] = self.pos_templates[_dict_[k]]
+                            # Add the one degrees back in
+                            if degree_one_method == 'clouds' or degree_one_method == 'clouds_sunflower': self.__oneDegreeNodes_clouds__(g_after_removal, removed_nodes, pos, degree_one_method)
+                            match_found = True
+                            break
+                elif _nodes_ == 1: # star pattern
+                    _node_ = list(g_after_removal.nodes())[0]
+                    pos[_node_] = (0.0, 0.0)
+                    if   len(removed_nodes[_node_]) < 10:
+                        x, y, y_inc = 1.0, -0.5, 1.0/(len(removed_nodes[_node_])-1)
+                        for _removed_ in removed_nodes[_node_]:
+                            pos[_removed_] = (x, y)
+                            y += y_inc
+                    elif len(removed_nodes[_node_]) < 40:
+                        _angle_inc_ = 2.0 * pi / len(removed_nodes[_node_])
+                        _angle_     = 0.0
+                        for _removed_ in removed_nodes[_node_]:
+                            pos[_removed_] = (cos(_angle_), sin(_angle_))
+                            _angle_ += _angle_inc_
+                    else:
+                        self.sunflowerSeedArrangement(g_after_removal, removed_nodes[_node_], pos, (1.0, 0.0), 0.5)
+
+
+        # finally, organize using a treemap scaled by the number of nodes
+        return self.treeMapGraphComponentPlacement(g, pos, bounds_percent=0.3)
 
     #
     # treeMapGraphComponentPlacement()

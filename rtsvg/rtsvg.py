@@ -151,6 +151,7 @@ class RACETrack(RTAnnotationsMixin,
         
         # Inits for mixins...  probably a better way to do this...
         self.__annotations_mixin_init__()
+        self.__graph_layouts_mixin_init__()
         self.__panel_mixin_init__()
         self.__periodic_barchart_mixin_init__()
         self.__temporal_barchart_mixin_init__()
