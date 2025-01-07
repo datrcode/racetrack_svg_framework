@@ -878,12 +878,86 @@ class RTGraphLayoutsMixin(object):
             else:
                 for _removed_ in removed_nodes[_node_]:
                     pos[_removed_] = (pos[_node_][0] + uv[0] * min_distance_to_nbor/4.0, pos[_node_][1] + uv[1] * min_distance_to_nbor/4.0)
+
+    #
+    #
+    #
+    def __oneDegreeNodes_circular__(self, g_after_removal, removed_nodes, pos, buffer_in_degrees=30.0):
+        for _node_ in removed_nodes.keys():
+            # Determine the minimum distance to a neighbor
+            min_distance_to_nbor = 1e9
+            for _nbor_ in g_after_removal.neighbors(_node_):
+                d = self.segmentLength((pos[_node_], pos[_nbor_]))
+                if d < min_distance_to_nbor: min_distance_to_nbor = d
+            if min_distance_to_nbor == 1e9: min_distance_to_nbor = 1.0
+
+            # Calculate the angle buffers
+            num_of_pts, angle_buffer, r = len(removed_nodes[_node_]), 2.0 * pi * buffer_in_degrees/360.0, min_distance_to_nbor/4.0
+            _xy_   = pos[_node_]
+            angles = []
+            for _nbor_ in g_after_removal.neighbors(_node_):
+                _nbor_xy_ = pos[_nbor_]
+                if _nbor_xy_ != _xy_: uv = self.unitVector((_xy_, _nbor_xy_))
+                else:              uv = (1.0, 0.0)
+                _angle_ = atan2(uv[1], uv[0])
+                if _angle_ < 0: _angle_ += 2*pi
+                angles.append(_angle_)
+            angles         = sorted(angles)
+            cleared_angles, circumference_sum = [], 0.0
+            for i in range(len(angles)):
+                _a0_, _a1_ = angles[i], angles[(i+1) % len(angles)]
+                if i == len(angles)-1: _a1_ += 2*pi
+                _a_diff_ = _a1_ - _a0_ - 2*angle_buffer
+                if _a_diff_ > angle_buffer:
+                    _a0_buffered_     = _a0_ + angle_buffer
+                    _a1_buffered_     = _a1_ - angle_buffer
+                    _circumference_   = 2.0 * pi * r * (_a1_buffered_ - _a0_buffered_)/(2*pi)
+                    cleared_angles.append((_a0_buffered_, _a1_buffered_, _circumference_))
+                    circumference_sum += _circumference_
+
+            nodes_to_plot = list(removed_nodes[_node_])
+            if circumference_sum > 0.0:
+                # Allocate points to each of the arc segments
+                pts_w_arcs, _pts_left_ = [], num_of_pts
+                for i in range(len(cleared_angles)):
+                    _a0_, _a1_, _circ_  = cleared_angles[i]
+                    if i == len(cleared_angles)-1: _pts_to_allocate_ = _pts_left_
+                    else:                          _pts_to_allocate_ = int(num_of_pts * _circ_ / circumference_sum)
+                    _pts_left_ -= _pts_to_allocate_
+                    pts_w_arcs.append(_pts_to_allocate_)
+
+                # Plot the points
+                node_i = 0
+                for i in range(len(cleared_angles)):
+                    _a0_, _a1_, _circ_ = cleared_angles[i]
+                    pts_on_segment = pts_w_arcs[i]
+                    if   pts_on_segment == 1:
+                        _angle_ = (_a0_ + _a1_) / 2.0
+                        pos[nodes_to_plot[node_i]] = (_xy_[0]+r*cos(_angle_), _xy_[1]+r*sin(_angle_))
+                        node_i += 1
+                    elif pts_on_segment == 2:
+                        _angle_ = (_a0_ + _a1_) / 2.0 - (_a0_ - _a1_) / 4.0
+                        pos[nodes_to_plot[node_i]] = (_xy_[0]+r*cos(_angle_), _xy_[1]+r*sin(_angle_))
+                        node_i += 1
+                        _angle_ = (_a0_ + _a1_) / 2.0 + (_a0_ - _a1_) / 4.0
+                        pos[nodes_to_plot[node_i]] = (_xy_[0]+r*cos(_angle_), _xy_[1]+r*sin(_angle_))
+                        node_i += 1
+                    else:
+                        _angle_inc_ = (_a1_ - _a0_) / (pts_on_segment - 1)
+                        for j in range(pts_on_segment):
+                            _angle_ = _a0_ + _angle_inc_ * j
+                            pos[nodes_to_plot[node_i]] = (_xy_[0]+r*cos(_angle_), _xy_[1]+r*sin(_angle_))
+                            node_i += 1
+            else: # just dump them around the circle
+                _angle_inc_ = 2.0 * pi / num_of_pts
+                for i in range(num_of_pts): pos[nodes_to_plot[i]] = (_xy_[0]+r*cos(_angle_inc_*i), _xy_[1]+r*sin(_angle_inc_*i))
+
     #
     # layoutSimpleTemplates() -- apply simple templates to small known graphs
     #
     def layoutSimpleTemplates(self, g, pos, degree_one_method='clouds'):
         # Validate input parameters
-        _methods_ = {'clouds', 'clouds_sunflower'}
+        _methods_ = {'clouds', 'clouds_sunflower', 'circular'}
         if degree_one_method not in _methods_: raise ValueError(f'Invalid degree one method: {degree_one_method} -- accepted methods: {_methods_}')
         # For each connected component
         for _node_set_ in nx.connected_components(g):
@@ -911,7 +985,8 @@ class RTGraphLayoutsMixin(object):
                             _dict_ = next(gm.subgraph_isomorphisms_iter())
                             for k in _dict_.keys(): pos[k] = self.pos_templates[_dict_[k]]
                             # Add the one degrees back in
-                            if degree_one_method == 'clouds' or degree_one_method == 'clouds_sunflower': self.__oneDegreeNodes_clouds__(g_after_removal, removed_nodes, pos, degree_one_method)
+                            if   degree_one_method == 'clouds' or degree_one_method == 'clouds_sunflower': self.__oneDegreeNodes_clouds__  (g_after_removal, removed_nodes, pos, degree_one_method)
+                            elif degree_one_method == 'circular':                                          self.__oneDegreeNodes_circular__(g_after_removal, removed_nodes, pos)
                             match_found = True
                             break
                 elif _nodes_ == 1: # star pattern
