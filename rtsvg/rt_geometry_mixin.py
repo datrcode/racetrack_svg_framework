@@ -327,6 +327,43 @@ class RTGeometryMixin(object):
         return paths, merge_info
 
     #
+    # isTriangleApproximate() - Is a set of segments a triangle?
+    # ... probably not the correct way to do this...
+    #
+    def isTriangleApproximate(self, _segments_, merge_threshold=0.5):
+        if len(_segments_) < 3: return False
+        xys = set()
+        for _segment_ in _segments_: xys.add(_segment_[0]), xys.add(_segment_[1])
+        xys_ls = list(xys)
+        _centers_, _members_ = self.kMeans2D(xys_ls, 3)
+        # Are the clusters compact enough?
+        for cluster_i in _centers_:
+            _center_ = _centers_[cluster_i]
+            for xy in _members_[cluster_i]:
+                if self.segmentLength((_center_, xy)) > merge_threshold: 
+                    return False
+        # Do the edges form a triangle?
+        # ... make a map from the points seen to their cluster numbers
+        xy_to_cluster = {}
+        for cluster_i in _members_: 
+            for xy in _members_[cluster_i]: 
+                xy_to_cluster[xy] = cluster_i
+        # ... convert the edges to their cluster numbers
+        _edges_seen_ = set()
+        for _segment_ in _segments_:
+            cluster_0 = xy_to_cluster[_segment_[0]]
+            cluster_1 = xy_to_cluster[_segment_[1]]
+            if cluster_0 == cluster_1: return False
+            if cluster_0 > cluster_1: cluster_0, cluster_1 = cluster_1, cluster_0
+            _edges_seen_.add((cluster_0, cluster_1))
+        # Must be three edges exactly and they must be the edges of a triangle
+        if len(_edges_seen_) != 3: return False
+        if (0,1) not in _edges_seen_ or \
+           (1,2) not in _edges_seen_ or \
+           (0,2) not in _edges_seen_: return False
+        return True
+
+    #
     # segmentLength()
     # - _segment_ = [(x0,y0),(x1,y1)]
     #
