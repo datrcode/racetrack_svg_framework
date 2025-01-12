@@ -5,7 +5,7 @@ from scipy.spatial import ConvexHull
 from matplotlib.collections import LineCollection
 from matplotlib import pyplot as plot
 
-
+__name__ = 'laguerre_voronoi_2d'
 
 # --- Misc. geometry code -----------------------------------------------------
 
@@ -220,8 +220,6 @@ def main():
 
 	# Display the result
 	display(S, R, tri_list, voronoi_cell_map)
-
-
 
 if __name__ == '__main__':
 	main()

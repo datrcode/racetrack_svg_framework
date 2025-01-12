@@ -21,6 +21,7 @@ from shapely.geometry.multipolygon import MultiPolygon
 from math import sqrt, acos, pi, cos, sin, atan2
 import random
 import heapq
+from .laguerre_voronoi_2d import laguerre_voronoi_2d
 
 __name__ = 'rt_geometry_mixin'
 
@@ -28,6 +29,23 @@ __name__ = 'rt_geometry_mixin'
 # Geometry Methods
 #
 class RTGeometryMixin(object):
+    #
+    # laguerreVoronoi2D()
+    # - built on top of code from the following:
+    #   https://gist.github.com/marmakoide/45d5389252683ae09c2df49d0548a627
+    #   licensing specified in the laguerre_voronoi_2d directory
+    # 
+    def laguerreVoronoi2D(self, circles):
+        _centers_, _radii_ = [], []
+        for circle in circles:
+            _centers_.append([float(circle[0]), float(circle[1])])
+            _radii_  .append(float(circle[2]))
+        centers = np.array(_centers_, np.float64)
+        radii   = np.array(_radii_, np.float64)    
+        tri_list, V      = laguerre_voronoi_2d.get_power_triangulation(centers, radii)
+        voronoi_cell_map = laguerre_voronoi_2d.get_voronoi_cells(centers, V, tri_list)
+        return voronoi_cell_map, tri_list, V
+
     #
     # averageDegrees() - return the average angle for a list of degrees
     # - not efficient due to use of cos, sin, atan2
@@ -1021,20 +1039,12 @@ class RTGeometryMixin(object):
     # https://www.youtube.com/watch?v=I6Fen2Ac-1U
     # https://gist.github.com/isedgar/d445248c9ff6c61cef44fc275cb2398f
     #
-    def isedgarVoronoi(self, S, Box=None, pad=10, use_circle_radius=False, merge_threshold=0.1):
+    def isedgarVoronoi(self, S, Box=None, pad=10, merge_threshold=0.1):
         # return bisector of points p0 and p1 -- bisector is ((x,y),(u,v)) where u,v is the vector of the bisector
         def bisector(p0, p1):
             x, y     = (p0[0] + p1[0])/2.0, (p0[1] + p1[1])/2.0
             uv       = self.unitVector((p0, p1))
             pdx, pdy = uv[1], -uv[0]
-            return ((x,y), (pdx,pdy))
-        # For the circle version
-        def bisectorForCircles(c0, c1):
-            uv              = self.unitVector((c0, c1))
-            x0, y0          = c0[0] + uv[0] * c0[2], c0[1] + uv[1] * c0[2]
-            x1, y1          = c1[0] - uv[0] * c1[2], c1[1] - uv[1] * c1[2]
-            x,  y           = (x0+x1)/2.0, (y0+y1)/2.0
-            pdx, pdy        = uv[1], -uv[0]
             return ((x,y), (pdx,pdy))
         # returns vertices that intersect the polygon
         def intersects(bisects, poly):
@@ -1091,7 +1101,7 @@ class RTGeometryMixin(object):
             cell = Box
             for q in S:
                 if p == q: continue
-                B            = bisector(p,q) if use_circle_radius == False else bisectorForCircles(p,q)
+                B            = bisector(p,q)
                 B_intersects = intersects(B, cell)
                 if len(B_intersects) == 2:
                     t1, t2 = B_intersects[0][0], B_intersects[1][0]
@@ -1149,74 +1159,6 @@ class RTGeometryMixin(object):
                 new_cell.append(pt_to_merge_pt[cell[i]])
             new_cells.append(new_cell)
         cells = new_cells
-
-        # If this is the circle based, version, discontinuities need to be fixed
-        if use_circle_radius:
-            poly_connects           = {'__fm__':[], '__to__':[]}
-            overlapping_segments_lu = {}
-            for i in range(len(cells)):
-                _poly0_ = cells[i]
-                for j in range(len(cells)):
-                    if i >= j: continue
-                    _poly1_     = cells[j]
-                    shared_edge = False
-                    for k in range(len(_poly0_)):
-                        _seg0_ = (_poly0_[k], _poly0_[(k+1)%len(_poly0_)])
-                        for l in range(len(_poly1_)):
-                            _seg1_ = (_poly1_[l], _poly1_[(l+1)%len(_poly1_)])
-                            if self.segmentsOverlap(_seg0_, _seg1_): 
-                                shared_edge = True
-                                overlapping_segments_lu[(i,j)] = (_seg0_, _seg1_)
-                                break
-                        if shared_edge: break
-                    if shared_edge:
-                        poly_connects['__fm__'].append(i)
-                        poly_connects['__to__'].append(j)
-
-            def findClosestPoint(_xy_, _points_):
-                closest_xy = _points_[0]
-                closest_d  = self.segmentLength((_xy_, _points_[0]))
-                for i in range(1, len(_points_)):
-                    d = self.segmentLength((_xy_, _points_[i]))
-                    if d < closest_d:
-                        closest_d  = d
-                        closest_xy = _points_[i]
-                return closest_xy
-
-            replacement_lu = {}
-            g_poly = self.createNetworkXGraph(pl.DataFrame(poly_connects), [('__fm__','__to__')])
-            for x in nx.simple_cycles(g_poly, 3):
-                _as_list_ = sorted(list(x))
-                poly_i, poly_j, poly_k = _as_list_[0], _as_list_[1], _as_list_[2]
-                _inter_ = set(cells[poly_i]) & set(cells[poly_j]) & set(cells[poly_k])
-                if len(_inter_) == 0:
-                    _segs0_ = overlapping_segments_lu[(poly_i,poly_j)]
-                    _segs1_ = overlapping_segments_lu[(poly_i,poly_k)]
-                    _segs2_ = overlapping_segments_lu[(poly_j,poly_k)]
-                    _xy0_   = self.intersectionPoint(_segs0_[0],_segs1_[0])
-                    _xy1_   = self.intersectionPoint(_segs0_[0],_segs2_[0])
-                    _xy2_   = self.intersectionPoint(_segs1_[0],_segs2_[0])
-                    _x_sum_ = _xy0_[0] + _xy1_[0] + _xy2_[0]
-                    _y_sum_ = _xy0_[1] + _xy1_[1] + _xy2_[1]
-                    _xy_    = (_x_sum_/3.0, _y_sum_/3.0)
-                    _xy0_   = findClosestPoint(_xy0_, [_segs0_[0][0], _segs0_[1][0], _segs1_[0][0], _segs1_[1][0], 
-                                                    _segs0_[0][1], _segs0_[1][1], _segs1_[0][1], _segs1_[1][1]])
-                    _xy1_   = findClosestPoint(_xy1_, [_segs0_[0][0], _segs0_[1][0], _segs2_[0][0], _segs2_[1][0],
-                                                    _segs0_[0][1], _segs0_[1][1], _segs2_[0][1], _segs2_[1][1]])
-                    _xy2_   = findClosestPoint(_xy2_, [_segs1_[0][0], _segs1_[1][0], _segs2_[0][0], _segs2_[1][0], 
-                                                    _segs1_[0][1], _segs1_[1][1], _segs2_[0][1], _segs2_[1][1]])
-                    replacement_lu[_xy0_] = _xy_
-                    replacement_lu[_xy1_] = _xy_
-                    replacement_lu[_xy2_] = _xy_
-            # Replace the points in the cells
-            new_cells = []
-            for cell in cells:
-                new_cell = []
-                for i in range(len(cell)):
-                    if cell[i] in replacement_lu: new_cell.append(replacement_lu[cell[i]])
-                    else:                         new_cell.append(cell[i])
-                new_cells.append(new_cell)
-            cells = new_cells
 
         return cells
 
