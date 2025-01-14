@@ -47,6 +47,226 @@ class RTGeometryMixin(object):
         return voronoi_cell_map, tri_list, V
 
     #
+    # laguerreVoronoi() - meant to look similar (and return results) similar to isedgarVoronoi()
+    #
+    def laguerreVoronoi(self, S, Box=None, pad=10, merge_threshold=1e-6):
+        cell_map, tri_list, V = self.laguerreVoronoi2D(S)
+
+        # Determine the mins & maxes
+        if Box is None:
+            x_min, y_min, x_max, y_max = S[0][0], S[0][1], S[0][0], S[0][1]
+            for circle in S:
+                x_min, x_max = min(x_min, circle[0]-circle[2]), max(x_max, circle[0]+circle[2])
+                y_min, y_max = min(y_min, circle[1]-circle[2]), max(y_max, circle[1]+circle[2])
+            x_min, y_min, x_max, y_max = x_min-pad, y_min-pad, x_max+pad, y_max+pad
+        else:
+            x_min, y_min, x_max, y_max = Box[0][0], Box[0][1], Box[0][0], Box[0][1]
+            for i in range(len(Box)):
+                x_min, x_max = min(x_min, Box[i][0]), max(x_max, Box[i][0])
+                y_min, y_max = min(y_min, Box[i][1]), max(y_max, Box[i][1])
+
+        def inBounds(_xy_):           return (x_min-merge_threshold) <= _xy_[0] <= (x_max+merge_threshold) and \
+                                             (y_min-merge_threshold) <= _xy_[1] <= (y_max+merge_threshold)
+        def bothInBounds(_segment_):  return inBounds(_segment_[0]) and inBounds(_segment_[1])
+
+        _segments_, xy_to_cell_map_is, xys_to_dedupe = [], {}, set()
+
+        # Updates the xy to circle list
+        def updateXYToCellMap(_segment_, _cell_i_):
+            for i in range(2):
+                _xy_ = (_segment_[i][0], _segment_[i][1])
+                if _xy_ not in xy_to_cell_map_is: xy_to_cell_map_is[_xy_] = set()
+                xy_to_cell_map_is[_xy_].add(_cell_i_)
+
+        # Use the cell map to create the segments & associate vertices to circles
+        for i in range(len(cell_map)):
+            for j in range(len(cell_map[i])):        
+                fm_to = cell_map[i][j][0]
+                # If either are negative one, then it's a ray
+                if fm_to[0] == -1 or fm_to[1] == -1:
+                    if   fm_to[0] == -1:
+                        _to_ = fm_to[1]
+                        xy   = V[_to_]
+                        uv   = cell_map[i][j][1][1]
+                        l    = cell_map[i][j][1][3]
+                    elif fm_to[1] == -1:
+                        _fm_ = fm_to[0]
+                        xy   = V[_fm_]
+                        uv   = cell_map[i][j][1][1]
+                        l    = cell_map[i][j][1][3]
+                    if   l is None: l =  2.0 * max(x_max - x_min, y_max - y_min) # maximum length of the ray required (actually a hack)
+                    elif l == 0:    l = -2.0 * max(x_max - x_min, y_max - y_min) # ... this corrects the problem of fully connecting circles to their edge points
+                    _segment_ = (xy, (xy[0]+uv[0]*l, xy[1]+uv[1]*l))
+                # Else it's a segment (but not necessarily a segment that begins/ends within the boundary)
+                else:
+                    _fm_, _to_ = fm_to[0], fm_to[1]
+                    _segment_ = (V[_fm_], V[_to_])
+                
+                # Check if the segment intersects the bounds
+                _left_   = self.segmentsIntersect(_segment_, ((x_min, y_min), (x_min, y_max)))
+                _right_  = self.segmentsIntersect(_segment_, ((x_max, y_min), (x_max, y_max)))
+                _top_    = self.segmentsIntersect(_segment_, ((x_min, y_max), (x_max, y_max)))
+                _bottom_ = self.segmentsIntersect(_segment_, ((x_min, y_min), (x_max, y_min)))
+
+                # If it does intersect the bounds, clip it there (it's possible it intersects the bounds twice...)
+                if _left_[0] or _right_[0] or _top_[0] or _bottom_[0]:
+                    intersections_found = 0
+                    if _left_  [0]: x, y, intersections_found = _left_  [1], _left_  [2], intersections_found + 1
+                    if _right_ [0]: x, y, intersections_found = _right_ [1], _right_ [2], intersections_found + 1
+                    if _top_   [0]: x, y, intersections_found = _top_   [1], _top_   [2], intersections_found + 1
+                    if _bottom_[0]: x, y, intersections_found = _bottom_[1], _bottom_[2], intersections_found + 1
+                    if    inBounds(_segment_[0]): xy = _segment_[0]
+                    else:                         xy = _segment_[1]
+                    if   intersections_found == 1:
+                        _segment_ = (xy, (x, y))
+                        if bothInBounds(_segment_):
+                            _segments_.append(_segment_), updateXYToCellMap(_segment_, i)
+                            xys_to_dedupe.add((x,y))
+                        else:
+                            ...
+                    elif intersections_found == 2:
+                        if   _left_[0]:  x_other, y_other = _left_[1],  _left_[2]
+                        elif _right_[0]: x_other, y_other = _right_[1], _right_[2]
+                        elif _top_[0]:   x_other, y_other = _top_[1],   _top_[2]
+                        else: raise Exception(f'two intersections_found but upon further review the other one can\'t be found')
+                        _segment_ = ((x,y), (x_other, y_other))
+                        xys_to_dedupe.add((x,y)), xys_to_dedupe.add((x_other, y_other))
+                        _segments_.append(_segment_), updateXYToCellMap(_segment_, i)
+                    else:                        raise Exception(f'intersections_found={intersections_found} (should only be one or two)')
+                # Otherwise, as long as both points are in bounds... then it can be added
+                # ...  it's possible that the segment begins and ends out of bounds (and doesn't touch the boundary)
+                else:
+                    if bothInBounds(_segment_):
+                        _segments_.append(_segment_), updateXYToCellMap(_segment_, i)
+                    else:
+                        ...
+
+        # Determine if the xy vertices need to be deduped & create the lookup table in the process
+        xys_to_dedupe = list(xys_to_dedupe)
+        dedupe_lu     = {}
+        for i in range(len(xys_to_dedupe)):
+            xy = xys_to_dedupe[i]
+            if xy in dedupe_lu: continue
+            for j in range(i+1, len(xys_to_dedupe)):
+                other = xys_to_dedupe[j]
+                l = self.segmentLength((xy, other))
+                if l < merge_threshold: dedupe_lu[other] = xy
+            dedupe_lu[xy] = xy
+
+        # Dedupe the xy vertices
+        if len(dedupe_lu.keys()) != len(set(dedupe_lu.values())):
+            new_segments = []
+            for _segment_ in _segments_:
+                xy0, xy1 = (_segment_[0][0], _segment_[0][1]), (_segment_[1][0], _segment_[1][1])
+                if xy0 in dedupe_lu: xy0 = dedupe_lu[xy0]
+                if xy1 in dedupe_lu: xy1 = dedupe_lu[xy1]
+                new_segments.append((xy0,xy1))
+            _segments_ = new_segments
+            for _xy_ in dedupe_lu.keys():
+                if _xy_ == dedupe_lu[_xy_]: continue
+                xy_to_cell_map_is[dedupe_lu[_xy_]] |= xy_to_cell_map_is[_xy_]
+                del xy_to_cell_map_is[_xy_]
+
+        # Remove any duplicate segments
+        deduped_segments, segments_seen = [], set()
+        for _segment_ in _segments_:
+            if _segment_ in segments_seen: continue
+            segments_seen.add(_segment_), segments_seen.add((_segment_[1], _segment_[0]))
+            deduped_segments.append(_segment_)
+        _segments_ = deduped_segments
+
+        # Add segments for the borders
+        corner_bl = (np.float64(x_min), np.float64(y_min))
+        corner_br = (np.float64(x_max), np.float64(y_min))
+        corner_tl = (np.float64(x_min), np.float64(y_max))
+        corner_tr = (np.float64(x_max), np.float64(y_max))
+        corners   = [corner_bl, corner_br, corner_tr, corner_tl]
+
+        # Associate the corners with a circle
+        for _corner_ in corners:
+            possible_circles = set()
+            for circle_i in range(len(S)):
+                _segment_ = (_corner_, S[circle_i][:2])
+                segment_intersection = False
+                for _other_ in _segments_:
+                    if self.segmentsIntersect(_segment_, _other_)[0]: 
+                        segment_intersection = True
+                        break
+                if segment_intersection == False: possible_circles.add(circle_i)
+            if len(possible_circles) == 1:
+                circle_i = list(possible_circles)[0]
+                if _corner_ not in xy_to_cell_map_is: xy_to_cell_map_is[_corner_] = set()
+                xy_to_cell_map_is[_corner_].add(circle_i)
+            else: raise Exception(f'Failed to find a circle for {_corner_} {possible_circles}')
+
+        # Add segments for the borders
+        for _y_ in [y_min,y_max]:
+            for _xy_ in set(dedupe_lu.values()):
+                to_arrange = set([(np.float64(x_min),np.float64(_y_)),(np.float64(x_max),np.float64(_y_))])
+                if (_y_+merge_threshold) >= _xy_[1] >= (_y_-merge_threshold): to_arrange.add(_xy_)
+                to_arrange = sorted(list(to_arrange))
+                for i in range(len(to_arrange)-1):
+                    _segment_ = (to_arrange[i], to_arrange[i+1])
+                    if _segment_ in _segments_: continue
+                    _segments_.append(_segment_)
+        for _x_ in [x_min,x_max]:
+            for _xy_ in set(dedupe_lu.values()):
+                to_arrange = set([(np.float64(_x_),np.float64(y_min)),(np.float64(_x_),np.float64(y_max))])
+                if (_x_+merge_threshold) >= _xy_[0] >= (_x_-merge_threshold): to_arrange.add(_xy_)
+                to_arrange = sorted(list(to_arrange), key=lambda x: x[1])
+                for i in range(len(to_arrange)-1):
+                    _segment_ = (to_arrange[i], to_arrange[i+1])
+                    if _segment_ in _segments_: continue
+                    _segments_.append(_segment_)
+                
+        circle_i_to_xys = {}
+        for i in range(len(S)): circle_i_to_xys[i] = set()
+        for _xy_ in xy_to_cell_map_is.keys():
+            for _cell_i_ in xy_to_cell_map_is[_xy_]:
+                circle_i_to_xys[_cell_i_].add(_xy_)
+        circle_i_to_segments = {}
+        for i in range(len(S)): circle_i_to_segments[i] = set()
+        xy_to_segments = {}
+        for _segment_ in _segments_:
+            xy0, xy1 = _segment_[0], _segment_[1]
+            if xy0 not in xy_to_segments: xy_to_segments[xy0] = set()
+            if xy1 not in xy_to_segments: xy_to_segments[xy1] = set()
+            xy_to_segments[xy0].add(_segment_), xy_to_segments[xy1].add(_segment_)
+        for i in range(len(S)):
+            for _xy_ in circle_i_to_xys[i]:
+                for _segment_ in xy_to_segments[_xy_]:
+                    if _segment_[0] in circle_i_to_xys[i] and _segment_[1] in circle_i_to_xys[i]:
+                        circle_i_to_segments[i].add(_segment_)
+
+        def orderCounterClockwise(segs):
+            xy_to_segs = {}
+            for _segment_ in segs:
+                for i in range(2):
+                    _xy_ = (_segment_[i][0], _segment_[i][1])
+                    if _xy_ not in xy_to_segs: xy_to_segs[_xy_] = set()
+                    xy_to_segs[_xy_].add(_segment_)
+            x_sum, y_sum, samples = 0.0, 0.0, 0
+            for _xy_ in xy_to_segs.keys():
+                x_sum += _xy_[0]
+                y_sum += _xy_[1]
+                samples += 1
+            center       = (x_sum/samples, y_sum/samples)
+            angle_sorter = []
+            for _xy_ in xy_to_segs.keys():
+                angle = atan2(_xy_[1]-center[1], _xy_[0]-center[0])
+                angle_sorter.append((angle, _xy_))
+            angle_sorter = sorted(angle_sorter, reverse=True)
+            in_order = []
+            for angle, _xy_ in angle_sorter: in_order.append(_xy_)
+            return in_order
+
+        cells = []
+        for i in range(len(S)):
+            cells.append(orderCounterClockwise(circle_i_to_segments[i]))
+
+        return cells
+
+    #
     # averageDegrees() - return the average angle for a list of degrees
     # - not efficient due to use of cos, sin, atan2
     #
