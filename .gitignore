@@ -28,3 +28,5 @@ coverage
 tests/__pycache__
 use_cases/2014_vast_challenge/articles.pkl
 use_cases/2014_vast_challenge/__pycache__/mining_interesting_locations_2009.cpython-312.pyc
+rtsvg/laguerre_voronoi_2d/__pycache__/__init__.cpython-312.pyc
+rtsvg/laguerre_voronoi_2d/__pycache__/laguerre_voronoi_2d.cpython-312.pyc
