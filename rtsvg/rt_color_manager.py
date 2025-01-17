@@ -367,8 +367,10 @@ class RTColorManager:
         '''Return a list of colorgorical colors (colors for qualitative separation).  Returns a max of 20 colors (parameter "n").'''
         if scale_type == 'qualitative' and n <= 20:
             categories = {}
-            categories[20] = ["#a0e85b", "#288753", "#7cd3eb", "#0362a0", "#f6adff", "#c02a85", "#9e73b8", "#513886", "#c1c2f5", "#8033cb", 
-                              "#36edd3", "#506356", "#cddb9b", "#783019", "#ed4b04", "#f7b8a2", "#c36d3f", "#eac328", "#2ee52d", "#fe74fe"]
+            categories[20] = ["#aee39a", "#d85ee1", "#1c9820", "#ff1c5d", "#38e278", "#af3014", "#82d1f4", "#835424", "#bce333", "#715cb6", 
+                              "#638123", "#f2b0f6", "#326f9c", "#ef956d", "#1f9383", "#b3416c", "#f1d438", "#2f43f6", "#dbc58e", "#fa1bfc"]
+            #categories[20] = ["#a0e85b", "#288753", "#7cd3eb", "#0362a0", "#f6adff", "#c02a85", "#9e73b8", "#513886", "#c1c2f5", "#8033cb", 
+            #                  "#36edd3", "#506356", "#cddb9b", "#783019", "#ed4b04", "#f7b8a2", "#c36d3f", "#eac328", "#2ee52d", "#fe74fe"]
             categories[15] = ["#399283", "#62ecb6", "#2c4e2f", "#aad0aa", "#30972e", "#abd533", "#683d0d", "#fba55c", "#900e08", "#ee77a0", 
                               "#fb2076", "#fac7d5", "#ed4b04", "#4bd6fd", "#10558a"]
             categories[10] = ["#4f8c9d", "#8bd0eb", "#2c457d", "#b5a3cf", "#a477fb", "#7f2d93", "#f90da0", "#d6709b", "#8c2efc", "#52dcbc"]
