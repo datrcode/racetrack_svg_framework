@@ -449,13 +449,18 @@ class RTBundledEgoChordDiagram(object):
         _tos_ = set(self.df_aligned_btwn_communities_collapsed['__to__'])
         for _to_ in _tos_:
             len_lu, path_lu = nx.single_source_bellman_ford(self.g_routing, source=_to_, weight='weight')
-            for _fm_ in self.df_aligned_btwn_communities_collapsed['__fm__']:
+            _df_ = self.df_aligned_btwn_communities_collapsed.filter(pl.col('__to__') == _to_)
+            for _fm_tuple_, _fm_df_ in _df_.group_by('__fm__'):
+                if len(_fm_df_) > 1: raise Exception(f'len(_fm_df_) > 1: {_fm_df_}')
+                _fm_   = _fm_tuple_[0]
+                _ct_   = _fm_df_['__count__'][0]
                 _path_ = path_lu[_fm_]
                 for i in range(len(_path_)-1):
                     _v0_, _v1_ = _path_[i], _path_[i+1]
                     _tuple_ = (_v0_, _v1_) if _v0_ < _v1_ else (_v1_, _v0_)
-                    if _tuple_ not in self.segment_contains_tree: self.segment_contains_tree[_tuple_] = set()
-                    self.segment_contains_tree[_tuple_].add(_to_)
+                    if _tuple_ not in self.segment_contains_tree:          self.segment_contains_tree[_tuple_]       = {}
+                    if _to_    not in self.segment_contains_tree[_tuple_]: self.segment_contains_tree[_tuple_][_fm_] = 0
+                    self.segment_contains_tree[_tuple_][_fm_] += _ct_
 
         self.time_lu['routing_calculations'] = time.time() - t0
 
