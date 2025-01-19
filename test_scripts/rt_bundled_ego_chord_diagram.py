@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 import random
+import time
+from math import sin, cos, atan2, pi, sqrt
 
 __name__ = "rt_bundled_ego_chord_diagram"
 
@@ -29,6 +31,7 @@ class RTBundledEgoChordDiagram(object):
                  chord_diagram_max_r    = 100,   # maximum radius of the chord diagrams
                  chord_diagram_opacity  = 0.25,  # opacity of edges within the chord diagram
                  chord_diagram_node_h   = 4,     # height of the nodes in the chord diagram
+                 chord_diagram_pushout  = 3,     # how much to push out the entry/exit points from the chord diagram
                  shrink_circles_by      = 5,     # how much to shrink the circles by after the layout
                  node_r                 = 10,    # radius of the individial nodes
                  clouds_r               = 10,    # radius of the clouds
@@ -48,6 +51,9 @@ class RTBundledEgoChordDiagram(object):
         self.h                  = h
         self.widget_id          = widget_id
 
+        # Performance information
+        self.time_lu            = {}
+
         # Make a widget_id if it's not set already
         if self.widget_id is None: self.widget_id = "bundled_ego_chord_diagram_" + str(random.randint(0,65535))
 
@@ -57,6 +63,7 @@ class RTBundledEgoChordDiagram(object):
         #
         # Field Transformations
         #
+        t0 = time.time()
         # Apply count-by transforms
         if self.count_by is not None and rt_self.isTField(self.count_by): self.df,self.count_by = rt_self.applyTransform(self.df, self.count_by)
         # Apply color-by transforms
@@ -71,8 +78,10 @@ class RTBundledEgoChordDiagram(object):
                     for _tup_part_ in _node_:
                         if rt_self.isTField(_tup_part_) and rt_self.tFieldApplicableField(_tup_part_) in self.df.columns:
                             self.df,_throwaway_ = rt_self.applyTransform(self.df, _tup_part_)
+        self.time_lu['field_transforms'] = time.time() - t0
 
         # Create concatenated fields for the tuple nodes
+        t0 = time.time()
         self.relationships, i = [], 0
         for _edge_ in self.relationships_orig:
             _fm_ = _edge_[0]
@@ -96,9 +105,11 @@ class RTBundledEgoChordDiagram(object):
                 elif len(_edge_) == 3: self.relationships.append((_fm_, _to_, _edge_[2]))
                 else:                  raise Exception(f'RTBundledEgoChordDiagram(): relationship tuples should have two or three parts "{_edge_}"')
             i += 1
+        self.time_lu['concat_fields'] = time.time() - t0
 
         # Align the dataset so that there's only __fm__ and __to__
         # ... if any to / froms are integers, they will be converted to strings (polars has strongly typed columns)
+        t0 = time.time()
         columns_to_keep = set(['__fm__','__to__'])
         if self.count_by is not None: columns_to_keep.add(self.count_by)
         if self.color_by is not None: columns_to_keep.add(self.color_by)
@@ -110,11 +121,15 @@ class RTBundledEgoChordDiagram(object):
                                               pl.col(_to_).cast(pl.String).alias('__to__'))
             _partials_.append(_df_.drop(set(_df_.columns) - columns_to_keep))
         self.df_aligned = pl.concat(_partials_) # maybe we should do the counting and coloring here...
+        self.time_lu['df_alignment'] = time.time() - t0
 
         # Create the graph representation
+        t0 = time.time()
         self.g = self.rt_self.createNetworkXGraph(self.df_aligned, [('__fm__','__to__')], count_by=self.count_by, count_by_set=self.count_by_set)
+        self.time_lu['graph_init_creation'] = time.time() - t0
 
         # Create the layout
+        t0 = time.time()
         if self.pos is None:
             # Use the supplied communities (or create them via community detection)
             # ... make sure that whichever path is followed, the state is consistent
@@ -148,7 +163,7 @@ class RTBundledEgoChordDiagram(object):
                 if _xy_ not in xy_to_nodes: xy_to_nodes[_xy_] = set()
                 xy_to_nodes[_xy_].add(_node_)
             self.communities = [ set(xy_to_nodes[_xy_]) for _xy_ in xy_to_nodes ]
-        
+
         # Create the community lookup so that we can do the collapse
         self.community_lookup, self.node_to_community, self.community_size_min, self.community_size_max = {}, {}, None, None
         for _community_ in self.communities:
@@ -167,8 +182,10 @@ class RTBundledEgoChordDiagram(object):
         for _node_ in self.high_degree_nodes:
             self.node_to_community[_node_] = _node_
             self.community_lookup[_node_]  = set([_node_])
+        self.time_lu['community_detection'] = time.time() - t0
 
         # Collapse the communities
+        t0 = time.time()
         self.df_communities  = rt_self.collapseDataFrameGraphByClusters(self.df_aligned, [('__fm__','__to__')], self.community_lookup)
         self.g_communities   = rt_self.createNetworkXGraph(self.df_communities, [('__fm__','__to__')])
         
@@ -184,11 +201,13 @@ class RTBundledEgoChordDiagram(object):
                 if len(self.community_lookup[_community_name_]) > 1:
                     _node_ = list(self.community_lookup[_community_name_])[0]
                     self.pos_communities[_community_name_] = self.pos[_node_]
-        
+        self.time_lu['community_collapse'] = time.time() - t0
+
         # Create an ordered list of community names and their associated circles
         self.community_names = list(self.community_lookup.keys())
 
         # Figure out how to position the nodes on the screen
+        t0 = time.time()
         no_overlaps, _attempts_, self.circles = False, 1, None
         while no_overlaps is False and _attempts_ < 10:
             _attempts_ += 1
@@ -233,10 +252,12 @@ class RTBundledEgoChordDiagram(object):
                 chord_diagram_max_r  *= 0.9
                 if chord_diagram_max_r < chord_diagram_min_r: chord_diagram_max_r = chord_diagram_min_r+5
                 self.pos_communities  = nx.spring_layout(self.g_communities)
+        self.time_lu['community_layout'] = time.time() - t0
 
         if self.circles is None: raise Exception(f'RTBundledEgoChordDiagram(): could not find a layout that didn\'t overlap after {_attempts_} attempts')
 
         # Create the chord diagrams
+        t0 = time.time()
         dfs_rendered, self.community_to_chord_diagram = [], {}
         for i in range(len(self.community_names)):
             _name_   = self.community_names[i]
@@ -249,14 +270,173 @@ class RTBundledEgoChordDiagram(object):
                 _cd_svg_ = _cd_._repr_svg_() # force the svg to be rendered
                 self.community_to_chord_diagram[_name_] = _cd_
                 dfs_rendered.append(_df_)
+        self.time_lu['chord_diagram_creation'] = time.time() - t0
 
         # Dataframe of all the data rendered in the chord diagrams
+        t0 = time.time()
         self.df_cd_rendered = pl.concat(dfs_rendered)
-    
+        self.time_lu['df_cd_rendered'] = time.time() - t0
 
+        # Determine the entry / exit points (largely copies from routing_3.ipynb)
+        t0 = time.time()
+        entity_to_ins, entity_to_outs, entity_to_cdarc = {}, {}, {}
+        fm_arcs,       to_arcs                         = {}, {}
+        arc_pos_and_vec                                = {}
+        arc_str_to_circle_i                            = {}
+        for _community_i_ in range(len(self.community_names)):
+            _community_ = self.community_names[_community_i_]
+            sx, sy, r   = self.circles[_community_i_]
+            if len(self.community_lookup[_community_]) == 1:
+                _community_fm_str_ = 'fm|'+_community_
+                _community_to_str_ = 'to|'+_community_
+                arc_str_to_circle_i[_community_fm_str_] = _community_i_
+                arc_str_to_circle_i[_community_to_str_] = _community_i_
+                fm_arcs[_community_fm_str_] = self.community_lookup[_community_]
+                to_arcs[_community_to_str_] = self.community_lookup[_community_]
+                _x_in_  = sx + (r + chord_diagram_pushout) * cos(0.0)
+                _y_in_  = sy + (r + chord_diagram_pushout) * sin(0.0)
+                arc_pos_and_vec[_community_fm_str_] = ((_x_in_, _y_in_), (cos(0.0), sin(0.0)), _community_i_)
+                _x_out_ = sx + (r + chord_diagram_pushout) * cos(pi)
+                _y_out_ = sy + (r + chord_diagram_pushout) * sin(pi)
+                arc_pos_and_vec[_community_to_str_] = ((_x_out_, _y_out_), (cos(pi), sin(pi)), _community_i_)
+            else:
+                _cd_        = self.community_to_chord_diagram[_community_]
+                _cd_r_      = _cd_.r
+                _angle_inc_ = 360.0 / chord_diagram_points
+                for i in range(chord_diagram_points):
+                    _angle_min_            = _angle_inc_ * i
+                    _angle_max_            = _angle_inc_ * (i+1)
+                    _community_arc_str_    = _community_ + f'|{i}'
+                    _community_arc_fm_str_ = 'fm|'+_community_arc_str_
+                    _community_arc_to_str_ = 'to|'+_community_arc_str_
+                    arc_str_to_circle_i[_community_arc_fm_str_] = _community_i_
+                    arc_str_to_circle_i[_community_arc_to_str_] = _community_i_
+                    fm_arcs[_community_arc_fm_str_] = set()
+                    to_arcs[_community_arc_to_str_] = set()
+
+                    _angle_in_             = -_angle_inc_ / 8.0 + (_angle_min_ + _angle_max_) / 2.0
+                    _angle_out_            =  _angle_inc_ / 8.0 + (_angle_min_ + _angle_max_) / 2.0
+                    if i == 0 and chord_diagram_points == 1: _angle_in_, _angle_out_ = 90.0, 270.0
+                    _x_in_                 = sx + (_cd_r_ + chord_diagram_pushout) * cos(_angle_in_ * pi / 180.0)
+                    _y_in_                 = sy + (_cd_r_ + chord_diagram_pushout) * sin(_angle_in_ * pi / 180.0)
+                    arc_pos_and_vec[_community_arc_fm_str_] = ((_x_in_,  _y_in_),  (cos(_angle_in_  * pi / 180.0), sin(_angle_in_  * pi / 180.0)), _community_i_) # (xy, uv, community_i)
+
+                    _x_out_                = sx + (_cd_r_ + chord_diagram_pushout) * cos(_angle_out_ * pi / 180.0)
+                    _y_out_                = sy + (_cd_r_ + chord_diagram_pushout) * sin(_angle_out_ * pi / 180.0)
+                    arc_pos_and_vec[_community_arc_to_str_] = ((_x_out_, _y_out_), (cos(_angle_out_ * pi / 180.0), sin(_angle_out_ * pi / 180.0)), _community_i_) # (xy, uv, community_i)
+
+                    _entities_             = _cd_.entitiesOnArc(_angle_min_, _angle_max_)
+                    for _entity_ in _entities_:
+                        entity_to_ins   [_entity_] = ((_x_in_,  _y_in_),  (cos(_angle_in_  * pi / 180.0), sin(_angle_in_  * pi / 180.0))) # (xy, uv)
+                        entity_to_outs  [_entity_] = ((_x_out_, _y_out_), (cos(_angle_out_ * pi / 180.0), sin(_angle_out_ * pi / 180.0))) # (xy, uv)
+                        entity_to_cdarc [_entity_] = _community_arc_str_
+                        fm_arcs[_community_arc_fm_str_].add(_entity_)
+                        to_arcs[_community_arc_to_str_].add(_entity_)
+        self.entity_to_ins, self.entity_to_outs, self.entity_to_cdarc, self.arc_pos_and_vec, self.arc_str_to_circle_i = entity_to_ins, entity_to_outs, entity_to_cdarc, arc_pos_and_vec, arc_str_to_circle_i
+        self.fm_arcs, self.to_arcs = fm_arcs, to_arcs
+        self.time_lu['enter_exit_points'] = time.time() - t0
+
+        # Create the inter dataframe
+        t0 = time.time()
+        self.df_aligned_btwn_communities           = self.df_aligned.join(self.df_cd_rendered, on=['__fm__', '__to__'], how='anti')
+        self.df_aligned_btwn_communities_collapsed = self.rt_self.collapseDataFrameGraphByClustersDirectional(self.df_aligned_btwn_communities, [('__fm__','__to__')], self.fm_arcs, self.to_arcs, color_by=self.color_by)
+        self.time_lu['inter_dataframe'] = time.time() - t0
 
         # Calculate the voronoi cells
+        t0 = time.time()
         self.voronoi_cells = self.rt_self.laguerreVoronoi(self.circles, Box=[(x_ins/2.0,y_ins/2.0),(x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,y_ins/2.0)])
+        self.time_lu['voronoi_cells'] = time.time() - t0
+
+        # Create the voronoi graph routing network by connecting the entry / exit points to the voronoi diagram (copying from routing_4.ipynb)
+        # (Uniquify) Segment To Poly
+        def uniquifySegment(s):
+            _xy0_, _xy1_ = s[0], s[1]
+            if   _xy0_[0] <  _xy1_[0]: return s
+            elif _xy0_[0] >  _xy1_[0]: return (_xy1_, _xy0_)
+            elif _xy0_[1] <  _xy1_[1]: return s
+            else:                      return (_xy1_, _xy0_)
+        # Unique segments to the circle indices
+        segment_to_circle_is = {}
+        for i in range(len(self.voronoi_cells)):
+            _poly_ = self.voronoi_cells[i]
+            for j in range(len(_poly_)):
+                _segment_    = (_poly_[j], _poly_[(j+1)%len(_poly_)])
+                _uniquified_ = uniquifySegment(_segment_)
+                if _uniquified_ not in segment_to_circle_is: segment_to_circle_is[_uniquified_] = []
+                segment_to_circle_is[_uniquified_].append(i)
+        # Add a vertex on a segment and update the associated polygons
+        def addVertexAndUpdatePolygons(seg, xy, pixel_diff=4.0):
+            seg    = uniquifySegment(seg)
+            # Try to use an existing vertex
+            l      = self.rt_self.segmentLength(seg)
+            l0, l1 = self.rt_self.segmentLength((seg[0], xy)), self.rt_self.segmentLength((seg[1], xy))
+            if l0 < pixel_diff: return seg[0]
+            if l1 < pixel_diff: return seg[1]
+            # Determine the polys to update & then put the new vertex in the right segment for each poly
+            polys_to_update = segment_to_circle_is[seg]
+            for i in polys_to_update:
+                _poly_ = self.voronoi_cells[i]
+                j      = 0
+                while _poly_[j] != seg[0] and _poly_[j] != seg[1]: j += 1
+                k      = (j+1)%len(_poly_)
+                if    _poly_[k] != seg[0] and _poly_[k] != seg[1]: k = len(_poly_)-1
+                if    _poly_[k] != seg[0] and _poly_[k] != seg[1]: raise Exception('can\'t find k')
+                if j == 0 and k == len(_poly_)-1: _poly_.append(xy)
+                else:                             _poly_.insert(k,xy)
+            del segment_to_circle_is[seg]                                            # remove old segment -- it's now two segments
+            seg0, seg1 = uniquifySegment((xy,seg[0])), uniquifySegment((xy,seg[1]))  # uniquify the two new segments
+            if seg0 not in segment_to_circle_is: segment_to_circle_is[seg0] = []     # update the lookup tables w/ the new segments
+            if seg1 not in segment_to_circle_is: segment_to_circle_is[seg1] = []
+            segment_to_circle_is[seg0].extend(polys_to_update)
+            segment_to_circle_is[seg1].extend(polys_to_update)
+            return xy
+
+        # For every used entry / exit point, determine how to connect that point to the voronoi diagram
+        t0 = time.time()
+        self.entry_exit_to_xy, self.pos_routing = {}, {}
+        _large_distance_      = 1e9
+        entry_exits_used = set(self.df_aligned_btwn_communities_collapsed['__fm__']) | set(self.df_aligned_btwn_communities_collapsed['__to__'])
+        for entry_exit_pt in self.arc_pos_and_vec:
+            if entry_exit_pt not in entry_exits_used: continue
+            _xy_, _uv_, _community_i_ = self.arc_pos_and_vec[entry_exit_pt]
+            self.pos_routing[entry_exit_pt] = _xy_
+            entry_exit_ray = (_xy_, (_xy_[0]+_large_distance_*_uv_[0], _xy_[1]+_large_distance_*_uv_[1]))
+            _poly_ = self.voronoi_cells[_community_i_]
+            _xy_inter_, _segment_inter_ = None, None
+            for i in range(len(_poly_)):
+                _segment_            = (_poly_[i], _poly_[(i+1)%len(_poly_)])
+                _intersection_tuple_ = self.rt_self.segmentsIntersect(entry_exit_ray, _segment_)
+                if _intersection_tuple_[0]:
+                    _xy_inter_, _segment_inter_ = (_intersection_tuple_[1], _intersection_tuple_[2]), _segment_
+                    break
+            if _xy_inter_ is None: raise Exception('xy_inter should not be none...')
+            _xy_inter_ = addVertexAndUpdatePolygons(_segment_inter_, _xy_inter_)
+            self.entry_exit_to_xy[entry_exit_pt] = _xy_inter_
+        self.time_lu['entry_exit_to_xy'] = time.time() - t0
+
+        # Construct the voronoi routing graph
+        _lu_           = {'__fm__':[],'__to__':[],'__dist__':[]}
+        _xy_to_name_   = {}
+        for _segment_ in segment_to_circle_is: # already uniquified
+            if _segment_[0] not in _xy_to_name_: 
+                _xy_to_name_[_segment_[0]] = f'V_{len(_xy_to_name_)}'
+                self.pos_routing[_xy_to_name_[_segment_[0]]] = _segment_[0]
+            if _segment_[1] not in _xy_to_name_: 
+                _xy_to_name_[_segment_[1]] = f'V_{len(_xy_to_name_)}'
+                self.pos_routing[_xy_to_name_[_segment_[1]]] = _segment_[1]
+            _lu_['__fm__']  .append(_xy_to_name_[_segment_[0]])
+            _lu_['__to__']  .append(_xy_to_name_[_segment_[1]])
+            _lu_['__dist__'].append(self.rt_self.segmentLength(_segment_))
+        for entry_exit_pt in self.entry_exit_to_xy:
+            _xy_ = self.entry_exit_to_xy[entry_exit_pt]
+            if _xy_ not in _xy_to_name_: raise Exception(f'_xy_ not in _xy_to_name_: {_xy_}')
+            _lu_['__fm__']  .append(_xy_to_name_[_xy_])
+            _lu_['__to__']  .append(entry_exit_pt)
+            _lu_['__dist__'].append(self.rt_self.segmentLength((_xy_, self.pos_routing[entry_exit_pt])))
+
+        self.df_routing = pl.DataFrame(_lu_)
+        self.df_routing = self.df_routing.with_columns((1.0/(pl.col('__dist__')+0.1)).alias('__inv_dist__')) # invert it to match networkx's version of closeness
+        self.g_routing  = self.rt_self.createNetworkXGraph(self.df_routing, [('__fm__','__to__')], count_by='__inv_dist__')
 
         # State
         self.last_render   = None
@@ -264,18 +444,37 @@ class RTBundledEgoChordDiagram(object):
     #
     #
     #
-    def outlineSVG(self):
+    def outlineSVG(self, render_inter_edges=False, view_border=64):
         bg_color = self.rt_self.co_mgr.getTVColor('background','default')
-        svg = [f'<svg x="0" y="0" width="{self.w}" height="{self.h}">',
-               f'<rect width="{self.w}" height="{self.h}" x="0" y="0" fill="{bg_color}" stroke="{bg_color}" />']
+        svg = [f'<svg x="0" y="0" width="{self.w}" height="{self.h}" viewBox="{-view_border} {-view_border} {self.w+2*view_border} {self.h+view_border}">',
+               f'<rect width="{self.w+2*view_border}" height="{self.h+2*view_border}" x="{-view_border}" y="{-view_border}" fill="#f0f0f0" stroke="#f0f0f0" />'
+               f'<rect width="{self.w}"               height="{self.h}"               x="0"              y="0"              fill="{bg_color}" stroke="{bg_color}" />']
         # Render the circles
         for _circle_ in self.circles: svg.append(f'<circle cx="{_circle_[0]}" cy="{_circle_[1]}" r="{_circle_[2]}" fill="none" stroke="#b0b0b0" />')
+        # Render the entry / exit points
+        for _arc_str_ in self.arc_pos_and_vec:
+            _tuple_                   = self.arc_pos_and_vec[_arc_str_]
+            _xy_, _uv_, _community_i_ = _tuple_
+            if   _arc_str_.startswith('fm|'): _color_ = '#013220'
+            elif _arc_str_.startswith('to|'): _color_ = '#ff0000'
+            svg.append(f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="2" fill="none" stroke="{_color_}" />')
         # Render the voronoi cells
         for _poly_ in self.voronoi_cells:
             d = [f'M {_poly_[0][0]} {_poly_[0][1]} ']
             for j in range(1,len(_poly_)): d.append(f'L {_poly_[j][0]} {_poly_[j][1]} ')
             d.append('Z')
             svg.append(f'<path d=\"{" ".join(d)}\" fill="none" stroke="#b0b0b0" stroke-width="0.5" />')
+        for _entry_exit_ in self.entry_exit_to_xy:
+            _xy_poly_ = self.entry_exit_to_xy[_entry_exit_]
+            _xy_, _uv_, circle_i = self.arc_pos_and_vec[_entry_exit_]
+            svg.append(f'<line x1="{_xy_poly_[0]}" y1="{_xy_poly_[1]}" x2="{_xy_[0]}" y2="{_xy_[1]}" stroke="#b0b0b0" stroke-width="0.5" />')
+
+        # Inter Edges (In Between Communities)
+        if render_inter_edges:
+            for i in range(len(self.df_aligned_btwn_communities_collapsed)):
+                _fm_,    _to_    = self.df_aligned_btwn_communities_collapsed['__fm__'][i], self.df_aligned_btwn_communities_collapsed['__to__'][i]
+                _fm_xy_, _to_xy_ = self.arc_pos_and_vec[_fm_][0], self.arc_pos_and_vec[_to_][0]
+                svg.append(f'<line x1="{_fm_xy_[0]}" y1="{_fm_xy_[1]}" x2="{_to_xy_[0]}" y2="{_to_xy_[1]}" stroke="#b0b0b0" stroke-width="0.5" />')
 
         svg.append('</svg>')
         return ''.join(svg)
