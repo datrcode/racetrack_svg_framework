@@ -222,7 +222,7 @@ class RTBundledEgoChordDiagram(object):
                 if len(self.community_lookup[_name_]) == 1: circles.append((sx, sy, node_r))
                 else:                                       circles.append((sx, sy, scaled_r))
             # Crunch the circles
-            circles_adjusted = self.rt_self.crunchCircles(circles)
+            circles_adjusted = self.rt_self.crunchCircles(circles, min_d=min_intra_circle_d)
             # Re-adjust w/in screen coordinates
             x_min, y_min = circles_adjusted[0][0] - circles_adjusted[0][2], circles_adjusted[0][1] - circles_adjusted[0][2]
             x_max, y_max = circles_adjusted[0][0] + circles_adjusted[0][2], circles_adjusted[0][1] + circles_adjusted[0][2]
@@ -446,6 +446,7 @@ class RTBundledEgoChordDiagram(object):
         # Determine the routes
         t0 = time.time()
         self.segment_contains_tree = {}
+        self.segment_max_count, self.segment_max_fm = 0, None
         _tos_ = set(self.df_aligned_btwn_communities_collapsed['__to__'])
         for _to_ in _tos_:
             len_lu, path_lu = nx.single_source_bellman_ford(self.g_routing, source=_to_, weight='weight')
@@ -461,7 +462,9 @@ class RTBundledEgoChordDiagram(object):
                     if _tuple_ not in self.segment_contains_tree:          self.segment_contains_tree[_tuple_]       = {}
                     if _to_    not in self.segment_contains_tree[_tuple_]: self.segment_contains_tree[_tuple_][_fm_] = 0
                     self.segment_contains_tree[_tuple_][_fm_] += _ct_
-
+                    if self.segment_contains_tree[_tuple_][_fm_] > self.segment_max_count:
+                        self.segment_max_count = self.segment_contains_tree[_tuple_][_fm_]
+                        self.segment_max_fm    = _fm_
         self.time_lu['routing_calculations'] = time.time() - t0
 
         # State
