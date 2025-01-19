@@ -25,13 +25,13 @@ class RTBundledEgoChordDiagram(object):
                  high_degree_node_count = 5,     # of high degree nodes to remove from communities
                  chord_diagram_points   = 4,     # of entry / exit points for the chord diagrams
                  node_communities       = None,  # a list of sets -- within the sets are the nodes
+                 chord_diagram_kwargs   = None,  # kwargs for the chord diagram
                  # Geometry
                  min_intra_circle_d     = 10,    # minimum distance between circles
                  chord_diagram_min_r    = 40,    # minimum radius of the chord diagrams
                  chord_diagram_max_r    = 100,   # maximum radius of the chord diagrams
-                 chord_diagram_opacity  = 0.25,  # opacity of edges within the chord diagram
-                 chord_diagram_node_h   = 4,     # height of the nodes in the chord diagram
                  chord_diagram_pushout  = 3,     # how much to push out the entry/exit points from the chord diagram
+                 chord_diagram_node_h   = 3,     # height of the entry/exit point nodes
                  shrink_circles_by      = 5,     # how much to shrink the circles by after the layout
                  node_r                 = 10,    # radius of the individial nodes
                  clouds_r               = 10,    # radius of the clouds
@@ -258,6 +258,8 @@ class RTBundledEgoChordDiagram(object):
 
         # Create the chord diagrams
         t0 = time.time()
+        if chord_diagram_kwargs is None: my_chord_diagram_kwargs = {}
+        else:                            my_chord_diagram_kwargs = chord_diagram_kwargs
         dfs_rendered, self.community_to_chord_diagram = [], {}
         for i in range(len(self.community_names)):
             _name_   = self.community_names[i]
@@ -266,7 +268,8 @@ class RTBundledEgoChordDiagram(object):
             if len(_nodes_) > 1:
                 _df_     = self.df_aligned.filter(pl.col('__fm__').is_in(_nodes_) & pl.col('__to__').is_in(_nodes_))
                 cd_r     = _circle_[2]
-                _cd_     = self.rt_self.chordDiagram(_df_, [('__fm__', '__to__')], w=cd_r*2, h=cd_r*2, x_ins=0, y_ins=0, link_opacity=chord_diagram_opacity, draw_border=False, node_h=chord_diagram_node_h)
+                _cd_     = self.rt_self.chordDiagram(_df_, [('__fm__', '__to__')], w=cd_r*2, h=cd_r*2, x_ins=0, y_ins=0, 
+                                                     draw_border=False, node_h=chord_diagram_node_h, **my_chord_diagram_kwargs)
                 _cd_svg_ = _cd_._repr_svg_() # force the svg to be rendered
                 self.community_to_chord_diagram[_name_] = _cd_
                 dfs_rendered.append(_df_)
@@ -415,6 +418,7 @@ class RTBundledEgoChordDiagram(object):
         self.time_lu['entry_exit_to_xy'] = time.time() - t0
 
         # Construct the voronoi routing graph
+        t0 = time.time()
         _lu_           = {'__fm__':[],'__to__':[],'__dist__':[]}
         _xy_to_name_   = {}
         for _segment_ in segment_to_circle_is: # already uniquified
@@ -437,6 +441,23 @@ class RTBundledEgoChordDiagram(object):
         self.df_routing = pl.DataFrame(_lu_)
         self.df_routing = self.df_routing.with_columns((1.0/(pl.col('__dist__')+0.1)).alias('__inv_dist__')) # invert it to match networkx's version of closeness
         self.g_routing  = self.rt_self.createNetworkXGraph(self.df_routing, [('__fm__','__to__')], count_by='__inv_dist__')
+        self.time_lu['routing_graph_construction'] = time.time() - t0
+
+        # Determine the routes
+        t0 = time.time()
+        self.segment_contains_tree = {}
+        _tos_ = set(self.df_aligned_btwn_communities_collapsed['__to__'])
+        for _to_ in _tos_:
+            len_lu, path_lu = nx.single_source_bellman_ford(self.g_routing, source=_to_, weight='weight')
+            for _fm_ in self.df_aligned_btwn_communities_collapsed['__fm__']:
+                _path_ = path_lu[_fm_]
+                for i in range(len(_path_)-1):
+                    _v0_, _v1_ = _path_[i], _path_[i+1]
+                    _tuple_ = (_v0_, _v1_) if _v0_ < _v1_ else (_v1_, _v0_)
+                    if _tuple_ not in self.segment_contains_tree: self.segment_contains_tree[_tuple_] = set()
+                    self.segment_contains_tree[_tuple_].add(_to_)
+
+        self.time_lu['routing_calculations'] = time.time() - t0
 
         # State
         self.last_render   = None
@@ -446,7 +467,7 @@ class RTBundledEgoChordDiagram(object):
     #
     def outlineSVG(self, render_inter_edges=False, view_border=64):
         bg_color = self.rt_self.co_mgr.getTVColor('background','default')
-        svg = [f'<svg x="0" y="0" width="{self.w}" height="{self.h}" viewBox="{-view_border} {-view_border} {self.w+2*view_border} {self.h+view_border}">',
+        svg = [f'<svg x="0" y="0" width="{self.w}" height="{self.h}" viewBox="{-view_border} {-view_border} {self.w+2*view_border} {self.h+2*view_border}">',
                f'<rect width="{self.w+2*view_border}" height="{self.h+2*view_border}" x="{-view_border}" y="{-view_border}" fill="#f0f0f0" stroke="#f0f0f0" />'
                f'<rect width="{self.w}"               height="{self.h}"               x="0"              y="0"              fill="{bg_color}" stroke="{bg_color}" />']
         # Render the circles
@@ -459,15 +480,21 @@ class RTBundledEgoChordDiagram(object):
             elif _arc_str_.startswith('to|'): _color_ = '#ff0000'
             svg.append(f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="2" fill="none" stroke="{_color_}" />')
         # Render the voronoi cells
+        _xys_ = set()
         for _poly_ in self.voronoi_cells:
+            _xys_.add(_poly_[0])
             d = [f'M {_poly_[0][0]} {_poly_[0][1]} ']
-            for j in range(1,len(_poly_)): d.append(f'L {_poly_[j][0]} {_poly_[j][1]} ')
+            for j in range(1,len(_poly_)):
+                _xys_.add(_poly_[j])
+                d.append(f'L {_poly_[j][0]} {_poly_[j][1]} ')
             d.append('Z')
             svg.append(f'<path d=\"{" ".join(d)}\" fill="none" stroke="#b0b0b0" stroke-width="0.5" />')
         for _entry_exit_ in self.entry_exit_to_xy:
             _xy_poly_ = self.entry_exit_to_xy[_entry_exit_]
             _xy_, _uv_, circle_i = self.arc_pos_and_vec[_entry_exit_]
+            _xys_.add(_xy_poly_), _xys_.add(_xy_)
             svg.append(f'<line x1="{_xy_poly_[0]}" y1="{_xy_poly_[1]}" x2="{_xy_[0]}" y2="{_xy_[1]}" stroke="#b0b0b0" stroke-width="0.5" />')
+        for _xy_ in _xys_: svg.append(f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{1.0+2.0*random.random()}" fill="none" stroke="#000000" stroke-width="0.1"/>')
 
         # Inter Edges (In Between Communities)
         if render_inter_edges:
@@ -503,6 +530,20 @@ class RTBundledEgoChordDiagram(object):
                 svg.append(f'<g transform="translate({sx-cd_r}, {sy-cd_r})">{_cd_._repr_svg_()}</g>')
             else:
                 svg.append(f'<circle cx="{sx}" cy="{sy}" r="{3.0}" fill="#000000" stroke="none" />')
+
+        # Render the routing network
+        for _named_vertices_ in self.segment_contains_tree:
+            _v0_,  _v1_   = _named_vertices_
+            _xy0_, _xy1_  = self.pos_routing[_v0_], self.pos_routing[_v1_]
+            _uv_          = self.rt_self.unitVector((_xy0_, _xy1_))
+            _perp_        = (-_uv_[1], _uv_[0])
+            _d_,   _side_ = 0.0, -1
+            for _arc_str_ in self.segment_contains_tree[_named_vertices_]:
+                _color_ = self.rt_self.co_mgr.getColor(_arc_str_)
+                svg.append(f'<line x1="{_xy0_[0]+_d_*_side_*_perp_[0]}" y1="{_xy0_[1]+_d_*_side_*_perp_[1]}" x2="{_xy1_[0]+_d_*_side_*_perp_[0]}" y2="{_xy1_[1]+_d_*_side_*_perp_[1]}" stroke="{_color_}" stroke-width="1.5" />')
+                if   _d_    == 0.0: _d_         =     _d_ + 1.5
+                elif _side_ == -1:  _side_      =  1
+                else:               _side_, _d_ = -1, _d_ + 1.5
 
         svg.append('</svg>')
         self.last_render = ''.join(svg)
