@@ -27,11 +27,14 @@ class RTBundledEgoChordDiagram(object):
                  min_intra_circle_d     = 10,    # minimum distance between circles
                  chord_diagram_min_r    = 40,    # minimum radius of the chord diagrams
                  chord_diagram_max_r    = 100,   # maximum radius of the chord diagrams
+                 chord_diagram_opacity  = 0.25,  # opacity of edges within the chord diagram
+                 chord_diagram_node_h   = 4,     # height of the nodes in the chord diagram
+                 shrink_circles_by      = 5,     # how much to shrink the circles by after the layout
                  node_r                 = 10,    # radius of the individial nodes
                  clouds_r               = 10,    # radius of the clouds
                  widget_id              = None,
-                 x_ins                  = 15,
-                 y_ins                  = 15,
+                 x_ins                  = 30,
+                 y_ins                  = 30,
                  w                      = 768,
                  h                      = 768):
         # Copy the parameters into local variables
@@ -199,7 +202,22 @@ class RTBundledEgoChordDiagram(object):
                 scaled_r = chord_diagram_min_r + (chord_diagram_max_r-chord_diagram_min_r)*((_sz_ - self.community_size_min) / (self.community_size_max - self.community_size_min))
                 if len(self.community_lookup[_name_]) == 1: circles.append((sx, sy, node_r))
                 else:                                       circles.append((sx, sy, scaled_r))
+            # Crunch the circles
             circles_adjusted = self.rt_self.crunchCircles(circles)
+            # Re-adjust w/in screen coordinates
+            x_min, y_min = circles_adjusted[0][0] - circles_adjusted[0][2], circles_adjusted[0][1] - circles_adjusted[0][2]
+            x_max, y_max = circles_adjusted[0][0] + circles_adjusted[0][2], circles_adjusted[0][1] + circles_adjusted[0][2]
+            for i in range(len(circles_adjusted)):
+                x_min, y_min = min(x_min, circles_adjusted[i][0] - circles_adjusted[i][2]), min(y_min, circles_adjusted[i][1] - circles_adjusted[i][2])
+                x_max, y_max = max(x_max, circles_adjusted[i][0] + circles_adjusted[i][2]), max(y_max, circles_adjusted[i][1] + circles_adjusted[i][2])
+            wxToSx  = lambda wx:      x_ins + (w - 2*x_ins)*(wx-x_min)/(x_max-x_min)
+            wyToSy  = lambda wy: h - (y_ins + (h - 2*y_ins)*(wy-y_min)/(y_max-y_min))
+            _circles_again_ = []
+            for i in range(len(circles_adjusted)):
+                sx, sy = wxToSx(circles_adjusted[i][0]), wyToSy(circles_adjusted[i][1])
+                _circles_again_.append((sx, sy, circles_adjusted[i][2]))
+            circles_adjusted = _circles_again_
+            # Check for overlaps
             no_overlaps = True
             for i in range(len(circles_adjusted)):
                 for j in range(i+1,len(circles_adjusted)):
@@ -208,13 +226,59 @@ class RTBundledEgoChordDiagram(object):
                         no_overlaps = False
                         break
                 if no_overlaps is False: break
-            if    no_overlaps: self.circles         = circles_adjusted
-            else:              self.pos_communities = nx.spring_layout(self.g_communities)
+            if no_overlaps: 
+                self.circles = []
+                for _circle_ in circles_adjusted: self.circles.append((_circle_[0], _circle_[1], _circle_[2] - shrink_circles_by))
+            else:
+                chord_diagram_max_r  *= 0.9
+                if chord_diagram_max_r < chord_diagram_min_r: chord_diagram_max_r = chord_diagram_min_r+5
+                self.pos_communities  = nx.spring_layout(self.g_communities)
 
         if self.circles is None: raise Exception(f'RTBundledEgoChordDiagram(): could not find a layout that didn\'t overlap after {_attempts_} attempts')
 
+        # Create the chord diagrams
+        dfs_rendered, self.community_to_chord_diagram = [], {}
+        for i in range(len(self.community_names)):
+            _name_   = self.community_names[i]
+            _circle_ = self.circles[i]
+            _nodes_  = self.community_lookup[_name_]
+            if len(_nodes_) > 1:
+                _df_     = self.df_aligned.filter(pl.col('__fm__').is_in(_nodes_) & pl.col('__to__').is_in(_nodes_))
+                cd_r     = _circle_[2]
+                _cd_     = self.rt_self.chordDiagram(_df_, [('__fm__', '__to__')], w=cd_r*2, h=cd_r*2, x_ins=0, y_ins=0, link_opacity=chord_diagram_opacity, draw_border=False, node_h=chord_diagram_node_h)
+                _cd_svg_ = _cd_._repr_svg_() # force the svg to be rendered
+                self.community_to_chord_diagram[_name_] = _cd_
+                dfs_rendered.append(_df_)
+
+        # Dataframe of all the data rendered in the chord diagrams
+        self.df_cd_rendered = pl.concat(dfs_rendered)
+    
+
+
+        # Calculate the voronoi cells
+        self.voronoi_cells = self.rt_self.laguerreVoronoi(self.circles, Box=[(x_ins/2.0,y_ins/2.0),(x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,y_ins/2.0)])
+
         # State
         self.last_render   = None
+
+    #
+    #
+    #
+    def outlineSVG(self):
+        bg_color = self.rt_self.co_mgr.getTVColor('background','default')
+        svg = [f'<svg x="0" y="0" width="{self.w}" height="{self.h}">',
+               f'<rect width="{self.w}" height="{self.h}" x="0" y="0" fill="{bg_color}" stroke="{bg_color}" />']
+        # Render the circles
+        for _circle_ in self.circles: svg.append(f'<circle cx="{_circle_[0]}" cy="{_circle_[1]}" r="{_circle_[2]}" fill="none" stroke="#b0b0b0" />')
+        # Render the voronoi cells
+        for _poly_ in self.voronoi_cells:
+            d = [f'M {_poly_[0][0]} {_poly_[0][1]} ']
+            for j in range(1,len(_poly_)): d.append(f'L {_poly_[j][0]} {_poly_[j][1]} ')
+            d.append('Z')
+            svg.append(f'<path d=\"{" ".join(d)}\" fill="none" stroke="#b0b0b0" stroke-width="0.5" />')
+
+        svg.append('</svg>')
+        return ''.join(svg)
 
     #
     # __repr_svg__() - SVG Representation
@@ -230,6 +294,16 @@ class RTBundledEgoChordDiagram(object):
         bg_color = self.rt_self.co_mgr.getTVColor('background','default')
         svg = [f'<svg id="{self.widget_id}" x="0" y="0" width="{self.w}" height="{self.h}">',
                f'<rect width="{self.w}" height="{self.h}" x="0" y="0" fill="{bg_color}" stroke="{bg_color}" />']
+
+        # Render the chord diagrams
+        for i in range(len(self.community_names)):
+            _name_       = self.community_names[i]
+            sx, sy, cd_r = self.circles[i]
+            if _name_ in self.community_to_chord_diagram.keys():
+                _cd_ = self.community_to_chord_diagram[_name_]
+                svg.append(f'<g transform="translate({sx-cd_r}, {sy-cd_r})">{_cd_._repr_svg_()}</g>')
+            else:
+                svg.append(f'<circle cx="{sx}" cy="{sy}" r="{3.0}" fill="#000000" stroke="none" />')
 
         svg.append('</svg>')
         self.last_render = ''.join(svg)
