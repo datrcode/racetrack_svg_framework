@@ -192,6 +192,12 @@ class RTBundledEgoChordDiagram(object):
         # Fill in the community positions and the regular positions ... 
         if self.pos is None:
             self.pos_communities = nx.spring_layout(self.g_communities)
+            self.pos             = {}
+            for _what_ in self.g_communities.nodes():
+                if _what_ in self.g.nodes(): self.pos[_what_] = self.pos_communities[_what_]
+                else:
+                    for _node_ in self.community_lookup[_what_]:
+                        self.pos[_node_] = self.pos_communities[_what_]
         else:
             self.pos_communities = {}
             for _node_ in self.g.nodes():
@@ -296,12 +302,45 @@ class RTBundledEgoChordDiagram(object):
                 arc_str_to_circle_i[_community_to_str_] = _community_i_
                 fm_arcs[_community_fm_str_] = self.community_lookup[_community_]
                 to_arcs[_community_to_str_] = self.community_lookup[_community_]
-                _x_in_  = sx + (r + chord_diagram_pushout) * cos(0.0)
-                _y_in_  = sy + (r + chord_diagram_pushout) * sin(0.0)
-                arc_pos_and_vec[_community_fm_str_] = ((_x_in_, _y_in_), (cos(0.0), sin(0.0)), _community_i_)
-                _x_out_ = sx + (r + chord_diagram_pushout) * cos(pi)
-                _y_out_ = sy + (r + chord_diagram_pushout) * sin(pi)
-                arc_pos_and_vec[_community_to_str_] = ((_x_out_, _y_out_), (cos(pi), sin(pi)), _community_i_)
+                
+                _fm_set_ = set(self.df_communities.filter(pl.col('__to__') == _community_)['__fm__'])
+                _to_set_ = set(self.df_communities.filter(pl.col('__fm__') == _community_)['__to__'])
+
+                _fm_x_sum_, _fm_y_sum_, _fm_samples_ = 0.0, 0.0, 0
+                _to_x_sum_, _to_y_sum_, _to_samples_ = 0.0, 0.0, 0
+
+                for _fm_ in _fm_set_:
+                    _k_ = _fm_ if _fm_ in self.pos_communities else self.node_to_community[_fm_]
+                    _fm_x_sum_   += self.pos_communities[_k_][0]
+                    _fm_y_sum_   += self.pos_communities[_k_][1]
+                    _fm_samples_ += 1
+
+                for _to_ in _to_set_:
+                    _k_ = _to_ if _to_ in self.pos_communities else self.node_to_community[_to_]
+                    _to_x_sum_   += self.pos_communities[_k_][0]
+                    _to_y_sum_   += self.pos_communities[_k_][1]
+                    _to_samples_ += 1
+
+                if _fm_samples_ > 0:
+                    _x_,    _y_    = _fm_x_sum_ / _fm_samples_, _fm_y_sum_ / _fm_samples_
+                    _u_in_, _v_in_ = self.rt_self.unitVector(((sx, sy),(_x_,_y_)))
+                    _x_in_, _y_in_ = sx + (r + chord_diagram_pushout/2.0) * _u_in_,   sy + (r + chord_diagram_pushout/2.0) * _v_in_
+                else:
+                    _angle_ = pi / 2.0
+                    _x_in_, _y_in_ = sx + (r + chord_diagram_pushout/2.0) * cos(_angle_), sy + (r + chord_diagram_pushout/2.0) * sin(_angle_)
+                    _u_in_, _v_in_ = cos(_angle_), sin(_angle_)
+                
+                if _to_samples_ > 0:
+                    _x_,     _y_     = _to_x_sum_ / _to_samples_, _to_y_sum_ / _to_samples_
+                    _u_out_, _v_out_ = self.rt_self.unitVector(((sx, sy),(_x_,_y_)))
+                    _x_out_, _y_out_ = sx + (r + chord_diagram_pushout) * _u_out_,   sy + (r + chord_diagram_pushout) * _v_out_
+                else:
+                    _angle_ = 3 * pi / 2.0
+                    _x_out_, _y_out_ = sx + (r + chord_diagram_pushout) * cos(_angle_), sy + (r + chord_diagram_pushout) * sin(_angle_)
+                    _u_out_, _v_out_ = cos(_angle_), sin(_angle_)
+
+                arc_pos_and_vec[_community_fm_str_] = ((_x_in_,  _y_in_),  (_u_in_,  _v_in_),  _community_i_)
+                arc_pos_and_vec[_community_to_str_] = ((_x_out_, _y_out_), (_u_out_, _v_out_), _community_i_)
             else:
                 _cd_        = self.community_to_chord_diagram[_community_]
                 _cd_r_      = _cd_.r
@@ -439,8 +478,7 @@ class RTBundledEgoChordDiagram(object):
             _lu_['__dist__'].append(self.rt_self.segmentLength((_xy_, self.pos_routing[entry_exit_pt])))
 
         self.df_routing = pl.DataFrame(_lu_)
-        self.df_routing = self.df_routing.with_columns((1.0/(pl.col('__dist__')+0.1)).alias('__inv_dist__')) # invert it to match networkx's version of closeness
-        self.g_routing  = self.rt_self.createNetworkXGraph(self.df_routing, [('__fm__','__to__')], count_by='__inv_dist__')
+        self.g_routing  = self.rt_self.createNetworkXGraph(self.df_routing, [('__fm__','__to__')], count_by='__dist__')
         self.time_lu['routing_graph_construction'] = time.time() - t0
 
         # Determine the routes
