@@ -47,6 +47,7 @@ class RTBundledEgoChordDiagram(object):
         self.color_by           = color_by
         self.count_by           = count_by
         self.count_by_set       = count_by_set
+        self.min_intra_circle_d = min_intra_circle_d
         self.w                  = w
         self.h                  = h
         self.widget_id          = widget_id
@@ -541,10 +542,8 @@ class RTBundledEgoChordDiagram(object):
             _xy_, _uv_, _community_i_ = self.arc_pos_and_vec[_arc_str_]
             _pos_[_arc_str_] = _xy_
         _nodes_ = self.rt_self.grahamScan(_pos_)
-        d = [f'M {_pos_[_nodes_[0]][0]} {_pos_[_nodes_[0]][1]} ']
-        for i in range(1, len(_nodes_)): d.append(f'L {_pos_[_nodes_[i]][0]} {_pos_[_nodes_[i]][1]} ')
-        d.append('Z')
-        svg.append(f'<path d=\"{" ".join(d)}\" fill="none" stroke="#0000ff" stroke-width="2.0" />')
+        d = self.rt_self.extrudePolyLine(_nodes_, _pos_, r=2*self.min_intra_circle_d, use_curved_caps=False)
+        svg.append(f'<path d="{d}" fill="none" stroke="#0000ff" stroke-width="0.1" />')
 
         svg.append('</svg>')
         return ''.join(svg)

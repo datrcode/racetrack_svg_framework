@@ -1139,9 +1139,10 @@ class RTGeometryMixin(object):
     # - Returns a string designed for the path svg element
     #
     def extrudePolyLine(self,
-                        pts,   # return value from grahamScan()
-                        pos,   # original lookup passed into the grahamScan() algorithm
-                        r=8):  # radius of the extrusion
+                        pts,                    # return value from grahamScan()
+                        pos,                    # original lookup passed into the grahamScan() algorithm
+                        use_curved_caps = True, # use the curve operator for the caps
+                        r               = 8):   # radius of the extrusion
         """ Extrude the polyline returned by the grahamScan() method
         :param pts: return value from grahamScan()
         :param pos: original lookup passed into the grahamScan() algorithm
@@ -1151,9 +1152,7 @@ class RTGeometryMixin(object):
         d_str = ''
 
         for i in range(0, len(pts)):
-            pt0 = pts[i]
-            pt1 = pts[(i+1)%len(pts)]
-            pt2 = pts[(i+2)%len(pts)]
+            pt0, pt1, pt2 = pts[i], pts[(i+1)%len(pts)], pts[(i+2)%len(pts)]
 
             x0, y0 = pos[pt0][0], pos[pt0][1]
             x1, y1 = pos[pt1][0], pos[pt1][1]
@@ -1162,18 +1161,14 @@ class RTGeometryMixin(object):
             dx, dy = x1 - x0, y1 - y0
             l  = sqrt(dx*dx+dy*dy)
             if l < 0.001: l = 0.001
-            dx /= l
-            dy /= l
-            pdx =  dy
-            pdy = -dx
+            dx,  dy  = dx/l,  dy/l
+            pdx, pdy = dy,   -dx
 
             dx2, dy2 = x2 - x1, y2 - y1
             l2  = sqrt(dx2*dx2+dy2*dy2)
             if l2 < 0.001: l2 = 0.001
-            dx2 /= l2
-            dy2 /= l2
-            pdx2 =  dy2
-            pdy2 = -dx2
+            dx2,  dy2  = dx2/l2,  dy2/l2
+            pdx2, pdy2 = dy2,    -dx2
 
             # First point is a move to...
             if len(d_str) == 0: d_str += f'M {x0+pdx*r} {y0+pdy*r} '
@@ -1182,15 +1177,12 @@ class RTGeometryMixin(object):
             d_str += f'L {x1+pdx*r} {y1+pdy*r} '
 
             # Curved cap
-            cx0 = x1+pdx  * r + dx  * r/4
-            cy0 = y1+pdy  * r + dy  * r/4
-            cx1 = x1+pdx2 * r - dx2 * r/4
-            cy1 = y1+pdy2 * r - dy2 * r/4
-
-            d_str += f'C {cx0} {cy0} {cx1} {cy1} {x1+pdx2*r} {y1+pdy2*r}'
-
-            # d_str += f'L {cx0} {cy0} '
-            # d_str += f'L {cx1} {cy1} '
+            if use_curved_caps:
+                cx0, cy0 = x1+pdx  * r + dx  * r/4, y1+pdy  * r + dy  * r/4
+                cx1, cy1 = x1+pdx2 * r - dx2 * r/4, y1+pdy2 * r - dy2 * r/4
+                d_str += f'C {cx0} {cy0} {cx1} {cy1} {x1+pdx2*r} {y1+pdy2*r}'
+            
+            # Line to the next point
             d_str += f'L {x1+pdx2*r} {y1+pdy2*r} '
 
         return d_str
