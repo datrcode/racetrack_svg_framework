@@ -262,6 +262,11 @@ class RTBundledEgoChordDiagram(object):
 
         if self.circles is None: raise Exception(f'RTBundledEgoChordDiagram(): could not find a layout that didn\'t overlap after {_attempts_} attempts')
 
+        # Calculate the voronoi cells
+        t0 = time.time()
+        self.voronoi_cells = self.rt_self.laguerreVoronoi(self.circles, Box=[(x_ins/2.0,y_ins/2.0),(x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,y_ins/2.0)])
+        self.time_lu['voronoi_cells'] = time.time() - t0
+
         # Create the chord diagrams
         t0 = time.time()
         if chord_diagram_kwargs is None: my_chord_diagram_kwargs = {}
@@ -302,42 +307,28 @@ class RTBundledEgoChordDiagram(object):
                 arc_str_to_circle_i[_community_to_str_] = _community_i_
                 fm_arcs[_community_fm_str_] = self.community_lookup[_community_]
                 to_arcs[_community_to_str_] = self.community_lookup[_community_]
+
+                # Find the closest edge & connect it to that
+                _poly_, d_closest, xy_closest = self.voronoi_cells[_community_i_], None, None
+                for i in range(len(_poly_)):
+                    _xy0_, _xy1_ = _poly_[i], _poly_[(i+1)%len(_poly_)]
+                    _d_, _xy_    = self.rt_self.closestPointOnSegment((_xy0_, _xy1_), (sx, sy))
+                    if d_closest is None or _d_ < d_closest: d_closest, xy_closest = _d_, _xy_
                 
-                _fm_set_ = set(self.df_communities.filter(pl.col('__to__') == _community_)['__fm__'])
-                _to_set_ = set(self.df_communities.filter(pl.col('__fm__') == _community_)['__to__'])
-
-                _fm_x_sum_, _fm_y_sum_, _fm_samples_ = 0.0, 0.0, 0
-                _to_x_sum_, _to_y_sum_, _to_samples_ = 0.0, 0.0, 0
-
-                for _fm_ in _fm_set_:
-                    _k_ = _fm_ if _fm_ in self.pos_communities else self.node_to_community[_fm_]
-                    _fm_x_sum_   += self.pos_communities[_k_][0]
-                    _fm_y_sum_   += self.pos_communities[_k_][1]
-                    _fm_samples_ += 1
-
-                for _to_ in _to_set_:
-                    _k_ = _to_ if _to_ in self.pos_communities else self.node_to_community[_to_]
-                    _to_x_sum_   += self.pos_communities[_k_][0]
-                    _to_y_sum_   += self.pos_communities[_k_][1]
-                    _to_samples_ += 1
-
-                if _fm_samples_ > 0:
-                    _x_,    _y_    = _fm_x_sum_ / _fm_samples_, _fm_y_sum_ / _fm_samples_
-                    _u_in_, _v_in_ = self.rt_self.unitVector(((sx, sy),(_x_,_y_)))
-                    _x_in_, _y_in_ = sx + (r + chord_diagram_pushout/2.0) * _u_in_,   sy + (r + chord_diagram_pushout/2.0) * _v_in_
-                else:
+                if xy_closest is None: # Used fixed positions / doesn't yield good results
                     _angle_ = pi / 2.0
                     _x_in_, _y_in_ = sx + (r + chord_diagram_pushout/2.0) * cos(_angle_), sy + (r + chord_diagram_pushout/2.0) * sin(_angle_)
                     _u_in_, _v_in_ = cos(_angle_), sin(_angle_)
-                
-                if _to_samples_ > 0:
-                    _x_,     _y_     = _to_x_sum_ / _to_samples_, _to_y_sum_ / _to_samples_
-                    _u_out_, _v_out_ = self.rt_self.unitVector(((sx, sy),(_x_,_y_)))
-                    _x_out_, _y_out_ = sx + (r + chord_diagram_pushout) * _u_out_,   sy + (r + chord_diagram_pushout) * _v_out_
-                else:
                     _angle_ = 3 * pi / 2.0
                     _x_out_, _y_out_ = sx + (r + chord_diagram_pushout) * cos(_angle_), sy + (r + chord_diagram_pushout) * sin(_angle_)
                     _u_out_, _v_out_ = cos(_angle_), sin(_angle_)
+                else:
+                    _uv_    = self.rt_self.unitVector(((sx, sy), xy_closest))
+                    _angle_, _diff_ = atan2(_uv_[1], _uv_[0]), pi/8.0
+                    _x_in_,  _y_in_  = sx + (r + chord_diagram_pushout) * cos(_angle_+_diff_), sy + (r + chord_diagram_pushout) * sin(_angle_+_diff_)
+                    _u_in_,  _v_in_  = cos(_angle_+_diff_), sin(_angle_+_diff_)
+                    _x_out_, _y_out_ = sx + (r + chord_diagram_pushout) * cos(_angle_-_diff_), sy + (r + chord_diagram_pushout) * sin(_angle_-_diff_)
+                    _u_out_, _v_out_ = cos(_angle_-_diff_), sin(_angle_-_diff_)
 
                 arc_pos_and_vec[_community_fm_str_] = ((_x_in_,  _y_in_),  (_u_in_,  _v_in_),  _community_i_)
                 arc_pos_and_vec[_community_to_str_] = ((_x_out_, _y_out_), (_u_out_, _v_out_), _community_i_)
@@ -383,11 +374,6 @@ class RTBundledEgoChordDiagram(object):
         self.df_aligned_btwn_communities           = self.df_aligned.join(self.df_cd_rendered, on=['__fm__', '__to__'], how='anti')
         self.df_aligned_btwn_communities_collapsed = self.rt_self.collapseDataFrameGraphByClustersDirectional(self.df_aligned_btwn_communities, [('__fm__','__to__')], self.fm_arcs, self.to_arcs, color_by=self.color_by)
         self.time_lu['inter_dataframe'] = time.time() - t0
-
-        # Calculate the voronoi cells
-        t0 = time.time()
-        self.voronoi_cells = self.rt_self.laguerreVoronoi(self.circles, Box=[(x_ins/2.0,y_ins/2.0),(x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,y_ins/2.0)])
-        self.time_lu['voronoi_cells'] = time.time() - t0
 
         # Create the voronoi graph routing network by connecting the entry / exit points to the voronoi diagram (copying from routing_4.ipynb)
         # (Uniquify) Segment To Poly
@@ -548,6 +534,17 @@ class RTBundledEgoChordDiagram(object):
                 _fm_,    _to_    = self.df_aligned_btwn_communities_collapsed['__fm__'][i], self.df_aligned_btwn_communities_collapsed['__to__'][i]
                 _fm_xy_, _to_xy_ = self.arc_pos_and_vec[_fm_][0], self.arc_pos_and_vec[_to_][0]
                 svg.append(f'<line x1="{_fm_xy_[0]}" y1="{_fm_xy_[1]}" x2="{_to_xy_[0]}" y2="{_to_xy_[1]}" stroke="#b0b0b0" stroke-width="0.5" />')
+
+        # Graham Scan
+        _pos_ = {}
+        for _arc_str_ in self.arc_pos_and_vec:
+            _xy_, _uv_, _community_i_ = self.arc_pos_and_vec[_arc_str_]
+            _pos_[_arc_str_] = _xy_
+        _nodes_ = self.rt_self.grahamScan(_pos_)
+        d = [f'M {_pos_[_nodes_[0]][0]} {_pos_[_nodes_[0]][1]} ']
+        for i in range(1, len(_nodes_)): d.append(f'L {_pos_[_nodes_[i]][0]} {_pos_[_nodes_[i]][1]} ')
+        d.append('Z')
+        svg.append(f'<path d=\"{" ".join(d)}\" fill="none" stroke="#0000ff" stroke-width="2.0" />')
 
         svg.append('</svg>')
         return ''.join(svg)
