@@ -5,6 +5,7 @@ import networkx as nx
 import random
 import time
 from math import sin, cos, atan2, pi, sqrt
+from shapely.geometry import Polygon
 
 __name__ = "rt_bundled_ego_chord_diagram"
 
@@ -267,6 +268,27 @@ class RTBundledEgoChordDiagram(object):
         t0 = time.time()
         self.voronoi_cells = self.rt_self.laguerreVoronoi(self.circles, Box=[(x_ins/2.0,y_ins/2.0),(x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,y_ins/2.0)])
         self.time_lu['voronoi_cells'] = time.time() - t0
+
+        # Wrap it it using a graham scan
+        _pts_, _num_ = {}, 12
+        for i in range(len(self.circles)):
+            sx, sy, r = self.circles[i]
+            for j in range(_num_):
+                _angle_ = 2*pi*j/_num_
+                _pts_[f'{i}_{j}'] = (sx+(r+2*min_intra_circle_d)*cos(_angle_), sy+(r+2*min_intra_circle_d)*sin(_angle_))
+        _graham_scan_results_ = self.rt_self.grahamScan(_pts_)
+        _graham_scan_ = []
+        for k in _graham_scan_results_: _graham_scan_.append(_pts_[k])
+        self.graham_scan_poly = Polygon(_graham_scan_)
+        self.other_voronoi_cells = [] # debug debug debug
+        for i in range(len(self.voronoi_cells)):
+            _poly_ = self.voronoi_cells[i]
+            if self.graham_scan_poly.intersects(Polygon(_poly_)): 
+                _inter_    = self.graham_scan_poly & Polygon(_poly_)
+                _poly_new_ = []
+                for j in range(len(_inter_.exterior.coords.xy[0])):
+                    _poly_new_.append((_inter_.exterior.coords.xy[0][j], _inter_.exterior.coords.xy[1][j]))
+                self.other_voronoi_cells.append(_poly_new_) # debug debug debug
 
         # Create the chord diagrams
         t0 = time.time()

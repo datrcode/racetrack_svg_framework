@@ -1095,29 +1095,20 @@ class RTGeometryMixin(object):
         # Find the lowest point... if same y coordinate, find the leftmost point
         pt_low = None
         for k in pos.keys():
-            if pt_low is None:
-                pt_low = k
-            elif pos[k][1] < pos[pt_low][1]:
-                pt_low = k
-            elif pos[k][1] == pos[pt_low][1] and pos[k][0] < pos[pt_low][0]:
-                pt_low = k
+            if   pt_low is None:                                             pt_low = k
+            elif pos[k][1] < pos[pt_low][1]:                                 pt_low = k
+            elif pos[k][1] == pos[pt_low][1] and pos[k][0] < pos[pt_low][0]: pt_low = k
 
         # Sort all the other points by the polar angle from this point
-        polar_lu = {}
-        polar_d  = {}
+        polar_lu, polar_d = {}, {}
         for k in pos.keys():
             if k != pt_low:
-                dx    = pos[k][0] - pos[pt_low][0]
-                dy    = pos[k][1] - pos[pt_low][1]
-                l     = sqrt(dx*dx+dy*dy)
-                if l < 0.001:
-                    l = 0.001
-                dx    = dx/l
-                dy    = dy/l
+                dx, dy = pos[k][0] - pos[pt_low][0], pos[k][1] - pos[pt_low][1]
+                l      = sqrt(dx*dx+dy*dy)
+                if l < 0.001: l = 0.001
+                dx, dy = dx/l, dy/l
                 theta = acos(dx)
-                if theta not in polar_lu.keys() or polar_d[theta] < l:
-                    polar_lu[theta] = k
-                    polar_d [theta] = l
+                if theta not in polar_lu.keys() or polar_d[theta] < l: polar_lu[theta], polar_d [theta] = k, l
 
         to_sort = []
         for x in polar_lu.keys(): to_sort.append((x, polar_lu[x]))
