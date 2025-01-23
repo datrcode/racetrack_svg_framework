@@ -47,12 +47,13 @@ class RTGeometryMixin(object):
         return voronoi_cell_map, tri_list, V
 
     #
-    # laguerreVoronoi() - meant to look similar (and return results) similar to isedgarVoronoi()
+    # laguerreVoronoi() - meant to look similar (and return results similar) to isedgarVoronoi()
     #
     def laguerreVoronoi(self, S, Box=None, pad=10, merge_threshold=1e-6):
         cell_map, tri_list, V = self.laguerreVoronoi2D(S)
 
         # Determine the mins & maxes
+        bounds_is_rectangular = True
         if Box is None:
             x_min, y_min, x_max, y_max = S[0][0], S[0][1], S[0][0], S[0][1]
             for circle in S:
@@ -64,6 +65,11 @@ class RTGeometryMixin(object):
             for i in range(len(Box)):
                 x_min, x_max = min(x_min, Box[i][0]), max(x_max, Box[i][0])
                 y_min, y_max = min(y_min, Box[i][1]), max(y_max, Box[i][1])
+            # determine if it's rectangular or not
+            for i in range(len(Box)):
+                if Box[i][0] != x_min or Box[i][0] != x_max or Box[i][1] != y_min or Box[i][1] != y_max:
+                    bounds_is_rectangular = False
+                    break
 
         def inBounds(_xy_):           return (x_min-merge_threshold) <= _xy_[0] <= (x_max+merge_threshold) and \
                                              (y_min-merge_threshold) <= _xy_[1] <= (y_max+merge_threshold)
@@ -96,7 +102,7 @@ class RTGeometryMixin(object):
                         l    = cell_map[i][j][1][3]
                     if   l is None: l =  2.0 * max(x_max - x_min, y_max - y_min) # maximum length of the ray required (actually a hack)
                     elif l == 0:    l = -2.0 * max(x_max - x_min, y_max - y_min) # ... this corrects the problem of fully connecting circles to their edge points
-                    _segment_ = (xy, (xy[0]+uv[0]*l, xy[1]+uv[1]*l))
+                    _segment_ = (tuple(xy), (xy[0]+uv[0]*l, xy[1]+uv[1]*l))
                 # Else it's a segment (but not necessarily a segment that begins/ends within the boundary)
                 else:
                     _fm_, _to_ = fm_to[0], fm_to[1]
@@ -261,9 +267,47 @@ class RTGeometryMixin(object):
             return in_order
 
         cells = []
-        for i in range(len(S)):
-            cells.append(orderCounterClockwise(circle_i_to_segments[i]))
+        for i in range(len(S)): cells.append(orderCounterClockwise(circle_i_to_segments[i]))
 
+        # Constrain cells by non-rectangular bounds
+        if bounds_is_rectangular == False:
+            bounds_poly = Polygon(Box)
+            _new_cells_ = []
+            for _cell_ in cells:
+                poly = Polygon(_cell_)
+                _intersection_ = poly.intersection(bounds_poly)
+                if _intersection_.is_empty: _new_cells_.append(_cell_)
+                else:
+                    if   _intersection_.geom_type == 'Polygon':      _new_cells_.append(list(_intersection_.exterior.coords)[:-1])
+                    elif _intersection_.geom_type == 'MultiPolygon': raise Exception(f'MultiPolygon not handled')
+                    else:                                            raise Exception(f'Unexpected geom_type={_intersection_.geom_type}')
+            cells = _new_cells_
+
+            # dedupe xys (again) if necessary (1) xys seen, (2) a lookup table to merge similar points, and then (3) the merge itself
+            xys_seen = set()
+            for _cell_ in cells:
+                for _xy_ in _cell_:
+                    xys_seen.add(_xy_)
+            xys_seen, xy_lu, merge_required  = list(xys_seen), {}, False
+            for i in range(len(xys_seen)):
+                _xy_i_ = xys_seen[i]
+                if _xy_i_ in xy_lu: continue
+                else:               xy_lu[_xy_i_] = _xy_i_
+                for j in range(i+1,len(xys_seen)):
+                    _xy_j_ = xys_seen[j]
+                    if _xy_j_ in xy_lu: continue
+                    _len_ = self.segmentLength((_xy_i_,_xy_j_))
+                    if _len_ < merge_threshold: 
+                        xy_lu[_xy_j_]  = _xy_i_
+                        merge_required = True
+            if merge_required:
+                _new_cells_ = []
+                for _cell_ in cells:
+                    _new_cell_ = []
+                    for _xy_ in _cell_: _new_cell_.append(xy_lu[_xy_])
+                    _new_cells_.append(_new_cell_)
+                cells = _new_cells_
+                
         return cells
 
     #

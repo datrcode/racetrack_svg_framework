@@ -264,12 +264,8 @@ class RTBundledEgoChordDiagram(object):
 
         if self.circles is None: raise Exception(f'RTBundledEgoChordDiagram(): could not find a layout that didn\'t overlap after {_attempts_} attempts')
 
-        # Calculate the voronoi cells
+        # Use a convex hull as a wrapper
         t0 = time.time()
-        self.voronoi_cells = self.rt_self.laguerreVoronoi(self.circles, Box=[(x_ins/2.0,y_ins/2.0),(x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,y_ins/2.0)])
-        self.time_lu['voronoi_cells'] = time.time() - t0
-
-        # Wrap it it using a graham scan
         _pts_, _num_ = {}, 12
         for i in range(len(self.circles)):
             sx, sy, r = self.circles[i]
@@ -279,16 +275,22 @@ class RTBundledEgoChordDiagram(object):
         _graham_scan_results_ = self.rt_self.grahamScan(_pts_)
         _graham_scan_ = []
         for k in _graham_scan_results_: _graham_scan_.append(_pts_[k])
-        self.graham_scan_poly = Polygon(_graham_scan_)
-        self.other_voronoi_cells = [] # debug debug debug
+        self.time_lu['graham_scan'] = time.time() - t0
+
+        # Calculate the voronoi cells
+        t0 = time.time()
+        #self.voronoi_cells = self.rt_self.laguerreVoronoi(self.circles, 
+        #                                                  Box=[(x_ins/2.0,y_ins/2.0),(x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,h-y_ins/2.0),(w-x_ins/2.0,y_ins/2.0)])
+        self.voronoi_cells = self.rt_self.laguerreVoronoi(self.circles, _graham_scan_)
+        # ... double check the results of the voronoi output -- no xy's should be duplicated
         for i in range(len(self.voronoi_cells)):
             _poly_ = self.voronoi_cells[i]
-            if self.graham_scan_poly.intersects(Polygon(_poly_)): 
-                _inter_    = self.graham_scan_poly & Polygon(_poly_)
-                _poly_new_ = []
-                for j in range(len(_inter_.exterior.coords.xy[0])):
-                    _poly_new_.append((_inter_.exterior.coords.xy[0][j], _inter_.exterior.coords.xy[1][j]))
-                self.other_voronoi_cells.append(_poly_new_) # debug debug debug
+            _xys_  = set()
+            for j in range(len(_poly_)):
+                _xy_ = _poly_[j]
+                if _xy_ in _xys_: raise Exception(f'RTBundledEgoChordDiagram(): duplicate xy ({_xy_}) in poly {i}')
+                _xys_.add(_xy_)
+        self.time_lu['voronoi_cells'] = time.time() - t0
 
         # Create the chord diagrams
         t0 = time.time()
@@ -406,27 +408,41 @@ class RTBundledEgoChordDiagram(object):
             elif _xy0_[0] >  _xy1_[0]: return (_xy1_, _xy0_)
             elif _xy0_[1] <  _xy1_[1]: return s
             else:                      return (_xy1_, _xy0_)
+
         # Unique segments to the circle indices
         segment_to_circle_is = {}
         for i in range(len(self.voronoi_cells)):
             _poly_ = self.voronoi_cells[i]
             for j in range(len(_poly_)):
                 _segment_    = (_poly_[j], _poly_[(j+1)%len(_poly_)])
+                # Do a sanity check
+                seg0_count, seg1_count = 0, 0
+                for k in range(len(_poly_)):
+                    if _poly_[k] == _segment_[0]: seg0_count += 1
+                    if _poly_[k] == _segment_[1]: seg1_count += 1
+                if seg0_count != 1 or seg1_count != 1: raise Exception(f'Voronoi {i} , Segment Indices {j} | seg0_count == {seg0_count} | seg1_count == {seg1_count} | (both should be 1)')
                 _uniquified_ = uniquifySegment(_segment_)
                 if _uniquified_ not in segment_to_circle_is: segment_to_circle_is[_uniquified_] = []
                 segment_to_circle_is[_uniquified_].append(i)
+
         # Add a vertex on a segment and update the associated polygons
         def addVertexAndUpdatePolygons(seg, xy, pixel_diff=4.0):
             seg    = uniquifySegment(seg)
             # Try to use an existing vertex
             l      = self.rt_self.segmentLength(seg)
             l0, l1 = self.rt_self.segmentLength((seg[0], xy)), self.rt_self.segmentLength((seg[1], xy))
-            if l0 < pixel_diff: return seg[0]
-            if l1 < pixel_diff: return seg[1]
+            if l0 < pixel_diff and l0 < l1: return seg[0]
+            if l1 < pixel_diff:             return seg[1]
             # Determine the polys to update & then put the new vertex in the right segment for each poly
             polys_to_update = segment_to_circle_is[seg]
             for i in polys_to_update:
                 _poly_ = self.voronoi_cells[i]
+                seg0_count, seg1_count = 0, 0
+                for j in range(len(_poly_)):
+                    if _poly_[j] == seg[0]: seg0_count += 1
+                    if _poly_[j] == seg[1]: seg1_count += 1
+                if seg0_count != 1 or seg1_count != 1: raise Exception(f'seg0_count == {seg0_count} | seg1_count == {seg1_count} | (both should be 1)')
+
                 j      = 0
                 while _poly_[j] != seg[0] and _poly_[j] != seg[1]: j += 1
                 k      = (j+1)%len(_poly_)
