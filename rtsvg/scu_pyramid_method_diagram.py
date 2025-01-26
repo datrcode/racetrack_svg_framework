@@ -64,7 +64,28 @@ class SCUPyramidMethodDiagram(object):
         self.tri_path_inner   = f'M {self.top_xy_inner[0]} {self.top_xy_inner[1]} L {self.b_left_xy_inner[0]} {self.b_left_xy_inner[1]} L {self.b_right_xy_inner[0]} {self.b_right_xy_inner[1]} Z'
 
         # Layout Information (filled in by __computeLayout__)
+        self.polys     = [] # debug
         self.scu_to_xy = {} # scu_to_xy[q_id][scy] = (x,y)
+
+
+    #
+    # scusMissingForQuestionIDAndSource()
+    #
+    def scusMissingForQuestionIDAndSource(self, question_id, source):
+        _all_scus_for_this_source_   = set(self.df.query(f'`{self.summary_source_field}` == @source and `{self.q_id_field}` == @question_id')[self.scu_field])
+        _all_scus_for_this_question_ = set(self.df.query(f'                                             `{self.q_id_field}` == @question_id')[self.scu_field])
+        print(f'SCUs Missing From "{source}" For Question "{question_id}" ({len(_all_scus_for_this_source_)} SCUs Captured For This Source, {len(_all_scus_for_this_question_)} SCUs Captured For This Question)\n')
+        _num_of_models_ = self.df[self.summary_source_field].nunique()
+        for level in range(_num_of_models_, 0, -1):
+            if   level == _num_of_models_: level_label = 'top'
+            elif level == 1:               level_label = 'bottom'
+            else:                          level_label = ''
+            _scus_at_this_level_ = set(self.df_tab.query(f'occurences == @level and `{self.q_id_field}` == @question_id')[self.scu_field])
+            print(f'** Level {level} {level_label:6} ** ({len(_scus_at_this_level_)} SCUs At This Level (in total))')
+            _missing_scus_       = list(_scus_at_this_level_ - _all_scus_for_this_source_)
+            _missing_scus_.sort()
+            for _scu_ in _missing_scus_: print(f'   "{_scu_}"')
+            print()
 
     #
     # __calculateXBoundsForTriangleLevel__() - calculate the left and right boundaries for a specific y value
@@ -144,12 +165,13 @@ class SCUPyramidMethodDiagram(object):
                                        (top_x1-self.tri_inset, y_base     +self.tri_inset/2.0),
                                        (top_x0+self.tri_inset, y_base     +self.tri_inset/2.0)])
             if level == levels-1:
-                _poly_          = Polygon([(bot_x0+self.tri_inset, y_base_last-self.tri_inset/2.0),
-                                           (bot_x1-self.tri_inset, y_base_last-self.tri_inset/2.0),
-                                           ((top_x0+top_x1)/2.0,   y_base     +self.tri_inset),    
-                                           ((top_x0+top_x1)/2.0,   y_base     +self.tri_inset)])
+                _poly_          = Polygon([(bot_x0, y_base_last-self.tri_inset/2.0),
+                                           (bot_x1, y_base_last-self.tri_inset/2.0),
+                                           self.top_xy_inner])
+                
+            self.polys.append(_poly_) # debug
 
-            if len(scus_at_level[level]) > 3:
+            if len(scus_at_level[level]) > 5:
                 attempts, inter_min = 1, 6.0
                 xys = self.__randomLayout__(_poly_, len(scus_at_level[level]), inter_min)
                 while attempts < 100 and len(xys) < len(scus_at_level[level]):
@@ -166,19 +188,26 @@ class SCUPyramidMethodDiagram(object):
                     my_n      = int(my_n * 2)
                 '''
             else:
+                _y_mid_    = (y_base_last+y_base)/2.0
+                _x0_, _x1_ = self.__calculateXBoundsForTriangleLevel__(_y_mid_)
+                _w_adj_    = (_x1_ - _x0_)/3.0
+                _w_adj2_   = (_x1_ - _x0_)/5.0
+                _h_adj_    = (y_base_last-y_base)/5.0
+                _h_adj2_   = (y_base_last-y_base)/9.0
                 if   len(scus_at_level[level]) == 1 or len(scus_at_level[level]) == 0:
-                    xys = [(self.w/2.0, (y_base_last+y_base)/2.0)]
+                    xys = [(self.w/2.0, _y_mid_)]
                 elif len(scus_at_level[level]) == 2:
-                    _x0_, _x1_ = self.__calculateXBoundsForTriangleLevel__((y_base_last+y_base)/2.0)
-                    d          = (_x1_ - _x0_)/3.0
-                    xys = [(_x0_+d, (y_base_last+y_base)/2.0), 
-                           (_x1_-d, (y_base_last+y_base)/2.0)]
+                    xys = [(_x0_+_w_adj_, _y_mid_), (_x1_-_w_adj_, _y_mid_)]
                 elif len(scus_at_level[level]) == 3:
-                    _x0_, _x1_ = self.__calculateXBoundsForTriangleLevel__(2*(y_base_last+y_base)/3.0)
-                    d          = (_x1_ - _x0_)/3.0
-                    xys = [(self.w/2.0, 2*(y_base_last+y_base)/4.0), 
-                           (_x0_+d, 2*(y_base_last+y_base)/3.0), 
-                           (_x1_-d, 2*(y_base_last+y_base)/3.0)]
+                    xys = [(self.w/2.0, _y_mid_-_h_adj_), (_x0_+_w_adj_, _y_mid_+_h_adj_), (_x1_-_w_adj_, _y_mid_+_h_adj_)]
+                elif len(scus_at_level[level]) == 4:
+                    xys = [(_x0_+_w_adj_,  _y_mid_-_h_adj2_), (_x1_-_w_adj_,  _y_mid_-_h_adj2_), 
+                           (_x0_+_w_adj2_, _y_mid_+_h_adj2_), (_x1_-_w_adj2_, _y_mid_+_h_adj2_)]
+                elif len(scus_at_level[level]) == 5:
+                    xys = [(_x0_+_w_adj_,  _y_mid_-_h_adj2_), (_x1_-_w_adj_,  _y_mid_-_h_adj2_), 
+                           (_x0_+_w_adj2_, _y_mid_+_h_adj2_), (_x1_-_w_adj2_, _y_mid_+_h_adj2_),
+                           (self.w/2.0, _y_mid_)]
+
             if len(scus_at_level[level]) > len(xys): 
                 raise Exception(f'length of scus ({len(scus_at_level[level])}) is greater than length of xys ({len(xys)})')
             for i in range(len(scus_at_level[level])):
