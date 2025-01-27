@@ -521,7 +521,7 @@ class RTBundledEgoChordDiagram(object):
                 _path_ = path_lu[_fm_]
                 for i in range(len(_path_)-1):
                     _v0_, _v1_ = _path_[i], _path_[i+1]
-                    _tuple_ = (_v0_, _v1_) if _v0_ < _v1_ else (_v1_, _v0_)
+                    _tuple_ = (_v0_, _v1_) # if _v0_ < _v1_ else (_v1_, _v0_) # keep directionality (why the rest is commented out)
                     if _tuple_ not in self.segment_contains_tree:          self.segment_contains_tree[_tuple_]       = {}
                     if _to_    not in self.segment_contains_tree[_tuple_]: self.segment_contains_tree[_tuple_][_fm_] = 0
                     self.segment_contains_tree[_tuple_][_fm_] += _ct_
