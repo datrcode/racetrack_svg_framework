@@ -1695,14 +1695,19 @@ class RTXYMixin(object):
         #
         # Format min/max labels
         #
-        def format(self, x):
-            as_str = str(x)
-            if   self.rt_self.strIsInt(as_str):
-                return as_str
-            elif self.rt_self.strIsFloat(as_str):
-                return f'{float(as_str):{self.rt_self.fformat}}'
-            else:
-                return as_str
+        def format(self, x, x_other):
+            as_str, as_str_other = str(x), str(x_other)
+
+            if   self.rt_self.strIsInt(as_str)   and self.rt_self.strIsInt(as_str_other): return as_str
+            elif (self.rt_self.strIsFloat(as_str)       or self.rt_self.strIsInt(as_str))        and \
+                 (self.rt_self.strIsFloat(as_str_other) or self.rt_self.strIsInt(as_str_other)):
+                for i in range(1,10):
+                    _formatter_ = f'0.{i}f'                
+                    f           = f'{float(as_str):{_formatter_}}'
+                    f_other     = f'{float(as_str_other):{_formatter_}}'
+                    if f[:-1] != f_other[:-1]: return f
+                return f
+            else: return as_str
 
         #
         # __rendersvg_drawlabels__() - draw the axis labels
@@ -1719,7 +1724,7 @@ class RTXYMixin(object):
             if self.render_y_distribution is not None and (self.dot_size is None or self.dot_size == 'hidden'):
                 pass
             else:
-                _x0_lab,     _x1_lab     = self.format(self.x_label_min),                self.format(self.x_label_max)
+                _x0_lab,     _x1_lab     = self.format(self.x_label_min, self.x_label_max), self.format(self.x_label_max, self.x_label_min)
                 _x0_lab_len, _x1_lab_len = self.rt_self.textLength(_x0_lab, self.txt_h), self.rt_self.textLength(_x1_lab, self.txt_h)
                 x_field_str = '|'.join(self.x_field)
                 x_field_str_len = self.rt_self.textLength(x_field_str, self.txt_h)
@@ -1744,7 +1749,7 @@ class RTXYMixin(object):
             if self.render_x_distribution is not None and (self.dot_size is None or self.dot_size == 'hidden'):
                 pass
             else:
-                _y0_lab,     _y1_lab     = self.format(self.y_label_min),                self.format(self.y_label_max)
+                _y0_lab,     _y1_lab     = self.format(self.y_label_min, self.y_label_max), self.format(self.y_label_max, self.y_label_min)
                 _y0_lab_len, _y1_lab_len = self.rt_self.textLength(_y0_lab, self.txt_h), self.rt_self.textLength(_y1_lab, self.txt_h)
                 y_field_str = '|'.join(self.y_field)
                 y_field_str_len = self.rt_self.textLength(y_field_str, self.txt_h)
@@ -1763,7 +1768,7 @@ class RTXYMixin(object):
             # Y2 Axis
             #
             if self.y2_label_min is not None:
-                _y0_lab,     _y1_lab     = self.format(self.y2_label_min),               self.format(self.y2_label_max)
+                _y0_lab,     _y1_lab     = self.format(self.y2_label_min, self.y2_label_max), self.format(self.y2_label_max, self.y2_label_min)
                 _y0_lab_len, _y1_lab_len = self.rt_self.textLength(_y0_lab, self.txt_h), self.rt_self.textLength(_y1_lab, self.txt_h)
                 y_field_str = '|'.join(self.y2_field)
                 y_field_str_len = self.rt_self.textLength(y_field_str, self.txt_h)
