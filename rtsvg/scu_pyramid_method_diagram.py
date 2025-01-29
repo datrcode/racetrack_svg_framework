@@ -27,6 +27,10 @@ class SCUPyramidMethodDiagram(object):
                  txt_h=16, level_h_min = 16, r_scu = 4.0, 
                  draw_q_id_label=True, q_id_multiple=3.0,
                  tri_inset=12, x_ins=16, y_ins=16, w=256, h=256):
+        # Only accepts pandas
+        if rt_self.isPandas(df) == False: raise Exception('df must be a pandas DataFrame')
+        
+        # Tabularize
         _columns_to_drop_ = set(df.columns) - set([q_id_field, scu_field, summary_source_field])
         self.df_tab = df.groupby([q_id_field, scu_field])                          \
                         .nunique()                                                 \
