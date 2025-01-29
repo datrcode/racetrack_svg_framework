@@ -285,3 +285,34 @@ class SCUPyramidMethodDiagram(object):
                                           color=self.rt_self.co_mgr.getTVColor('label','defaultfg'), anchor='middle'))
         _svg_.append('</svg>')
         return '\n'.join(_svg_)
+
+    #
+    # svgSnowman()
+    #
+    def svgSnowman(self, q_id, adj_y_ins=40):
+        # SVG Setup
+        w_usable, h_usable = self.w - 2*self.x_ins, self.h - 2*adj_y_ins
+        _svg_ = [f'<svg x="0" y="0" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">']
+        _svg_.append(f'<rect x="0" y="0" width="{self.w}" height="{self.h}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
+        if self.draw_q_id_label: _svg_.append(self.rt_self.svgText(f"{q_id}", 4, self.y_ins, txt_h=self.txt_h*self.q_id_multiple, color="#c0c0c0", anchor='left', rotation=90))
+        # Filter down to just this question
+        df_q     = self.df.query(f'`{self.q_id_field}` == @q_id')
+        df_q_tab = self.df_tab.query(f'`{self.q_id_field}` == @q_id')
+        # Get the number of levels & calculate the scu's per level
+        levels          = df_q[self.summary_source_field].nunique()
+        level_scu_count = {}
+        max_scus        = 0
+        for _level_ in range(0, levels):
+            l_plus_1    = _level_ + 1
+            num_of_scus = df_q_tab.query(f'occurences == @l_plus_1')[self.scu_field].nunique()
+            level_scu_count[l_plus_1] = num_of_scus
+            max_scus                  = max(num_of_scus, max_scus)
+        x_spacing = w_usable/max_scus
+        # Draw the levels
+        for _level_ in range(0, levels):
+            l_plus_1 = _level_ + 1
+            y        = adj_y_ins + h_usable - _level_ * h_usable/(levels-1)
+            _svg_.append(f'<line x1="{self.x_ins}" y1="{y}" x2="{self.w - self.x_ins}" y2="{y}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="0.5" />')
+            _svg_.append(rt.svgText(f"{l_plus_1}", self.w/2.0, y-2, txt_h=self.txt_h, color="#c0c0c0", anchor='middle'))
+        _svg_.append('</svg>')
+        return '\n'.join(_svg_)
