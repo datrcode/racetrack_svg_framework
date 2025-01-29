@@ -262,7 +262,7 @@ class SCUPyramidMethodDiagram(object):
             _df_ = self.df.set_index(_on_).join(self.df_tab.set_index(_on_), how='left', lsuffix='_left', rsuffix='_right').reset_index()
             for level in range(0, levels):
                 level_plus_1 = level + 1
-                _count_ = _df_.query(f'`{self.summary_source_field}` == @summary_source and occurences == @level_plus_1')[self.scu_field].nunique()
+                _count_ = _df_.query(f'`{self.q_id_field}` == @q_id and `{self.summary_source_field}` == @summary_source and occurences == @level_plus_1')[self.scu_field].nunique()
                 _xy0_, _xy1_ = self.mid_bars[q_id][level]
                 _rotation_   = atan2(self.top_xy[1] - _xy1_[1], self.top_xy[0] - _xy1_[0]) / (pi/180.0)
                 _uv_         = self.rt_self.unitVector((self.top_xy, _xy1_))
