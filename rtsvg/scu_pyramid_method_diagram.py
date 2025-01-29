@@ -289,13 +289,15 @@ class SCUPyramidMethodDiagram(object):
     #
     # svgSnowman()
     #
-    def svgSnowman(self, q_id, adj_y_ins=40):
+    def svgSnowman(self, q_id, 
+                   q_id_multiple=1.5, r_scu=12,
+                   txt_h=12, w=384, h=384, x_ins=16, y_ins=40):
         # SVG Setup
-        w_usable, h_usable = self.w - 2*self.x_ins, self.h - 2*adj_y_ins
-        _svg_ = [f'<svg x="0" y="0" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">']
-        _svg_.append(f'<rect x="0" y="0" width="{self.w}" height="{self.h}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
-        _svg_.append(f'<line x1="{self.w/2.0}" y1="0" x2="{self.w/2.0}" y2="{self.h}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="0.25" />')
-        if self.draw_q_id_label: _svg_.append(self.rt_self.svgText(f"{q_id}", 4, self.y_ins, txt_h=self.txt_h*self.q_id_multiple, color="#c0c0c0", anchor='left', rotation=90))
+        w_usable, h_usable = w - 2*x_ins, h - 2*y_ins
+        _svg_ = [f'<svg x="0" y="0" width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg">']
+        _svg_.append(f'<rect x="0" y="0" width="{w}" height="{h}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
+        _svg_.append(f'<line x1="{w/2.0}" y1="0" x2="{w/2.0}" y2="{h}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="0.25" />')
+        if self.draw_q_id_label: _svg_.append(self.rt_self.svgText(f"{q_id}", 4, y_ins, txt_h=txt_h*q_id_multiple, color="#c0c0c0", anchor='left', rotation=90))
         # Filter down to just this question
         df_q     = self.df.query(f'`{self.q_id_field}` == @q_id')
         df_q_tab = self.df_tab.query(f'`{self.q_id_field}` == @q_id')
@@ -309,24 +311,49 @@ class SCUPyramidMethodDiagram(object):
             level_scu_count[l_plus_1] = num_of_scus
             max_scus                  = max(num_of_scus, max_scus)
         x_spacing = w_usable/max_scus
-        # Draw the levels
+
+        # Calculate the level geometries
+        level_to_scu_placement = {}
+        for _level_ in range(0, levels):
+            l_plus_1 = _level_ + 1
+            level_to_scu_placement[l_plus_1] = []
+            y        = y_ins + h_usable - _level_ * h_usable/(levels-1)
+            _count_  = level_scu_count[l_plus_1]            
+            if _count_ > 0:
+                if _count_%2 == 0: x_base = w/2.0 + x_spacing/2.0 - _count_//2 * x_spacing
+                else:              x_base = w/2.0                 - _count_//2 * x_spacing
+                for i in range(_count_):
+                    x = x_base + i * x_spacing
+                    if x_spacing < 2*(r_scu+2): y_toggle = -1 if (i%2) == 0 else 1
+                    else:                       y_toggle = 0
+                    level_to_scu_placement[l_plus_1].append((x, y+y_toggle*r_scu*1.2))
+
+        # Render Outlines For The Levels
+        for _level_ in range(0, levels):
+            l_plus_1 = _level_ + 1
+            _count_  = level_scu_count[l_plus_1]
+            if _count_ > 0:
+                _xy_                = level_to_scu_placement[l_plus_1][0]
+                xmin,ymin,xmax,ymax = _xy_[0], _xy_[1], _xy_[0], _xy_[1]
+                for _xy_ in level_to_scu_placement[l_plus_1]:
+                    xmin,ymin,xmax,ymax = min(xmin,_xy_[0]), min(ymin,_xy_[1]), max(xmax,_xy_[0]), max(ymax,_xy_[1])
+                    rb     = 5
+                    rx, ry = xmin-r_scu-rb, ymin-r_scu-rb
+                    rw, rh = (xmax - xmin) + 2*(r_scu+rb), (ymax-ymin) + 2*(r_scu+rb)
+                _color_ = self.rt_self.co_mgr.getColor(l_plus_1)
+                _svg_.append(f'<rect x="{rx}" y="{ry}" width="{rw}" height="{rh}" fill="{_color_}" stroke="{_color_}" fill-opacity="0.1" rx="{r_scu}" />')
+
+        # Render the Levels
         _color_ = self.rt_self.co_mgr.getTVColor("data","default")
         for _level_ in range(0, levels):
             l_plus_1 = _level_ + 1
-            y        = adj_y_ins + h_usable - _level_ * h_usable/(levels-1)
+            y        = y_ins + h_usable - _level_ * h_usable/(levels-1)
             _count_  = level_scu_count[l_plus_1]
             _line_color_ = self.rt_self.co_mgr.getTVColor("data","default") if _count_ > 0 else self.rt_self.co_mgr.getTVColor('context','highlight')
-            _svg_.append(f'<line x1="{self.x_ins}" y1="{y}" x2="{self.w - self.x_ins}" y2="{y}" stroke="{_line_color_}" stroke-width="0.5" />')
-            _svg_.append(rt.svgText(f"{l_plus_1}", self.w/2.0, y-2, txt_h=self.txt_h, color="#c0c0c0", anchor='middle'))
-            
-            if _count_ > 0:
-                if _count_%2 == 0: x_base = self.w/2.0 + x_spacing/2.0 - _count_//2 * x_spacing
-                else:              x_base = self.w/2.0                 - _count_//2 * x_spacing
-                for i in range(_count_):
-                    x = x_base + i * x_spacing
-                    if _count_ > 12: y_toggle = -1 if (i%2) == 0 else 1
-                    else:            y_toggle = 0
-                    _svg_.append(f'<circle cx="{x}" cy="{y+y_toggle*self.r_scu*1.2}" r="{self.r_scu}" fill="{_color_}" stroke="{_color_}" />')
+            _svg_.append(f'<line x1="{x_ins}" y1="{y}" x2="{w - x_ins}" y2="{y}" stroke="{_line_color_}" stroke-width="0.5" />')
+            _svg_.append(rt.svgText(f"{l_plus_1}", w/2.0, y-2, txt_h=txt_h, color="#c0c0c0", anchor='middle'))
+            for _xy_ in level_to_scu_placement[l_plus_1]:
+                _svg_.append(f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{r_scu}" fill="{_color_}" stroke="{_color_}" />')
 
         _svg_.append('</svg>')
         return '\n'.join(_svg_)
