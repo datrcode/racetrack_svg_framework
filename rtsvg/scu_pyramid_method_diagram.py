@@ -64,9 +64,10 @@ class SCUPyramidMethodDiagram(object):
         self.tri_path_inner   = f'M {self.top_xy_inner[0]} {self.top_xy_inner[1]} L {self.b_left_xy_inner[0]} {self.b_left_xy_inner[1]} L {self.b_right_xy_inner[0]} {self.b_right_xy_inner[1]} Z'
 
         # Layout Information (filled in by __computeLayout__)
-        self.polys     = [] # debug
-        self.scu_to_xy = {} # scu_to_xy[q_id][scy] = (x,y)
-
+        self.polys      = [] # debug
+        self.scu_to_xy  = {} # scu_to_xy[q_id][scy] = (x,y)
+        self.level_bars = {}
+        self.mid_bars   = {}
 
     #
     # scusMissingForQuestionIDAndSource()
@@ -132,9 +133,7 @@ class SCUPyramidMethodDiagram(object):
     #
     def __computeLayout__(self, q_id):
         self.scu_to_xy [q_id] = {}
-        self.level_bars       = {}
         self.level_bars[q_id] = {}
-        self.mid_bars         = {}
         self.mid_bars  [q_id] = {}
         levels               = self.pyramid_levels[q_id] # level 0 is the base level, level 1 is the next up... level n-1 is the top level
         scu_count_at_level   = {}
