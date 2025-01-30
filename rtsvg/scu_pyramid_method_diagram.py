@@ -296,7 +296,7 @@ class SCUPyramidMethodDiagram(object):
         w_usable, h_usable = w - 2*x_ins, h - 2*y_ins
         _svg_ = [f'<svg x="0" y="0" width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg">']
         _svg_.append(f'<rect x="0" y="0" width="{w}" height="{h}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
-        _svg_.append(f'<line x1="{w/2.0}" y1="0" x2="{w/2.0}" y2="{h}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="0.25" />')
+        #_svg_.append(f'<line x1="{w/2.0}" y1="0" x2="{w/2.0}" y2="{h}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="0.25" />')
         if self.draw_q_id_label: _svg_.append(self.rt_self.svgText(f"{q_id}", 4, y_ins, txt_h=txt_h*q_id_multiple, color="#c0c0c0", anchor='left', rotation=90))
         # Filter down to just this question
         df_q     = self.df.query(f'`{self.q_id_field}` == @q_id')
@@ -304,15 +304,25 @@ class SCUPyramidMethodDiagram(object):
         # Get the number of levels & calculate the scu's per level
         levels          = df_q[self.summary_source_field].nunique()
         level_scu_count = {}
+        level_scu_list  = {}
         max_scus        = 0
         for _level_ in range(0, levels):
             l_plus_1    = _level_ + 1
             num_of_scus = df_q_tab.query(f'occurences == @l_plus_1')[self.scu_field].nunique()
             level_scu_count[l_plus_1] = num_of_scus
+            _scu_set_                 = set(df_q_tab.query(f'occurences == @l_plus_1')[self.scu_field])
+            if _level_ == 0:
+                level_scu_list [l_plus_1] = list(df_q.query(f'`{self.scu_field}` in @_scu_set_').sort_values(by=self.summary_source_field)[self.scu_field])
+            else:
+                level_scu_list [l_plus_1] = list(_scu_set_)
             max_scus                  = max(num_of_scus, max_scus)
         x_spacing = w_usable/max_scus
 
+        # Create the glyph representation
+        glyph_geometry = self.rt_self.setGlyphGeometry(set(df_q[self.summary_source_field]), r_scu, r_scu//2)
+
         # Calculate the level geometries
+        xy_to_scu              = {}
         level_to_scu_placement = {}
         for _level_ in range(0, levels):
             l_plus_1 = _level_ + 1
@@ -326,7 +336,9 @@ class SCUPyramidMethodDiagram(object):
                     x = x_base + i * x_spacing
                     if x_spacing < 2*(r_scu+2): y_toggle = -1 if (i%2) == 0 else 1
                     else:                       y_toggle = 0
-                    level_to_scu_placement[l_plus_1].append((x, y+y_toggle*r_scu*1.2))
+                    _xy_ = (x, y+y_toggle*r_scu*1.2)
+                    level_to_scu_placement[l_plus_1].append(_xy_)
+                    xy_to_scu[_xy_] = level_scu_list[l_plus_1][i]
 
         # Render Outlines For The Levels
         for _level_ in range(0, levels):
@@ -341,7 +353,7 @@ class SCUPyramidMethodDiagram(object):
                     rx, ry = xmin-r_scu-rb, ymin-r_scu-rb
                     rw, rh = (xmax - xmin) + 2*(r_scu+rb), (ymax-ymin) + 2*(r_scu+rb)
                 _color_ = self.rt_self.co_mgr.getColor(l_plus_1)
-                _svg_.append(f'<rect x="{rx}" y="{ry}" width="{rw}" height="{rh}" fill="{_color_}" stroke="{_color_}" fill-opacity="0.1" rx="{r_scu}" />')
+                _svg_.append(f'<rect x="{rx}" y="{ry}" width="{rw}" height="{rh}" fill="none" stroke="{_color_}" fill-opacity="0.1" rx="{r_scu}" />')
 
         # Render the Levels
         _color_ = self.rt_self.co_mgr.getTVColor("data","default")
@@ -349,11 +361,15 @@ class SCUPyramidMethodDiagram(object):
             l_plus_1 = _level_ + 1
             y        = y_ins + h_usable - _level_ * h_usable/(levels-1)
             _count_  = level_scu_count[l_plus_1]
-            _line_color_ = self.rt_self.co_mgr.getTVColor("data","default") if _count_ > 0 else self.rt_self.co_mgr.getTVColor('context','highlight')
-            _svg_.append(f'<line x1="{x_ins}" y1="{y}" x2="{w - x_ins}" y2="{y}" stroke="{_line_color_}" stroke-width="0.5" />')
-            _svg_.append(rt.svgText(f"{l_plus_1}", w/2.0, y-2, txt_h=txt_h, color="#c0c0c0", anchor='middle'))
+            if _count_ == 0:
+                _line_color_ = self.rt_self.co_mgr.getTVColor("data","default") if _count_ > 0 else self.rt_self.co_mgr.getTVColor('context','highlight')
+                _svg_.append(f'<line x1="{x_ins}" y1="{y}" x2="{w - x_ins}" y2="{y}" stroke="{_line_color_}" stroke-width="0.5" />')
+                _svg_.append(rt.svgText(f"Level Empty", w/2.0, y-2, txt_h=txt_h, color=_line_color_, anchor='middle'))   
+            #_svg_.append(rt.svgText(f"{l_plus_1}", w/2.0, y-2, txt_h=txt_h, color="#c0c0c0", anchor='middle'))
             for _xy_ in level_to_scu_placement[l_plus_1]:
-                _svg_.append(f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{r_scu}" fill="{_color_}" stroke="{_color_}" />')
+                _scu_     = xy_to_scu[_xy_]
+                _sources_ = set(df_q.query(f'{self.scu_field} == "{_scu_}"')[self.summary_source_field])
+                _svg_.append(self.rt_self.renderSetGlyph(_sources_, _xy_, glyph_geometry))
 
         _svg_.append('</svg>')
         return '\n'.join(_svg_)

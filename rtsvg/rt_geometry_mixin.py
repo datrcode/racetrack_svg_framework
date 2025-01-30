@@ -358,6 +358,46 @@ class RTGeometryMixin(object):
         return _path_
 
     #
+    # __setGlyphGeometry__() - helper method
+    #
+    def __setGlyphGeometry__(self, _list_, r, arc_h):
+        if   len(_list_) ==  1: angle_inc = 359
+        elif len(_list_) ==  2: angle_inc = 180
+        elif len(_list_) ==  3: angle_inc = 120
+        elif len(_list_) ==  4: angle_inc =  90
+        elif len(_list_) ==  5: angle_inc =  72
+        elif len(_list_) ==  6: angle_inc =  60
+        elif len(_list_) ==  7: angle_inc =  51
+        elif len(_list_) ==  8: angle_inc =  45
+        elif len(_list_) ==  9: angle_inc =  40
+        item_to_geom = {}
+        _a_, i = 0, 0
+        while i < len(_list_):
+            item_to_geom[_list_[i]] = (_a_, _a_+angle_inc, r, r+arc_h)
+            _a_, i =  _a_ + angle_inc, i + 1
+        return item_to_geom
+    
+    #
+    # setGlyphGeometry() - create the geometry for a set glyph
+    #
+    def setGlyphGeometry(self, _set_, r=10, arc_h=4):
+        _list_ = list(_set_)
+        if   len(_list_) >= 1 and len(_list_) <= 9: return self.__setGlyphGeometry__(_list_, r-arc_h, arc_h)
+        else: raise Exception(f'Only Up To 9 Items Allowed. Got {len(_list_)}')
+    #
+    # renderSetGlyph() - renders a set of glyph based on the set passed in
+    #
+    def renderSetGlyph(self, _set_, xy, item_to_geom):
+        _svg_ = []
+        for _item_ in item_to_geom.keys():
+            _arc_geom_ = item_to_geom[_item_]
+            _d_        = self.genericArc(xy[0], xy[1], _arc_geom_[0], _arc_geom_[1], _arc_geom_[2], _arc_geom_[3])
+            if _item_ in _set_: _color_fill_                 = _color_stroke_ = self.co_mgr.getColor(_item_)
+            else:               _color_fill_, _color_stroke_ = 'none',          self.co_mgr.getColor(_item_)
+            _svg_.append(f'<path d="{_d_}" fill="{_color_fill_}" stroke="#000000" stroke-width="0.1"/>')
+        return ''.join(_svg_)
+
+    #
     # concentricGlyphCircumference() - forms the circular circumference around a glyph
     # - assumes that df has already been grouped -- i.e., no duplicate nbors
     #
