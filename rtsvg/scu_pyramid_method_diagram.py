@@ -1,5 +1,9 @@
 import pandas as pd
 import numpy as np
+from scipy.cluster.hierarchy import linkage
+import numpy as np
+import random
+import string
 import rtsvg
 rt = rtsvg.RACETrack()
 from shapely.geometry import Polygon, Point
@@ -373,3 +377,148 @@ class SCUPyramidMethodDiagram(object):
 
         _svg_.append('</svg>')
         return '\n'.join(_svg_)
+
+    #
+    # orderSCUsBySources()
+    #
+    def orderSCUsBySources(self, scus, df_q):
+        # Handle some base cases
+        if len(scus) == 0: return []
+        if len(scus) == 1: return list(scus)
+        if len(scus) == 2: return list(scus)
+
+        # Make sure it's a list
+        if type(scus) != list: scus = list(scus)
+        # Make a corresponding list of the sources -- this lines up with the scus list
+        sources_sets = []
+        for _scu_ in scus:
+            _sources_ = set(df_q.query(f'{self.scu_field} == "{_scu_}"')[self.summary_source_field])
+            sources_sets.append(_sources_)
+        # Create the distance matrix
+        _dmat_ = []
+        for i in range(len(sources_sets)):
+            _row_ = []
+            for j in range(len(sources_sets)):
+                _similarity_ = len(sources_sets[i] & sources_sets[j]) / len(sources_sets[i] | sources_sets[j])
+                _row_.append(_similarity_)
+            _dmat_.append(_row_)
+        # Hierarchical clustering
+        linkage_matrix = linkage(_dmat_, method='ward')
+        # Place into a tree
+        parent_to_children = {}
+        next_node_id       = len(sources_sets)
+        for row in linkage_matrix:
+            to_merge_0, to_merge_1 = int(row[0]), int(row[1])
+            parent_to_children[next_node_id] = [to_merge_0, to_merge_1]
+            next_node_id += 1
+        root_node = next_node_id - 1
+        # Walk the leaves of the dendrogram
+        def leafWalk(node_id):
+            if node_id < len(sources_sets):
+                return [node_id]
+            left_child, right_child = parent_to_children[node_id]
+            return leafWalk(left_child) + leafWalk(right_child)
+        order = leafWalk(root_node)
+        scu_order = []
+        for i in order: scu_order.append(scus[i])
+        return scu_order
+
+    #
+    # svgCairn()
+    #
+    def svgCairn(self,
+                 q_id, 
+                 q_id_multiple  = 2, 
+                 cell_w         = 48,
+                 cell_x_spacing = 4,
+                 cell_h         = 40,
+                 cell_y_spacing = 8,
+                 rx             = 8,
+                 txt_h          = 12, 
+                 w              = 384, 
+                 h              = 384, 
+                 x_ins          = 32, 
+                 y_ins          = 32):
+        # SVG Setup
+        w_usable, h_usable = w - 2*x_ins, h - 2*y_ins
+        widget_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
+        _svg_ = [f'<svg x="0" y="0" width="{w}" height="{h}" id="{widget_id}" xmlns="http://www.w3.org/2000/svg">']
+        _svg_.append(f'<rect x="0" y="0" width="{w}" height="{h}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
+        #_svg_.append(f'<rect x="0" y="0" width="{w}" height="{h}" fill="#d0d0d0" />')
+        # _svg_.append(f'<line x1="{w/2.0}" y1="0" x2="{w/2.0}" y2="{h}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="0.25" />')
+        if self.draw_q_id_label: _svg_.append(self.rt_self.svgText(f"{q_id}", 4, y_ins, txt_h=txt_h*q_id_multiple, color="#c0c0c0", anchor='left', rotation=90))
+        # Filter down to just this question
+        df_q     = self.df.query(f'`{self.q_id_field}` == @q_id')
+        df_q_tab = self.df_tab.query(f'`{self.q_id_field}` == @q_id')
+
+        # Get the number of levels & calculate the scu's per level
+        levels          = df_q[self.summary_source_field].nunique()
+        level_scu_count = {}
+        level_scu_list  = {}
+        max_scus        = 0
+        for _level_ in range(0, levels):
+            l_plus_1    = _level_ + 1
+            num_of_scus = df_q_tab.query(f'occurences == @l_plus_1')[self.scu_field].nunique()
+            level_scu_count[l_plus_1] = num_of_scus
+            _scu_set_                 = set(df_q_tab.query(f'occurences == @l_plus_1')[self.scu_field])
+            level_scu_list [l_plus_1] = self.orderSCUsBySources(list(_scu_set_), df_q)                
+            max_scus                  = max(num_of_scus, max_scus)
+        
+        # Adjust the cell sizes (if necessary)
+        needed_h = 2*y_ins + cell_h*levels + cell_y_spacing*(levels-1)
+        if needed_h > h_usable: cell_h = (h_usable - cell_y_spacing*(levels-1)) / levels
+        needed_w = 2*x_ins + cell_w*max_scus + cell_x_spacing*(max_scus-1)
+        if needed_w > w_usable: cell_w = (w_usable - cell_x_spacing*(max_scus-1)) / max_scus
+
+        # Calculate the level geometries
+        xywh_to_scu            = {}
+        level_to_scu_placement = {}
+        level_to_outline       = {} # (x,y,w,h)
+        for _level_ in range(0, levels):
+            l_plus_1 = _level_ + 1
+            level_to_scu_placement[l_plus_1] = []
+            y        = y_ins + h_usable - _level_ * h_usable/(levels-1)
+            _count_  = level_scu_count[l_plus_1]
+            if _count_ > 0:
+                level_w = cell_w * _count_ + cell_x_spacing * (_count_-1)
+                level_to_outline[l_plus_1] = (w/2 - level_w/2, y - cell_h/2, level_w, cell_h)
+                for i in range(_count_):
+                    x = w/2 - level_w/2 + i * (cell_w + cell_x_spacing)
+                    _xywh_ = (x, y - cell_h/2, cell_w, cell_h)
+                    xywh_to_scu[_xywh_] = level_scu_list[l_plus_1][i]
+                    level_to_scu_placement[l_plus_1].append(_xywh_)
+            else:
+                level_to_outline[l_plus_1] = (w/2 - cell_w/2 - x_ins,  y - cell_h/2, cell_w+2*x_ins,  cell_h)
+
+        # Assign offsets for the sources
+        _sources_ = sorted(list(set(df_q[self.summary_source_field])))
+        source_y_offset, source_h = {}, cell_h/len(_sources_)
+        for i in range(len(_sources_)): source_y_offset[_sources_[i]] = i * source_h
+
+        # Render the outlines for the levels
+        for _level_ in range(0, levels):
+            l_plus_1 = _level_ + 1
+            _count_  = level_scu_count[l_plus_1]
+            if _count_ == 0: _color_, _dash_array_ = self.rt_self.co_mgr.getTVColor("context", "highlight"),  'stroke-dasharray="10 5 3 2"'
+            else:            _color_, _dash_array_ = self.rt_self.co_mgr.getTVColor("axis",    "major"),      ''
+            _bounds_ = level_to_outline[l_plus_1]
+            _svg_.append(f'<rect x="{_bounds_[0]-2}" y="{_bounds_[1]-2}" width="{_bounds_[2]+4}" height="{_bounds_[3]+4}" fill="none" stroke="{_color_}" stroke-width="2.0" rx="{rx}" {_dash_array_} />')
+
+        # Render the SCU's
+        clip_num, clip_paths = 0, []
+        for _level_ in range(0, levels):
+            l_plus_1 = _level_ + 1
+            for _xywh_ in level_to_scu_placement[l_plus_1]:
+                _scu_     = xywh_to_scu[_xywh_]
+                _sources_ = set(df_q.query(f'{self.scu_field} == "{_scu_}"')[self.summary_source_field])
+                _svg_.append(f'<rect x="{_xywh_[0]}" y="{_xywh_[1]}" width="{_xywh_[2]}" height="{_xywh_[3]}" fill="none" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="0.5" rx="{rx}" />')
+                clip_id = f'{widget_id}_{clip_num}'
+                clip_paths.append(f'<clipPath id="{clip_id}"><rect x="{_xywh_[0]}" y="{_xywh_[1]}" width="{_xywh_[2]}" height="{_xywh_[3]}" rx="{rx}"/></clipPath>')
+                for _source_ in _sources_:
+                    _color_ = self.rt_self.co_mgr.getColor(_source_)
+                    _svg_.append(f'<rect x="{_xywh_[0]}" y="{_xywh_[1]+source_y_offset[_source_]}" width="{_xywh_[2]}" height="{source_h}" fill="{_color_}" stroke="none" clip-path="url(#{clip_id})" />')
+                clip_num += 1
+        _svg_.append('<defs>'+''.join(clip_paths)+'</defs>')
+        _svg_.append('</svg>')
+        return '\n'.join(_svg_)
+
