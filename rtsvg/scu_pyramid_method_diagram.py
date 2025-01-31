@@ -428,19 +428,23 @@ class SCUPyramidMethodDiagram(object):
     #
     def svgCairn(self,
                  q_id, 
-                 q_id_multiple  = 2, 
-                 cell_w         = 48,
-                 cell_x_spacing = 4,
-                 cell_h         = 40,
-                 cell_y_spacing = 8,
-                 rx             = 8,
-                 txt_h          = 12, 
-                 w              = 384, 
-                 h              = 384, 
-                 x_ins          = 32, 
-                 y_ins          = 32):
+                 q_id_multiple              = 2, 
+                 cell_w                     = 48,
+                 cell_x_spacing             = 4,
+                 cell_h                     = 40,
+                 cell_y_spacing             = 8,
+                 histogram                  = True,
+                 histogram_w                = 48,
+                 attach_histogram_to_levels = False,
+                 rx                         = 8,
+                 txt_h                      = 12, 
+                 w                          = 384, 
+                 h                          = 384, 
+                 x_ins                      = 32, 
+                 y_ins                      = 32):
         # SVG Setup
         w_usable, h_usable = w - 2*x_ins, h - 2*y_ins
+        if histogram: w_usable -= histogram_w
         widget_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
         _svg_ = [f'<svg x="0" y="0" width="{w}" height="{h}" id="{widget_id}" xmlns="http://www.w3.org/2000/svg">']
         _svg_.append(f'<rect x="0" y="0" width="{w}" height="{h}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
@@ -481,14 +485,14 @@ class SCUPyramidMethodDiagram(object):
             _count_  = level_scu_count[l_plus_1]
             if _count_ > 0:
                 level_w = cell_w * _count_ + cell_x_spacing * (_count_-1)
-                level_to_outline[l_plus_1] = (w/2 - level_w/2, y - cell_h/2, level_w, cell_h)
+                level_to_outline[l_plus_1] = ((x_ins + w_usable)/2 - level_w/2, y - cell_h/2, level_w, cell_h)
                 for i in range(_count_):
-                    x = w/2 - level_w/2 + i * (cell_w + cell_x_spacing)
+                    x = (x_ins + w_usable)/2 - level_w/2 + i * (cell_w + cell_x_spacing)
                     _xywh_ = (x, y - cell_h/2, cell_w, cell_h)
                     xywh_to_scu[_xywh_] = level_scu_list[l_plus_1][i]
                     level_to_scu_placement[l_plus_1].append(_xywh_)
             else:
-                level_to_outline[l_plus_1] = (w/2 - cell_w/2 - x_ins,  y - cell_h/2, cell_w+2*x_ins,  cell_h)
+                level_to_outline[l_plus_1] = ((x_ins + w_usable)/2 - cell_w/2 - x_ins,  y - cell_h/2, cell_w+2*x_ins,  cell_h)
 
         # Assign offsets for the sources
         _sources_ = sorted(list(set(df_q[self.summary_source_field])))
@@ -499,25 +503,45 @@ class SCUPyramidMethodDiagram(object):
         for _level_ in range(0, levels):
             l_plus_1 = _level_ + 1
             _count_  = level_scu_count[l_plus_1]
-            if _count_ == 0: _color_, _dash_array_ = self.rt_self.co_mgr.getTVColor("context", "highlight"),  'stroke-dasharray="10 5 3 2"'
-            else:            _color_, _dash_array_ = self.rt_self.co_mgr.getTVColor("axis",    "major"),      ''
+            if _count_ == 0: _color_, _dash_array_, _stroke_width_ = self.rt_self.co_mgr.getTVColor("context", "highlight"),  'stroke-dasharray="10 5 3 2"', 1.0
+            else:            _color_, _dash_array_, _stroke_width_ = self.rt_self.co_mgr.getTVColor("axis",    "major"),      '',                            2.0
             _bounds_ = level_to_outline[l_plus_1]
-            _svg_.append(f'<rect x="{_bounds_[0]-2}" y="{_bounds_[1]-2}" width="{_bounds_[2]+4}" height="{_bounds_[3]+4}" fill="none" stroke="{_color_}" stroke-width="2.0" rx="{rx}" {_dash_array_} />')
+            _svg_.append(f'<rect x="{_bounds_[0]-2}" y="{_bounds_[1]-2}" width="{_bounds_[2]+4}" height="{_bounds_[3]+4}" fill="none" stroke="{_color_}" stroke-width="{_stroke_width_}" rx="{rx}" {_dash_array_} />')
 
         # Render the SCU's
         clip_num, clip_paths = 0, []
         for _level_ in range(0, levels):
             l_plus_1 = _level_ + 1
+            # Do the counts per source for the histogram
+            counts_per_source = {}
+            for _source_ in set(df_q[self.summary_source_field]): counts_per_source[_source_] = 0
+            # Render each SCU
             for _xywh_ in level_to_scu_placement[l_plus_1]:
                 _scu_     = xywh_to_scu[_xywh_]
                 _sources_ = set(df_q.query(f'{self.scu_field} == "{_scu_}"')[self.summary_source_field])
                 _svg_.append(f'<rect x="{_xywh_[0]}" y="{_xywh_[1]}" width="{_xywh_[2]}" height="{_xywh_[3]}" fill="none" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="0.5" rx="{rx}" />')
+                # Create a unique clip id for each SCU - defer the addition until the end
                 clip_id = f'{widget_id}_{clip_num}'
+                clip_num += 1
                 clip_paths.append(f'<clipPath id="{clip_id}"><rect x="{_xywh_[0]}" y="{_xywh_[1]}" width="{_xywh_[2]}" height="{_xywh_[3]}" rx="{rx}"/></clipPath>')
+                # Go through the sources & render them individually w/ the clip path
                 for _source_ in _sources_:
+                    counts_per_source[_source_] += 1
                     _color_ = self.rt_self.co_mgr.getColor(_source_)
                     _svg_.append(f'<rect x="{_xywh_[0]}" y="{_xywh_[1]+source_y_offset[_source_]}" width="{_xywh_[2]}" height="{source_h}" fill="{_color_}" stroke="none" clip-path="url(#{clip_id})" />')
-                clip_num += 1
+            # Render the histogram (if requested)
+            if histogram:
+                _bounds_    = level_to_outline[l_plus_1]
+                x, y        = _bounds_[0] + _bounds_[2] + 2*cell_x_spacing, _bounds_[1]
+                if attach_histogram_to_levels is False: x = w - x_ins - histogram_w
+                _max_count_ = max(counts_per_source.values())
+                for _source_ in counts_per_source:
+                    _count_ = counts_per_source[_source_]
+                    if _count_ == 0: continue
+                    _color_ = self.rt_self.co_mgr.getColor(_source_)
+                    _bar_w_ = histogram_w * (_count_ / _max_count_)
+                    _svg_.append(f'<rect x="{x}" y="{y+source_y_offset[_source_]}" width="{_bar_w_}" height="{source_h}" fill="{_color_}" stroke="none" rx="{source_h*0.2}"/>')
+
         _svg_.append('<defs>'+''.join(clip_paths)+'</defs>')
         _svg_.append('</svg>')
         return '\n'.join(_svg_)
