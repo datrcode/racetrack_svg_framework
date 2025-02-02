@@ -439,7 +439,8 @@ class RTHistogramMixin(object):
                 axis_co = self.rt_self.co_mgr.getTVColor('axis', 'default')
 
                 _available_space_  = max_bar_w - 5
-                _max_group_by_str_ = f'{max_group_by:,}'
+                _max_group_by_str_ = f'{max_group_by:,.2f}'
+                if _max_group_by_str_.endswith('.00'): _max_group_by_str_ = _max_group_by_str_[:-3]
                 if self.rt_self.textLength(_max_group_by_str_, self.bar_h-2) < _available_space_:
                     svg.append(self.rt_self.svgText(_max_group_by_str_, max_bar_w-5, self.h-3, self.bar_h-2, anchor='end'))
                     _available_space_ -= self.rt_self.textLength(_max_group_by_str_, self.bar_h-2)
