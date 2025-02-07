@@ -450,7 +450,7 @@ class SCUPyramidMethodDiagram(object):
         _svg_.append(f'<rect x="0" y="0" width="{w}" height="{h}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
         #_svg_.append(f'<rect x="0" y="0" width="{w}" height="{h}" fill="#d0d0d0" />')
         # _svg_.append(f'<line x1="{w/2.0}" y1="0" x2="{w/2.0}" y2="{h}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="0.25" />')
-        if self.draw_q_id_label: _svg_.append(self.rt_self.svgText(f"{q_id}", 4, y_ins, txt_h=txt_h*q_id_multiple, color="#c0c0c0", anchor='left', rotation=90))
+        if self.draw_q_id_label: _svg_.append(self.rt_self.svgText(f"{q_id}", w - x_ins/2.0 - 2.0, y_ins, txt_h=txt_h*q_id_multiple, color="#c0c0c0", anchor='left', rotation=90))
         # Filter down to just this question
         df_q     = self.df.query(f'`{self.q_id_field}` == @q_id')
         df_q_tab = self.df_tab.query(f'`{self.q_id_field}` == @q_id')
@@ -475,6 +475,7 @@ class SCUPyramidMethodDiagram(object):
         if needed_w > w_usable: cell_w = (w_usable - cell_x_spacing*(max_scus-1)) / max_scus
 
         # Calculate the level geometries
+        before_space           = histogram_w if histogram and attach_histogram_to_levels == False else 0
         xywh_to_scu            = {}
         level_to_scu_placement = {}
         level_to_outline       = {} # (x,y,w,h)
@@ -485,14 +486,14 @@ class SCUPyramidMethodDiagram(object):
             _count_  = level_scu_count[l_plus_1]
             if _count_ > 0:
                 level_w = cell_w * _count_ + cell_x_spacing * (_count_-1)
-                level_to_outline[l_plus_1] = (x_ins + (w_usable)/2 - level_w/2, y - cell_h/2, level_w, cell_h)
+                level_to_outline[l_plus_1] = (before_space + x_ins + (w_usable)/2 - level_w/2, y - cell_h/2, level_w, cell_h)
                 for i in range(_count_):
-                    x = x_ins + (w_usable)/2 - level_w/2 + i * (cell_w + cell_x_spacing)
+                    x = before_space + x_ins + (w_usable)/2 - level_w/2 + i * (cell_w + cell_x_spacing)
                     _xywh_ = (x, y - cell_h/2, cell_w, cell_h)
                     xywh_to_scu[_xywh_] = level_scu_list[l_plus_1][i]
                     level_to_scu_placement[l_plus_1].append(_xywh_)
             else:
-                level_to_outline[l_plus_1] = (x_ins + (w_usable)/2 - cell_w/2,  y - cell_h/2, cell_w,  cell_h)
+                level_to_outline[l_plus_1] = (before_space + x_ins + (w_usable)/2 - cell_w/2,  y - cell_h/2, cell_w,  cell_h)
 
         # Assign offsets for the sources
         _sources_ = sorted(list(set(df_q[self.summary_source_field])))
@@ -558,7 +559,7 @@ class SCUPyramidMethodDiagram(object):
                     if attach_histogram_to_levels:
                         _svg_.append(f'<rect x="{x}" y="{y+source_y_offset[_source_]}" width="{_bar_w_}" height="{source_h}" fill="{_color_}" stroke="none" rx="{source_h*0.2}"/>')
                     else:
-                        _svg_.append(f'<rect x="{x - _bar_w_}" y="{y+source_y_offset[_source_]}" width="{_bar_w_}" height="{source_h}" fill="{_color_}" stroke="none" rx="{source_h*0.2}"/>')
+                        _svg_.append(f'<rect x="{x_ins/2.0}" y="{y+source_y_offset[_source_]}" width="{_bar_w_}" height="{source_h}" fill="{_color_}" stroke="none" rx="{source_h*0.2}"/>')
 
         _svg_.append('<defs>'+''.join(clip_paths)+'</defs>')
         _svg_.append('</svg>')
