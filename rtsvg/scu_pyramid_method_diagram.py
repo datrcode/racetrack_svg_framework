@@ -372,7 +372,7 @@ class SCUPyramidMethodDiagram(object):
             #_svg_.append(rt.svgText(f"{l_plus_1}", w/2.0, y-2, txt_h=txt_h, color="#c0c0c0", anchor='middle'))
             for _xy_ in level_to_scu_placement[l_plus_1]:
                 _scu_     = xy_to_scu[_xy_]
-                _sources_ = set(df_q.query(f'{self.scu_field} == "{_scu_}"')[self.summary_source_field])
+                _sources_ = set(df_q.query(f'`{self.scu_field}` == @_scu_')[self.summary_source_field])
                 _svg_.append(self.rt_self.renderSetGlyph(_sources_, _xy_, glyph_geometry))
 
         _svg_.append('</svg>')
@@ -392,7 +392,7 @@ class SCUPyramidMethodDiagram(object):
         # Make a corresponding list of the sources -- this lines up with the scus list
         sources_sets = []
         for _scu_ in scus:
-            _sources_ = set(df_q.query(f'{self.scu_field} == "{_scu_}"')[self.summary_source_field])
+            _sources_ = set(df_q.query(f'`{self.scu_field}` == @_scu_')[self.summary_source_field])
             sources_sets.append(_sources_)
         # Create the distance matrix
         _dmat_ = []
@@ -519,7 +519,7 @@ class SCUPyramidMethodDiagram(object):
             # Render each SCU
             for _xywh_ in level_to_scu_placement[l_plus_1]:
                 _scu_     = xywh_to_scu[_xywh_]
-                _sources_ = set(df_q.query(f'{self.scu_field} == "{_scu_}"')[self.summary_source_field])
+                _sources_ = set(df_q.query(f'`{self.scu_field}` == @_scu_')[self.summary_source_field])
                 _svg_.append(f'<rect x="{_xywh_[0]}" y="{_xywh_[1]}" width="{_xywh_[2]}" height="{_xywh_[3]}" fill="none" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="0.5" rx="{rx}" />')
                 # Create a unique clip id for each SCU - defer the addition until the end
                 clip_id = f'{widget_id}_{clip_num}'
@@ -544,7 +544,7 @@ class SCUPyramidMethodDiagram(object):
                 # Same as previous loop... but to count...
                 for _xywh_ in level_to_scu_placement[l_plus_1]:
                     _scu_     = xywh_to_scu[_xywh_]
-                    _sources_ = set(df_q.query(f'{self.scu_field} == "{_scu_}"')[self.summary_source_field])
+                    _sources_ = set(df_q.query(f'`{self.scu_field}` == @_scu_')[self.summary_source_field])
                     for _source_ in _sources_:
                         counts_per_source[_source_] += 1
                 # Render the histogram  
