@@ -33,8 +33,18 @@ def colorizer(summary, excerpt):
         if _part_ not in summary: return 'red'
     return 'blue'
 
-def textAreaChanged(scu=None):
-    ...
+def makeSafe(scu):
+    _safe_ = []
+    for c in scu:
+        if   c >= 'a' and c <= 'z': _safe_.append(c)
+        elif c >= 'A' and c <= 'Z': _safe_.append(c)
+        elif c >= '0' and c <= '9': _safe_.append(c)
+        else: _safe_.append('_')
+    return ''.join(_safe_)
+
+def textAreaChanged(scusafe=None):
+    _exec_ = f'st.session_state.{scusafe}.value = "test"'
+    eval(_exec_)
 
 st.subheader('Summary Content Units')
 summary_content_units = sorted(list(set(_df_['summary_content_unit'])))
@@ -47,10 +57,12 @@ while svg_id_num < len(summary_content_units):
     _df_scu_   = _df_.query('summary_content_unit == @summary_content_unit').reset_index()
     _excerpt_  = _df_scu_.iloc[0]['excerpt']
     _color_    = colorizer(summary, _excerpt_)
-    cols[row_i].text_area(key       = summary_content_unit,
+    scu_safe   = makeSafe(summary_content_unit)
+    cols[row_i].text_area(key       = scu_safe,
                           label     = f':{_color_}[{summary_content_unit}]', 
                           on_change = textAreaChanged,
-                          kwargs    = {'scu':summary_content_unit},
-                          value     = _excerpt_)
+                          kwargs    = {'scusafe':scu_safe},
+                          value     = _excerpt_) 
     svg_id_num, row_i = svg_id_num + 1, row_i + 1
+
 
