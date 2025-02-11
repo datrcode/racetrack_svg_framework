@@ -168,6 +168,53 @@ class RTTextMixin(object):
             _len_, i, j = self.longestCommonSubstring(_longer_, _shorter_)
         return results , _longer_.replace(longer_delimiter,'') , _shorter_.replace(shorter_delimiter,'')
 
+
+    #
+    # editDistance() - calculate the minimum edit distance
+    # - created by Claude Sonet 3.5
+    #
+    def editDistance(self, str1, str2):
+        """
+        Calculate the minimum edit distance (Levenshtein distance) between two strings.
+        
+        The edit distance is the minimum number of single-character operations
+        (insertions, deletions, or substitutions) required to change one string into another.
+        
+        Args:
+            str1: The first string
+            str2: The second string
+            
+        Returns:
+            The minimum number of operations required to transform str1 into str2
+        
+        Example:
+            >>> edit_distance("kitten", "sitting")
+            3
+        """
+        # Create a matrix of size (m+1) x (n+1) for dynamic programming
+        m, n = len(str1), len(str2)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        
+        # Initialize the first row and column
+        for i in range(m + 1):
+            dp[i][0] = i  # Cost of deleting characters from str1
+        for j in range(n + 1):
+            dp[0][j] = j  # Cost of inserting characters from str2
+        
+        # Fill the dp matrix
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if str1[i-1] == str2[j-1]:
+                    dp[i][j] = dp[i-1][j-1]  # No operation needed
+                else:
+                    dp[i][j] = min(
+                        dp[i-1][j] + 1,    # Deletion
+                        dp[i][j-1] + 1,    # Insertion
+                        dp[i-1][j-1] + 1   # Substitution
+                    )
+        
+        return dp[m][n]
+
     #
     # textBlock() - render a textblock and track positional information of characters and words.
     #
