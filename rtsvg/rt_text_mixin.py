@@ -20,6 +20,7 @@
 import pandas as pd
 import numpy as np
 from numpy.linalg import norm
+import copy
 import re
 
 import networkx as nx # for TextRank
@@ -168,6 +169,28 @@ class RTTextMixin(object):
             _len_, i, j = self.longestCommonSubstring(_longer_, _shorter_)
         return results , _longer_.replace(longer_delimiter,'') , _shorter_.replace(shorter_delimiter,'')
 
+    #
+    # textAggregateSpans()
+    # - Aggregate a list of spans if the spans in the list overlap
+    # - each span is a tuple (start, length)
+    #
+    def textAggregateSpans(self, spans):
+        """
+        Aggregate a list of spans if the spans in the list overlap.
+
+        Args:
+            spans: A list of tuples (start, length)
+        """
+        spans = sorted(copy.deepcopy(spans))
+        i     = 0
+        while i < len(spans):
+            if i < len(spans) - 1:
+                if spans[i+1][0] <= spans[i][0] + spans[i][1]:
+                    spans[i+1] = (spans[i][0],(spans[i+1][0] + spans[i+1][1])-spans[i][0])
+                    del spans[i]
+                else: i += 1
+            else: i += 1
+        return spans
 
     #
     # editDistance() - calculate the minimum edit distance
