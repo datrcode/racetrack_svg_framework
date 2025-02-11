@@ -292,12 +292,10 @@ class RTBoxplotMixin(object):
         # renderSVG() - create the SVG
         #
         def renderSVG(self, just_calc_max=False):
-            if self.track_state:
-                self.geom_to_df = {}
+            if self.track_state: self.geom_to_df = {}
                 
             # Determine the color order (for each bar)
-            if self.global_color_order is None:
-                self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
+            if self.global_color_order is None: self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
 
             # Adjust the min_bar_w if this is small multiples are to be included
             if self.sm_type is not None:
@@ -397,24 +395,23 @@ class RTBoxplotMixin(object):
                     i += 1
 
             # Return the max if that's the request
-            if just_calc_max:
-                return group_by_min,group_by_max
+            if just_calc_max: return group_by_min,group_by_max
 
             # Y-Transform Function
             yT = lambda __y__: (y_baseline - max_bar_h * (__y__ - group_by_min) / (group_by_max - group_by_min))
 
             # Start the SVG Frame
-            svg = f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w + self.extra_label_space}" height="{self.h + self.extra_label_space}" xmlns="http://www.w3.org/2000/svg">'
+            svg = [f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w + self.extra_label_space}" height="{self.h + self.extra_label_space}" xmlns="http://www.w3.org/2000/svg">']
             background_color = self.rt_self.co_mgr.getTVColor('background','default')
-            svg += f'<rect width="{self.w + self.extra_label_space - 1}" height="{self.h + self.extra_label_space - 1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />'
+            svg.append(f'<rect width="{self.w + self.extra_label_space - 1}" height="{self.h + self.extra_label_space - 1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
             
             # Draw the background for the temporal chart
             axis_color = self.rt_self.co_mgr.getTVColor('axis','default')
             textfg     = self.rt_self.co_mgr.getTVColor('label','defaultfg')
 
             # Draw the axes
-            svg += f'<line x1="{x_left}" y1="{y_baseline+1}" x2="{x_left}"            y2="{self.y_ins + self.sm_h}" stroke="{axis_color}" stroke-width="1" />'
-            svg += f'<line x1="{x_left}" y1="{y_baseline+1}" x2="{x_left + w_usable}" y2="{y_baseline+1}"           stroke="{axis_color}" stroke-width="1" />'
+            svg.append(f'<line x1="{x_left}" y1="{y_baseline+1}" x2="{x_left}"            y2="{self.y_ins + self.sm_h}" stroke="{axis_color}" stroke-width="1" />')
+            svg.append(f'<line x1="{x_left}" y1="{y_baseline+1}" x2="{x_left + w_usable}" y2="{y_baseline+1}"           stroke="{axis_color}" stroke-width="1" />')
 
             # Small multiples variables... even if we don't really need them...
             node_to_xy  = {}
@@ -431,8 +428,7 @@ class RTBoxplotMixin(object):
                     _df    = gb.get_group(_as_tuple)
                 elif self.rt_self.isPolars(self.df):
                     _index = order[i].rows()[0][:len(self.bin_by)]
-                    if len(self.bin_by) == 1:
-                        _index = _index[0]
+                    if len(self.bin_by) == 1: _index = _index[0]
                     _value = order['__count__'][i]
                     _df    = gb[_index]
 
@@ -447,21 +443,21 @@ class RTBoxplotMixin(object):
                 label_to_x  [_index] = x + bar_w/2
 
                 if   self.style == 'barchart':
-                    svg += self.rt_self.colorizeBar(_df,
-                                                    self.global_color_order, self.color_by,
-                                                    self.count_by, self.count_by_set,
-                                                    x, y_baseline, px, bar_w, False)
+                    svg.append(self.rt_self.colorizeBar(_df,
+                                                        self.global_color_order, self.color_by,
+                                                        self.count_by, self.count_by_set,
+                                                        x, y_baseline, px, bar_w, False))
                 elif self.style.startswith('boxplot'):
-                    svg += self.rt_self.renderBoxPlotColumn(self.style, 
-                                                     _df,
-                                                     x + bar_w/2,
-                                                     yT,
-                                                     group_by_max,
-                                                     group_by_min,
-                                                     bar_w,
-                                                     self.count_by,
-                                                     self.color_by,
-                                                     self.cap_swarm_at)
+                    svg.append(self.rt_self.renderBoxPlotColumn(self.style, 
+                                                                _df,
+                                                                x + bar_w/2,
+                                                                yT,
+                                                                group_by_max,
+                                                                group_by_min,
+                                                                bar_w,
+                                                                self.count_by,
+                                                                self.color_by,
+                                                                self.cap_swarm_at))
 
                 x += bar_w + actual_h_gap
                 i += 1
@@ -469,8 +465,8 @@ class RTBoxplotMixin(object):
             # Draw indicator that more data existed than that could be rendered
             if i != len(order):
                 error_co = self.rt_self.co_mgr.getTVColor('label','error')                
-                svg += f'<line x1="{self.w-5}" y1="{self.h-9}" x2="{self.w-2}" y2="{self.h-5}" stroke="{error_co}" stroke-width="1" />'
-                svg += f'<line x1="{self.w-5}" y1="{self.h-1}" x2="{self.w-2}" y2="{self.h-5}" stroke="{error_co}" stroke-width="1" />'
+                svg.append(f'<line x1="{self.w-5}" y1="{self.h-9}" x2="{self.w-2}" y2="{self.h-5}" stroke="{error_co}" stroke-width="1" />')
+                svg.append(f'<line x1="{self.w-5}" y1="{self.h-1}" x2="{self.w-2}" y2="{self.h-5}" stroke="{error_co}" stroke-width="1" />')
 
             # Small multiples
             if self.sm_type is not None:
@@ -478,63 +474,48 @@ class RTBoxplotMixin(object):
                                                           self.count_by, self.count_by_set, self.color_by, None, self.widget_id,
                                                           self.sm_type, self.sm_params, self.sm_x_axis_independent, self.sm_y_axis_independent,
                                                           self.sm_w, self.sm_h)
-                for node_str in sm_lu.keys():
-                    svg += sm_lu[node_str]
+                for node_str in sm_lu.keys(): svg.append(sm_lu[node_str])
 
             # Draw labeling
             if self.draw_labels:
                 # Max Label
                 _str_max,_str_min = f'{group_by_max:{self.rt_self.fformat}}',''
-                if re.match(r'.*\.0*',_str_max):
-                    _str_max = _str_max[:_str_max.index('.')]
-                svg += self.rt_self.svgText(_str_max,     self.x_ins+self.txt_h-2, self.y_ins + self.sm_h,             self.txt_h, anchor='end',    rotation=-90)
+                if re.match(r'.*\.0*',_str_max): _str_max = _str_max[:_str_max.index('.')]
+                svg.append(self.rt_self.svgText(_str_max,     self.x_ins+self.txt_h-2, self.y_ins + self.sm_h,             self.txt_h, anchor='end',    rotation=-90))
 
                 # Min Label (for boxplot only)
                 if self.style.startswith('boxplot'):
                     _str_min = f'{group_by_min:{self.rt_self.fformat}}'
-                    if re.match(r'.*\.0*',_str_min):
-                        _str_min = _str_min[:_str_min.index('.')]
-                    svg += self.rt_self.svgText(_str_min, self.x_ins+self.txt_h-2, self.y_ins + self.sm_h + max_bar_h, self.txt_h, anchor='start',  rotation=-90)
+                    if re.match(r'.*\.0*',_str_min): _str_min = _str_min[:_str_min.index('.')]
+                    svg.append(self.rt_self.svgText(_str_min, self.x_ins+self.txt_h-2, self.y_ins + self.sm_h + max_bar_h, self.txt_h, anchor='start',  rotation=-90))
 
                 # Count By Label
                 _count_by_str = 'rows'
-                if self.count_by:
-                    _count_by_str = self.count_by
+                if self.count_by: _count_by_str = self.count_by
                 if self.rt_self.textLength(_str_max, self.txt_h) + self.rt_self.textLength(_str_min, self.txt_h) + self.rt_self.textLength(_count_by_str, self.txt_h) + 10 < max_bar_h:
                     if self.style.startswith('boxplot'):
                         _mid_y = self.rt_self.textLength(_str_max, self.txt_h) + (max_bar_h - self.rt_self.textLength(_str_max, self.txt_h) - self.rt_self.textLength(_str_min, self.txt_h))/2
-                        svg += self.rt_self.svgText(_count_by_str, self.x_ins+self.txt_h-2, 
-                                                    self.y_ins + self.sm_h + _mid_y, 
-                                                    self.txt_h, anchor='middle',  rotation=-90)
+                        svg.append(self.rt_self.svgText(_count_by_str, self.x_ins+self.txt_h-2, 
+                                                        self.y_ins + self.sm_h + _mid_y, 
+                                                        self.txt_h, anchor='middle',  rotation=-90))
                     else:
-                        svg += self.rt_self.svgText(_count_by_str, self.x_ins+self.txt_h-2, self.y_ins + self.sm_h + max_bar_h,   self.txt_h, anchor='start',  rotation=-90)
-
-                # Draw the labels for the y-axis ranges // OLD VERSION OF Y-AXIS LABELING
-                #svg += self.rt_self.svgText(f'{group_by_max:{self.rt_self.fformat}}', self.x_ins+self.txt_h-2, self.y_ins + self.sm_h,             self.txt_h, anchor='end', rotation=-90)
-                #if self.style.startswith('boxplot'):
-                #    svg += self.rt_self.svgText(f'{group_by_min:{self.rt_self.fformat}}', self.x_ins+self.txt_h-2, self.y_ins + self.sm_h + max_bar_h, self.txt_h, anchor='start', rotation=-90)
+                        svg.append(self.rt_self.svgText(_count_by_str, self.x_ins+self.txt_h-2, self.y_ins + self.sm_h + max_bar_h,   self.txt_h, anchor='start',  rotation=-90))
                 
                 # x-axis labels are tricky...  can it just fit horizontally?
                 horz_fits = True
                 if len(label_to_x.keys()) > 1: # by default... length of 1 == horizontal...
                     for _label in label_to_x.keys():
-                        if type(_label) is tuple:
-                            as_str = '|'.join(_label)
-                        else:
-                            as_str = str(_label)
-                        if self.rt_self.textLength(as_str, self.txt_h) > bar_w+actual_h_gap:
-                            horz_fits = False
+                        if type(_label) is tuple: as_str = '|'.join(_label)
+                        else:                     as_str = str(_label)
+                        if self.rt_self.textLength(as_str, self.txt_h) > bar_w+actual_h_gap: horz_fits = False
                 
                 # Horizontal label rendering
                 if horz_fits:
                     for _label in label_to_x.keys():
                         x = label_to_x[_label]
-                        if type(_label) is tuple:
-                            as_str = '|'.join(_label)
-                        else:
-                            as_str = str(_label)
-                        
-                        svg += self.rt_self.svgText(as_str, x, self.y_ins + self.sm_h + max_bar_h + self.txt_h , self.txt_h, anchor='middle')
+                        if type(_label) is tuple: as_str = '|'.join(_label)
+                        else:                     as_str = str(_label)
+                        svg.append(self.rt_self.svgText(as_str, x, self.y_ins + self.sm_h + max_bar_h + self.txt_h , self.txt_h, anchor='middle'))
 
                 # Angled label rendering...
                 else:
@@ -545,16 +526,14 @@ class RTBoxplotMixin(object):
                     _angle = self.rt_self.bestAngleForRotatedLabels(bar_w+actual_h_gap,usable_txt_h)
                     for _label in label_to_x.keys():
                         x = label_to_x[_label]
-                        if type(_label) is tuple:
-                            as_str = '|'.join(_label)
-                        else:
-                            as_str = str(_label)
+                        if type(_label) is tuple: as_str = '|'.join(_label)
+                        else:                     as_str = str(_label)
                         tpos,bpos = self.rt_self.calculateAngledLabelTopAndBottomPosition(x-bar_w, self.y_ins+self.sm_h+max_bar_h, bar_w+actual_h_gap, usable_txt_h, _angle)
-                        svg += self.rt_self.svgText(as_str, bpos[0], bpos[1] - usable_txt_h/3, usable_txt_h, rotation=_angle)
+                        svg.append(self.rt_self.svgText(as_str, bpos[0], bpos[1] - usable_txt_h/3, usable_txt_h, rotation=_angle))
 
-            svg += '</svg>'
-            self.last_render = svg
-            return svg
+            svg.append('</svg>')
+            self.last_render = ''.join(svg)
+            return self.last_render
 
         #
         # Determine which dataframe geometries overlap with a specific
