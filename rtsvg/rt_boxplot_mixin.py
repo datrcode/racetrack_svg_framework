@@ -325,10 +325,8 @@ class RTBoxplotMixin(object):
             bar_w        = total_bar_w - self.h_gap
             x_start      = x_left + 1
 
-            if bar_w < self.min_bar_w:
-                bar_w = self.min_bar_w
-            if bar_w > self.max_bar_w:
-                bar_w = self.max_bar_w
+            if bar_w < self.min_bar_w: bar_w = self.min_bar_w
+            if bar_w > self.max_bar_w: bar_w = self.max_bar_w
 
             # If we have more space then bars, then allocate the start and gap differently
             if self.sm_type is None:
@@ -346,12 +344,9 @@ class RTBoxplotMixin(object):
                         x_start       += w_usable/(self.gb_count+1) - self.sm_w/2
                         actual_h_gap   = w_usable/(self.gb_count+2)
                 else:
-                    if self.max_bar_w < self.sm_w:
-                        bar_w = self.max_bar_w
-                    elif self.min_bar_w < self.sm_w:
-                        bar_w = self.sm_w
-                    else:
-                        bar_w = self.min_bar_w
+                    if   self.max_bar_w < self.sm_w: bar_w = self.max_bar_w
+                    elif self.min_bar_w < self.sm_w: bar_w = self.sm_w
+                    else:                            bar_w = self.min_bar_w
 
                     how_many_fit  = int(w_usable/self.sm_w)
                     w_of_each     = w_usable/how_many_fit
@@ -371,8 +366,7 @@ class RTBoxplotMixin(object):
                         _df    = gb.get_group(_as_tuple)
                     elif self.rt_self.isPolars(self.df):
                         _index = order[i].rows()[0][:len(self.bin_by)]
-                        if len(self.bin_by) == 1:
-                            _index = _index[0]
+                        if len(self.bin_by) == 1: _index = _index[0]
                         _value = order['__count__'][i]
                         _df    = gb[_index]
 
@@ -380,16 +374,12 @@ class RTBoxplotMixin(object):
                         if group_by_max is None:
                             group_by_max,group_by_min = _df[self.count_by].max(), _df[self.count_by].min()
                         else:
-                            if group_by_max  < _df[self.count_by].max():
-                                group_by_max = _df[self.count_by].max()
-                            if group_by_min  > _df[self.count_by].min():
-                                group_by_min = _df[self.count_by].min()                            
+                            if group_by_max  < _df[self.count_by].max(): group_by_max = _df[self.count_by].max()
+                            if group_by_min  > _df[self.count_by].min(): group_by_min = _df[self.count_by].min()                            
                     else:
                         group_by_min = 0
-                        if   group_by_max is None:
-                            group_by_max = _value
-                        elif group_by_max < _value:
-                            group_by_max = _value
+                        if   group_by_max is None:  group_by_max = _value
+                        elif group_by_max < _value: group_by_max = _value
 
                     x += bar_w + actual_h_gap
                     i += 1
@@ -478,16 +468,27 @@ class RTBoxplotMixin(object):
 
             # Draw labeling
             if self.draw_labels:
-                # Max Label
-                _str_max,_str_min = f'{group_by_max:{self.rt_self.fformat}}',''
-                if re.match(r'.*\.0*',_str_max): _str_max = _str_max[:_str_max.index('.')]
-                svg.append(self.rt_self.svgText(_str_max,     self.x_ins+self.txt_h-2, self.y_ins + self.sm_h,             self.txt_h, anchor='end',    rotation=-90))
+                def format(self, x, x_other): # from xy mixin
+                    as_str, as_str_other = str(x), str(x_other)
+                    if   self.rt_self.strIsInt(as_str)   and self.rt_self.strIsInt(as_str_other): return as_str
+                    elif (self.rt_self.strIsFloat(as_str)       or self.rt_self.strIsInt(as_str))        and \
+                        (self.rt_self.strIsFloat(as_str_other) or self.rt_self.strIsInt(as_str_other)):
+                        for i in range(1,10):
+                            _formatter_ = f'0.{i}f'                
+                            f           = f'{float(as_str):{_formatter_}}'
+                            f_other     = f'{float(as_str_other):{_formatter_}}'
+                            if f[:-1] != f_other[:-1]: return f
+                        return f
+                    else: return as_str
 
-                # Min Label (for boxplot only)
                 if self.style.startswith('boxplot'):
-                    _str_min = f'{group_by_min:{self.rt_self.fformat}}'
-                    if re.match(r'.*\.0*',_str_min): _str_min = _str_min[:_str_min.index('.')]
+                    _str_max,_str_min = format(self, group_by_max, group_by_min), format(self, group_by_min, group_by_max)
+                    svg.append(self.rt_self.svgText(_str_max, self.x_ins+self.txt_h-2, self.y_ins + self.sm_h,             self.txt_h, anchor='end',    rotation=-90))
                     svg.append(self.rt_self.svgText(_str_min, self.x_ins+self.txt_h-2, self.y_ins + self.sm_h + max_bar_h, self.txt_h, anchor='start',  rotation=-90))
+                else: # barchart (... but not a boxplot)    
+                    _str_max,_str_min = f'{group_by_max:{self.rt_self.fformat}}',''
+                    if re.match(r'.*\.0*',_str_max): _str_max = _str_max[:_str_max.index('.')]
+                    svg.append(self.rt_self.svgText(_str_max,     self.x_ins+self.txt_h-2, self.y_ins + self.sm_h,             self.txt_h, anchor='end',    rotation=-90))
 
                 # Count By Label
                 _count_by_str = 'rows'
