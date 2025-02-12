@@ -34,6 +34,18 @@ class Testrt_text_mixin(unittest.TestCase):
         from la grippe; grippe being then a new word in St. Petersburg, used
         only by the elite.""")
 
+
+    def test_editDistance(self):
+        _tuples_ = [('abc','abcd',1),
+                    ("kitten", "sitting", 3), # https://en.wikipedia.org/wiki/Levenshtein_distance
+                    ]
+        for _tuple_ in _tuples_:
+            self.assertEqual(self.rt_self.editDistance(_tuple_[0], _tuple_[1]), _tuple_[2])
+
+    def test_textAggregateSpans(self):
+        _spans_ = [(2,3), (4,10), (20,5),(40,5),(25,3)]
+        self.assertEqual(self.rt_self.textAggregateSpans(_spans_), [(2, 12), (20, 8), (40, 5)])
+
     def test_longestCommonSubstring(self):
         s1 = "once upon a time... there was a programmer... named john..."
         s2 = "there was a programmeronce upon a timenamed john"
