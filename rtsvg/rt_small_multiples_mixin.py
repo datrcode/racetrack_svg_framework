@@ -1360,16 +1360,16 @@ class RTSmallMultiplesMixin(object):
     # - for equal sized elements (doesn't really need to be...  but let's just assume)
     # - place into a grid
     #
-    def table(self, svg_list, per_row=4, spacer=0):
+    def table(self, svg_list, per_row=4, spacer=0, background_override=None):
         rows,so_far = [],[]
         for _svg_ in svg_list:
             so_far.append(_svg_)
             if len(so_far) >= per_row:
-                rows.append(self.tile(so_far, spacer=spacer)._repr_svg_())
+                rows.append(self.tile(so_far, spacer=spacer, background_override=background_override)._repr_svg_())
                 so_far = []
         if len(so_far) > 0:
-            rows.append(self.tile(so_far, spacer=spacer)._repr_svg_())
-        return self.tile(rows, horz=False, spacer=spacer)
+            rows.append(self.tile(so_far, spacer=spacer, background_override=background_override)._repr_svg_())
+        return self.tile(rows, horz=False, spacer=spacer, background_override=background_override)
 
     #
     # svgObject() - simple container to return an svg string
@@ -1383,7 +1383,8 @@ class RTSmallMultiplesMixin(object):
     #
     # Tile a list of SVG's
     #
-    def tile(self, svg_list, horz=True, spacer=0):
+    def tile(self, svg_list, horz=True, spacer=0, background_override=None):
+        if background_override is None: background_override = self.co_mgr.getTVColor('border','default')
         svg = []
         if horz:
             w_overall,h_max = 0,0
@@ -1394,7 +1395,7 @@ class RTSmallMultiplesMixin(object):
                 h_max     =  max(h_max, h)
             w_overall = w_overall - spacer # there will be an extra one that needs to be deleted
             svg.append(f'<svg width="{w_overall}" height="{h_max}" x="0" y="0" xmlns="http://www.w3.org/2000/svg">')
-            svg.append(f'<rect width="{w_overall}" height="{h_max}" x="0" y="0" fill="{self.co_mgr.getTVColor("border","default")}" />')
+            svg.append(f'<rect width="{w_overall}" height="{h_max}" x="0" y="0" fill="{background_override}" />')
             w_overall = 0
             for _svg in svg_list:
                 if type(_svg) != str: _svg = _svg._repr_svg_()
@@ -1411,7 +1412,7 @@ class RTSmallMultiplesMixin(object):
                 w_max     =  max(w_max, w)
             h_overall = h_overall - spacer
             svg.append(f'<svg width="{w_max}" height="{h_overall}" x="0" y="0" xmlns="http://www.w3.org/2000/svg">')
-            svg.append(f'<rect width="{w_max}" height="{h_overall}" x="0" y="0" fill="{self.co_mgr.getTVColor("border","default")}" />')
+            svg.append(f'<rect width="{w_max}" height="{h_overall}" x="0" y="0" fill="{background_override}" />')
             h_overall = 0
             for _svg in svg_list:
                 if type(_svg) != str: _svg = _svg._repr_svg_()
