@@ -1926,14 +1926,10 @@ class RTTextBlock(object):
                 svg_underlay += self.__underlineSpan__(k[0], k[1], _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
             elif type(k) == str:
                 i = 0
-                re_match = re.findall(k,self.txt)
-                if re_match is not None:
-                    i = 0
-                    for _match in re_match:
-                        i = self.txt.index(k,i)
-                        j = i + len(_match)
-                        svg_underlay += self.__underlineSpan__(i, j, _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
-                        i += len(_match)
+                while k in self.txt[i:]:
+                    i = self.txt.index(k,i)
+                    svg_underlay += self.__underlineSpan__(i, i+len(k), _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
+                    i += len(k)
             else:
                 raise Exception(f'RTTextBlock.highlights() - do not understand key value type {type(k)}')
         x,y,w,h = self.bounds
