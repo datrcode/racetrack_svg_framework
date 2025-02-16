@@ -110,6 +110,11 @@ pn.extension(design="material", sizing_mode="stretch_width")
             if event.obj in self.text_input_to_scu: 
                 self.scu_examples_widget.object = self.exampleSCUs(self.text_input_to_scu[event.obj])        
             if self.edit_dataframe:
+                txt_to_add_to_df = txt.strip()
+                txt_is_empty     = True
+                for _part_ in txt_to_add_to_df.split('...'):
+                    if len(_part_.strip()) > 0: txt_is_empty = False
+                if txt_is_empty: txt_to_add_to_df = None
                 _location_ = (self.df[self.q_id_field]   == self.q_id)   & \
                              (self.df[self.source_field] == self.source) & \
                              (self.df[self.scu_field]    == self.text_input_to_scu[event.obj])
@@ -121,11 +126,11 @@ pn.extension(design="material", sizing_mode="stretch_width")
                         elif _col_ == self.scu_field:      _list_.append(self.text_input_to_scu[event.obj])
                         elif _col_ == self.source_field:   _list_.append(self.source)
                         elif _col_ == self.summary_field:  _list_.append(self.summary)
-                        elif _col_ == self.excerpt_field:  _list_.append(txt)
+                        elif _col_ == self.excerpt_field:  _list_.append(txt_to_add_to_df)
                         else:                              _list_.append(None)
                     self.df.loc[len(self.df)] = _list_
                 else:
-                    self.df.loc[_location_, self.excerpt_field] = txt
+                    self.df.loc[_location_, self.excerpt_field] = txt_to_add_to_df
         self.summary_widget.object = self.markupHighlights()
 
     #
@@ -136,6 +141,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
         # Identify the tuples (indices and lengths) based on the excerpt parts
         for scu in self.scus:
             _excerpt_ = self.scu_to_text_input[scu].value
+            if _excerpt_ is None or len(_excerpt_) == 0: continue
             _parts_   = _excerpt_.split('...')
             for _part_ in _parts_:
                 _part_ = _part_.strip().lower()
