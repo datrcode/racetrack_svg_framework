@@ -233,3 +233,104 @@ pn.extension(design="material", sizing_mode="stretch_width")
             _lu_[self.summary_field].append(self.summary)
             _lu_[self.excerpt_field].append(_excerpt_)
         return pd.DataFrame(_lu_)
+
+    def excerptCoverage(self,q_id, source):
+        _df_      = self.df.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source').reset_index()
+        _summary_ = _df_.iloc[0][self.summary_field].lower()
+        _spans_ = []
+        for i in range(len(_df_)):
+            _excerpt_ = _df_.iloc[i][self.excerpt_field]
+            if _excerpt_ is None: continue
+            for _part_ in _excerpt_.split('...'):
+                _part_ = _part_.strip().lower()
+                if len(_part_) == 0: continue
+                if _part_ not in _summary_: raise Exception(f'{q_id=} {source=} "{_part_}" from "{_excerpt_}" not in "{_summary_}"')
+                j = 0
+                while _part_ in _summary_[j:]:
+                    j = _summary_.index(_part_, j)
+                    _spans_.append((j, len(_part_)))
+                    j += len(_part_)
+        _spans_ = self.rt_self.textAggregateSpans(_spans_)
+        len_sum = 0
+        for i in range(len(_spans_)): len_sum += _spans_[i][1]
+        return len_sum/len(_summary_), len_sum, len(_summary_), _spans_
+
+    def __applyUnderlines__(self, text, spans):
+        # Make alternating text blocks ... every other block is underlined
+        sorted_spans  = sorted(spans, key=lambda x: x[0])
+        _alternating_ = [] # odds require underline
+        i, i0 = 0, 0
+        while i < len(sorted_spans):
+            _alternating_.append((i0, sorted_spans[i][0]))
+            _alternating_.append((sorted_spans[i][0], sorted_spans[i][0] + sorted_spans[i][1]))
+            i0 = sorted_spans[i][0] + sorted_spans[i][1]
+            i += 1
+        _alternating_.append((i0, len(text)))
+
+        # Add the underlines
+        _txt_ = []
+        for i in range(len(_alternating_)):
+            i0, i1 = _alternating_[i][0], _alternating_[i][1]
+            if   i%2 == 0: _txt_.append(html.escape(text[i0:i1]))
+            else:          _txt_.append('<u>' + html.escape(text[i0:i1]) + '</u>')
+        return ''.join(_txt_)
+
+    def createHTMLForMissingSCUs(self, qids=None):
+        # Sort the Question ID's by coverage (lowest coverage to highest coverage)
+        _lu_ = {self.q_id_field:[], self.source_field:[], 'coverage':[], 'len_sum':[], 'len_summary':[], 'spans':[]}
+        for k, k_df in self.df.groupby([self.q_id_field, self.source_field]):
+            _percent_, _len_, _len_summary_, _spans_ = self.excerptCoverage(k[0], k[1])
+            _lu_[self.q_id_field].append(k[0]), _lu_[self.source_field].append(k[1]),      _lu_['coverage'].append(_percent_)
+            _lu_['len_sum'].append(_len_),      _lu_['len_summary'].append(_len_summary_), _lu_['spans'].append(_spans_)
+        df_coverage         = pd.DataFrame(_lu_)
+        df_coverage_average = df_coverage.groupby(self.q_id_field).agg({'coverage': 'mean'}).sort_values('coverage').reset_index()
+        # Create the HTML
+        _htmls_ = []
+        for q_id in df_coverage_average[self.q_id_field]:
+            if qids is not None and q_id not in qids: continue
+            question = self.df.query(f'`{self.q_id_field}` == @q_id').iloc[0][self.question_field]
+            _htmls_.append(f'<h2> ({html.escape(q_id)}) {html.escape(question)} </h2>')
+
+            # For each source w/in the specific question id, sort from least to highest coverage
+            source_ordering = []
+            for source in df_coverage.query(f'`{self.q_id_field}` == @q_id').sort_values('coverage').reset_index()[self.source_field]: source_ordering.append(source)
+
+            # Table Header
+            _htmls_.append('<table>')
+            _htmls_.append('<tr align="center">')
+            for source in source_ordering: _htmls_.append(f'<td align="center"> {html.escape(source)} </td>')
+            _htmls_.append('</tr>')
+
+            # Summaries w/ Underlines
+            _htmls_.append('<tr>')
+            for source in source_ordering:
+                _summary_ = self.df.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source')[self.summary_field].unique()[0]
+                _summary_ = self.__applyUnderlines__(_summary_, df_coverage.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source').iloc[0]['spans'])
+                _htmls_.append(f'<td align="left" valign="top"> {_summary_} </td>')
+            _htmls_.append('</tr>')
+
+            # Figure out the order of the SCU's
+            _df_ = self.df.query(f'`{self.q_id_field}` == @q_id').dropna().reset_index().drop('index', axis=1)
+            _df_ = _df_[_df_[self.excerpt_field] != ""].reset_index()
+            _df_ = _df_.groupby(self.scu_field).size().reset_index().rename({0:'__count__'},axis=1).sort_values('__count__', ascending=False)
+            scu_ordering = []
+            for scu in _df_[self.scu_field]: scu_ordering.append(scu)
+
+            _htmls_.append('<tr>')
+            for source in source_ordering: _htmls_.append('<td align="center"> Missing SCU\'s </td>')
+            _htmls_.append('</tr>')
+
+            # List the missing SCU's -- in order of most occuring scu to least occuring scu
+            _htmls_.append('<tr>')
+            for source in source_ordering:
+                _htmls_.append('<td align="left" valign="top">')
+                for scu in scu_ordering:
+                    _df_ = self.df.dropna().query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source and `{self.scu_field}` == @scu').reset_index()
+                    _df_ = _df_[_df_[self.excerpt_field] != ""].reset_index()
+                    if len(_df_) == 0: _htmls_.append(f'<li> {html.escape(scu)}')
+                _htmls_.append('</td>')
+            _htmls_.append('</tr>')
+
+            _htmls_.append('</table>')
+        return ''.join(_htmls_)
+
