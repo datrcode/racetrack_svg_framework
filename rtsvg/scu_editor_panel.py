@@ -87,14 +87,17 @@ pn.extension(design="material", sizing_mode="stretch_width")
         _df_ = self.df.query(f'`{self.q_id_field}` == @self.q_id and `{self.source_field}` == @self.source').reset_index()
         original_edit_dataframe = self.edit_dataframe
         self.edit_dataframe = False
+        self.summary        = _df_.iloc[0][self.summary_field]
         for _text_input_ in self.text_inputs: _text_input_.value = '' # clear all values
         for i in range(len(_df_)):
             _scu_              = _df_.iloc[i][self.scu_field]
             _text_input_       = self.scu_to_text_input[_scu_]
-            _text_input_.value = _df_.iloc[i][self.excerpt_field]
-        self.edit_dataframe = original_edit_dataframe
-        self.summary               = _df_.iloc[0][self.summary_field]
+            possible_txt       = _df_.iloc[i][self.excerpt_field]
+            if possible_txt is None: possible_txt = ''
+            _text_input_.value = possible_txt
+            _text_input_.stylesheets = [self.validationColor(possible_txt)]
         self.summary_widget.object = self.markupHighlights()
+        self.edit_dataframe = original_edit_dataframe
 
     #
     # validationColor() - set the color of the text based on whether all parts of the excerpt are in the summary
@@ -111,13 +114,29 @@ pn.extension(design="material", sizing_mode="stretch_width")
     #
     # exampleSCUs() - give examples from other sources as HTML markup
     #
-    def exampleSCUs(self, scu):
+    def OLD_exampleSCUs(self, scu):
         _htmls_ = [f'<h3> "{html.escape(scu)}" Examples </h3>']
         _df_ = self.df.query(f'`{self.q_id_field}` == @self.q_id and `{self.scu_field}` == @scu and `{self.source_field}` != @self.source').reset_index()
         for i in range(len(_df_)):
             _excerpt_ = _df_.iloc[i][self.excerpt_field]
             _model_   = _df_.iloc[i][self.source_field]
             _htmls_.append(f'<p><b>{html.escape(_model_)}</b><br>{html.escape(_excerpt_)}</p>')
+        return ''.join(_htmls_)
+
+    #
+    # exampleSCU() - give examples from other sources as HTML markup
+    # - this one uses an html table
+    #
+    def exampleSCUs(self, scu):
+        _htmls_ = [f'<h3> "{html.escape(scu)}" Examples </h3>']
+        _df_ = self.df.query(f'`{self.q_id_field}` == @self.q_id and `{self.scu_field}` == @scu and `{self.source_field}` != @self.source').reset_index()
+        _htmls_.append('<table>')
+        for i in range(len(_df_)):
+            _excerpt_ = _df_.iloc[i][self.excerpt_field]
+            if _excerpt_ is None or len(_excerpt_) == 0: continue
+            _model_   = _df_.iloc[i][self.source_field]
+            _htmls_.append(f'<tr><td><b>{html.escape(_model_)}</b></td><td>{html.escape(_excerpt_)}</td></tr>')
+        _htmls_.append('</table>')
         return ''.join(_htmls_)
 
     #
