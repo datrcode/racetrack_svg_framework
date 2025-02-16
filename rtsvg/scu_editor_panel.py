@@ -310,7 +310,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
             _htmls_.append('</tr>')
 
             # Figure out the order of the SCU's
-            _df_ = self.df.query(f'`{self.q_id_field}` == @q_id').dropna().reset_index().drop('index', axis=1)
+            _df_ = self.df.query(f'`{self.q_id_field}` == @q_id').dropna(subset=['excerpt']).reset_index().drop('index', axis=1)
             _df_ = _df_[_df_[self.excerpt_field] != ""].reset_index()
             _df_ = _df_.groupby(self.scu_field).size().reset_index().rename({0:'__count__'},axis=1).sort_values('__count__', ascending=False)
             scu_ordering = []
@@ -325,7 +325,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
             for source in source_ordering:
                 _htmls_.append('<td align="left" valign="top">')
                 for scu in scu_ordering:
-                    _df_ = self.df.dropna().query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source and `{self.scu_field}` == @scu').reset_index()
+                    _df_ = self.df.dropna(subset=['excerpt']).query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source and `{self.scu_field}` == @scu').reset_index()
                     _df_ = _df_[_df_[self.excerpt_field] != ""].reset_index()
                     if len(_df_) == 0: _htmls_.append(f'<li> {html.escape(scu)}')
                 _htmls_.append('</td>')
