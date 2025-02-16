@@ -17,6 +17,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
     # __init__() - constructor
     #
     def __init__(self,
+                 rt_self,
                  df,
                  q_id,
                  q_id_field      = 'question_id',
@@ -30,6 +31,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
                  edit_dataframe  = True,
                  **params):
         super().__init__(**params)
+        self.rt_self           = rt_self
         self.df                = df
         self.q_id              = q_id
         self.q_id_field        = q_id_field
