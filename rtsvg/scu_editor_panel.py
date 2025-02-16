@@ -19,7 +19,6 @@ pn.extension(design="material", sizing_mode="stretch_width")
     def __init__(self,
                  df,
                  q_id,
-                 source,
                  q_id_field      = 'question_id',
                  question_field  = 'question',
                  scu_field       = 'summary_content_unit',
@@ -33,11 +32,12 @@ pn.extension(design="material", sizing_mode="stretch_width")
         super().__init__(**params)
         self.df                = df
         self.q_id              = q_id
-        self.source            = source
         self.q_id_field        = q_id_field
+        self.source_field      = source_field
+        self.source_list       = list(self.df.query(f'`{self.q_id_field}` == @self.q_id')[self.source_field].unique())
+        self.source            = self.source_list[0]
         self.question_field    = question_field
         self.scu_field         = scu_field
-        self.source_field      = source_field
         self.summary_field     = summary_field
         self.excerpt_field     = excerpt_field
         self.n_cols            = n_cols
@@ -63,8 +63,12 @@ pn.extension(design="material", sizing_mode="stretch_width")
         self.summary_widget      = pn.pane.HTML(self.markupHighlights())
         self.scu_examples_widget = pn.pane.HTML('<h3>Examples...</h3>')
 
+        self.source_select = pn.widgets.Select(name='Source', options=self.source_list)
+        self.source_select.param.watch(self.sourceSelectChanged, ['value'])
+
         # make layout
-        self._column_ = pn.Column(self.summary_widget, 
+        self._column_ = pn.Column(self.source_select,
+                                  self.summary_widget, 
                                   pn.GridBox(*self.text_inputs, ncols=self.n_cols, sizing_mode="fixed", width=self.w),
                                   self.scu_examples_widget)
 
@@ -73,6 +77,24 @@ pn.extension(design="material", sizing_mode="stretch_width")
         
     def panel(self):
         return self._column_
+
+    #
+    # sourceSelectChanged() - change the source
+    # - disable editing of the dataframe
+    #
+    def sourceSelectChanged(self, *events):
+        self.source = self.source_select.value
+        _df_ = self.df.query(f'`{self.q_id_field}` == @self.q_id and `{self.source_field}` == @self.source').reset_index()
+        original_edit_dataframe = self.edit_dataframe
+        self.edit_dataframe = False
+        for _text_input_ in self.text_inputs: _text_input_.value = '' # clear all values
+        for i in range(len(_df_)):
+            _scu_              = _df_.iloc[i][self.scu_field]
+            _text_input_       = self.scu_to_text_input[_scu_]
+            _text_input_.value = _df_.iloc[i][self.excerpt_field]
+        self.edit_dataframe = original_edit_dataframe
+        self.summary               = _df_.iloc[0][self.summary_field]
+        self.summary_widget.object = self.markupHighlights()
 
     #
     # validationColor() - set the color of the text based on whether all parts of the excerpt are in the summary
