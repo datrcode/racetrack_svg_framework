@@ -27,7 +27,8 @@ pn.extension(design="material", sizing_mode="stretch_width")
                  summary_field   = 'summary',
                  excerpt_field   = 'excerpt',
                  n_cols          = 3, 
-                 w               = 1600, 
+                 w               = 1600,
+                 edit_dataframe  = True,
                  **params):
         super().__init__(**params)
         self.df                = df
@@ -41,6 +42,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
         self.excerpt_field     = excerpt_field
         self.n_cols            = n_cols
         self.w                 = w
+        self.edit_dataframe    = edit_dataframe
         self.summary           = self.df.query(f'`{self.q_id_field}` == @self.q_id and `{self.source_field}` == @self.source')[self.summary_field].unique()[0]
         self.scus              = sorted(self.df.query(f'`{self.q_id_field}` == @self.q_id')[self.scu_field].unique()) # all scu's identified for this question
         self.scu_to_text_input = {}
@@ -106,7 +108,24 @@ pn.extension(design="material", sizing_mode="stretch_width")
             txt = event.obj.value_input
             event.obj.stylesheets = [self.validationColor(txt)]
             if event.obj in self.text_input_to_scu: 
-                self.scu_examples_widget.object = self.exampleSCUs(self.text_input_to_scu[event.obj])
+                self.scu_examples_widget.object = self.exampleSCUs(self.text_input_to_scu[event.obj])        
+            if self.edit_dataframe:
+                _location_ = (self.df[self.q_id_field]   == self.q_id)   & \
+                             (self.df[self.source_field] == self.source) & \
+                             (self.df[self.scu_field]    == self.text_input_to_scu[event.obj])
+                if len(self.df[_location_]) == 0:
+                    _list_ = []
+                    for _col_ in self.df.columns:
+                        if   _col_ == self.q_id_field:     _list_.append(self.q_id)
+                        elif _col_ == self.question_field: _list_.append(self.df.query(f'`{self.q_id_field}` == @self.q_id')[self.question_field].unique()[0])
+                        elif _col_ == self.scu_field:      _list_.append(self.text_input_to_scu[event.obj])
+                        elif _col_ == self.source_field:   _list_.append(self.source)
+                        elif _col_ == self.summary_field:  _list_.append(self.summary)
+                        elif _col_ == self.excerpt_field:  _list_.append(txt)
+                        else:                              _list_.append(None)
+                    self.df.loc[len(self.df)] = _list_
+                else:
+                    self.df.loc[_location_, self.excerpt_field] = txt
         self.summary_widget.object = self.markupHighlights()
 
     #
