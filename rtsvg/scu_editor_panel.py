@@ -117,12 +117,12 @@ pn.extension(design="material", sizing_mode="stretch_width")
     # exampleSCUs() - give examples from other sources as HTML markup
     #
     def OLD_exampleSCUs(self, scu):
-        _htmls_ = [f'<h3> "{html.escape(scu)}" Examples </h3>']
+        _htmls_ = [f'<h3> "{html.escape(str(scu))}" Examples </h3>']
         _df_ = self.df.query(f'`{self.q_id_field}` == @self.q_id and `{self.scu_field}` == @scu and `{self.source_field}` != @self.source').reset_index()
         for i in range(len(_df_)):
             _excerpt_ = _df_.iloc[i][self.excerpt_field]
             _model_   = _df_.iloc[i][self.source_field]
-            _htmls_.append(f'<p><b>{html.escape(_model_)}</b><br>{html.escape(_excerpt_)}</p>')
+            _htmls_.append(f'<p><b>{html.escape(str(_model_))}</b><br>{html.escape(str(_excerpt_))}</p>')
         return ''.join(_htmls_)
 
     #
@@ -130,14 +130,14 @@ pn.extension(design="material", sizing_mode="stretch_width")
     # - this one uses an html table
     #
     def exampleSCUs(self, scu):
-        _htmls_ = [f'<h3> "{html.escape(scu)}" Examples </h3>']
+        _htmls_ = [f'<h3> "{html.escape(str(scu))}" Examples </h3>']
         _df_ = self.df.query(f'`{self.q_id_field}` == @self.q_id and `{self.scu_field}` == @scu and `{self.source_field}` != @self.source').reset_index()
         _htmls_.append('<table>')
         for i in range(len(_df_)):
             _excerpt_ = _df_.iloc[i][self.excerpt_field]
             if _excerpt_ is None or len(_excerpt_) == 0: continue
             _model_   = _df_.iloc[i][self.source_field]
-            _htmls_.append(f'<tr><td><b>{html.escape(_model_)}</b></td><td>{html.escape(_excerpt_)}</td></tr>')
+            _htmls_.append(f'<tr><td><b>{html.escape(str(_model_))}</b></td><td>{html.escape(str(_excerpt_))}</td></tr>')
         _htmls_.append('</table>')
         return ''.join(_htmls_)
 
@@ -292,7 +292,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
         for q_id in df_coverage_average[self.q_id_field]:
             if qids is not None and q_id not in qids: continue
             question = self.df.query(f'`{self.q_id_field}` == @q_id').iloc[0][self.question_field]
-            _htmls_.append(f'<h2> ({html.escape(q_id)}) {html.escape(question)} </h2>')
+            _htmls_.append(f'<h2> ({html.escape(str(q_id))}) {html.escape(str(question))} </h2>')
 
             # For each source w/in the specific question id, sort from least to highest coverage
             source_ordering = []
@@ -303,7 +303,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
             _htmls_.append('<tr align="center">')
             for source in source_ordering:
                 _coverage_ = qid_to_source_to_coverage[q_id][source]
-                _htmls_.append(f'<td align="center"> <b> {html.escape(source)} </b> ({_coverage_:0.2f}) </td>')
+                _htmls_.append(f'<td align="center"> <b> {html.escape(str(source))} </b> ({_coverage_:0.2f}) </td>')
             _htmls_.append('</tr>')
 
             # Summaries w/ Underlines
@@ -315,7 +315,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
             _htmls_.append('</tr>')
 
             # Figure out the order of the SCU's
-            _df_ = self.df.query(f'`{self.q_id_field}` == @q_id').dropna(subset=['excerpt']).reset_index().drop('index', axis=1)
+            _df_ = self.df.query(f'`{self.q_id_field}` == @q_id').dropna(subset=[self.excerpt_field]).reset_index().drop('index', axis=1)
             _df_ = _df_[_df_[self.excerpt_field] != ""].reset_index()
             _df_ = _df_.groupby(self.scu_field).size().reset_index().rename({0:'__count__'},axis=1).sort_values('__count__', ascending=False)
             scu_ordering = []
@@ -334,9 +334,9 @@ pn.extension(design="material", sizing_mode="stretch_width")
             for source in source_ordering:
                 _htmls_.append('<td align="left" valign="top">')
                 for scu in scu_ordering:
-                    _df_ = self.df.dropna(subset=['excerpt']).query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source and `{self.scu_field}` == @scu').reset_index()
+                    _df_ = self.df.dropna(subset=[self.excerpt_field]).query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source and `{self.scu_field}` == @scu').reset_index()
                     _df_ = _df_[_df_[self.excerpt_field] != ""].reset_index()
-                    if len(_df_) == 0: _htmls_.append(f'<li>[{scu_to_count[scu]}] {html.escape(scu)}</li>')
+                    if len(_df_) == 0: _htmls_.append(f'<li>[{scu_to_count[scu]}] {html.escape(str(scu))}</li>')
                 _htmls_.append('</td>')
             _htmls_.append('</tr>')
 
