@@ -186,7 +186,8 @@ class RTTextMixin(object):
         while i < len(spans):
             if i < len(spans) - 1:
                 if spans[i+1][0] <= spans[i][0] + spans[i][1]:
-                    spans[i+1] = (spans[i][0],(spans[i+1][0] + spans[i+1][1])-spans[i][0])
+                    max_index  = max(spans[i+1][0] + spans[i+1][1],spans[i][0] + spans[i][1])
+                    spans[i+1] = (spans[i][0],max_index - spans[i][0])
                     del spans[i]
                 else: i += 1
             else: i += 1

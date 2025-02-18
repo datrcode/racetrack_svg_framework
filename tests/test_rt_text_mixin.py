@@ -17,6 +17,7 @@ import pandas as pd
 import polars as pl
 import numpy as np
 import random
+import copy
 import string
 
 from rtsvg import *
@@ -46,9 +47,40 @@ class Testrt_text_mixin(unittest.TestCase):
         _spans_ = [(2,3), (4,10), (20,5),(40,5),(25,3)]
         self.assertEqual(self.rt_self.textAggregateSpans(_spans_), [(2, 12), (20, 8), (40, 5)])
         _spans_ = [(1,3), (10,5), (10,20), (35,5)]
-        self.assertEqual(self.rt_self.textAggregateSpans(_spans_), [(1, 3), (10, 25), (35, 5)])
-        _spans_ = [(1,3), (10,20), (10,5), (35,5)]
-        self.assertEqual(self.rt_self.textAggregateSpans(_spans_), [(1, 3), (10, 25), (35, 5)])
+        self.assertEqual(self.rt_self.textAggregateSpans(_spans_), [(1, 3), (10, 20), (35, 5)])
+        _spans_ = [(1,3), (10,20),(10, 5), (35,5)]
+        self.assertEqual(self.rt_self.textAggregateSpans(_spans_), [(1, 3), (10, 20), (35, 5)])
+
+        def spansEquals(spans_1, spans_2):
+            max_index = spans_1[0][0] + spans_1[0][1]
+            for i in range(len(spans_1)):
+                if spans_1[i][0] + spans_1[i][1] > max_index:
+                    max_index = spans_1[i][0] + spans_1[i][1]
+            for i in range(len(spans_2)):
+                if spans_2[i][0] + spans_2[i][1] > max_index:
+                    max_index = spans_2[i][0] + spans_2[i][1]
+            bit_array_1 = [0] * (max_index+10)
+            bit_array_2 = [0] * (max_index+10)
+            for i in range(len(spans_1)):
+                for j in range(spans_1[i][0],spans_1[i][0]+spans_1[i][1]):
+                    bit_array_1[j] = 1
+            for i in range(len(spans_2)):
+                for j in range(spans_2[i][0],spans_2[i][0]+spans_2[i][1]):
+                    bit_array_2[j] = 1
+            for i in range(len(bit_array_1)):
+                if bit_array_1[i] != bit_array_2[i]:
+                    return False
+            return True
+        for i in range(100):
+            num_spans = random.randint(1,100)
+            spans_a   = []
+            for j in range(num_spans): spans_a.append([random.randint(0,200),random.randint(1,10)])
+            leftovers = copy.deepcopy(spans_a)
+            spans_b   = []
+            while len(leftovers) > 0:
+                _choice_ = random.randint(0,len(leftovers)-1)
+                spans_b.append(leftovers.pop(_choice_))
+            self.assertTrue(spansEquals(spans_a,spans_b))
 
     def test_longestCommonSubstring(self):
         s1 = "once upon a time... there was a programmer... named john..."
