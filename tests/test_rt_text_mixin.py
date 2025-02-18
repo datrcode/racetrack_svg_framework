@@ -45,6 +45,10 @@ class Testrt_text_mixin(unittest.TestCase):
     def test_textAggregateSpans(self):
         _spans_ = [(2,3), (4,10), (20,5),(40,5),(25,3)]
         self.assertEqual(self.rt_self.textAggregateSpans(_spans_), [(2, 12), (20, 8), (40, 5)])
+        _spans_ = [(1,3), (10,5), (10,20), (35,5)]
+        self.assertEqual(self.rt_self.textAggregateSpans(_spans_), [(1, 3), (10, 25), (35, 5)])
+        _spans_ = [(1,3), (10,20), (10,5), (35,5)]
+        self.assertEqual(self.rt_self.textAggregateSpans(_spans_), [(1, 3), (10, 25), (35, 5)])
 
     def test_longestCommonSubstring(self):
         s1 = "once upon a time... there was a programmer... named john..."
