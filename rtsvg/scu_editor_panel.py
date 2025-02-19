@@ -50,6 +50,10 @@ pn.extension(design="material", sizing_mode="stretch_width")
         self.scu_to_text_input = {}
         self.text_input_to_scu = {}
 
+        # ensure there's a maximum of one excerpt per scu/question_id/source
+        _df_ = self.df.groupby([self.q_id_field, self.source_field, self.scu_field]).count().reset_index()
+        if max(_df_[self.excerpt_field]) > 1: raise Exception(f'Multiple excerpts for {self.q_id_field} {self.source_field} {self.scu_field}')
+
         # make widgets
         self.text_inputs = []
         for scu in self.scus:
