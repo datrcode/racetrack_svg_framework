@@ -293,6 +293,18 @@ pn.extension(design="material", sizing_mode="stretch_width")
         df_coverage_average = df_coverage.groupby(self.q_id_field).agg({'coverage': 'mean'}).sort_values('coverage').reset_index()
         # Create the HTML
         _htmls_ = []
+        _htmls_.append('''<style>
+.tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; }
+.tooltip .tooltiptext {
+  visibility: hidden; width: 800px; background-color: #555; color: #fff; text-align: center;
+  border-radius: 6px; padding: 5px 0; position: absolute; z-index: 1; bottom: 125%;
+  left: 50%; margin-left: -60px; opacity: 0; transition: opacity 0.3s; }
+.tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+  border-width: 5px; border-style: solid; border-color: #555 transparent transparent transparent; }
+.tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+</style>
+''')
+
         for q_id in df_coverage_average[self.q_id_field]:
             if qids is not None and q_id not in qids: continue
             question = self.df.query(f'`{self.q_id_field}` == @q_id').iloc[0][self.question_field]
@@ -333,6 +345,17 @@ pn.extension(design="material", sizing_mode="stretch_width")
             for source in source_ordering: _htmls_.append('<td align="center"> Missing SCU\'s </td>')
             _htmls_.append('</tr>')
 
+            def examples(q_id, scu, source):
+                _df_examples_ = self.df.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` != @source and `{self.scu_field}` == @scu').reset_index()
+                _txts_ = []
+                for i in range(len(_df_examples_)):
+                    _possible_txt_ = _df_examples_.iloc[i][self.excerpt_field]
+                    if _possible_txt_ is not None:
+                        _possible_txt_ = str(_possible_txt_).strip()
+                        if _possible_txt_ == '': continue
+                        _txts_.append(html.escape(_possible_txt_))
+                return ' | '.join(_txts_)
+            
             # List the missing SCU's -- in order of most occuring scu to least occuring scu
             _htmls_.append('<tr>')
             for source in source_ordering:
@@ -340,7 +363,16 @@ pn.extension(design="material", sizing_mode="stretch_width")
                 for scu in scu_ordering:
                     _df_ = self.df.dropna(subset=[self.excerpt_field]).query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source and `{self.scu_field}` == @scu').reset_index()
                     _df_ = _df_[_df_[self.excerpt_field] != ""].reset_index()
-                    if len(_df_) == 0: _htmls_.append(f'<li>[{scu_to_count[scu]}] {html.escape(str(scu))}</li>')
+                    if len(_df_) == 0: 
+                        _htmls_.append(f'<li>')
+                        _htmls_.append(f'[{scu_to_count[scu]}] ')
+                        _htmls_.append('<div class="tooltip">')
+                        _htmls_.append(f'{html.escape(str(scu))}')
+                        _htmls_.append('<span class="tooltiptext">')
+                        _htmls_.append(examples(q_id, scu, source))
+                        _htmls_.append('</span>')
+                        _htmls_.append('</div>')
+                        _htmls_.append(f'</li>')
                 _htmls_.append('</td>')
             _htmls_.append('</tr>')
 
