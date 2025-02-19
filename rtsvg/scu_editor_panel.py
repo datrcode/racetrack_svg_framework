@@ -292,7 +292,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
         for q_id in df_coverage_average[self.q_id_field]:
             if qids is not None and q_id not in qids: continue
             question = self.df.query(f'`{self.q_id_field}` == @q_id').iloc[0][self.question_field]
-            _htmls_.append(f'<h2> ({html.escape(str(q_id))}) {html.escape(str(question))} </h2>')
+            _htmls_.append(f'<h3> ({html.escape(str(q_id))}) {html.escape(str(question))} </h3>')
 
             # For each source w/in the specific question id, sort from least to highest coverage
             source_ordering = []
@@ -340,6 +340,9 @@ pn.extension(design="material", sizing_mode="stretch_width")
                 _htmls_.append('</td>')
             _htmls_.append('</tr>')
 
-            _htmls_.append('</table>')
-        return ''.join(_htmls_)
+            _htmls_.append('</table><hr>')
+
+        _html_header_ = '<!DOCTYPE html><html><body style="background-color:black;">'
+        _html_footer_ = '</body></html>'
+        return _html_header_ + ''.join(_htmls_) + _html_footer_
 
