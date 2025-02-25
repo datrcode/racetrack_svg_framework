@@ -54,7 +54,17 @@ class Testrt_text_mixin(unittest.TestCase):
         for s in answers.keys():
             to_compare = self.rt_self.textCitationElements(s)
             self.assertEqual(sorted(answers[s]), sorted(to_compare))
-            
+
+    def test_textSubtractSpans(self):
+        _answers_ = [
+            ([(10,5), (15,5)],               [(12,5)],                 [(10, 2), (17, 3)]),
+            ([(5,20)],                       [(10,2), (15,2), (25,5)], [(5, 5), (12, 3), (17, 8)]),
+            ([(5,5), (15,5), (25,5)],        [(0,100)],                []),
+            ([(0,2), (5,5), (15,5), (25,5)], [(1,28)],                 [(0, 1), (29, 1)]),
+        ]
+        for _spans_, _subtrahend_, _answer_ in _answers_:
+            self.assertEqual(self.rt_self.textSubtractSpans(_spans_, _subtrahend_), _answer_)
+
     def test_textCitationSpans(self):
         examples = {
             'This is a basic citation. [1]':[(26,3)],
