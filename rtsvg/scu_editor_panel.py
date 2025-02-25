@@ -238,7 +238,14 @@ pn.extension(design="material", sizing_mode="stretch_width")
             _lu_[self.excerpt_field].append(_excerpt_)
         return pd.DataFrame(_lu_)
 
-    def excerptCoverage(self,q_id, source):
+    #
+    # excerptCoverage()
+    # - calculate the coverage of the excerpts
+    # - returns (percentage of summary covered, length of the excerpts, length of the summary, aggregated spans)
+    # - if exclude_citation_spans is True, then exclude citation spans
+    #   citation spans will look as follows:  [1], [2], [1,2,4], [1-5,8]
+    #
+    def excerptCoverage(self,q_id, source, exclude_citation_spans=True):
         _df_      = self.df.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source').reset_index()
         _summary_ = _df_.iloc[0][self.summary_field].lower()
         _spans_ = []

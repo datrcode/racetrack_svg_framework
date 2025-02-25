@@ -380,6 +380,8 @@ class SCUPyramidMethodDiagram(object):
 
     #
     # orderSCUsBySources()
+    # - used to order each layer of the cairn viz
+    # - most similar by source...
     #
     def orderSCUsBySources(self, scus, df_q):
         # Handle some base cases

@@ -43,6 +43,92 @@ class RTTextMixin(object):
         self.spacy_loaded_flag = False
 
     #
+    # __validateCitationSubstring__() - validate a citation substring
+    #
+    def __validateCitationSubstring__(self, _substring_):
+        _chrs_    = []
+        _seq_     = []
+        in_number = False
+        i         = 1
+        while i < len(_substring_)-1:
+            if in_number:
+                if _substring_[i] >= '0' and _substring_[i] <= '9':
+                    _chrs_.append(_substring_[i])
+                elif _substring_[i] == ',':
+                    _chrs_.append(',')
+                    _seq_.append('c')
+                    in_number = False
+                elif _substring_[i] == '-':
+                    _chrs_.append('-')
+                    _seq_.append('d')
+                    in_number = False
+                elif _substring_[i] == ' ' or _substring_[i] == '\t' or _substring_[i] == '\n':
+                    in_number = False
+                else:
+                    return False, None
+            else:
+                if _substring_[i] >= '0' and _substring_[i] <= '9':
+                    _chrs_.append(_substring_[i])
+                    _seq_.append('n')
+                    in_number = True
+                elif _substring_[i] == ',':
+                    _chrs_.append(',')
+                    _seq_.append('c')
+                elif _substring_[i] == '-':
+                    _chrs_.append('-')
+                    _seq_.append('d')
+                elif _substring_[i] == ' ' or _substring_[i] == '\t' or _substring_[i] == '\n':
+                    ...
+                else:
+                    return False, None
+            i += 1
+        
+        # Make the sequence string
+        _sequence_ = ''.join(_seq_)
+        if len(_sequence_) == 0:                          return False, None # cannot be empty
+        if _sequence_[0] != 'n' or _sequence_[-1] != 'n': return False, None # must start and end with a number
+        _accept_ = ['nc','nd','cn','dn']
+        for i in range(len(_sequence_)-1):
+            if _sequence_[i:i+2] not in _accept_: return False,None
+        return True, ''.join(_chrs_)
+
+
+    #
+    # textCitationElements() - extract the elements of citations from a citation substring
+    #
+    def textCitationElements(self,s):
+        _results_ = []
+        _valid_, _chrs_ = self.__validateCitationSubstring__(s)
+        _parts_ = _chrs_.split(',')
+        for _part_ in _parts_:
+            if '-' in _part_:
+                _start_, _end_ = _part_.split('-')
+                for _i_ in range(int(_start_),int(_end_)+1): _results_.append(_i_)
+            else: _results_.append(int(_part_))
+        _results_ = sorted(_results_)
+        return _results_
+
+    #
+    # textCitationSpans() - extract the spans of citations from a text
+    #
+    def textCitationSpans(self,s):        
+        def findAllOccurences(_substring_, s):
+            i = 0
+            while _substring_ in s[i:]:
+                i = s.index(_substring_, i)
+                yield (i,len(_substring_))
+                i += len(_substring_)
+        # Find all substrings that may match the format
+        substrings = set()
+        for _substring_ in re.findall(r'\[.*?\]',s): substrings.add(_substring_)
+        # Valid the match and then find all occurences
+        _spans_ = []
+        for _substring_ in substrings:
+            _valid_, _chrs_ = self.__validateCitationSubstring__(_substring_)
+            if _valid_: _spans_.extend(findAllOccurences(_substring_, s))
+        return _spans_
+
+    #
     # Modified from Original Source:  https://www.geeksforgeeks.org/longest-common-substring-dp-29/
     # - now returns the indices for each of the strings
     #

@@ -36,6 +36,47 @@ class Testrt_text_mixin(unittest.TestCase):
         only by the elite.""")
 
 
+    def test_textCitationElements(self):
+        answers = {'[1-3]':[1,2,3], 
+                   '[2,3,4]':[2,3,4], 
+                   '[1 - 6]':[1,2,3,4,5,6], 
+                   '[ 1-6 ]':[1,2,3,4,5,6], 
+                   '[2 , 5 , 6]':[2,5,6], 
+                   '[1]':[1], 
+                   '[1, 2-6 , 8]':[1,2,3,4,5,6,8], 
+                   '[1, 2, 3, 5 ]':[1,2,3,5], 
+                   '[3]':[3], 
+                   '[2]':[2], 
+                   '[4]':[4], 
+                   '[1-3,4 , 8, 10]':[1,2,3,4,8,10], 
+                   '[1,2,3]':[1,2,3], 
+                   '[1,5,6]':[1,5,6],}
+        for s in answers.keys():
+            to_compare = self.rt_self.textCitationElements(s)
+            self.assertEqual(sorted(answers[s]), sorted(to_compare))
+            
+    def test_textCitationSpans(self):
+        examples = {
+            'This is a basic citation. [1]':[(26,3)],
+            'This is a basic citation. [1][1][1]':[(26,3),(29,3),(32,3)],
+            '[1] This is a [1] basic citation. [1] [1] [1]':[(0,3),(14,3),(34,3),(38,3),(42,3)],
+            'More [2] complicated one here [3].':[(5,3),(30,3)],
+            'A comma listed [1,2,3] one.':[(15,7)],
+            'At the end. [1,5,6]':[(12,7)],
+            'With spaces [1, 2, 3, 5 ].':[(12,13)],
+            'With [1-3] ranges in them [4].':[(5,5),(26,3)],
+            'with spaces and commas and stuff [1-3,4 , 8, 10]':[(33,15)],
+            '[1, 2-6 , 8] at the beginning and the ending. [ 1-6 ]':[(0,12),(46,7)],
+            '[1 - 6][2,3,4][2 , 5 , 6]':[(0,7),(7,7),(14,11)],
+            '[1 not 2] not this one.':[],
+            '[-12] or this one either [-13] [14-]':[],
+            '[1 -- 3] [1,-3], [-1], [-1 --,-- 3[]] several bad examples':[],
+        }
+        for s in examples.keys():
+            _answer_ = sorted(examples[s])
+            _spans_  = sorted(self.rt_self.textCitationSpans(s))
+            self.assertEqual(_spans_, _answer_)
+
     def test_editDistance(self):
         _tuples_ = [('abc','abcd',1),
                     ("kitten", "sitting", 3), # https://en.wikipedia.org/wiki/Levenshtein_distance
