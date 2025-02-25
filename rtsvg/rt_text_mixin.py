@@ -129,6 +129,34 @@ class RTTextMixin(object):
         return _spans_
 
     #
+    # textSubtractSpans() - subtract deletes from keeps and return the resulting spans
+    # - NOT SCALABLE
+    # keeps   - non-overlapping spans [(index, length), (index, length), ...]
+    # deletes - non-overlapping spans [(index, length), (index, length), ...]
+    #
+    def textSubtractSpans(self, keeps, deletes):
+        if len(keeps) == 0 or len(deletes) == 0: return keeps
+        keeps    = sorted(keeps)
+        deletes  = sorted(deletes)
+        _len_    = keeps[-1][0] + keeps[-1][1] + 10
+        _array_  = [False] * _len_
+        for i in range(len(keeps)):
+            for j in range(keeps[i][0], keeps[i][0]+keeps[i][1]): _array_[j] = True
+        for i in range(len(deletes)):
+            for j in range(deletes[i][0], deletes[i][0]+deletes[i][1]):
+                if j < len(_array_): _array_[j] = False
+        _new_spans_ = []
+        i = 0
+        while i < len(_array_):
+            if _array_[i]:
+                j = i+1
+                while j < len(_array_) and _array_[j]:j += 1
+                _new_spans_.append((i, j-i))
+                i = j
+            else: i += 1
+        return _new_spans_
+
+    #
     # Modified from Original Source:  https://www.geeksforgeeks.org/longest-common-substring-dp-29/
     # - now returns the indices for each of the strings
     #
