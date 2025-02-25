@@ -259,7 +259,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
         for i in range(len(_spans_)): len_sum += _spans_[i][1]
         return len_sum/len(_summary_), len_sum, len(_summary_), _spans_
 
-    def __applyUnderlines__(self, text, spans):
+    def __applyUnderlines__(self, text, spans, uncovered_color='#a00000', covered_color='#a0a0a0'):
         # Make alternating text blocks ... every other block is underlined
         sorted_spans  = sorted(spans, key=lambda x: x[0])
         _alternating_ = [] # odds require underline
@@ -275,11 +275,11 @@ pn.extension(design="material", sizing_mode="stretch_width")
         _txt_ = []
         for i in range(len(_alternating_)):
             i0, i1 = _alternating_[i][0], _alternating_[i][1]
-            if   i%2 == 0: _txt_.append('<e style="color: #ffdf00">' + html.escape(text[i0:i1]) + '</e>')
-            else:          _txt_.append('<u>' + html.escape(text[i0:i1]) + '</u>')
+            if   i%2 == 0: _txt_.append(f'<e style="color: {uncovered_color}">' + html.escape(text[i0:i1]) + '</e>')
+            else:          _txt_.append(f'<u style="color: {covered_color}">' + html.escape(text[i0:i1]) + '</u>')
         return ''.join(_txt_)
 
-    def createHTMLForMissingSCUs(self, qids=None):
+    def createHTMLForMissingSCUs(self, qids=None, uncovered_color='#a00000', covered_color='#a0a0a0', background_color='white'):
         # Sort the Question ID's by coverage (lowest coverage to highest coverage)
         _lu_ = {self.q_id_field:[], self.source_field:[], 'coverage':[], 'len_sum':[], 'len_summary':[], 'spans':[]}
         qid_to_source_to_coverage = {}
@@ -326,7 +326,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
             _htmls_.append('<tr>')
             for source in source_ordering:
                 _summary_ = self.df.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source')[self.summary_field].unique()[0]
-                _summary_ = self.__applyUnderlines__(_summary_, df_coverage.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source').iloc[0]['spans'])
+                _summary_ = self.__applyUnderlines__(_summary_, df_coverage.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source').iloc[0]['spans'], uncovered_color, covered_color)
                 _htmls_.append(f'<td align="left" valign="top"> {_summary_} </td>')
             _htmls_.append('</tr>')
 
@@ -378,7 +378,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
 
             _htmls_.append('</table><hr>')
 
-        _html_header_ = '<!DOCTYPE html><html><body style="background-color:black;">'
+        _html_header_ = f'<!DOCTYPE html><html><body style="background-color:{background_color};">'
         _html_footer_ = '</body></html>'
         return _html_header_ + ''.join(_htmls_) + _html_footer_
 
