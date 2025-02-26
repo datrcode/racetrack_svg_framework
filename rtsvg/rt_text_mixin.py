@@ -99,6 +99,7 @@ class RTTextMixin(object):
     def textCitationElements(self,s):
         _results_ = []
         _valid_, _chrs_ = self.__validateCitationSubstring__(s)
+        if not _valid_: return _results_
         _parts_ = _chrs_.split(',')
         for _part_ in _parts_:
             if '-' in _part_:

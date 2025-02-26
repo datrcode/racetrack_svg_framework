@@ -245,7 +245,7 @@ pn.extension(design="material", sizing_mode="stretch_width")
     # - if exclude_citation_spans is True, then exclude citation spans
     #   citation spans will look as follows:  [1], [2], [1,2,4], [1-5,8]
     #
-    def excerptCoverage(self,q_id, source, exclude_citation_spans=True):
+    def excerptCoverage(self, q_id, source, exclude_citation_spans=True):
         _df_      = self.df.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source').reset_index()
         _summary_ = _df_.iloc[0][self.summary_field].lower()
         _spans_ = []
@@ -261,10 +261,23 @@ pn.extension(design="material", sizing_mode="stretch_width")
                     j = _summary_.index(_part_, j)
                     _spans_.append((j, len(_part_)))
                     j += len(_part_)
+
+        # Aggregate the spans if they overlap
         _spans_ = self.rt_self.textAggregateSpans(_spans_)
-        len_sum = 0
-        for i in range(len(_spans_)): len_sum += _spans_[i][1]
-        return len_sum/len(_summary_), len_sum, len(_summary_), _spans_
+        
+        # Exclude citations
+        if exclude_citation_spans:
+            _citation_spans_       = self.rt_self.textCitationSpans(_summary_)
+            _spans_wout_citations_ = self.rt_self.textSubtractSpans(_spans_, _citation_spans_)
+            len_of_covered_text = 0
+            for i in range(len(_spans_wout_citations_)): len_of_covered_text += _spans_wout_citations_[i][1]
+            len_summary_wout_citations = len(_summary_)
+            for i in range(len(_citation_spans_)): len_summary_wout_citations -= _citation_spans_[i][1]
+            return len_of_covered_text/len_summary_wout_citations, len_of_covered_text, len_summary_wout_citations, _spans_
+        else:
+            len_of_covered_text = 0
+            for i in range(len(_spans_)): len_of_covered_text += _spans_[i][1]
+            return len_of_covered_text/len(_summary_), len_of_covered_text, len(_summary_), _spans_
 
     def __applyUnderlines__(self, text, spans, uncovered_color='#a00000', covered_color='#a0a0a0'):
         # Make alternating text blocks ... every other block is underlined
