@@ -104,7 +104,9 @@ class RTTextMixin(object):
         for _part_ in _parts_:
             if '-' in _part_:
                 _start_, _end_ = _part_.split('-')
-                for _i_ in range(int(_start_),int(_end_)+1): _results_.append(_i_)
+                _start_, _end_ = int(_start_), int(_end_)
+                _start_, _end_ = min(_start_, _end_), max(_start_, _end_)
+                for _i_ in range(_start_, _end_+1): _results_.append(_i_)
             else: _results_.append(int(_part_))
         _results_ = sorted(_results_)
         return _results_
