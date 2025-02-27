@@ -279,6 +279,39 @@ pn.extension(design="material", sizing_mode="stretch_width")
             for i in range(len(_spans_)): len_of_covered_text += _spans_[i][1]
             return len_of_covered_text/len(_summary_), len_of_covered_text, len(_summary_), _spans_
 
+    #
+    # excerptsDensity() - determine the average density of the excerpts per character
+    #
+    def excerptsDensity(self, q_id, source, ignore_uncovered_chars=True):
+        _df_      = self.df.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source').reset_index()
+        _summary_ = _df_.iloc[0][self.summary_field].lower()
+        _counts_  = [0] * len(_summary_)
+        for i in range(len(_df_)):
+            _excerpt_ = _df_.iloc[i][self.excerpt_field]
+            _parts_   = _excerpt_.split('...')
+            for _part_ in _parts_:
+                _part_ = _part_.strip().lower()
+                if len(_part_) == 0: continue
+                i0 = 0
+                i0 = _summary_.index(_part_, i0) if _part_ in _summary_[i0:] else None
+                while i0 is not None:
+                    i1 = i0 + len(_part_)
+                    for j in range(i0, i1): _counts_[j] += 1
+                    i0 = _summary_.index(_part_, i1) if _part_ in _summary_[i1:] else None
+        _sum_, _samples_ = 0, 0
+        if ignore_uncovered_chars:
+            for i in range(len(_counts_)):
+                if _counts_[i] > 0: _sum_, _samples_ = _sum_ + _counts_[i], _samples_ + 1
+        else:
+            _sum_     = sum(_counts_)
+            _samples_ = len(_counts_)
+        
+        if _samples_ == 0: _samples_ = 1
+        return _sum_ / _samples_
+
+    #
+    # __applyUnderlines__()
+    #
     def __applyUnderlines__(self, text, spans, uncovered_color='#a00000', covered_color='#a0a0a0'):
         # Make alternating text blocks ... every other block is underlined
         sorted_spans  = sorted(spans, key=lambda x: x[0])
