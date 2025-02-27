@@ -567,3 +567,31 @@ class SCUPyramidMethodDiagram(object):
         _svg_.append('</svg>')
         return '\n'.join(_svg_)
 
+    #
+    # fillScore() - prototype scoring for the shape of the pyramid
+    #
+    def fillScore(self, q_id, top_perc=0.6):
+        _num_sources_ = self.df.query(f'`{self.q_id_field}` == @q_id')[self.summary_source_field].nunique()
+        _df_ = self.df.query(f'`{self.q_id_field}` == @q_id')                 \
+                .groupby([self.scu_field])                                 \
+                .count()                                                   \
+                .reset_index()                                             \
+                .groupby([self.summary_source_field])                      \
+                .count()                                                   \
+                .reset_index()                                             \
+                .sort_values([self.summary_source_field], ascending=False) \
+                .reset_index()                                             \
+                .drop(['index'], axis=1)
+        _level_lu_ = {}
+        for i in range(_num_sources_): _level_lu_[i+1] = 0
+        max_level_width = 1
+        for i in range(len(_df_)):
+            _sources_, _num_of_scus_ = _df_.iloc[i][self.summary_source_field], _df_.iloc[i][self.scu_field]
+            _level_lu_[_sources_] = _num_of_scus_
+            if _sources_ > max_level_width: max_level_width = _sources_
+        _score_, _whats_left_ = 0.0, 1.0
+        for i in range(_num_sources_,0,-1):
+            _top_        =  _whats_left_ * top_perc
+            _score_      += _level_lu_[i] * _top_ / max_level_width
+            _whats_left_ =  _whats_left_ * (1.0 - top_perc)
+        return float(_score_)
