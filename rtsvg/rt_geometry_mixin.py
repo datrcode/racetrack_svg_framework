@@ -20,6 +20,8 @@ from shapely.geometry              import Polygon, LineString, GeometryCollectio
 from shapely.geometry.multipolygon import MultiPolygon
 from math import sqrt, acos, pi, cos, sin, atan2
 import random
+import uuid
+import copy
 import heapq
 from .laguerre_voronoi_2d import laguerre_voronoi_2d
 
@@ -446,6 +448,54 @@ class RTGeometryMixin(object):
         else:                 svgs.append(self.pieSlice(cx, cy, r-2, 0, 360*pie_perc, color=pie_co))
 
         return ''.join(svgs)
+
+    #
+    # sankeyGeometry()
+    # - fm     = (x, y, h)
+    # - tos    = [(x, y, h), ...]
+    # - colors = {fm_to_tuple: hex-color, ...}
+    # - colors = None (default, black)
+    # - colors = <hex-color-as-a-string>, e.g., '#ff0000'
+    #
+    def sankeyGeometry(self, fm, tos, colors=None, opacity=0.1, render_exit=True, render_enters=True):
+        # Sanity check
+        _sum_ = fm[2]
+        for to in tos: _sum_ -= to[2]
+        if _sum_ != 0: raise ValueError("sankeyGeometry(): fm and tos do not sum to 100%")
+        # Don't mess up the original... order it by y value
+        tos = copy.deepcopy(tos)
+        tos = sorted(tos, key=lambda x: x[1])
+        # Draw the exit and entrances ... exit in green, entrances in red
+        svg = ['<svg>']
+        if render_exit:   svg.append(f'<line x1="{fm[0]}" y1="{fm[1]}" x2="{fm[0]}" y2="{fm[1]+fm[2]}" stroke="#006d00" stroke-width="4.0" />')
+        if render_enters: 
+            for to in tos: svg.append(f'<line x1="{to[0]}" y1="{to[1]}" x2="{to[0]}" y2="{to[1]+to[2]}" stroke="#ff0000" stroke-width="4.0" />')
+        # Do the defs
+        id_lu = {}
+        if type(colors) is dict and fm in colors:
+            svg.append('<defs>')
+            for to in tos:
+                if to in colors:
+                    id_lu[(fm, to)] = f'gradient-' + uuid.uuid4().hex
+                    svg.append(f'<linearGradient id="{id_lu[(fm, to)]}" x1="0%" y1="0%" x2="100%" y2="0%">')
+                    svg.append(f'<stop offset="0%"   stop-color="{colors[fm]}" />')
+                    svg.append(f'<stop offset="100%" stop-color="{colors[to]}" />')
+                    svg.append('</linearGradient>')
+            svg.append('</defs>')
+        # Most basic version of the geometry ... suffers from a narrowing in the middle which is not desired
+        y = fm[1]
+        for to in tos:
+            _d_         = (to[0] - fm[0]) / 3.0 # push out for the bezier curve
+            _fattening_ = 1.2                   # helps to fatten up the line if the geometry is too narrow
+            d = f'M {fm[0]} {y} C {fm[0]+_d_} {y} {to[0]-_fattening_*_d_} {to[1]} {to[0]} {to[1]} L {to[0]} {to[1]+to[2]} C {to[0]-_d_} {to[1]+to[2]} {fm[0]+_fattening_*_d_} {y+to[2]} {fm[0]} {y+to[2]} Z'
+            if   colors is None:       _color_ = '#000000'
+            elif type(colors) is str:  _color_ = colors
+            elif type(colors) is dict and fm in colors and to in colors: _color_ = 'url(#'+id_lu[(fm, to)]+')'
+            elif type(colors) is dict and fm in colors:                  _color_ = colors[fm]
+            else:                                                        _color_ = '#000000'
+            svg.append(f'<path d="{d}" fill="{_color_}" fill-opacity="{opacity}" stroke="none" stroke-width="0.5" />')
+            y += to[2]
+        return ''.join(svg)+'</svg>'
 
     #
     # crunchCircles() - compress circles with a packing algorithm
