@@ -3,6 +3,7 @@ framework/.ipynb_checkpoints
 rtsvg/__pycache__
 rtsvg/.ipynb_checkpoints
 test_scripts/.ipynb_checkpoints
+test_scripts/__pycache__
 use_cases/2014_vast_challenge/.ipynb_checkpoints
 test_scripts/test_layout.csv
 use_cases/2014_vast_challenge/llama3_8b_2014_vast.csv
