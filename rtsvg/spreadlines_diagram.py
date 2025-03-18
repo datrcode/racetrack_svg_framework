@@ -22,15 +22,14 @@ def spreadLines(rt_self,
                 df,
                 relationships,
                 node_focus,
+                only_render_nodes    = None,  # set of nodes to render... if None, just render normally
                 ts_field             = None,  # Will attempt to guess based on datatypes
                 every                = '1d',  # "the every field for the group_by_dynamic" ... 1d, 1h, 1m
                 color_by             = None,
                 count_by             = None,  # does nothing
                 count_by_set         = False, # does nothing
-                node_color           = None,  # none means default color, 'vary' by color_by, or specific color "#xxxxxx"
+                node_color           = None,  # none means default color, 'vary' by color_by, or 'node' to convert the node string into a color
                                               # ... or a dictionary of the node string to either a string to color hash or a "#xxxxxx"
-                                              # <copied from rt_linknode_mixin.py>
-
                 alter_inter_d        = 192,       # distance between the alters
                 max_bin_w            = 64,        # max width of the bin
                 max_bin_h            = 450*2,     # max height of the bin
@@ -139,6 +138,7 @@ class SpreadLines(object):
         self.df                  = rt_self.copyDataFrame(kwargs['df'])
         self.relationships       = kwargs['relationships']
         self.node_focus          = kwargs['node_focus']
+        self.only_render_nodes   = kwargs['only_render_nodes']
         self.ts_field            = self.rt_self.guessTimestampField(self.df) if kwargs['ts_field'] is None else kwargs['ts_field']
         self.every               = kwargs['every']
         self.color_by            = kwargs['color_by']
@@ -357,11 +357,13 @@ class SpreadLines(object):
         svg.append('</svg>')
         return ''.join(svg)
 
+    # __dateFormat__() - various date formats based on the value of self.every
     def __dateFormat__(self):
         if   'd' in self.every: return '%Y-%m-%d'
         elif 'h' in self.every: return '%Y-%m-%d %H'
         else:                   return '%Y-%m-%d %H:%M'
 
+    # packagle() - pack the nodes into the available space
     def packable(self, nodes, x, y, y_max, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer):
         node_to_xy = {}
         h = abs(y - y_max)
@@ -421,6 +423,12 @@ class SpreadLines(object):
         if len(node_to_xy) == 0: return None, None, None
         return node_to_xy, left_overs, out_of
 
+
+
+    #
+    # renderAlter()  - render an alter / this is just to render the nodes (or clouds) within the alter
+    # ... the actual shape of the bin & (alters too) is rendered elsewhere
+    #
     def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul=1, r_min=4.0, r_pref=7.0, circle_inter_d=2.0, circle_spacer=3, h_collapsed_sections=16):
         # Bounds state & node positioning
         xmin, ymin, xmax, ymax = x-r_pref-circle_inter_d, y-r_pref-circle_inter_d, x+r_pref+circle_inter_d, y+r_pref+circle_inter_d
@@ -429,10 +437,10 @@ class SpreadLines(object):
         svg = []
         # Determine the state of the node
         def nodeState(seen_before, seen_after):
-            if   seen_before and seen_after: return 'continuous'
-            elif seen_before:                return 'stopped'
-            elif seen_after:                 return 'started'
-            else:                            return 'isolated'
+            if   seen_before and seen_after: return 'continuous' # node is seen both before and after this bin
+            elif seen_before:                return 'stopped'    # node was seen before this bin (but not after)
+            elif seen_after:                 return 'started'    # node seen after this bin (but not before)
+            else:                            return 'isolated'   # node is only seen in this bin (and no other bin)
         # Create the started/stopped triangles for a single node
         def svgTriangle(x,y,r,s,d):
             nonlocal xmin, ymin, xmax, ymax
@@ -462,7 +470,6 @@ class SpreadLines(object):
                 if _node_ not in befores: svg.append(svgTriangle(_xyr_[0], _xyr_[1], _xyr_[2], circle_spacer/2, -1))
                 if _node_ not in afters:  svg.append(svgTriangle(_xyr_[0], _xyr_[1], _xyr_[2], circle_spacer/2,  1))
                 node_to_xyrepstat[_node_] = (_xyr_[0], _xyr_[1], 'single', nodeState(_node_ in befores, _node_ in afters))
-
         # Render the summarization cloud
         def summarizationCloud(n, y_cloud, ltriangle, rtriangle, nodes_in_cloud):
             nonlocal xmin, ymin, xmax, ymax,svg
@@ -472,10 +479,6 @@ class SpreadLines(object):
             svg.append(self.rt_self.svgText(str(n), x, y_cloud + 4, 'black', anchor='middle'))
             xmin, ymin, xmax, ymax = min(xmin, x-16), min(ymin, y_cloud-6), max(xmax, x+16), max(ymax, y_cloud+6)
             for _node_ in nodes_in_cloud: node_to_xyrepstat[_node_] = (x, y_cloud, 'cloud', nodeState(not ltriangle, not rtriangle))
-        # Render the main SVG ... geometry and some guide lines (for reference/debug, commented out now)
-        #svg.append(f'<line x1="{x-w_max/2.0}" y1="{y}"     x2="{x+w_max/2.0}" y2="{y}"     stroke="#0000ff" stroke-width="4.0" />') # render the "start"
-        #svg.append(f'<line x1="{x-w_max/2.0}" y1="{y_max}" x2="{x+w_max/2.0}" y2="{y_max}" stroke="#ff0000" stroke-width="0.8" />')
-        #svg.append(f'<line x1="{x}"           y1="{0}"     x2="{x}"           y2="{384}"   stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="0.8" />')
         # Make sure there are nodes...
         if len(nodes) > 0:
             # Sort the nodes into the 4 categories
@@ -487,50 +490,78 @@ class SpreadLines(object):
                 elif _node_ in afters:                       nodes_sorter.append((1, _node_)), nodes_started   .append(_node_)
                 else:                                        nodes_sorter.append((0, _node_)), nodes_isolated  .append(_node_)
             nodes_sorter  = sorted(nodes_sorter)
-            nodes_ordered = [x[1] for x in nodes_sorter]
-
-            # Try putting them all down first... which won't work for any non-trivial number of nodes
-            node_to_xy, leftovers, out_of = self.packable(nodes_ordered, x, y, y_max, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
-            if node_to_xy is not None:
-                placeNodeToXYs(node_to_xy) # no summarization necessary
+            
+            if self.only_render_nodes is not None:
+                continuous_set, isolated_set, started_set, stopped_set = set(), set(), set(), set()
+                nodes_ordered = []
+                for i in range(len(nodes_sorter)):
+                    _node_ = nodes_sorter[i][1]
+                    if   _node_ in self.only_render_nodes: nodes_ordered.  append(_node_)
+                    elif _node_ in nodes_continuous:       continuous_set. add   (_node_)
+                    elif _node_ in nodes_isolated:         isolated_set.   add   (_node_)
+                    elif _node_ in nodes_started:          started_set.    add   (_node_)
+                    elif _node_ in nodes_stopped:          stopped_set.    add   (_node_)
+                ybase = ymin if mul < 0 else ymax
+                if len(nodes_ordered) > 0:
+                    node_to_xy, leftovers, out_of = self.packable(nodes_ordered, x, y, y_max, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
+                    if node_to_xy is not None:    placeNodeToXYs(node_to_xy) # no summarization necessary
+                    else:                         summarizationCloud(len(nodes_ordered),  ybase+mul*0.5*h_collapsed_sections, False, False, nodes_ordered)
+                ybase = ymin if mul < 0 else ymax
+                if len(nodes_continuous) > 0:     
+                    summarizationCloud(len(continuous_set), ybase+mul*0.5*h_collapsed_sections, False, False, list(continuous_set))
+                    ybase = ymin if mul < 0 else ymax
+                if len(nodes_started)    > 0:     
+                    summarizationCloud(len(started_set),    ybase+mul*0.5*h_collapsed_sections, True,  False, list(started_set))
+                    ybase = ymin if mul < 0 else ymax
+                if len(nodes_stopped)    > 0:     
+                    summarizationCloud(len(stopped_set),    ybase+mul*0.5*h_collapsed_sections, False, True,  list(stopped_set))
+                    ybase = ymin if mul < 0 else ymax
+                if len(nodes_isolated)   > 0:     
+                    summarizationCloud(len(isolated_set),   ybase+mul*0.5*h_collapsed_sections, True,  True,  list(isolated_set))
             else:
-                top_adjust = h_collapsed_sections if mul == 1 else -h_collapsed_sections
-                node_to_xy, leftovers, out_of = self.packable(nodes_started+nodes_stopped+nodes_continuous, x, y, y_max-top_adjust, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
+                # Try putting them all down first... which won't work for any non-trivial number of nodes
+                nodes_ordered = [x[1] for x in nodes_sorter]
+                node_to_xy, leftovers, out_of = self.packable(nodes_ordered, x, y, y_max, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
                 if node_to_xy is not None:
-                    placeNodeToXYs(node_to_xy) # summarize isolated nodes only
-                    y_off = ymin if mul == 1 else ymax
-                    summarizationCloud(len(nodes_isolated), y_off+mul*0.5*h_collapsed_sections, True, True, nodes_isolated)
+                    placeNodeToXYs(node_to_xy) # no summarization necessary
                 else:
-                    top_adjust = 2*h_collapsed_sections if mul == 1 else -2*h_collapsed_sections
-                    node_to_xy, leftovers, out_of = self.packable(nodes_started              +nodes_continuous, x, y, y_max-top_adjust, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
+                    top_adjust = h_collapsed_sections if mul == 1 else -h_collapsed_sections
+                    node_to_xy, leftovers, out_of = self.packable(nodes_started+nodes_stopped+nodes_continuous, x, y, y_max-top_adjust, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
                     if node_to_xy is not None:
-                        placeNodeToXYs(node_to_xy) # summarize isolated nodes and nodes_stopped
-                        y_off = ymax if mul == 1 else ymin
-                        summarizationCloud(len(nodes_stopped),  y_off+mul*0.5*h_collapsed_sections, False,  True, nodes_stopped)
-                        summarizationCloud(len(nodes_isolated), y_off+mul*1.5*h_collapsed_sections, True,   True, nodes_isolated)
+                        placeNodeToXYs(node_to_xy) # summarize isolated nodes only
+                        y_off = ymin if mul == 1 else ymax
+                        summarizationCloud(len(nodes_isolated), y_off+mul*0.5*h_collapsed_sections, True, True, nodes_isolated)
                     else:
-                        node_to_xy, leftovers, out_of = self.packable(nodes_stopped+nodes_continuous, x, y, y_max-top_adjust, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
+                        top_adjust = 2*h_collapsed_sections if mul == 1 else -2*h_collapsed_sections
+                        node_to_xy, leftovers, out_of = self.packable(nodes_started              +nodes_continuous, x, y, y_max-top_adjust, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
                         if node_to_xy is not None:
-                            placeNodeToXYs(node_to_xy) # summarize isolated nodes and nodes_started
+                            placeNodeToXYs(node_to_xy) # summarize isolated nodes and nodes_stopped
                             y_off = ymax if mul == 1 else ymin
-                            summarizationCloud(len(nodes_started),   y_off+mul*0.5*h_collapsed_sections, True,  False, nodes_started)
-                            summarizationCloud(len(nodes_isolated),  y_off+mul*1.5*h_collapsed_sections, True,  True,  nodes_isolated)
+                            summarizationCloud(len(nodes_stopped),  y_off+mul*0.5*h_collapsed_sections, False,  True, nodes_stopped)
+                            summarizationCloud(len(nodes_isolated), y_off+mul*1.5*h_collapsed_sections, True,   True, nodes_isolated)
                         else:
-                            top_adjust = 3*h_collapsed_sections if mul == 1 else -3*h_collapsed_sections
-                            node_to_xy, leftovers, out_of = self.packable(nodes_continuous, x, y, y_max-top_adjust, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
+                            node_to_xy, leftovers, out_of = self.packable(nodes_stopped+nodes_continuous, x, y, y_max-top_adjust, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
                             if node_to_xy is not None:
-                                placeNodeToXYs(node_to_xy) # summarize everyting but the continuous nodes (nodes seen in both directions)
+                                placeNodeToXYs(node_to_xy) # summarize isolated nodes and nodes_started
                                 y_off = ymax if mul == 1 else ymin
                                 summarizationCloud(len(nodes_started),   y_off+mul*0.5*h_collapsed_sections, True,  False, nodes_started)
-                                summarizationCloud(len(nodes_stopped),   y_off+mul*1.5*h_collapsed_sections, False, True,  nodes_stopped)
-                                summarizationCloud(len(nodes_isolated),  y_off+mul*2.5*h_collapsed_sections, True,  True,  nodes_isolated)
+                                summarizationCloud(len(nodes_isolated),  y_off+mul*1.5*h_collapsed_sections, True,  True,  nodes_isolated)
                             else:
-                                # everything is summarized :(
-                                summarizationCloud(len(nodes_continuous), y+mul*0.5*h_collapsed_sections, False,  False, nodes_continuous)
-                                summarizationCloud(len(nodes_started),    y+mul*1.5*h_collapsed_sections, True,   False, nodes_started)
-                                summarizationCloud(len(nodes_stopped),    y+mul*2.5*h_collapsed_sections, False,  True,  nodes_stopped)
-                                summarizationCloud(len(nodes_isolated),   y+mul*3.5*h_collapsed_sections, True,   True,  nodes_isolated)
-        
+                                top_adjust = 3*h_collapsed_sections if mul == 1 else -3*h_collapsed_sections
+                                node_to_xy, leftovers, out_of = self.packable(nodes_continuous, x, y, y_max-top_adjust, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer)
+                                if node_to_xy is not None:
+                                    placeNodeToXYs(node_to_xy) # summarize everyting but the continuous nodes (nodes seen in both directions)
+                                    y_off = ymax if mul == 1 else ymin
+                                    summarizationCloud(len(nodes_started),   y_off+mul*0.5*h_collapsed_sections, True,  False, nodes_started)
+                                    summarizationCloud(len(nodes_stopped),   y_off+mul*1.5*h_collapsed_sections, False, True,  nodes_stopped)
+                                    summarizationCloud(len(nodes_isolated),  y_off+mul*2.5*h_collapsed_sections, True,  True,  nodes_isolated)
+                                else:
+                                    # everything is summarized :(
+                                    summarizationCloud(len(nodes_continuous), y+mul*0.5*h_collapsed_sections, False,  False, nodes_continuous)
+                                    summarizationCloud(len(nodes_started),    y+mul*1.5*h_collapsed_sections, True,   False, nodes_started)
+                                    summarizationCloud(len(nodes_stopped),    y+mul*2.5*h_collapsed_sections, False,  True,  nodes_stopped)
+                                    summarizationCloud(len(nodes_isolated),   y+mul*3.5*h_collapsed_sections, True,   True,  nodes_isolated)
+            
         xmin, ymin, xmax, ymax = xmin - r_pref, ymin - r_pref, xmax + r_pref, ymax + r_pref
         # svg.append(f'<rect x="{xmin}" y="{ymin}" width="{xmax-xmin}" height="{ymax-ymin}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="0.8" fill="none" rx="{r_pref}" />')
         return ''.join(svg), (xmin, ymin, xmax, ymax), node_to_xyrepstat
@@ -829,7 +860,13 @@ class SpreadLines(object):
                 _x1_, _y1_, _r1_, _s1_ = bin_to_n2xyrs[_bin1_][_node_]
                 _coords_ = (_bounds0_[2], _y0_, _bounds1_[0], _y1_)
                 if _coords_ not in _already_drawn_:
-                    svg.insert(0, self.svgCrossConnect(_bounds0_[2], _y0_, _bounds1_[0], _y1_, color=self.rt_self.co_mgr.getTVColor('axis','major'), width=1.5))
+                    # Color options // still need to do "vary"
+                    if   self.node_color is None:                                      _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
+                    elif self.node_color == 'node':                                    _color_ = self.rt_self.co_mgr.getColor(_node_)
+                    elif type(self.node_color) is dict and _node_ in self.node_color:  _color_ = self.rt_self.getColor(self.node_color[_node_])
+                    else:                                                              _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
+                    # Render the direct connection & records that it has been rendered -- may prevent node_color == 'vary' from rendering correctly
+                    svg.insert(0, self.svgCrossConnect(_bounds0_[2], _y0_, _bounds1_[0], _y1_, color=_color_, width=1.5))
                     _already_drawn_.add(_coords_)
             
             # channel connections
@@ -859,7 +896,7 @@ class SpreadLines(object):
         # Add the header and the footer
         svg.insert(0, f'<svg x="0" y="0" width="{self.w}" height="{self.h}" viewBox="{vx0} {vy0} {vx1-vx0} {vy1-vy0}">')
         svg.insert(1, f'<rect x="{vx0}" y="{vy0}" width="{vx1-vx0}" height="{vy1-vy0}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
-        svg.insert(2, f'<line x1="{alter_inter_d}" y1="{y}" x2="{x-alter_inter_d - (xmax-xmin)/2}" y2="{y}" stroke="#f0f0f0" stroke-width="3.0" />')
+        svg.insert(2, f'<line x1="{alter_inter_d}" y1="{y}" x2="{x-alter_inter_d - (xmax-xmin)/2}" y2="{y}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="3.0" />')
         svg.append('</svg>')
         self.last_render = ''.join(svg)
         return self.last_render
