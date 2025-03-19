@@ -493,7 +493,7 @@ class SpreadLines(object):
                 elif _node_ in befores:                      nodes_sorter.append((2, _node_)), nodes_stopped   .append(_node_)
                 elif _node_ in afters:                       nodes_sorter.append((1, _node_)), nodes_started   .append(_node_)
                 else:                                        nodes_sorter.append((0, _node_)), nodes_isolated  .append(_node_)
-            nodes_sorter  = sorted(nodes_sorter)
+            nodes_sorter  = sorted(nodes_sorter, reverse=(mul > 0))
             
             if self.only_render_nodes is not None:
                 continuous_set, isolated_set, started_set, stopped_set = set(), set(), set(), set()
