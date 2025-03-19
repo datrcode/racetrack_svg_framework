@@ -334,9 +334,9 @@ class SpreadLines(object):
         for _bin_ in bin_to_x:
             _x_ = bin_to_x[_bin_]
             svg.append(f'<line x1="{_x_}" y1="{self.y_ins}" x2="{_x_}" y2="{self.y_ins + h_usable}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="1.0" />')
-            svg.append(f'<circle cx="{_x_}" cy="{y_mid}" r="5" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="1.0" fill="{self.rt_self.co_mgr.getTVColor('data','default')}" />')
+            svg.append(f'<circle cx="{_x_}" cy="{y_mid}" r="5" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="1.0" fill="{self.rt_self.co_mgr.getTVColor("data","default")}" />')
             _date_str_ = self.bin_to_timestamps[_bin_].strftime(self.__dateFormat__())
-            svg.append(self.rt_self.svgText(_date_str_, _x_-2, self.y_ins + h_usable + 4, rt.co_mgr.getTVColor('axis','minor'), anchor='begin', rotation=270))
+            svg.append(self.rt_self.svgText(_date_str_, _x_-2, self.y_ins + h_usable + 4, self.rt_self.co_mgr.getTVColor('axis','minor'), anchor='begin', rotation=270))
             if _bin_ in self.bin_to_alter1s and 'fm' in self.bin_to_alter1s[_bin_]: # top of the image
                 _y_         = y_mid - _y_diff_alter1s_
                 _num_nodes_ = len(self.bin_to_alter1s[_bin_]['fm'])

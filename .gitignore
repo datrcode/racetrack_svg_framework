@@ -34,3 +34,4 @@ rtsvg/laguerre_voronoi_2d/__pycache__/laguerre_voronoi_2d.cpython-312.pyc
 test_scripts/__pycache__/rt_bundled_ego_chord_diagram.cpython-312.pyc
 test_scripts/__pycache__/scu_pyramid_method_diagram.cpython-312.pyc
 use_cases/2014_vast_challenge/articles.parquet
+test_scripts/__pycache__/spreadlines_prototyping.cpython-312.pyc
