@@ -5,6 +5,7 @@ import time
 import random
 import copy
 import rtsvg
+from rtsvg import RTEntityPosition
 
 #
 # spreadLines() - attempt to implement this visualization
@@ -930,3 +931,16 @@ class SpreadLines(object):
     def _repr_svg_(self):
         if self.last_render is None: self.renderSVG()
         return self.last_render
+
+    def entityPosition(self, entity):
+        _results_ = []
+        for _bin_ in self.bin_to_node_to_xyrepstat:
+            if entity in self.bin_to_node_to_xyrepstat[_bin_]:
+                _xyrepstat_ = self.bin_to_node_to_xyrepstat[_bin_][entity]
+                _xy_        = (_xyrepstat_[0], _xyrepstat_[1])
+                if _xyrepstat_[2] == 'single': _svg_markup_ = f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{_xyrepstat_[7]}" stroke="#000000" stroke-width="1.25" fill="none"/>'
+                else:                          _svg_markup_ = self.rt_self.iconCloud(_xy_[0], _xy_[1], fg='#e0e0e0', bg='#e0e0e0')
+                rtep = RTEntityPosition(entity, self.rt_self, self, _xy_, (_xy_[0], _xy_[1], 0.0, 1.0), 
+                                        None, _svg_markup_, self.widget_id)
+                _results_.append(rtep)
+        return _results_
