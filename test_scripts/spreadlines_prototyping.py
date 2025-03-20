@@ -299,7 +299,8 @@ class SpreadLines(object):
         else:                                 self.df_alter2s = pl.DataFrame()
         self.time_lu['alter_binning_concat'] = time.time() - t0
 
-        self.last_render = None
+        self.bin_to_node_to_xyrepstat = {}
+        self.last_render              = None
 
     # nodesInBin() - return the set of nodes that exist in this bin
     def nodesInBin(self, bin):
@@ -426,13 +427,12 @@ class SpreadLines(object):
         if len(node_to_xy) == 0: return None, None, None
         return node_to_xy, left_overs, out_of
 
-
-
     #
     # renderAlter()  - render an alter / this is just to render the nodes (or clouds) within the alter
     # ... the actual shape of the bin & (alters too) is rendered elsewhere
     #
-    def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul=1, r_min=4.0, r_pref=7.0, circle_inter_d=2.0, circle_spacer=3, h_collapsed_sections=16):
+    # def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul=1, r_min=4.0, r_pref=7.0, circle_inter_d=2.0, circle_spacer=3, h_collapsed_sections=16):
+    def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, _bin_, _alter_, _alter_side_):
         # Bounds state & node positioning
         xmin, ymin, xmax, ymax = x-r_pref-circle_inter_d, y-r_pref-circle_inter_d, x+r_pref+circle_inter_d, y+r_pref+circle_inter_d
         node_to_xyrepstat = {} # node to (x, y, representation, stat) where representation is ['single','cloud'] and state is ['start,'stop','isolated','continuous']
@@ -466,23 +466,28 @@ class SpreadLines(object):
             return f'<path d="{_path_}" stroke="none" fill="{_color_}" />'
         # Place the nodes onto the canvas
         def placeNodeToXYs(n2xy):
-            nonlocal xmin, ymin, xmax, ymax,svg
+            nonlocal xmin, ymin, xmax, ymax, svg
             for _node_, _xyr_ in n2xy.items():
                 _color_ = self.__nodeColor__(_node_)
                 svg.append(f'<circle cx="{_xyr_[0]}" cy="{_xyr_[1]}" r="{_xyr_[2]}" stroke="{_color_}" stroke-width="1.25" fill="none"/>')
                 xmin, ymin, xmax, ymax = min(xmin, _xyr_[0]-_xyr_[2]), min(ymin, _xyr_[1]-_xyr_[2]), max(xmax, _xyr_[0]+_xyr_[2]), max(ymax, _xyr_[1]+_xyr_[2])
                 if _node_ not in befores: svg.append(svgTriangle(_xyr_[0], _xyr_[1], _xyr_[2], circle_spacer/2, -1))
                 if _node_ not in afters:  svg.append(svgTriangle(_xyr_[0], _xyr_[1], _xyr_[2], circle_spacer/2,  1))
-                node_to_xyrepstat[_node_] = (_xyr_[0], _xyr_[1], 'single', nodeState(_node_ in befores, _node_ in afters))
+                _xyrepstat_ = (_xyr_[0], _xyr_[1], 'single', nodeState(_node_ in befores, _node_ in afters), _bin_, _alter_, _alter_side_, (_xyr_[2]))
+                node_to_xyrepstat[_node_] = _xyrepstat_
+                self.bin_to_node_to_xyrepstat[_bin_][_node_] = _xyrepstat_
         # Render the summarization cloud
         def summarizationCloud(n, y_cloud, ltriangle, rtriangle, nodes_in_cloud):
-            nonlocal xmin, ymin, xmax, ymax,svg
+            nonlocal xmin, ymin, xmax, ymax, svg
             svg.append(self.rt_self.iconCloud(x,y_cloud, fg='#e0e0e0', bg='#e0e0e0'))
             if ltriangle: svg.append(svgCloudTriangle(x, y_cloud, 16, 6, -1))
             if rtriangle: svg.append(svgCloudTriangle(x, y_cloud, 16, 6,  1))
             svg.append(self.rt_self.svgText(str(n), x, y_cloud + 4, 'black', anchor='middle'))
             xmin, ymin, xmax, ymax = min(xmin, x-16), min(ymin, y_cloud-6), max(xmax, x+16), max(ymax, y_cloud+6)
-            for _node_ in nodes_in_cloud: node_to_xyrepstat[_node_] = (x, y_cloud, 'cloud', nodeState(not ltriangle, not rtriangle))
+            for _node_ in nodes_in_cloud:
+                _xyrepstat_                                  = (x, y_cloud, 'cloud', nodeState(not ltriangle, not rtriangle), _bin_, _alter_, _alter_side_, (None))
+                node_to_xyrepstat[_node_]                    = _xyrepstat_
+                self.bin_to_node_to_xyrepstat[_bin_][_node_] = _xyrepstat_
         # Make sure there are nodes...
         if len(nodes) > 0:
             # Sort the nodes into the 4 categories
@@ -632,6 +637,8 @@ class SpreadLines(object):
         alter_separation_h   = self.alter_separation_h
         h_collapsed_sections = self.h_collapsed_sections
 
+        self.bin_to_node_to_xyrepstat[bin] = {}
+
         _all_nodes_in_this_bin = self.nodesInBin(bin)
         _nodes_in_other_bins_  = self.nodesExistsInOtherBins(bin)
         _befores_, _afters_    = set(), set()
@@ -644,7 +651,7 @@ class SpreadLines(object):
 
         # Actual alters
         if bin in self.bin_to_alter1s and 'fm' in self.bin_to_alter1s[bin]:
-            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter1s[bin]['fm'], _befores_, _afters_, x, y-r_pref-2*circle_inter_d, y-r_pref-max_alter_h,                  max_w, -1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections)
+            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter1s[bin]['fm'], _befores_, _afters_, x, y-r_pref-2*circle_inter_d, y-r_pref-max_alter_h,                  max_w, -1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, bin, 1, 'fm')
             svg.append(_svg_), node_2_xyrs.update(_n2xyrs_)
             alter1s_fm_bounds = _bounds_
         else:
@@ -652,13 +659,13 @@ class SpreadLines(object):
             _bounds_          = (x-r_pref, y-r_pref-2*circle_inter_d-5, x+r_pref, y-r_pref-2*circle_inter_d)
 
         if bin in self.bin_to_alter2s and 'fm' in self.bin_to_alter2s[bin]:
-            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter2s[bin]['fm'], _befores_, _afters_, x, _bounds_[1]-alter_separation_h, _bounds_[1]-alter_separation_h-max_alter_h, max_w, -1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections)
+            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter2s[bin]['fm'], _befores_, _afters_, x, _bounds_[1]-alter_separation_h, _bounds_[1]-alter_separation_h-max_alter_h, max_w, -1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, bin, 2, 'fm')
             svg.append(_svg_), node_2_xyrs.update(_n2xyrs_)
             alter2s_fm_bounds = _bounds_
         else: alter2s_fm_bounds = None
 
         if bin in self.bin_to_alter1s and 'to' in self.bin_to_alter1s[bin]:
-            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter1s[bin]['to'], _befores_, _afters_, x, y+r_pref+2*circle_inter_d, y+r_pref+2*circle_inter_d+max_alter_h, max_w,  1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections)
+            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter1s[bin]['to'], _befores_, _afters_, x, y+r_pref+2*circle_inter_d, y+r_pref+2*circle_inter_d+max_alter_h, max_w,  1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, bin, 1, 'to')
             svg.append(_svg_), node_2_xyrs.update(_n2xyrs_)
             alter1s_to_bounds = _bounds_
         else: 
@@ -666,7 +673,7 @@ class SpreadLines(object):
             alter1s_to_bounds = None
 
         if bin in self.bin_to_alter2s and 'to' in self.bin_to_alter2s[bin]:
-            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter2s[bin]['to'], _befores_, _afters_, x, _bounds_[3]+alter_separation_h, _bounds_[3]+alter_separation_h+max_alter_h, max_w, 1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections)
+            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter2s[bin]['to'], _befores_, _afters_, x, _bounds_[3]+alter_separation_h, _bounds_[3]+alter_separation_h+max_alter_h, max_w, 1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, bin, 2, 'to')
             svg.append(_svg_), node_2_xyrs.update(_n2xyrs_)
             alter2s_to_bounds = _bounds_
         else: alter2s_to_bounds = None
@@ -876,8 +883,8 @@ class SpreadLines(object):
             # direct connects
             _nodes_dc_ = bin_to_n2xyrs[_bin0_].keys() & bin_to_n2xyrs[_bin1_].keys()
             for _node_ in _nodes_dc_:
-                _x0_, _y0_, _r0_, _s0_ = bin_to_n2xyrs[_bin0_][_node_]
-                _x1_, _y1_, _r1_, _s1_ = bin_to_n2xyrs[_bin1_][_node_]
+                _x0_, _y0_, _r0_, _s0_, _b_, _alt_, _altsd_, _render_info_ = bin_to_n2xyrs[_bin0_][_node_]
+                _x1_, _y1_, _r1_, _s1_, _b_, _alt_, _altsd_, _render_info_ = bin_to_n2xyrs[_bin1_][_node_]
                 _coords_ = (_bounds0_[2], _y0_, _bounds1_[0], _y1_)
                 if _coords_ not in _already_drawn_:
                     _color_ = self.__nodeColor__(_node_)
