@@ -309,7 +309,6 @@ class RACETrack(RTAnnotationsMixin,
             "%Y-%m-%dT%H",
             "%Y-%m-%d",
             "%Y-%m",
-            "%Y"
         ]
 
         suffix = ''
@@ -324,9 +323,21 @@ class RACETrack(RTAnnotationsMixin,
         for base in bases:
             if '/' in sample:      base = base.replace('-','/')
             if ' ' in sample[:12]: base = base.replace('T',' ') # could be a space before timezone, so truncating it
-            if (':' in base) ^ (':' in sample): continue       # both have to have a colon ... or neither
+            if (':' in base) ^ (':' in sample): continue        # both have to have a colon ... or neither
             base += suffix
             if formatIsValid(base): return base
+
+        just_digits = {
+            4:"%Y",
+            6:"%Y%m",
+            8:"%Y%m%d",
+            10:"%Y%m%d%H",
+            12:"%Y%m%d%H%M",
+            14:"%Y%m%d%H%M%S",
+        }
+
+        if len(sample) in just_digits and formatIsValid(just_digits[len(sample)]):
+            return just_digits[len(sample)]
 
         raise Exception(f'guessTimestampFormat() - no format specified for sample "{sample}"')
 

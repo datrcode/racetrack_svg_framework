@@ -105,6 +105,32 @@ class TestRTSVG(unittest.TestCase):
         self.df_pl = pl.DataFrame(self.df)
         self.df_pl = self.rt_self.columnsAreTimestamps(self.df_pl, 'timestamp')
 
+    def test_guessTimestampFormat(self):
+        _answers_ = {'2001':          "%Y",
+                     '200302':        "%Y%m",
+                     '200302':        "%Y%m",
+                     '20040501':      "%Y%m%d",
+                     '20040501':      "%Y%m%d",
+                     '20250525':      "%Y%m%d",
+                     '19981010':      "%Y%m%d",
+                     '1998120200':    "%Y%m%d%H", 
+                     '200510301045':  "%Y%m%d%H%M",
+                     '200711091120':  "%Y%m%d%H%M",
+                     '196907210256':  "%Y%m%d%H%M",
+                     '199812052312':  "%Y%m%d%H%M",
+                     '199812060259':  "%Y%m%d%H%M",
+                     '20091031014852':"%Y%m%d%H%M%S",
+                     '20091031014852':"%Y%m%d%H%M%S",
+                     '19970716092030':"%Y%m%d%H%M%S",
+                     '19941105131530':"%Y%m%d%H%M%S",
+                     '20241210135950':"%Y%m%d%H%M%S",
+                     '20241211135950':"%Y%m%d%H%M%S",
+                     '20241210135950':"%Y%m%d%H%M%S",
+                     '20241211135950':"%Y%m%d%H%M%S",
+                     '20241220000000':"%Y%m%d%H%M%S",}
+        for _ts_, _format_ in _answers_.items():
+            self.assertEqual(self.rt_self.guessTimestampFormat(_ts_), _format_)
+
     def test_polarsCounter(self):
         df = pl.DataFrame({'a':[ 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5],
                            'b': 'a  b  c  d  e  f  g  h  i  j  k  l  m  m'.split(),
