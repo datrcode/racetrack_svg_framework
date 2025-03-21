@@ -300,6 +300,7 @@ class SpreadLines(object):
         else:                                 self.df_alter2s = pl.DataFrame()
         self.time_lu['alter_binning_concat'] = time.time() - t0
 
+        self.bin_to_bounds            = {}
         self.bin_to_node_to_xyrepstat = {}
         self.last_render              = None
 
@@ -784,13 +785,12 @@ class SpreadLines(object):
         # Bin Creation
         _bins_ordered_ = list(self.bin_to_timestamps.keys())
         _bins_ordered_.sort()
-        bin_to_bounds  = {}
         bin_to_n2xyrs  = {}
         x, y = alter_inter_d, (self.h-max_bin_h)/2 + max_bin_h/2
         for _bin_ in _bins_ordered_:
             _svg_, _bounds_, _n2xyrs_ = self.renderBin(_bin_, x, y, max_bin_w, max_bin_h)
-            bin_to_n2xyrs[_bin_] = _n2xyrs_
-            bin_to_bounds[_bin_] = _bounds_
+            bin_to_n2xyrs     [_bin_] = _n2xyrs_
+            self.bin_to_bounds[_bin_] = _bounds_
             svg.append(_svg_)
             xmin, ymin, xmax, ymax = _bounds_
             x = xmax + alter_inter_d
@@ -815,8 +815,8 @@ class SpreadLines(object):
 
                 _nodes_  = _nodes_ - self.nodesInBin(_bins_ordered_[i-1])                             # These will be direct connects / so don't need to channel them
 
-                if _fm_to_ == 'fm': y_clearance = bin_to_bounds[_bins_ordered_[i-1]][1] - max_channel_w - channel_inter_d # The channel has to clear this height (this is at the "top")
-                else:               y_clearance = bin_to_bounds[_bins_ordered_[i-1]][3] + max_channel_w + channel_inter_d # The channel has to clear this height (this is at the "bottom")
+                if _fm_to_ == 'fm': y_clearance = self.bin_to_bounds[_bins_ordered_[i-1]][1] - max_channel_w - channel_inter_d # The channel has to clear this height (this is at the "top")
+                else:               y_clearance = self.bin_to_bounds[_bins_ordered_[i-1]][3] + max_channel_w + channel_inter_d # The channel has to clear this height (this is at the "bottom")
 
                 _befores_ = set()                                                                         # All the nodes before this bin
                 for j in range(i): _befores_ |= self.nodesInBin(_bins_ordered_[j])
@@ -833,8 +833,8 @@ class SpreadLines(object):
                             for _node_ in _nodes_ & _here_nodes_: _saving_for_later_.append((_bin_, _here_, _node_))
                         _nodes_ = _nodes_ - _here_nodes_                                      
                         if len(_nodes_) == 0: break                                                                                    # If there are no more nodes to channel, we're done
-                        if _fm_to_ == 'fm': y_clearance = min(y_clearance, bin_to_bounds[_here_][1] - max_channel_w - channel_inter_d) # Otherwise, we have to clear this height
-                        else:               y_clearance = max(y_clearance, bin_to_bounds[_here_][3] + max_channel_w + channel_inter_d) # Otherwise, we have to clear this height
+                        if _fm_to_ == 'fm': y_clearance = min(y_clearance, self.bin_to_bounds[_here_][1] - max_channel_w - channel_inter_d) # Otherwise, we have to clear this height
+                        else:               y_clearance = max(y_clearance, self.bin_to_bounds[_here_][3] + max_channel_w + channel_inter_d) # Otherwise, we have to clear this height
                     _channel_tuple_ = (_here_, _bin_, y_clearance, number_of_nodes_in_this_channel, _fm_to_)                           # start bin -> end bin, y_clearance, number of nodes, fm-to side
                     channel_tuples.append(_channel_tuple_)                                                                             # will determine the actual geometry later
                     for _saved_ in _saving_for_later_:
@@ -851,8 +851,8 @@ class SpreadLines(object):
             _div_                             = (max_nodes_to_channel - min_nodes_to_channel)
             if _div_ == 0:  _h_               = min_channel_w
             else:           _h_               = (_n_ - min_nodes_to_channel)/_div_ * (max_channel_w - min_channel_w) + min_channel_w
-            _w_                               = bin_to_bounds[_end_][0] - bin_to_bounds[_start_][2] - 1.5*alter_inter_d
-            _x_                               = bin_to_bounds[_start_][2] + alter_inter_d
+            _w_                               = self.bin_to_bounds[_end_][0] - self.bin_to_bounds[_start_][2] - 1.5*alter_inter_d
+            _x_                               = self.bin_to_bounds[_start_][2] + alter_inter_d
 
             placement_okay = False
             while placement_okay == False:
@@ -876,8 +876,8 @@ class SpreadLines(object):
         for i in range(len(_bins_ordered_)-1):
             _bin0_     = _bins_ordered_[i]
             _bin1_     = _bins_ordered_[i+1]
-            _bounds0_  = bin_to_bounds[_bin0_]
-            _bounds1_  = bin_to_bounds[_bin1_]
+            _bounds0_  = self.bin_to_bounds[_bin0_]
+            _bounds1_  = self.bin_to_bounds[_bin1_]
 
             _already_drawn_ = set()
 
@@ -909,8 +909,8 @@ class SpreadLines(object):
                                 svg.insert(0, self.svgCrossConnect(_bounds0_[2], _xyrs_[1], _halfway_, _channel_vmiddle_, color=self.rt_self.co_mgr.getTVColor('axis','major'), width=2.0))
                                 _already_drawn_.add(_coords_)
                             _xyrs_endpt_       = bin_to_n2xyrs[_bin_n_][_node_]
-                            _boundsn_          = bin_to_bounds[_bin_n_]
-                            _boundsn_minus_1_  = bin_to_bounds[_bin_n_-1]
+                            _boundsn_          = self.bin_to_bounds[_bin_n_]
+                            _boundsn_minus_1_  = self.bin_to_bounds[_bin_n_-1]
                             _halfway_          = (_boundsn_minus_1_[2] + _boundsn_[0])/2.0
                             _coords_           = (_boundsn_[0], _xyrs_endpt_[1], _channel_geometry_[0] + _channel_geometry_[2], _channel_vmiddle_)
                             if _coords_ not in _already_drawn_:
@@ -934,13 +934,22 @@ class SpreadLines(object):
 
     def entityPosition(self, entity):
         _results_ = []
-        for _bin_ in self.bin_to_node_to_xyrepstat:
-            if entity in self.bin_to_node_to_xyrepstat[_bin_]:
-                _xyrepstat_ = self.bin_to_node_to_xyrepstat[_bin_][entity]
-                _xy_        = (_xyrepstat_[0], _xyrepstat_[1])
-                if _xyrepstat_[2] == 'single': _svg_markup_ = f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{_xyrepstat_[7]}" stroke="#000000" stroke-width="1.25" fill="none"/>'
-                else:                          _svg_markup_ = self.rt_self.iconCloud(_xy_[0], _xy_[1], fg='#e0e0e0', bg='#e0e0e0')
+        if entity == self.node_focus:
+            for _bin_ in self.bin_to_node_to_xyrepstat:
+                _bounds_     = self.bin_to_bounds[_bin_]
+                _xy_         = ((_bounds_[0] + _bounds_[2])/2.0, 0.0)
+                _svg_markup_ = f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{self.r_pref}" stroke="#000000" stroke-width="1.25" fill="none"/>'
                 rtep = RTEntityPosition(entity, self.rt_self, self, _xy_, (_xy_[0], _xy_[1], 0.0, 1.0), 
                                         None, _svg_markup_, self.widget_id)
                 _results_.append(rtep)
+        else:
+            for _bin_ in self.bin_to_node_to_xyrepstat:
+                if entity in self.bin_to_node_to_xyrepstat[_bin_]:
+                    _xyrepstat_ = self.bin_to_node_to_xyrepstat[_bin_][entity]
+                    _xy_        = (_xyrepstat_[0], _xyrepstat_[1])
+                    if _xyrepstat_[2] == 'single': _svg_markup_ = f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{_xyrepstat_[7]}" stroke="#000000" stroke-width="1.25" fill="none"/>'
+                    else:                          _svg_markup_ = self.rt_self.iconCloud(_xy_[0], _xy_[1], fg='#e0e0e0', bg='#e0e0e0')
+                    rtep = RTEntityPosition(entity, self.rt_self, self, _xy_, (_xy_[0], _xy_[1], 0.0, 1.0), 
+                                            None, _svg_markup_, self.widget_id)
+                    _results_.append(rtep)
         return _results_
