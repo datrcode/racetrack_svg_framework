@@ -564,8 +564,7 @@ class SpreadLines(object):
                   x,                          # center of the bin 
                   y,                          # center of the bin
                   max_w,                      # max width of the bin (i.e., the max width of any of the alters)
-                  max_h):                     # max height of the bin (halfed in each direction from y)
-        
+                  max_h):                     # max height of the bin (halfed in each direction from y)      
         r_min                = self.r_min 
         r_pref               = self.r_pref
         circle_inter_d       = self.circle_inter_d
@@ -594,7 +593,7 @@ class SpreadLines(object):
             alter1s_fm_bounds = None
             _bounds_          = (x-r_pref, y-r_pref-2*circle_inter_d-5, x+r_pref, y-r_pref-2*circle_inter_d)
 
-        if bin in self.bin_to_alter2s and 'fm' in self.bin_to_alter2s[bin]:
+        if bin in self.bin_to_alter2s and 'fm' in self.bin_to_alter2s[bin] and len(self.bin_to_alter2s[bin]['fm']) > 0:
             _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter2s[bin]['fm'], _befores_, _afters_, x, _bounds_[1]-alter_separation_h, _bounds_[1]-alter_separation_h-max_alter_h, max_w, -1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, bin, 2, 'fm')
             svg.append(_svg_), node_2_xyrs.update(_n2xyrs_)
             alter2s_fm_bounds = _bounds_
@@ -608,7 +607,7 @@ class SpreadLines(object):
             _bounds_ = (x-r_pref, y+r_pref+2*circle_inter_d, x+r_pref, y+r_pref+2*circle_inter_d+5)
             alter1s_to_bounds = None
 
-        if bin in self.bin_to_alter2s and 'to' in self.bin_to_alter2s[bin]:
+        if bin in self.bin_to_alter2s and 'to' in self.bin_to_alter2s[bin] and len(self.bin_to_alter2s[bin]['to']) > 0:
             _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter2s[bin]['to'], _befores_, _afters_, x, _bounds_[3]+alter_separation_h, _bounds_[3]+alter_separation_h+max_alter_h, max_w, 1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, bin, 2, 'to')
             svg.append(_svg_), node_2_xyrs.update(_n2xyrs_)
             alter2s_to_bounds = _bounds_
@@ -640,10 +639,14 @@ class SpreadLines(object):
             a2y2 = alter2s_to_bounds[3] - 2*_amt_
             d_array.append(f'L {x-overall_w/2.0} {a2y2}')
             d_array.append(f'C {x-overall_w/2.0} {a2y2+2*_amt_} {x-overall_w/2.0} {a2y2+2*_amt_} {x-narrow_w/2.0}  {a2y2+2*_amt_}')
-            d_array.append(f'L {x+narrow_w/2.0}  {a2y2+2*_amt_}  C {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2}')
-            d_array.append(f'L {x+overall_w/2.0} {a2y +2*_amt_}  C {x+overall_w/2.0} {a2y}          {x+overall_w/2.0} {a2y}          {x+narrow_w/2.0}  {a2y}')
+            d_array.append(f'L {x+narrow_w/2.0}  {a2y2+2*_amt_}  C {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2}') # green @ end
+            d_array.append(f'L {x+overall_w/2.0} {a2y +2*_amt_}  C {x+overall_w/2.0} {a2y}          {x+overall_w/2.0} {a2y}          {x+narrow_w/2.0}  {a2y}')  # red   @ beginning
             d_array.append(f'L {x+narrow_w/2.0}  {y+ah+2*_amt_}  C {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+  _amt_}')
-            d_array.append(f'L {x+overall_w/2.0} {y}')
+            d_array.append(f'L {x+overall_w/2.0} {y}')            
+            #def circle(x,y,c): return f'<circle cx="{x}" cy="{y}" r="{random.random()*2.0 + 1.0}" stroke="{c}" fill="none" />' #debug
+            #svg.append(circle(x+overall_w/2.0, a2y +2*_amt_, '#ff0000')) # problem # debug
+            #svg.append(circle(x+narrow_w/2.0,  a2y,          '#0000ff')) # debug
+            #svg.append(circle(x+overall_w/2.0, a2y2,         '#00ff00')) # problem # debug
 
         if alter1s_fm_bounds is None:
             d_array.append(f'L {x+overall_w/2.0} {y-  _amt_}  C {x+overall_w/2.0} {y-2*_amt_} {x+overall_w/2.0} {y-2*_amt_} {x+narrow_w/2.0}  {y-2*_amt_}')
