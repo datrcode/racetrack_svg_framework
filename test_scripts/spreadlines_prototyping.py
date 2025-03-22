@@ -182,9 +182,10 @@ class SpreadLines(object):
 
         # Binning Stage
         self.df = self.df.sort(self.ts_field)
-        self.bin_to_timestamps   = {}
-        self.bin_to_alter1s      = {} # [_bin_]['fm'] and [_bin_]['to']
-        self.bin_to_alter2s      = {} # [_bin_]['fm'] and [_bin_]['to']
+        self.bin_to_timestamps             = {}
+        self.bin_to_alter1s                = {} # [_bin_]['fm'] and [_bin_]['to']
+        self.bin_to_alter2s                = {} # [_bin_]['fm'] and [_bin_]['to']
+        self.discontinuity_count_after_bin = {} # counts the missing bins (because the focal node wasn't present)
         t0 = time.time()
         for i in range(len(self.relationships)):
             _bin_            = 0
@@ -196,17 +197,21 @@ class SpreadLines(object):
             _df_             = _df_.sort(self.ts_field)
             for k, k_df in _df_.group_by_dynamic(self.ts_field, every=self.every):
                 _timestamp_   = k[0]
+                _fm_is_focus_ = k_df.filter(pl.col(_fm_) == self.node_focus)
+                _to_is_focus_ = k_df.filter(pl.col(_to_) == self.node_focus)
+                if len(_fm_is_focus_) == 0 and len(_to_is_focus_) == 0:
+                    if _bin_ not in self.discontinuity_count_after_bin: self.discontinuity_count_after_bin[_bin_] = 0
+                    self.discontinuity_count_after_bin[_bin_] += 1
+                    continue
                 if _bin_ not in self.bin_to_timestamps:
                     self.bin_to_alter1s   [_bin_] = {'fm': set(), 'to': set()}
                     self.bin_to_alter2s   [_bin_] = {'fm': set(), 'to': set()}
                     self.bin_to_timestamps[_bin_] = _timestamp_
-                _fm_is_focus_ = k_df.filter(pl.col(_fm_) == self.node_focus)
                 if len(_fm_is_focus_) > 0: 
                     _set_ = set(_fm_is_focus_[_to_])
                     self.bin_to_alter1s[_bin_]['to'] |= _set_
                     _alter2s_ = k_df.filter(pl.col(_to_).is_in(_set_) | (pl.col(_fm_).is_in(_set_)))
                     self.bin_to_alter2s[_bin_]['to'] |= set(_alter2s_[_fm_]) | set(_alter2s_[_to_])
-                _to_is_focus_ = k_df.filter(pl.col(_to_) == self.node_focus)
                 if len(_to_is_focus_) > 0: 
                     _set_ = set(_to_is_focus_[_fm_])
                     self.bin_to_alter1s[_bin_]['fm'] |= _set_
