@@ -43,7 +43,6 @@ def spreadLines(rt_self,
                 alter_separation_h   = 48, 
                 h_collapsed_sections = 16,
                 
-                prefilter_dataframe  = False,
                 widget_id            = None,
                 w                    = 1024,
                 h                    = 960,
@@ -159,7 +158,6 @@ class SpreadLines(object):
         self.alter_separation_h   = kwargs['alter_separation_h']
         self.h_collapsed_sections = kwargs['h_collapsed_sections']
 
-        self.prefilter_dataframe = kwargs['prefilter_dataframe']
         self.widget_id           = f'spreadlines_{random.randint(0,65535)}' if kwargs['widget_id'] is None else kwargs['widget_id']
         self.w                   = kwargs['w']
         self.h                   = kwargs['h']
@@ -178,125 +176,63 @@ class SpreadLines(object):
         self.__consolidateRelationships__()
         self.time_lu['consolidate_relationships'] = time.time() - t0
 
-        # Prefilter the dataframe (optional... maybe it makes it faster?)
-        if self.prefilter_dataframe:
-            t0        = time.time()
-            _g_       = self.rt_self.createNetworkXGraph(self.df, self.relationships)
-            self.time_lu['prefilter|create_networkx_graph'] = time.time() - t0
-            t1        = time.time()
-            nbors     = set(_g_.neighbors(self.node_focus))
-            nbors2    = set()
-            for nbor in nbors: nbors2 = nbors2 | set(_g_.neighbors(nbor))
-            _to_keep_ = nbors | nbors2 | set([self.node_focus])
-            self.time_lu['prefilter|networkx_neighbors'] = time.time() - t1
-            t0        = time.time()
-            _to_concat_ = []
-            for _relate_ in self.relationships: # assumes that the relationships are single fields only (via __consolidateRelationships__())
-                _df_ = self.df.filter(pl.col(_relate_[0]).is_in(_to_keep_) & pl.col(_relate_[1]).is_in(_to_keep_))
-                _to_concat_.append(_df_)
-            self.df = pl.concat(_to_concat_)
-            self.time_lu['prefilter|filter_and_concat_df'] = time.time() - t0
-
-        # How many bins?  And what's in those bins for nodes next to the focus?
+        # Binning Stage
         self.df = self.df.sort(self.ts_field)
-        _bin_                    = 0
-        _dfs_containing_focus_   = [] # focus  -> alter1 or alter1 -> focus
-        _dfs_containing_alter2s_ = [] # alter1 -> alter2 or alter2 -> alter1  ... note does not include focus or alter1 <-> alter1
-        self.bin_to_timestamps   = {}
-        self.bin_to_alter1s      = {}
-        self.bin_to_alter2s      = {}
+        self.bin_to_timestamps             = {}
+        self.bin_to_alter1s                = {} # [_bin_]['fm'] and [_bin_]['to']
+        self.bin_to_alter2s                = {} # [_bin_]['fm'] and [_bin_]['to']
+        self.discontinuity_count_after_bin = {} # counts the missing bins (because the focal node wasn't present)
         t0 = time.time()
-        for k, k_df in self.df.group_by_dynamic(self.ts_field, every=self.every):
-            _timestamp_     = k[0]
-            _found_matches_ = False
-            # find the first alters
-            for i in range(len(self.relationships)):
-                _fm_, _to_ = self.relationships[i]
-                
-                # From Is Focus
-                _df_fm_is_focus_ = k_df.filter(pl.col(_fm_) == self.node_focus)
-                _df_fm_is_focus_ = _df_fm_is_focus_.with_columns(pl.lit(_fm_).alias('__focus_col__'), pl.lit(_to_).alias('__alter_col__'), pl.lit(1).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('to').alias('__alter_side__'))
-                if len(_df_fm_is_focus_) > 0: 
-                    _dfs_containing_focus_.append(_df_fm_is_focus_)
-                    if _bin_ not in self.bin_to_alter1s:        self.bin_to_alter1s[_bin_]       = {}
-                    if 'to'  not in self.bin_to_alter1s[_bin_]: self.bin_to_alter1s[_bin_]['to'] = set()
-                    self.bin_to_alter1s[_bin_]['to'] |= set(_df_fm_is_focus_[_to_])
-                    _found_matches_ = True
-
-                # To Is Focus
-                _df_to_is_focus_ = k_df.filter(pl.col(_to_) == self.node_focus)
-                _df_to_is_focus_ = _df_to_is_focus_.with_columns(pl.lit(_to_).alias('__focus_col__'), pl.lit(_fm_).alias('__alter_col__'), pl.lit(1).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('fm').alias('__alter_side__'))
-                if len(_df_to_is_focus_) > 0:
-                    _dfs_containing_focus_.append(_df_to_is_focus_)
-                    if _bin_ not in self.bin_to_alter1s:        self.bin_to_alter1s[_bin_]       = {}
-                    if 'fm'  not in self.bin_to_alter1s[_bin_]: self.bin_to_alter1s[_bin_]['fm'] = set()
-                    self.bin_to_alter1s[_bin_]['fm'] |= set(_df_to_is_focus_[_fm_])
-                    _found_matches_ = True
-
-                # For any shared nodes between the two sides, keep them on the 'fm' side
-                if _bin_ in self.bin_to_alter1s and 'fm' in self.bin_to_alter1s[_bin_] and 'to' in self.bin_to_alter1s[_bin_]:
-                    _shared_nodes_ = self.bin_to_alter1s[_bin_]['fm'] & self.bin_to_alter1s[_bin_]['to']
-                    if len(_shared_nodes_) > 0: self.bin_to_alter1s[_bin_]['to'] -= _shared_nodes_
-
-            # find the second alters
-            if _found_matches_:
-                _all_alter1s_ = set()
-                if 'fm' in self.bin_to_alter1s[_bin_]: _all_alter1s_ |= self.bin_to_alter1s[_bin_]['fm']
-                if 'to' in self.bin_to_alter1s[_bin_]: _all_alter1s_ |= self.bin_to_alter1s[_bin_]['to']
-                # Go through all the relationships
-                for i in range(len(self.relationships)):
-                    _fm_, _to_ = self.relationships[i]
-                    if 'fm' in self.bin_to_alter1s[_bin_]:
-                        _df_          = k_df.filter(pl.col(_fm_).is_in(self.bin_to_alter1s[_bin_]['fm']) | pl.col(_to_).is_in(self.bin_to_alter1s[_bin_]['fm']))
-                        _set_alter2s_ = (set(_df_[_fm_]) | set(_df_[_to_])) - (_all_alter1s_ | set([self.node_focus]))
-                        if len(_set_alter2s_) > 0:
-                            if _bin_ not in self.bin_to_alter2s:        self.bin_to_alter2s[_bin_]       = {}
-                            if 'fm'  not in self.bin_to_alter2s[_bin_]: self.bin_to_alter2s[_bin_]['fm'] = set()
-                            self.bin_to_alter2s[_bin_]['fm'] |= _set_alter2s_
-
-                            _df_ = k_df.filter(pl.col(_fm_).is_in(self.bin_to_alter1s[_bin_]['fm']) & pl.col(_to_).is_in(_set_alter2s_))
-                            _df_ = _df_.with_columns(pl.lit(_fm_).alias('__alter1_col__'), pl.lit(_to_).alias('__alter2_col__'), pl.lit(2).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('fm').alias('__alter_side__'))
-                            _dfs_containing_alter2s_.append(_df_)
-
-                            _df_ = k_df.filter(pl.col(_to_).is_in(self.bin_to_alter1s[_bin_]['fm']) & pl.col(_fm_).is_in(_set_alter2s_))
-                            _df_ = _df_.with_columns(pl.lit(_to_).alias('__alter1_col__'), pl.lit(_fm_).alias('__alter2_col__'), pl.lit(2).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('fm').alias('__alter_side__'))
-                            _dfs_containing_alter2s_.append(_df_)
-
-                    if 'to' in self.bin_to_alter1s[_bin_]:
-                        _df_          = k_df.filter(pl.col(_fm_).is_in(self.bin_to_alter1s[_bin_]['to']) | pl.col(_to_).is_in(self.bin_to_alter1s[_bin_]['to']))
-                        _set_alter2s_ = (set(_df_[_fm_]) | set(_df_[_to_])) - (_all_alter1s_ | set([self.node_focus]))
-                        if len(_set_alter2s_) > 0:
-                            if _bin_ not in self.bin_to_alter2s:        self.bin_to_alter2s[_bin_]       = {}
-                            if 'to'  not in self.bin_to_alter2s[_bin_]: self.bin_to_alter2s[_bin_]['to'] = set()
-                            self.bin_to_alter2s[_bin_]['to'] |= _set_alter2s_
-
-                            _df_ = k_df.filter(pl.col(_fm_).is_in(self.bin_to_alter1s[_bin_]['to']) & pl.col(_to_).is_in(_set_alter2s_))
-                            _df_ = _df_.with_columns(pl.lit(_fm_).alias('__alter1_col__'), pl.lit(_to_).alias('__alter2_col__'), pl.lit(2).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('to').alias('__alter_side__'))
-                            _dfs_containing_alter2s_.append(_df_)
-
-                            _df_ = k_df.filter(pl.col(_to_).is_in(self.bin_to_alter1s[_bin_]['to']) & pl.col(_fm_).is_in(_set_alter2s_))
-                            _df_ = _df_.with_columns(pl.lit(_to_).alias('__alter1_col__'), pl.lit(_fm_).alias('__alter2_col__'), pl.lit(2).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('to').alias('__alter_side__'))
-                            _dfs_containing_alter2s_.append(_df_)
-
-                # For any shared nodes between the two sides, keep them on the 'fm' side
-                if _bin_ in self.bin_to_alter2s and 'fm' in self.bin_to_alter2s[_bin_] and 'to' in self.bin_to_alter2s[_bin_]:
-                    _shared_nodes_ = self.bin_to_alter2s[_bin_]['fm'] & self.bin_to_alter2s[_bin_]['to']
-                    if len(_shared_nodes_) > 0: self.bin_to_alter2s[_bin_]['to'] -= _shared_nodes_
-
-            if _found_matches_: 
-                self.bin_to_timestamps[_bin_] = _timestamp_
+        for i in range(len(self.relationships)):
+            _bin_            = 0
+            _fm_, _to_       = self.relationships[i]
+            _df_             = self.df.group_by_dynamic(self.ts_field, every=self.every, group_by=[_fm_,_to_]).agg()
+            _one_degree_     = _df_.filter((pl.col(_fm_) == self.node_focus) | (pl.col(_to_) == self.node_focus))
+            _one_degree_set_ = set(_one_degree_[_fm_]) | set(_one_degree_[_to_])
+            _df_             = _df_.filter((pl.col(_fm_).is_in(_one_degree_set_)) | (pl.col(_to_).is_in(_one_degree_set_)))
+            _df_             = _df_.sort(self.ts_field)
+            for k, k_df in _df_.group_by_dynamic(self.ts_field, every=self.every):
+                _timestamp_   = k[0]
+                _fm_is_focus_ = k_df.filter(pl.col(_fm_) == self.node_focus)
+                _to_is_focus_ = k_df.filter(pl.col(_to_) == self.node_focus)
+                if len(_fm_is_focus_) == 0 and len(_to_is_focus_) == 0:
+                    if _bin_ not in self.discontinuity_count_after_bin: self.discontinuity_count_after_bin[_bin_] = 0
+                    self.discontinuity_count_after_bin[_bin_] += 1
+                    continue
+                if _bin_ not in self.bin_to_timestamps:
+                    self.bin_to_alter1s   [_bin_] = {'fm': set(), 'to': set()}
+                    self.bin_to_alter2s   [_bin_] = {'fm': set(), 'to': set()}
+                    self.bin_to_timestamps[_bin_] = _timestamp_
+                if len(_fm_is_focus_) > 0: 
+                    _set_ = set(_fm_is_focus_[_to_])
+                    self.bin_to_alter1s[_bin_]['to'] |= _set_
+                    _alter2s_ = k_df.filter(pl.col(_to_).is_in(_set_) | (pl.col(_fm_).is_in(_set_)))
+                    self.bin_to_alter2s[_bin_]['to'] |= set(_alter2s_[_fm_]) | set(_alter2s_[_to_])
+                if len(_to_is_focus_) > 0: 
+                    _set_ = set(_to_is_focus_[_fm_])
+                    self.bin_to_alter1s[_bin_]['fm'] |= _set_
+                    _alter2s_ = k_df.filter(pl.col(_fm_).is_in(_set_) | (pl.col(_to_).is_in(_set_)))
+                    self.bin_to_alter2s[_bin_]['fm'] |= set(_alter2s_[_fm_]) | set(_alter2s_[_to_])
                 _bin_ += 1
         self.time_lu['alter_binning_step'] = time.time() - t0
 
-        # Concatenate the pieces and parts
+        # Make sure the sets are distinct & don't have overlaps
         t0 = time.time()
-        if len(_dfs_containing_focus_) > 0:   self.df_alter1s = pl.concat(_dfs_containing_focus_).unique()    # unique because we may have duplicate rows on the two sides
-        else:                                 self.df_alter1s = pl.DataFrame()
-        if len(_dfs_containing_alter2s_) > 0: self.df_alter2s = pl.concat(_dfs_containing_alter2s_).unique()  # unique because we may have duplicate rows on the two sides
-        else:                                 self.df_alter2s = pl.DataFrame()
-        self.time_lu['alter_binning_concat'] = time.time() - t0
+        for _bin_ in self.bin_to_alter1s:
+            self.bin_to_alter1s[_bin_]['to'] -= self.bin_to_alter1s[_bin_]['fm']                                                                         # 'fm' side has the bidirectional nodes
+            self.bin_to_alter2s[_bin_]['fm'] -= (self.bin_to_alter1s[_bin_]['fm'] | self.bin_to_alter1s[_bin_]['to'])                                    # 'fm' side has the bidirectional nodes
+            self.bin_to_alter2s[_bin_]['to'] -= (self.bin_to_alter1s[_bin_]['fm'] | self.bin_to_alter1s[_bin_]['to'] | self.bin_to_alter2s[_bin_]['fm']) # 'to' side has the bidirectional nodes
+            _focal_set_ = set([self.node_focus])
+            self.bin_to_alter1s[_bin_]['fm'] -= _focal_set_
+            self.bin_to_alter1s[_bin_]['to'] -= _focal_set_
+            self.bin_to_alter2s[_bin_]['fm'] -= _focal_set_
+            self.bin_to_alter2s[_bin_]['to'] -= _focal_set_
+        self.time_lu['deduplicate_alters'] = time.time() - t0
 
-        self.last_render = None
+        # Create other variables (to be used later ... but make sure they exist now)
+        self.bin_to_bounds            = {}
+        self.bin_to_node_to_xyrepstat = {}
+        self.last_render              = None
 
     # nodesInBin() - return the set of nodes that exist in this bin
     def nodesInBin(self, bin):
@@ -423,13 +359,12 @@ class SpreadLines(object):
         if len(node_to_xy) == 0: return None, None, None
         return node_to_xy, left_overs, out_of
 
-
-
     #
     # renderAlter()  - render an alter / this is just to render the nodes (or clouds) within the alter
     # ... the actual shape of the bin & (alters too) is rendered elsewhere
     #
-    def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul=1, r_min=4.0, r_pref=7.0, circle_inter_d=2.0, circle_spacer=3, h_collapsed_sections=16):
+    # def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul=1, r_min=4.0, r_pref=7.0, circle_inter_d=2.0, circle_spacer=3, h_collapsed_sections=16):
+    def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, _bin_, _alter_, _alter_side_):
         # Bounds state & node positioning
         xmin, ymin, xmax, ymax = x-r_pref-circle_inter_d, y-r_pref-circle_inter_d, x+r_pref+circle_inter_d, y+r_pref+circle_inter_d
         node_to_xyrepstat = {} # node to (x, y, representation, stat) where representation is ['single','cloud'] and state is ['start,'stop','isolated','continuous']
@@ -463,23 +398,28 @@ class SpreadLines(object):
             return f'<path d="{_path_}" stroke="none" fill="{_color_}" />'
         # Place the nodes onto the canvas
         def placeNodeToXYs(n2xy):
-            nonlocal xmin, ymin, xmax, ymax,svg
+            nonlocal xmin, ymin, xmax, ymax, svg
             for _node_, _xyr_ in n2xy.items():
                 _color_ = self.__nodeColor__(_node_)
                 svg.append(f'<circle cx="{_xyr_[0]}" cy="{_xyr_[1]}" r="{_xyr_[2]}" stroke="{_color_}" stroke-width="1.25" fill="none"/>')
                 xmin, ymin, xmax, ymax = min(xmin, _xyr_[0]-_xyr_[2]), min(ymin, _xyr_[1]-_xyr_[2]), max(xmax, _xyr_[0]+_xyr_[2]), max(ymax, _xyr_[1]+_xyr_[2])
                 if _node_ not in befores: svg.append(svgTriangle(_xyr_[0], _xyr_[1], _xyr_[2], circle_spacer/2, -1))
                 if _node_ not in afters:  svg.append(svgTriangle(_xyr_[0], _xyr_[1], _xyr_[2], circle_spacer/2,  1))
-                node_to_xyrepstat[_node_] = (_xyr_[0], _xyr_[1], 'single', nodeState(_node_ in befores, _node_ in afters))
+                _xyrepstat_ = (_xyr_[0], _xyr_[1], 'single', nodeState(_node_ in befores, _node_ in afters), _bin_, _alter_, _alter_side_, (_xyr_[2]))
+                node_to_xyrepstat[_node_] = _xyrepstat_
+                self.bin_to_node_to_xyrepstat[_bin_][_node_] = _xyrepstat_
         # Render the summarization cloud
         def summarizationCloud(n, y_cloud, ltriangle, rtriangle, nodes_in_cloud):
-            nonlocal xmin, ymin, xmax, ymax,svg
+            nonlocal xmin, ymin, xmax, ymax, svg
             svg.append(self.rt_self.iconCloud(x,y_cloud, fg='#e0e0e0', bg='#e0e0e0'))
             if ltriangle: svg.append(svgCloudTriangle(x, y_cloud, 16, 6, -1))
             if rtriangle: svg.append(svgCloudTriangle(x, y_cloud, 16, 6,  1))
             svg.append(self.rt_self.svgText(str(n), x, y_cloud + 4, 'black', anchor='middle'))
             xmin, ymin, xmax, ymax = min(xmin, x-16), min(ymin, y_cloud-6), max(xmax, x+16), max(ymax, y_cloud+6)
-            for _node_ in nodes_in_cloud: node_to_xyrepstat[_node_] = (x, y_cloud, 'cloud', nodeState(not ltriangle, not rtriangle))
+            for _node_ in nodes_in_cloud:
+                _xyrepstat_                                  = (x, y_cloud, 'cloud', nodeState(not ltriangle, not rtriangle), _bin_, _alter_, _alter_side_, (None))
+                node_to_xyrepstat[_node_]                    = _xyrepstat_
+                self.bin_to_node_to_xyrepstat[_bin_][_node_] = _xyrepstat_
         # Make sure there are nodes...
         if len(nodes) > 0:
             # Sort the nodes into the 4 categories
@@ -620,14 +560,15 @@ class SpreadLines(object):
                   x,                          # center of the bin 
                   y,                          # center of the bin
                   max_w,                      # max width of the bin (i.e., the max width of any of the alters)
-                  max_h):                     # max height of the bin (halfed in each direction from y)
-        
+                  max_h):                     # max height of the bin (halfed in each direction from y)      
         r_min                = self.r_min 
         r_pref               = self.r_pref
         circle_inter_d       = self.circle_inter_d
         circle_spacer        = self.circle_spacer
         alter_separation_h   = self.alter_separation_h
         h_collapsed_sections = self.h_collapsed_sections
+
+        self.bin_to_node_to_xyrepstat[bin] = {}
 
         _all_nodes_in_this_bin = self.nodesInBin(bin)
         _nodes_in_other_bins_  = self.nodesExistsInOtherBins(bin)
@@ -641,87 +582,85 @@ class SpreadLines(object):
 
         # Actual alters
         if bin in self.bin_to_alter1s and 'fm' in self.bin_to_alter1s[bin]:
-            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter1s[bin]['fm'], _befores_, _afters_, x, y-r_pref-2*circle_inter_d, y-r_pref-max_alter_h,                  max_w, -1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections)
+            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter1s[bin]['fm'], _befores_, _afters_, x, y-r_pref-2*circle_inter_d, y-r_pref-max_alter_h,                  max_w, -1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, bin, 1, 'fm')
             svg.append(_svg_), node_2_xyrs.update(_n2xyrs_)
             alter1s_fm_bounds = _bounds_
         else:
             alter1s_fm_bounds = None
             _bounds_          = (x-r_pref, y-r_pref-2*circle_inter_d-5, x+r_pref, y-r_pref-2*circle_inter_d)
 
-        if bin in self.bin_to_alter2s and 'fm' in self.bin_to_alter2s[bin]:
-            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter2s[bin]['fm'], _befores_, _afters_, x, _bounds_[1]-alter_separation_h, _bounds_[1]-alter_separation_h-max_alter_h, max_w, -1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections)
+        if bin in self.bin_to_alter2s and 'fm' in self.bin_to_alter2s[bin] and len(self.bin_to_alter2s[bin]['fm']) > 0:
+            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter2s[bin]['fm'], _befores_, _afters_, x, _bounds_[1]-alter_separation_h, _bounds_[1]-alter_separation_h-max_alter_h, max_w, -1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, bin, 2, 'fm')
             svg.append(_svg_), node_2_xyrs.update(_n2xyrs_)
             alter2s_fm_bounds = _bounds_
         else: alter2s_fm_bounds = None
 
         if bin in self.bin_to_alter1s and 'to' in self.bin_to_alter1s[bin]:
-            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter1s[bin]['to'], _befores_, _afters_, x, y+r_pref+2*circle_inter_d, y+r_pref+2*circle_inter_d+max_alter_h, max_w,  1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections)
+            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter1s[bin]['to'], _befores_, _afters_, x, y+r_pref+2*circle_inter_d, y+r_pref+2*circle_inter_d+max_alter_h, max_w,  1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, bin, 1, 'to')
             svg.append(_svg_), node_2_xyrs.update(_n2xyrs_)
             alter1s_to_bounds = _bounds_
         else: 
             _bounds_ = (x-r_pref, y+r_pref+2*circle_inter_d, x+r_pref, y+r_pref+2*circle_inter_d+5)
             alter1s_to_bounds = None
 
-        if bin in self.bin_to_alter2s and 'to' in self.bin_to_alter2s[bin]:
-            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter2s[bin]['to'], _befores_, _afters_, x, _bounds_[3]+alter_separation_h, _bounds_[3]+alter_separation_h+max_alter_h, max_w, 1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections)
+        if bin in self.bin_to_alter2s and 'to' in self.bin_to_alter2s[bin] and len(self.bin_to_alter2s[bin]['to']) > 0:
+            _svg_, _bounds_, _n2xyrs_ = self.renderAlter(self.bin_to_alter2s[bin]['to'], _befores_, _afters_, x, _bounds_[3]+alter_separation_h, _bounds_[3]+alter_separation_h+max_alter_h, max_w, 1, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, bin, 2, 'to')
             svg.append(_svg_), node_2_xyrs.update(_n2xyrs_)
             alter2s_to_bounds = _bounds_
         else: alter2s_to_bounds = None
 
         # Calculate the outline of the bin
-        overall_w = 2*r_pref
-        if alter1s_fm_bounds is not None: overall_w = max(overall_w, alter1s_fm_bounds[2]-alter1s_fm_bounds[0])
-        if alter1s_to_bounds is not None: overall_w = max(overall_w, alter1s_to_bounds[2]-alter1s_to_bounds[0])
-        if alter2s_fm_bounds is not None: overall_w = max(overall_w, alter2s_fm_bounds[2]-alter2s_fm_bounds[0])
-        if alter2s_to_bounds is not None: overall_w = max(overall_w, alter2s_to_bounds[2]-alter2s_to_bounds[0])
-        narrow_w = overall_w - 2*r_pref
-        _amt_    = 2*r_pref
-        d_array  = [f'M {x-overall_w/2.0} {y}']
-        if alter1s_to_bounds is None:
-            d_array.append(f'L {x-overall_w/2.0} {y+  _amt_}  C {x-overall_w/2.0} {y+2*_amt_} {x-overall_w/2.0} {y+2*_amt_} {x-narrow_w/2.0}  {y+2*_amt_}')
-            d_array.append(f'L {x+narrow_w/2.0}  {y+2*_amt_}  C {x+overall_w/2.0} {y+2*_amt_} {x+overall_w/2.0} {y+2*_amt_} {x+overall_w/2.0} {y+  _amt_}')
-            d_array.append(f'L {x+overall_w/2.0} {y}')
-        elif alter2s_to_bounds is None:
-            ah = alter1s_to_bounds[3]-alter1s_to_bounds[1]-2*_amt_
-            d_array.append(f'L {x-overall_w/2.0} {y+ah+  _amt_}  C {x-overall_w/2.0} {y+ah+2*_amt_} {x-overall_w/2.0} {y+ah+2*_amt_} {x-narrow_w/2.0}  {y+ah+2*_amt_}')
-            d_array.append(f'L {x+narrow_w/2.0}  {y+ah+2*_amt_}  C {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+  _amt_}')
-            d_array.append(f'L {x+overall_w/2.0} {y}')
-        else:
-            ah  = alter1s_to_bounds[3]-alter1s_to_bounds[1]-2*_amt_
-            d_array.append(f'L {x-overall_w/2.0} {y+ah+  _amt_}  C {x-overall_w/2.0} {y+ah+2*_amt_} {x-overall_w/2.0} {y+ah+2*_amt_} {x-narrow_w/2.0}  {y+ah+2*_amt_}')
-            a2y  = alter2s_to_bounds[1] + 2*r_pref
-            d_array.append(f'L {x-narrow_w/2.0}  {a2y}           C {x-overall_w/2.0} {a2y}          {x-overall_w/2.0} {a2y}          {x-overall_w/2.0} {a2y+2*_amt_}')
-            a2y2 = alter2s_to_bounds[3] - 2*_amt_
-            d_array.append(f'L {x-overall_w/2.0} {a2y2}')
-            d_array.append(f'C {x-overall_w/2.0} {a2y2+2*_amt_} {x-overall_w/2.0} {a2y2+2*_amt_} {x-narrow_w/2.0}  {a2y2+2*_amt_}')
-            d_array.append(f'L {x+narrow_w/2.0}  {a2y2+2*_amt_}  C {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2}')
-            d_array.append(f'L {x+overall_w/2.0} {a2y +2*_amt_}  C {x+overall_w/2.0} {a2y}          {x+overall_w/2.0} {a2y}          {x+narrow_w/2.0}  {a2y}')
-            d_array.append(f'L {x+narrow_w/2.0}  {y+ah+2*_amt_}  C {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+  _amt_}')
-            d_array.append(f'L {x+overall_w/2.0} {y}')
+        _w_  = 2*r_pref
+        if alter1s_fm_bounds is not None: _w_ = max(_w_, alter1s_fm_bounds[2]-alter1s_fm_bounds[0])
+        if alter1s_to_bounds is not None: _w_ = max(_w_, alter1s_to_bounds[2]-alter1s_to_bounds[0])
+        if alter2s_fm_bounds is not None: _w_ = max(_w_, alter2s_fm_bounds[2]-alter2s_fm_bounds[0])
+        if alter2s_to_bounds is not None: _w_ = max(_w_, alter2s_to_bounds[2]-alter2s_to_bounds[0])
+        _w2_ = _w_/2.0
 
-        if alter1s_fm_bounds is None:
-            d_array.append(f'L {x+overall_w/2.0} {y-  _amt_}  C {x+overall_w/2.0} {y-2*_amt_} {x+overall_w/2.0} {y-2*_amt_} {x+narrow_w/2.0}  {y-2*_amt_}')
-            d_array.append(f'L {x-narrow_w/2.0}  {y-2*_amt_}  C {x-overall_w/2.0} {y-2*_amt_} {x-overall_w/2.0} {y-2*_amt_} {x-overall_w/2.0} {y-  _amt_}')
-            d_array.append(f'L {x-overall_w/2.0} {y}')
-        elif alter2s_fm_bounds is None:
-            ah = alter1s_fm_bounds[3]-alter1s_fm_bounds[1]-2*_amt_
-            d_array.append(f'L {x+overall_w/2.0} {y-ah-  _amt_}  C {x+overall_w/2.0} {y-ah-2*_amt_} {x+overall_w/2.0} {y-ah-2*_amt_} {x+narrow_w/2.0}  {y-ah-2*_amt_}')
-            d_array.append(f'L {x-narrow_w/2.0}  {y-ah-2*_amt_}  C {x-overall_w/2.0} {y-ah-2*_amt_} {x-overall_w/2.0} {y-ah-2*_amt_} {x-overall_w/2.0} {y-ah-  _amt_}')
-            d_array.append(f'L {x-overall_w/2.0} {y}')
-        else:
-            ah  = alter1s_fm_bounds[3]-alter1s_fm_bounds[1]-2*_amt_
-            d_array.append(f'L {x+overall_w/2.0} {y-ah-  _amt_}  C {x+overall_w/2.0} {y-ah-2*_amt_} {x+overall_w/2.0} {y-ah-2*_amt_} {x+narrow_w/2.0}  {y-ah-2*_amt_}')
-            a2y  = alter2s_fm_bounds[3] - 2*r_pref
-            d_array.append(f'L {x+narrow_w/2.0}  {a2y}           C {x+overall_w/2.0} {a2y}          {x+overall_w/2.0} {a2y}          {x+overall_w/2.0} {a2y-2*_amt_}')
-            a2y2 = alter2s_fm_bounds[1] + 2*_amt_
-            d_array.append(f'L {x+overall_w/2.0} {a2y2}')
-            d_array.append(f'C {x+overall_w/2.0} {a2y2-2*_amt_} {x+overall_w/2.0} {a2y2-2*_amt_} {x+narrow_w/2.0}  {a2y2-2*_amt_}')
-            d_array.append(f'L {x-narrow_w/2.0}  {a2y2-2*_amt_}  C {x-overall_w/2.0} {a2y2-2*_amt_} {x-overall_w/2.0} {a2y2-2*_amt_} {x-overall_w/2.0} {a2y2}')
-            d_array.append(f'L {x-overall_w/2.0} {a2y -2*_amt_}  C {x-overall_w/2.0} {a2y}          {x-overall_w/2.0} {a2y}          {x-narrow_w/2.0}  {a2y}')
-            d_array.append(f'L {x-narrow_w/2.0}  {y-ah-2*_amt_}  C {x-overall_w/2.0} {y-ah-2*_amt_} {x-overall_w/2.0} {y-ah-2*_amt_} {x-overall_w/2.0} {y-ah-  _amt_}')
-            d_array.append(f'L {x-overall_w/2.0} {y}')
+        # path_description = f'M {x-_w2_} {y+r_pref} L {x+_w2_} {y+r_pref} L {x+_w2_} {y-r_pref} L {x-_w2_} {y-r_pref} Z'
+        _ind_ = r_pref # indentation
 
-        path_description = " ".join(d_array)
+        # Bottom alters
+        pd = [f'M {x-_w2_} {y}']
+        if alter1s_to_bounds is not None:
+            pd.append(f'L {x-_w2_} {alter1s_to_bounds[3]}')
+            if alter2s_to_bounds is not None:
+                pd.append(f'L {x-_w2_+_ind_} {alter1s_to_bounds[3]}')
+                pd.append(f'L {x-_w2_+_ind_} {alter2s_to_bounds[1]}')
+                pd.append(f'L {x-_w2_}       {alter2s_to_bounds[1]}')
+                pd.append(f'L {x-_w2_}       {alter2s_to_bounds[3]}')
+                pd.append(f'L {x+_w2_}       {alter2s_to_bounds[3]}')
+                pd.append(f'L {x+_w2_}       {alter2s_to_bounds[1]}')
+                pd.append(f'L {x+_w2_-_ind_} {alter2s_to_bounds[1]}')
+                pd.append(f'L {x+_w2_-_ind_} {alter1s_to_bounds[3]}')
+                pd.append(f'L {x+_w2_}       {alter1s_to_bounds[3]}')
+            else:
+                pd.append(f'L {x+_w2_} {alter1s_to_bounds[3]}')
+        else:
+            pd.append(f'L {x-_w2_} {y+r_pref} L {x+_w2_} {y+r_pref}')
+        pd.append(f'L {x+_w2_} {y}')
+
+        # Top alters
+        if alter1s_fm_bounds is not None:
+            pd.append(f'L {x+_w2_} {alter1s_fm_bounds[1]}')
+            if alter2s_fm_bounds is not None:
+                pd.append(f'L {x+_w2_-_ind_} {alter1s_fm_bounds[1]}')
+                pd.append(f'L {x+_w2_-_ind_} {alter2s_fm_bounds[3]}')
+                pd.append(f'L {x+_w2_}       {alter2s_fm_bounds[3]}')
+                pd.append(f'L {x+_w2_}       {alter2s_fm_bounds[1]}')
+                pd.append(f'L {x-_w2_}       {alter2s_fm_bounds[1]}')
+                pd.append(f'L {x-_w2_}       {alter2s_fm_bounds[3]}')
+                pd.append(f'L {x-_w2_+_ind_} {alter2s_fm_bounds[3]}')
+                pd.append(f'L {x-_w2_+_ind_} {alter1s_fm_bounds[1]}')
+                pd.append(f'L {x-_w2_}       {alter1s_fm_bounds[1]}')
+            else:
+                pd.append(f'L {x-_w2_} {alter1s_fm_bounds[1]}')
+        else:
+            pd.append(f'L {x+_w2_} {y-r_pref} L {x-_w2_} {y-r_pref}')
+        pd.append(f'Z')
+
+        path_description = ' '.join(pd)
+
         def pathBounds(s):
             x0, y0, x1, y1 = 1e10, 1e10, -1e10, -1e10
             ps = s.split()
@@ -741,10 +680,12 @@ class SpreadLines(object):
                     xc,  yc  = float(ps[i+5]), float(ps[i+6])
                     x0, y0, x1, y1 = min(x0,xc), min(y0,yc), max(x1,xc), max(y1,yc)
                     i += 7
+                elif ps[i] == 'Z': 
+                    i += 1
                 else: raise Exception(f"Unknown command {ps[i]}")
             return x0, y0, x1, y1
 
-        svg.append(f'<path d="{path_description}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="2.0" fill="none" />')
+        svg.append(f'<path d="{self.rt_self.svgSmoothPath(path_description)}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="2.0" fill="none" />')
 
         return ''.join(svg), pathBounds(path_description), node_2_xyrs
 
@@ -773,13 +714,12 @@ class SpreadLines(object):
         # Bin Creation
         _bins_ordered_ = list(self.bin_to_timestamps.keys())
         _bins_ordered_.sort()
-        bin_to_bounds  = {}
         bin_to_n2xyrs  = {}
         x, y = alter_inter_d, (self.h-max_bin_h)/2 + max_bin_h/2
         for _bin_ in _bins_ordered_:
             _svg_, _bounds_, _n2xyrs_ = self.renderBin(_bin_, x, y, max_bin_w, max_bin_h)
-            bin_to_n2xyrs[_bin_] = _n2xyrs_
-            bin_to_bounds[_bin_] = _bounds_
+            bin_to_n2xyrs     [_bin_] = _n2xyrs_
+            self.bin_to_bounds[_bin_] = _bounds_
             svg.append(_svg_)
             xmin, ymin, xmax, ymax = _bounds_
             x = xmax + alter_inter_d
@@ -804,8 +744,8 @@ class SpreadLines(object):
 
                 _nodes_  = _nodes_ - self.nodesInBin(_bins_ordered_[i-1])                             # These will be direct connects / so don't need to channel them
 
-                if _fm_to_ == 'fm': y_clearance = bin_to_bounds[_bins_ordered_[i-1]][1] - max_channel_w - channel_inter_d # The channel has to clear this height (this is at the "top")
-                else:               y_clearance = bin_to_bounds[_bins_ordered_[i-1]][3] + max_channel_w + channel_inter_d # The channel has to clear this height (this is at the "bottom")
+                if _fm_to_ == 'fm': y_clearance = self.bin_to_bounds[_bins_ordered_[i-1]][1] - max_channel_w - channel_inter_d # The channel has to clear this height (this is at the "top")
+                else:               y_clearance = self.bin_to_bounds[_bins_ordered_[i-1]][3] + max_channel_w + channel_inter_d # The channel has to clear this height (this is at the "bottom")
 
                 _befores_ = set()                                                                         # All the nodes before this bin
                 for j in range(i): _befores_ |= self.nodesInBin(_bins_ordered_[j])
@@ -822,8 +762,8 @@ class SpreadLines(object):
                             for _node_ in _nodes_ & _here_nodes_: _saving_for_later_.append((_bin_, _here_, _node_))
                         _nodes_ = _nodes_ - _here_nodes_                                      
                         if len(_nodes_) == 0: break                                                                                    # If there are no more nodes to channel, we're done
-                        if _fm_to_ == 'fm': y_clearance = min(y_clearance, bin_to_bounds[_here_][1] - max_channel_w - channel_inter_d) # Otherwise, we have to clear this height
-                        else:               y_clearance = max(y_clearance, bin_to_bounds[_here_][3] + max_channel_w + channel_inter_d) # Otherwise, we have to clear this height
+                        if _fm_to_ == 'fm': y_clearance = min(y_clearance, self.bin_to_bounds[_here_][1] - max_channel_w - channel_inter_d) # Otherwise, we have to clear this height
+                        else:               y_clearance = max(y_clearance, self.bin_to_bounds[_here_][3] + max_channel_w + channel_inter_d) # Otherwise, we have to clear this height
                     _channel_tuple_ = (_here_, _bin_, y_clearance, number_of_nodes_in_this_channel, _fm_to_)                           # start bin -> end bin, y_clearance, number of nodes, fm-to side
                     channel_tuples.append(_channel_tuple_)                                                                             # will determine the actual geometry later
                     for _saved_ in _saving_for_later_:
@@ -840,8 +780,8 @@ class SpreadLines(object):
             _div_                             = (max_nodes_to_channel - min_nodes_to_channel)
             if _div_ == 0:  _h_               = min_channel_w
             else:           _h_               = (_n_ - min_nodes_to_channel)/_div_ * (max_channel_w - min_channel_w) + min_channel_w
-            _w_                               = bin_to_bounds[_end_][0] - bin_to_bounds[_start_][2] - 1.5*alter_inter_d
-            _x_                               = bin_to_bounds[_start_][2] + alter_inter_d
+            _w_                               = self.bin_to_bounds[_end_][0] - self.bin_to_bounds[_start_][2] - 1.5*alter_inter_d
+            _x_                               = self.bin_to_bounds[_start_][2] + alter_inter_d
 
             placement_okay = False
             while placement_okay == False:
@@ -865,16 +805,16 @@ class SpreadLines(object):
         for i in range(len(_bins_ordered_)-1):
             _bin0_     = _bins_ordered_[i]
             _bin1_     = _bins_ordered_[i+1]
-            _bounds0_  = bin_to_bounds[_bin0_]
-            _bounds1_  = bin_to_bounds[_bin1_]
+            _bounds0_  = self.bin_to_bounds[_bin0_]
+            _bounds1_  = self.bin_to_bounds[_bin1_]
 
             _already_drawn_ = set()
 
             # direct connects
             _nodes_dc_ = bin_to_n2xyrs[_bin0_].keys() & bin_to_n2xyrs[_bin1_].keys()
             for _node_ in _nodes_dc_:
-                _x0_, _y0_, _r0_, _s0_ = bin_to_n2xyrs[_bin0_][_node_]
-                _x1_, _y1_, _r1_, _s1_ = bin_to_n2xyrs[_bin1_][_node_]
+                _x0_, _y0_, _r0_, _s0_, _b_, _alt_, _altsd_, _render_info_ = bin_to_n2xyrs[_bin0_][_node_]
+                _x1_, _y1_, _r1_, _s1_, _b_, _alt_, _altsd_, _render_info_ = bin_to_n2xyrs[_bin1_][_node_]
                 _coords_ = (_bounds0_[2], _y0_, _bounds1_[0], _y1_)
                 if _coords_ not in _already_drawn_:
                     _color_ = self.__nodeColor__(_node_)
@@ -898,8 +838,8 @@ class SpreadLines(object):
                                 svg.insert(0, self.svgCrossConnect(_bounds0_[2], _xyrs_[1], _halfway_, _channel_vmiddle_, color=self.rt_self.co_mgr.getTVColor('axis','major'), width=2.0))
                                 _already_drawn_.add(_coords_)
                             _xyrs_endpt_       = bin_to_n2xyrs[_bin_n_][_node_]
-                            _boundsn_          = bin_to_bounds[_bin_n_]
-                            _boundsn_minus_1_  = bin_to_bounds[_bin_n_-1]
+                            _boundsn_          = self.bin_to_bounds[_bin_n_]
+                            _boundsn_minus_1_  = self.bin_to_bounds[_bin_n_-1]
                             _halfway_          = (_boundsn_minus_1_[2] + _boundsn_[0])/2.0
                             _coords_           = (_boundsn_[0], _xyrs_endpt_[1], _channel_geometry_[0] + _channel_geometry_[2], _channel_vmiddle_)
                             if _coords_ not in _already_drawn_:
@@ -920,3 +860,25 @@ class SpreadLines(object):
     def _repr_svg_(self):
         if self.last_render is None: self.renderSVG()
         return self.last_render
+
+    def entityPosition(self, entity):
+        _results_ = []
+        if entity == self.node_focus:
+            for _bin_ in self.bin_to_node_to_xyrepstat:
+                _bounds_     = self.bin_to_bounds[_bin_]
+                _xy_         = ((_bounds_[0] + _bounds_[2])/2.0, 0.0)
+                _svg_markup_ = f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{self.r_pref}" stroke="#000000" stroke-width="1.25" fill="none"/>'
+                rtep = RTEntityPosition(entity, self.rt_self, self, _xy_, (_xy_[0], _xy_[1], 0.0, 1.0), 
+                                        None, _svg_markup_, self.widget_id)
+                _results_.append(rtep)
+        else:
+            for _bin_ in self.bin_to_node_to_xyrepstat:
+                if entity in self.bin_to_node_to_xyrepstat[_bin_]:
+                    _xyrepstat_ = self.bin_to_node_to_xyrepstat[_bin_][entity]
+                    _xy_        = (_xyrepstat_[0], _xyrepstat_[1])
+                    if _xyrepstat_[2] == 'single': _svg_markup_ = f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{_xyrepstat_[7]}" stroke="#000000" stroke-width="1.25" fill="none"/>'
+                    else:                          _svg_markup_ = self.rt_self.iconCloud(_xy_[0], _xy_[1], fg='#e0e0e0', bg='#e0e0e0')
+                    rtep = RTEntityPosition(entity, self.rt_self, self, _xy_, (_xy_[0], _xy_[1], 0.0, 1.0), 
+                                            None, _svg_markup_, self.widget_id)
+                    _results_.append(rtep)
+        return _results_
