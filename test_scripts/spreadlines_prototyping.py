@@ -47,7 +47,6 @@ def spreadLines(rt_self,
                 alter_separation_h   = 48, 
                 h_collapsed_sections = 16,
                 
-                prefilter_dataframe  = False,
                 widget_id            = None,
                 w                    = 1024,
                 h                    = 960,
@@ -163,7 +162,6 @@ class SpreadLines(object):
         self.alter_separation_h   = kwargs['alter_separation_h']
         self.h_collapsed_sections = kwargs['h_collapsed_sections']
 
-        self.prefilter_dataframe = kwargs['prefilter_dataframe']
         self.widget_id           = f'spreadlines_{random.randint(0,65535)}' if kwargs['widget_id'] is None else kwargs['widget_id']
         self.w                   = kwargs['w']
         self.h                   = kwargs['h']
@@ -182,124 +180,55 @@ class SpreadLines(object):
         self.__consolidateRelationships__()
         self.time_lu['consolidate_relationships'] = time.time() - t0
 
-        # Prefilter the dataframe (optional... maybe it makes it faster?)
-        if self.prefilter_dataframe:
-            t0        = time.time()
-            _g_       = self.rt_self.createNetworkXGraph(self.df, self.relationships)
-            self.time_lu['prefilter|create_networkx_graph'] = time.time() - t0
-            t1        = time.time()
-            nbors     = set(_g_.neighbors(self.node_focus))
-            nbors2    = set()
-            for nbor in nbors: nbors2 = nbors2 | set(_g_.neighbors(nbor))
-            _to_keep_ = nbors | nbors2 | set([self.node_focus])
-            self.time_lu['prefilter|networkx_neighbors'] = time.time() - t1
-            t0        = time.time()
-            _to_concat_ = []
-            for _relate_ in self.relationships: # assumes that the relationships are single fields only (via __consolidateRelationships__())
-                _df_ = self.df.filter(pl.col(_relate_[0]).is_in(_to_keep_) & pl.col(_relate_[1]).is_in(_to_keep_))
-                _to_concat_.append(_df_)
-            self.df = pl.concat(_to_concat_)
-            self.time_lu['prefilter|filter_and_concat_df'] = time.time() - t0
-
-        # How many bins?  And what's in those bins for nodes next to the focus?
+        # Binning Stage
         self.df = self.df.sort(self.ts_field)
-        _bin_                    = 0
-        _dfs_containing_focus_   = [] # focus  -> alter1 or alter1 -> focus
-        _dfs_containing_alter2s_ = [] # alter1 -> alter2 or alter2 -> alter1  ... note does not include focus or alter1 <-> alter1
         self.bin_to_timestamps   = {}
-        self.bin_to_alter1s      = {}
-        self.bin_to_alter2s      = {}
+        self.bin_to_alter1s      = {} # [_bin_]['fm'] and [_bin_]['to']
+        self.bin_to_alter2s      = {} # [_bin_]['fm'] and [_bin_]['to']
         t0 = time.time()
-        for k, k_df in self.df.group_by_dynamic(self.ts_field, every=self.every):
-            _timestamp_     = k[0]
-            _found_matches_ = False
-            # find the first alters
-            for i in range(len(self.relationships)):
-                _fm_, _to_ = self.relationships[i]
-                
-                # From Is Focus
-                _df_fm_is_focus_ = k_df.filter(pl.col(_fm_) == self.node_focus)
-                _df_fm_is_focus_ = _df_fm_is_focus_.with_columns(pl.lit(_fm_).alias('__focus_col__'), pl.lit(_to_).alias('__alter_col__'), pl.lit(1).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('to').alias('__alter_side__'))
-                if len(_df_fm_is_focus_) > 0: 
-                    _dfs_containing_focus_.append(_df_fm_is_focus_)
-                    if _bin_ not in self.bin_to_alter1s:        self.bin_to_alter1s[_bin_]       = {}
-                    if 'to'  not in self.bin_to_alter1s[_bin_]: self.bin_to_alter1s[_bin_]['to'] = set()
-                    self.bin_to_alter1s[_bin_]['to'] |= set(_df_fm_is_focus_[_to_])
-                    _found_matches_ = True
-
-                # To Is Focus
-                _df_to_is_focus_ = k_df.filter(pl.col(_to_) == self.node_focus)
-                _df_to_is_focus_ = _df_to_is_focus_.with_columns(pl.lit(_to_).alias('__focus_col__'), pl.lit(_fm_).alias('__alter_col__'), pl.lit(1).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('fm').alias('__alter_side__'))
-                if len(_df_to_is_focus_) > 0:
-                    _dfs_containing_focus_.append(_df_to_is_focus_)
-                    if _bin_ not in self.bin_to_alter1s:        self.bin_to_alter1s[_bin_]       = {}
-                    if 'fm'  not in self.bin_to_alter1s[_bin_]: self.bin_to_alter1s[_bin_]['fm'] = set()
-                    self.bin_to_alter1s[_bin_]['fm'] |= set(_df_to_is_focus_[_fm_])
-                    _found_matches_ = True
-
-                # For any shared nodes between the two sides, keep them on the 'fm' side
-                if _bin_ in self.bin_to_alter1s and 'fm' in self.bin_to_alter1s[_bin_] and 'to' in self.bin_to_alter1s[_bin_]:
-                    _shared_nodes_ = self.bin_to_alter1s[_bin_]['fm'] & self.bin_to_alter1s[_bin_]['to']
-                    if len(_shared_nodes_) > 0: self.bin_to_alter1s[_bin_]['to'] -= _shared_nodes_
-
-            # find the second alters
-            if _found_matches_:
-                _all_alter1s_ = set()
-                if 'fm' in self.bin_to_alter1s[_bin_]: _all_alter1s_ |= self.bin_to_alter1s[_bin_]['fm']
-                if 'to' in self.bin_to_alter1s[_bin_]: _all_alter1s_ |= self.bin_to_alter1s[_bin_]['to']
-                # Go through all the relationships
-                for i in range(len(self.relationships)):
-                    _fm_, _to_ = self.relationships[i]
-                    if 'fm' in self.bin_to_alter1s[_bin_]:
-                        _df_          = k_df.filter(pl.col(_fm_).is_in(self.bin_to_alter1s[_bin_]['fm']) | pl.col(_to_).is_in(self.bin_to_alter1s[_bin_]['fm']))
-                        _set_alter2s_ = (set(_df_[_fm_]) | set(_df_[_to_])) - (_all_alter1s_ | set([self.node_focus]))
-                        if len(_set_alter2s_) > 0:
-                            if _bin_ not in self.bin_to_alter2s:        self.bin_to_alter2s[_bin_]       = {}
-                            if 'fm'  not in self.bin_to_alter2s[_bin_]: self.bin_to_alter2s[_bin_]['fm'] = set()
-                            self.bin_to_alter2s[_bin_]['fm'] |= _set_alter2s_
-
-                            _df_ = k_df.filter(pl.col(_fm_).is_in(self.bin_to_alter1s[_bin_]['fm']) & pl.col(_to_).is_in(_set_alter2s_))
-                            _df_ = _df_.with_columns(pl.lit(_fm_).alias('__alter1_col__'), pl.lit(_to_).alias('__alter2_col__'), pl.lit(2).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('fm').alias('__alter_side__'))
-                            _dfs_containing_alter2s_.append(_df_)
-
-                            _df_ = k_df.filter(pl.col(_to_).is_in(self.bin_to_alter1s[_bin_]['fm']) & pl.col(_fm_).is_in(_set_alter2s_))
-                            _df_ = _df_.with_columns(pl.lit(_to_).alias('__alter1_col__'), pl.lit(_fm_).alias('__alter2_col__'), pl.lit(2).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('fm').alias('__alter_side__'))
-                            _dfs_containing_alter2s_.append(_df_)
-
-                    if 'to' in self.bin_to_alter1s[_bin_]:
-                        _df_          = k_df.filter(pl.col(_fm_).is_in(self.bin_to_alter1s[_bin_]['to']) | pl.col(_to_).is_in(self.bin_to_alter1s[_bin_]['to']))
-                        _set_alter2s_ = (set(_df_[_fm_]) | set(_df_[_to_])) - (_all_alter1s_ | set([self.node_focus]))
-                        if len(_set_alter2s_) > 0:
-                            if _bin_ not in self.bin_to_alter2s:        self.bin_to_alter2s[_bin_]       = {}
-                            if 'to'  not in self.bin_to_alter2s[_bin_]: self.bin_to_alter2s[_bin_]['to'] = set()
-                            self.bin_to_alter2s[_bin_]['to'] |= _set_alter2s_
-
-                            _df_ = k_df.filter(pl.col(_fm_).is_in(self.bin_to_alter1s[_bin_]['to']) & pl.col(_to_).is_in(_set_alter2s_))
-                            _df_ = _df_.with_columns(pl.lit(_fm_).alias('__alter1_col__'), pl.lit(_to_).alias('__alter2_col__'), pl.lit(2).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('to').alias('__alter_side__'))
-                            _dfs_containing_alter2s_.append(_df_)
-
-                            _df_ = k_df.filter(pl.col(_to_).is_in(self.bin_to_alter1s[_bin_]['to']) & pl.col(_fm_).is_in(_set_alter2s_))
-                            _df_ = _df_.with_columns(pl.lit(_to_).alias('__alter1_col__'), pl.lit(_fm_).alias('__alter2_col__'), pl.lit(2).alias('__alter_level__'), pl.lit(_bin_).alias('__bin__'), pl.lit(_timestamp_).alias('__bin_ts__'), pl.lit('to').alias('__alter_side__'))
-                            _dfs_containing_alter2s_.append(_df_)
-
-                # For any shared nodes between the two sides, keep them on the 'fm' side
-                if _bin_ in self.bin_to_alter2s and 'fm' in self.bin_to_alter2s[_bin_] and 'to' in self.bin_to_alter2s[_bin_]:
-                    _shared_nodes_ = self.bin_to_alter2s[_bin_]['fm'] & self.bin_to_alter2s[_bin_]['to']
-                    if len(_shared_nodes_) > 0: self.bin_to_alter2s[_bin_]['to'] -= _shared_nodes_
-
-            if _found_matches_: 
-                self.bin_to_timestamps[_bin_] = _timestamp_
+        for i in range(len(self.relationships)):
+            _bin_            = 0
+            _fm_, _to_       = self.relationships[i]
+            _df_             = self.df.group_by_dynamic(self.ts_field, every=self.every, group_by=[_fm_,_to_]).agg()
+            _one_degree_     = _df_.filter((pl.col(_fm_) == self.node_focus) | (pl.col(_to_) == self.node_focus))
+            _one_degree_set_ = set(_one_degree_[_fm_]) | set(_one_degree_[_to_])
+            _df_             = _df_.filter((pl.col(_fm_).is_in(_one_degree_set_)) | (pl.col(_to_).is_in(_one_degree_set_)))
+            _df_             = _df_.sort(self.ts_field)
+            for k, k_df in _df_.group_by_dynamic(self.ts_field, every=self.every):
+                _timestamp_   = k[0]
+                if _bin_ not in self.bin_to_timestamps:
+                    self.bin_to_alter1s   [_bin_] = {'fm': set(), 'to': set()}
+                    self.bin_to_alter2s   [_bin_] = {'fm': set(), 'to': set()}
+                    self.bin_to_timestamps[_bin_] = _timestamp_
+                _fm_is_focus_ = k_df.filter(pl.col(_fm_) == self.node_focus)
+                if len(_fm_is_focus_) > 0: 
+                    _set_ = set(_fm_is_focus_[_to_])
+                    self.bin_to_alter1s[_bin_]['to'] |= _set_
+                    _alter2s_ = k_df.filter(pl.col(_to_).is_in(_set_) | (pl.col(_fm_).is_in(_set_)))
+                    self.bin_to_alter2s[_bin_]['to'] |= set(_alter2s_[_fm_]) | set(_alter2s_[_to_])
+                _to_is_focus_ = k_df.filter(pl.col(_to_) == self.node_focus)
+                if len(_to_is_focus_) > 0: 
+                    _set_ = set(_to_is_focus_[_fm_])
+                    self.bin_to_alter1s[_bin_]['fm'] |= _set_
+                    _alter2s_ = k_df.filter(pl.col(_fm_).is_in(_set_) | (pl.col(_to_).is_in(_set_)))
+                    self.bin_to_alter2s[_bin_]['fm'] |= set(_alter2s_[_fm_]) | set(_alter2s_[_to_])
                 _bin_ += 1
         self.time_lu['alter_binning_step'] = time.time() - t0
 
-        # Concatenate the pieces and parts
+        # Make sure the sets are distinct & don't have overlaps
         t0 = time.time()
-        if len(_dfs_containing_focus_) > 0:   self.df_alter1s = pl.concat(_dfs_containing_focus_).unique()    # unique because we may have duplicate rows on the two sides
-        else:                                 self.df_alter1s = pl.DataFrame()
-        if len(_dfs_containing_alter2s_) > 0: self.df_alter2s = pl.concat(_dfs_containing_alter2s_).unique()  # unique because we may have duplicate rows on the two sides
-        else:                                 self.df_alter2s = pl.DataFrame()
-        self.time_lu['alter_binning_concat'] = time.time() - t0
+        for _bin_ in self.bin_to_alter1s:
+            self.bin_to_alter1s[_bin_]['to'] -= self.bin_to_alter1s[_bin_]['fm']                                                                         # 'fm' side has the bidirectional nodes
+            self.bin_to_alter2s[_bin_]['fm'] -= (self.bin_to_alter1s[_bin_]['fm'] | self.bin_to_alter1s[_bin_]['to'])                                    # 'fm' side has the bidirectional nodes
+            self.bin_to_alter2s[_bin_]['to'] -= (self.bin_to_alter1s[_bin_]['fm'] | self.bin_to_alter1s[_bin_]['to'] | self.bin_to_alter2s[_bin_]['fm']) # 'to' side has the bidirectional nodes
+            _focal_set_ = set([self.node_focus])
+            self.bin_to_alter1s[_bin_]['fm'] -= _focal_set_
+            self.bin_to_alter1s[_bin_]['to'] -= _focal_set_
+            self.bin_to_alter2s[_bin_]['fm'] -= _focal_set_
+            self.bin_to_alter2s[_bin_]['to'] -= _focal_set_
+        self.time_lu['deduplicate_alters'] = time.time() - t0
 
+        # Create other variables (to be used later ... but make sure they exist now)
         self.bin_to_bounds            = {}
         self.bin_to_node_to_xyrepstat = {}
         self.last_render              = None
