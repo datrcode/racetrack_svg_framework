@@ -34,14 +34,15 @@ class RTGeometryMixin(object):
     #
     # svgSmoothPath() - created a smoothed path for a given path
     #
-    def svgSmoothPath(self, s, rx=10):
+    def svgSmoothPath(self, s, rx=20):
         '''svgSmoothPath() - create a smoothed path for a given path.
 
         The path must have this exact format:  'M x0 y0 L x1 y1 L x2 y2 ... [Z]'
         ... i.e., the first token is 'M' and the last token is an optional 'Z'
         ... all other tokens must be an 'L'
+        ... spaces must occur between tokens
 
-        The rx parameter will be set to half of the minimum segment length...
+        The rx parameter will be dynamically adjusted to half the segment length...
 
         :param s: svg path string
         :param rx: radius of the rounded corners
@@ -65,40 +66,48 @@ class RTGeometryMixin(object):
 
         if i != len(toks): raise Exception(f'Error parsing svg path: {s} -- exceeded length of tokens without ending with Z')
 
-        # Check the rx parameter...
-        l_min = self.segmentLength((xys[0], xys[1]))
-        for i in range(1, len(xys)-1): l_min = min(l_min, self.segmentLength((xys[i], xys[i+1])))
-        if connect_at_end: l_min = min(l_min, self.segmentLength((xys[-1], xys[0])))
-        if rx > l_min/2: rx = l_min/2 # because of how the curve start/end points are calculated
-
         # Determine the starting point -- which may be adjusted if connect_at_end
         r = []
         if connect_at_end: 
-            uv = self.unitVector((xys[0], xys[1]))
-            p0 = (xys[0][0] + uv[0]*rx, xys[0][1] + uv[1]*rx)
+            uv   = self.unitVector((xys[0], xys[1]))
+            l    = self.segmentLength((xys[0], xys[1]))
+            _rx_ = min(rx, l/2.0)
+            p0 = (xys[0][0] + uv[0]*_rx_, xys[0][1] + uv[1]*_rx_)
             r.append(f'M {p0[0]} {p0[1]} ')
         else:              r.append(f'M {xys[0][0]} {xys[0][1]} ')
 
         # Iterate through all of the interior points
         for i in range(1, len(xys)-1):
-            uv1 = self.unitVector((xys[i-1], xys[i]))
-            p1  = (xys[i][0] - uv1[0]*rx, xys[i][1] - uv1[1]*rx)
-            uv2 = self.unitVector((xys[i], xys[i+1]))
-            p2  = (xys[i][0] + uv2[0]*rx, xys[i][1] + uv2[1]*rx)
+            uv1  = self.unitVector((xys[i-1], xys[i]))
+            l    = self.segmentLength((xys[i-1], xys[i]))
+            _rx_ = min(rx, l/2.0)
+            p1   = (xys[i][0] - uv1[0]*_rx_, xys[i][1] - uv1[1]*_rx_)
+            uv2  = self.unitVector((xys[i], xys[i+1]))
+            l    = self.segmentLength((xys[i], xys[i+1]))
+            _rx_ = min(rx, l/2.0)
+            p2   = (xys[i][0] + uv2[0]*_rx_, xys[i][1] + uv2[1]*_rx_)
             r.append(f'L {p1[0]} {p1[1]} C {xys[i][0]} {xys[i][1]} {xys[i][0]} {xys[i][1]} {p2[0]} {p2[1]} ')
 
         # If connect_at_end, then add the last two points
         if connect_at_end:
-            uv1 = self.unitVector((xys[-2], xys[-1]))
-            p1  = (xys[-1][0] - uv1[0]*rx, xys[-1][1] - uv1[1]*rx)
-            uv2 = self.unitVector((xys[-1], xys[0]))
-            p2  = (xys[-1][0] + uv2[0]*rx, xys[-1][1] + uv2[1]*rx)
+            uv1  = self.unitVector((xys[-2], xys[-1]))
+            l    = self.segmentLength((xys[-2], xys[-1]))
+            _rx_ = min(rx, l/2.0)
+            p1   = (xys[-1][0] - uv1[0]*_rx_, xys[-1][1] - uv1[1]*_rx_)
+            uv2  = self.unitVector((xys[-1], xys[0]))
+            l    = self.segmentLength((xys[-1], xys[0]))
+            _rx_ = min(rx, l/2.0)
+            p2   = (xys[-1][0] + uv2[0]*_rx_, xys[-1][1] + uv2[1]*_rx_)
             r.append(f'L {p1[0]} {p1[1]} C {xys[-1][0]} {xys[-1][1]} {xys[-1][0]} {xys[-1][1]} {p2[0]} {p2[1]} ')
 
-            uv1 = self.unitVector((xys[-1], xys[0]))
-            p1  = (xys[0][0] - uv1[0]*rx, xys[0][1] - uv1[1]*rx)
-            uv2 = self.unitVector((xys[0], xys[1]))
-            p2  = (xys[0][0] + uv2[0]*rx, xys[0][1] + uv2[1]*rx)
+            uv1  = self.unitVector((xys[-1], xys[0]))
+            l    = self.segmentLength((xys[-1], xys[0]))
+            _rx_ = min(rx, l/2.0)
+            p1   = (xys[0][0] - uv1[0]*_rx_, xys[0][1] - uv1[1]*_rx_)
+            uv2  = self.unitVector((xys[0], xys[1]))
+            l    = self.segmentLength((xys[0], xys[1]))
+            _rx_ = min(rx, l/2.0)
+            p2   = (xys[0][0] + uv2[0]*_rx_, xys[0][1] + uv2[1]*_rx_)
             r.append(f'L {p1[0]} {p1[1]} C {xys[0][0]} {xys[0][1]} {xys[0][0]} {xys[0][1]} {p2[0]} {p2[1]} Z')
         else:
             r.append(f'L {xys[-1][0]} {xys[-1][1]}')
