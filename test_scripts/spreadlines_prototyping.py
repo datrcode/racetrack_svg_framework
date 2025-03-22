@@ -639,14 +639,15 @@ class SpreadLines(object):
             a2y2 = alter2s_to_bounds[3] - 2*_amt_
             d_array.append(f'L {x-overall_w/2.0} {a2y2}')
             d_array.append(f'C {x-overall_w/2.0} {a2y2+2*_amt_} {x-overall_w/2.0} {a2y2+2*_amt_} {x-narrow_w/2.0}  {a2y2+2*_amt_}')
-            d_array.append(f'L {x+narrow_w/2.0}  {a2y2+2*_amt_}  C {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2}') # green @ end
-            d_array.append(f'L {x+overall_w/2.0} {a2y +2*_amt_}  C {x+overall_w/2.0} {a2y}          {x+overall_w/2.0} {a2y}          {x+narrow_w/2.0}  {a2y}')  # red   @ beginning
+            d_array.append(f'L {x+narrow_w/2.0}  {a2y2+2*_amt_}  C {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2}')
+            d_array.append(f'L {x+overall_w/2.0} {a2y +2*_amt_}  C {x+overall_w/2.0} {a2y}          {x+overall_w/2.0} {a2y}          {x+narrow_w/2.0}  {a2y}')
             d_array.append(f'L {x+narrow_w/2.0}  {y+ah+2*_amt_}  C {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+  _amt_}')
-            d_array.append(f'L {x+overall_w/2.0} {y}')            
-            #def circle(x,y,c): return f'<circle cx="{x}" cy="{y}" r="{random.random()*2.0 + 1.0}" stroke="{c}" fill="none" />' #debug
-            #svg.append(circle(x+overall_w/2.0, a2y +2*_amt_, '#ff0000')) # problem # debug
-            #svg.append(circle(x+narrow_w/2.0,  a2y,          '#0000ff')) # debug
-            #svg.append(circle(x+overall_w/2.0, a2y2,         '#00ff00')) # problem # debug
+            d_array.append(f'L {x+overall_w/2.0} {y}')
+
+            _r_ = alter2s_to_bounds # debug
+            svg.append(f'<rect x="{_r_[0]}" y="{_r_[1]}" width="{_r_[2]-_r_[0]}" height="{_r_[3]-_r_[1]}" fill="#000000" stroke="#0000ff" stroke-width="1.0" />')            # debug ... looks okay
+            svg.append(f'<line x1="{x-overall_w/2.0}" y1="{a2y2}"         x2="{x+overall_w/2.0}" y2="{a2y2}"         stroke="#ff0000" stroke-width="2" />') # not okay # debug
+            svg.append(f'<line x1="{x-overall_w/2.0}" y1="{a2y+2*_amt_}"  x2="{x+overall_w/2.0}" y2="{a2y+2*_amt_}"  stroke="#00ff00" stroke-width="2" />') # not okay # debug
 
         if alter1s_fm_bounds is None:
             d_array.append(f'L {x+overall_w/2.0} {y-  _amt_}  C {x+overall_w/2.0} {y-2*_amt_} {x+overall_w/2.0} {y-2*_amt_} {x+narrow_w/2.0}  {y-2*_amt_}')
