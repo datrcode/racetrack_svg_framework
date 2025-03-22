@@ -1,4 +1,4 @@
-# Copyright 2024 David Trimm
+# Copyright 2025 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,6 +31,81 @@ __name__ = 'rt_geometry_mixin'
 # Geometry Methods
 #
 class RTGeometryMixin(object):
+    #
+    # svgSmoothPath() - created a smoothed path for a given path
+    #
+    def svgSmoothPath(self, s, rx=10):
+        '''svgSmoothPath() - create a smoothed path for a given path.
+
+        The path must have this exact format:  'M x0 y0 L x1 y1 L x2 y2 ... [Z]'
+        ... i.e., the first token is 'M' and the last token is an optional 'Z'
+        ... all other tokens must be an 'L'
+
+        The rx parameter will be set to half of the minimum segment length...
+
+        :param s: svg path string
+        :param rx: radius of the rounded corners
+
+        :returns: svg path
+        '''
+        # Convert the path to a list of xy coordinates
+        if ','     in s: s = s.replace(',',' ')
+        while '  ' in s: s = s.replace('  ',' ')
+        xys = []
+        toks = s.split(' ')
+        if toks[0] != 'M': return s # really only accepting Move ... then Line Line Line * ... then maybe Z
+        i =  0
+        xys.append((int(toks[i+1]),int(toks[i+2])))
+        i += 3
+        while i < len(toks) and toks[i] == 'L':
+            xys.append((int(toks[i+1]),int(toks[i+2])))
+            i += 3
+        if i < len(toks) and toks[i] == 'Z': connect_at_end, i = True, i+1
+        else:                                connect_at_end    = False
+
+        if i != len(toks): raise Exception(f'Error parsing svg path: {s} -- exceeded length of tokens without ending with Z')
+
+        # Check the rx parameter...
+        l_min = self.segmentLength((xys[0], xys[1]))
+        for i in range(1, len(xys)-1): l_min = min(l_min, self.segmentLength((xys[i], xys[i+1])))
+        if connect_at_end: l_min = min(l_min, self.segmentLength((xys[-1], xys[0])))
+        if rx > l_min/2: rx = l_min/2 # because of how the curve start/end points are calculated
+
+        # Determine the starting point -- which may be adjusted if connect_at_end
+        r = []
+        if connect_at_end: 
+            uv = self.unitVector((xys[0], xys[1]))
+            p0 = (xys[0][0] + uv[0]*rx, xys[0][1] + uv[1]*rx)
+            r.append(f'M {p0[0]} {p0[1]} ')
+        else:              r.append(f'M {xys[0][0]} {xys[0][1]} ')
+
+        # Iterate through all of the interior points
+        for i in range(1, len(xys)-1):
+            uv1 = self.unitVector((xys[i-1], xys[i]))
+            p1  = (xys[i][0] - uv1[0]*rx, xys[i][1] - uv1[1]*rx)
+            uv2 = self.unitVector((xys[i], xys[i+1]))
+            p2  = (xys[i][0] + uv2[0]*rx, xys[i][1] + uv2[1]*rx)
+            r.append(f'L {p1[0]} {p1[1]} C {xys[i][0]} {xys[i][1]} {xys[i][0]} {xys[i][1]} {p2[0]} {p2[1]} ')
+
+        # If connect_at_end, then add the last two points
+        if connect_at_end:
+            uv1 = self.unitVector((xys[-2], xys[-1]))
+            p1  = (xys[-1][0] - uv1[0]*rx, xys[-1][1] - uv1[1]*rx)
+            uv2 = self.unitVector((xys[-1], xys[0]))
+            p2  = (xys[-1][0] + uv2[0]*rx, xys[-1][1] + uv2[1]*rx)
+            r.append(f'L {p1[0]} {p1[1]} C {xys[-1][0]} {xys[-1][1]} {xys[-1][0]} {xys[-1][1]} {p2[0]} {p2[1]} ')
+
+            uv1 = self.unitVector((xys[-1], xys[0]))
+            p1  = (xys[0][0] - uv1[0]*rx, xys[0][1] - uv1[1]*rx)
+            uv2 = self.unitVector((xys[0], xys[1]))
+            p2  = (xys[0][0] + uv2[0]*rx, xys[0][1] + uv2[1]*rx)
+            r.append(f'L {p1[0]} {p1[1]} C {xys[0][0]} {xys[0][1]} {xys[0][0]} {xys[0][1]} {p2[0]} {p2[1]} Z')
+        else:
+            r.append(f'L {xys[-1][0]} {xys[-1][1]}')
+
+        s = ''.join(r)
+        return s
+
     #
     # laguerreVoronoi2D()
     # - built on top of code from the following:
