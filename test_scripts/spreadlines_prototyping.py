@@ -614,59 +614,57 @@ class SpreadLines(object):
         else: alter2s_to_bounds = None
 
         # Calculate the outline of the bin
-        overall_w = 2*r_pref
-        if alter1s_fm_bounds is not None: overall_w = max(overall_w, alter1s_fm_bounds[2]-alter1s_fm_bounds[0])
-        if alter1s_to_bounds is not None: overall_w = max(overall_w, alter1s_to_bounds[2]-alter1s_to_bounds[0])
-        if alter2s_fm_bounds is not None: overall_w = max(overall_w, alter2s_fm_bounds[2]-alter2s_fm_bounds[0])
-        if alter2s_to_bounds is not None: overall_w = max(overall_w, alter2s_to_bounds[2]-alter2s_to_bounds[0])
-        narrow_w = overall_w - 2*r_pref
-        _amt_    = 2*r_pref
-        d_array  = [f'M {x-overall_w/2.0} {y}']
-        if alter1s_to_bounds is None:
-            d_array.append(f'L {x-overall_w/2.0} {y+  _amt_}  C {x-overall_w/2.0} {y+2*_amt_} {x-overall_w/2.0} {y+2*_amt_} {x-narrow_w/2.0}  {y+2*_amt_}')
-            d_array.append(f'L {x+narrow_w/2.0}  {y+2*_amt_}  C {x+overall_w/2.0} {y+2*_amt_} {x+overall_w/2.0} {y+2*_amt_} {x+overall_w/2.0} {y+  _amt_}')
-            d_array.append(f'L {x+overall_w/2.0} {y}')
-        elif alter2s_to_bounds is None:
-            ah = alter1s_to_bounds[3]-alter1s_to_bounds[1]-2*_amt_
-            d_array.append(f'L {x-overall_w/2.0} {y+ah+  _amt_}  C {x-overall_w/2.0} {y+ah+2*_amt_} {x-overall_w/2.0} {y+ah+2*_amt_} {x-narrow_w/2.0}  {y+ah+2*_amt_}')
-            d_array.append(f'L {x+narrow_w/2.0}  {y+ah+2*_amt_}  C {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+  _amt_}')
-            d_array.append(f'L {x+overall_w/2.0} {y}')
-        else:
-            ah   = alter1s_to_bounds[3]-alter1s_to_bounds[1]-2*_amt_
-            a2y  = alter2s_to_bounds[1] + 2*r_pref
-            a2y2 = alter2s_to_bounds[3] - 2*_amt_
-            d_array.append(f'L {x-overall_w/2.0} {y+ah+  _amt_}  C {x-overall_w/2.0} {y+ah+2*_amt_} {x-overall_w/2.0} {y+ah+2*_amt_} {x-narrow_w/2.0}  {y+ah+2*_amt_}')
-            d_array.append(f'L {x-narrow_w/2.0}  {a2y}           C {x-overall_w/2.0} {a2y}          {x-overall_w/2.0} {a2y}          {x-overall_w/2.0} {a2y+2*_amt_}')
-            d_array.append(f'L {x-overall_w/2.0} {a2y2}')
-            d_array.append(f'C {x-overall_w/2.0} {a2y2+2*_amt_} {x-overall_w/2.0} {a2y2+2*_amt_} {x-narrow_w/2.0}  {a2y2+2*_amt_}')
-            d_array.append(f'L {x+narrow_w/2.0}  {a2y2+2*_amt_}  C {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2+2*_amt_} {x+overall_w/2.0} {a2y2}')
-            d_array.append(f'L {x+overall_w/2.0} {a2y +2*_amt_}  C {x+overall_w/2.0} {a2y}          {x+overall_w/2.0} {a2y}          {x+narrow_w/2.0}  {a2y}')
-            d_array.append(f'L {x+narrow_w/2.0}  {y+ah+2*_amt_}  C {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+2*_amt_} {x+overall_w/2.0} {y+ah+  _amt_}')
-            d_array.append(f'L {x+overall_w/2.0} {y}')
+        _w_  = 2*r_pref
+        if alter1s_fm_bounds is not None: _w_ = max(_w_, alter1s_fm_bounds[2]-alter1s_fm_bounds[0])
+        if alter1s_to_bounds is not None: _w_ = max(_w_, alter1s_to_bounds[2]-alter1s_to_bounds[0])
+        if alter2s_fm_bounds is not None: _w_ = max(_w_, alter2s_fm_bounds[2]-alter2s_fm_bounds[0])
+        if alter2s_to_bounds is not None: _w_ = max(_w_, alter2s_to_bounds[2]-alter2s_to_bounds[0])
+        _w2_ = _w_/2.0
 
-        if alter1s_fm_bounds is None:
-            d_array.append(f'L {x+overall_w/2.0} {y-  _amt_}  C {x+overall_w/2.0} {y-2*_amt_} {x+overall_w/2.0} {y-2*_amt_} {x+narrow_w/2.0}  {y-2*_amt_}')
-            d_array.append(f'L {x-narrow_w/2.0}  {y-2*_amt_}  C {x-overall_w/2.0} {y-2*_amt_} {x-overall_w/2.0} {y-2*_amt_} {x-overall_w/2.0} {y-  _amt_}')
-            d_array.append(f'L {x-overall_w/2.0} {y}')
-        elif alter2s_fm_bounds is None:
-            ah = alter1s_fm_bounds[3]-alter1s_fm_bounds[1]-2*_amt_
-            d_array.append(f'L {x+overall_w/2.0} {y-ah-  _amt_}  C {x+overall_w/2.0} {y-ah-2*_amt_} {x+overall_w/2.0} {y-ah-2*_amt_} {x+narrow_w/2.0}  {y-ah-2*_amt_}')
-            d_array.append(f'L {x-narrow_w/2.0}  {y-ah-2*_amt_}  C {x-overall_w/2.0} {y-ah-2*_amt_} {x-overall_w/2.0} {y-ah-2*_amt_} {x-overall_w/2.0} {y-ah-  _amt_}')
-            d_array.append(f'L {x-overall_w/2.0} {y}')
-        else:
-            ah  = alter1s_fm_bounds[3]-alter1s_fm_bounds[1]-2*_amt_
-            a2y  = alter2s_fm_bounds[3] - 2*r_pref
-            a2y2 = alter2s_fm_bounds[1] + 2*_amt_
-            d_array.append(f'L {x+overall_w/2.0} {y-ah-  _amt_}  C {x+overall_w/2.0} {y-ah-2*_amt_} {x+overall_w/2.0} {y-ah-2*_amt_} {x+narrow_w/2.0}  {y-ah-2*_amt_}')
-            d_array.append(f'L {x+narrow_w/2.0}  {a2y}           C {x+overall_w/2.0} {a2y}          {x+overall_w/2.0} {a2y}          {x+overall_w/2.0} {a2y-2*_amt_}')
-            d_array.append(f'L {x+overall_w/2.0} {a2y2}')
-            d_array.append(f'C {x+overall_w/2.0} {a2y2-2*_amt_} {x+overall_w/2.0} {a2y2-2*_amt_} {x+narrow_w/2.0}  {a2y2-2*_amt_}')
-            d_array.append(f'L {x-narrow_w/2.0}  {a2y2-2*_amt_}  C {x-overall_w/2.0} {a2y2-2*_amt_} {x-overall_w/2.0} {a2y2-2*_amt_} {x-overall_w/2.0} {a2y2}')
-            d_array.append(f'L {x-overall_w/2.0} {a2y -2*_amt_}  C {x-overall_w/2.0} {a2y}          {x-overall_w/2.0} {a2y}          {x-narrow_w/2.0}  {a2y}')
-            d_array.append(f'L {x-narrow_w/2.0}  {y-ah-2*_amt_}  C {x-overall_w/2.0} {y-ah-2*_amt_} {x-overall_w/2.0} {y-ah-2*_amt_} {x-overall_w/2.0} {y-ah-  _amt_}')
-            d_array.append(f'L {x-overall_w/2.0} {y}')
+        # path_description = f'M {x-_w2_} {y+r_pref} L {x+_w2_} {y+r_pref} L {x+_w2_} {y-r_pref} L {x-_w2_} {y-r_pref} Z'
+        _ind_ = r_pref # indentation
 
-        path_description = " ".join(d_array)
+        # Bottom alters
+        pd = [f'M {x-_w2_} {y}']
+        if alter1s_to_bounds is not None:
+            pd.append(f'L {x-_w2_} {alter1s_to_bounds[3]}')
+            if alter2s_to_bounds is not None:
+                pd.append(f'L {x-_w2_+_ind_} {alter1s_to_bounds[3]}')
+                pd.append(f'L {x-_w2_+_ind_} {alter2s_to_bounds[1]}')
+                pd.append(f'L {x-_w2_}       {alter2s_to_bounds[1]}')
+                pd.append(f'L {x-_w2_}       {alter2s_to_bounds[3]}')
+                pd.append(f'L {x+_w2_}       {alter2s_to_bounds[3]}')
+                pd.append(f'L {x+_w2_}       {alter2s_to_bounds[1]}')
+                pd.append(f'L {x+_w2_-_ind_} {alter2s_to_bounds[1]}')
+                pd.append(f'L {x+_w2_-_ind_} {alter1s_to_bounds[3]}')
+                pd.append(f'L {x+_w2_}       {alter1s_to_bounds[3]}')
+            else:
+                pd.append(f'L {x+_w2_} {alter1s_to_bounds[3]}')
+        else:
+            pd.append(f'L {x-_w2_} {y+r_pref} L {x+_w2_} {y+r_pref}')
+        pd.append(f'L {x+_w2_} {y}')
+
+        # Top alters
+        if alter1s_fm_bounds is not None:
+            pd.append(f'L {x+_w2_} {alter1s_fm_bounds[1]}')
+            if alter2s_fm_bounds is not None:
+                pd.append(f'L {x+_w2_-_ind_} {alter1s_fm_bounds[1]}')
+                pd.append(f'L {x+_w2_-_ind_} {alter2s_fm_bounds[3]}')
+                pd.append(f'L {x+_w2_}       {alter2s_fm_bounds[3]}')
+                pd.append(f'L {x+_w2_}       {alter2s_fm_bounds[1]}')
+                pd.append(f'L {x-_w2_}       {alter2s_fm_bounds[1]}')
+                pd.append(f'L {x-_w2_}       {alter2s_fm_bounds[3]}')
+                pd.append(f'L {x-_w2_+_ind_} {alter2s_fm_bounds[3]}')
+                pd.append(f'L {x-_w2_+_ind_} {alter1s_fm_bounds[1]}')
+                pd.append(f'L {x-_w2_}       {alter1s_fm_bounds[1]}')
+            else:
+                pd.append(f'L {x-_w2_} {alter1s_fm_bounds[1]}')
+        else:
+            pd.append(f'L {x+_w2_} {y-r_pref} L {x-_w2_} {y-r_pref}')
+        pd.append(f'Z')
+
+        path_description = ' '.join(pd)
+
         def pathBounds(s):
             x0, y0, x1, y1 = 1e10, 1e10, -1e10, -1e10
             ps = s.split()
@@ -686,10 +684,12 @@ class SpreadLines(object):
                     xc,  yc  = float(ps[i+5]), float(ps[i+6])
                     x0, y0, x1, y1 = min(x0,xc), min(y0,yc), max(x1,xc), max(y1,yc)
                     i += 7
+                elif ps[i] == 'Z': 
+                    i += 1
                 else: raise Exception(f"Unknown command {ps[i]}")
             return x0, y0, x1, y1
 
-        svg.append(f'<path d="{path_description}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="2.0" fill="none" />')
+        svg.append(f'<path d="{self.rt_self.svgSmoothPath(path_description)}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="2.0" fill="none" />')
 
         return ''.join(svg), pathBounds(path_description), node_2_xyrs
 

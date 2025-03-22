@@ -55,10 +55,10 @@ class RTGeometryMixin(object):
         toks = s.split(' ')
         if toks[0] != 'M': return s # really only accepting Move ... then Line Line Line * ... then maybe Z
         i =  0
-        xys.append((int(toks[i+1]),int(toks[i+2])))
+        xys.append((float(toks[i+1]),float(toks[i+2])))
         i += 3
         while i < len(toks) and toks[i] == 'L':
-            xys.append((int(toks[i+1]),int(toks[i+2])))
+            xys.append((float(toks[i+1]),float(toks[i+2])))
             i += 3
         if i < len(toks) and toks[i] == 'Z': connect_at_end, i = True, i+1
         else:                                connect_at_end    = False
