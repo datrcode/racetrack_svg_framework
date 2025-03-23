@@ -370,7 +370,7 @@ class SpreadLines(object):
     # def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul=1, r_min=4.0, r_pref=7.0, circle_inter_d=2.0, circle_spacer=3, h_collapsed_sections=16):
     def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, _bin_, _alter_, _alter_side_):
         # Bounds state & node positioning
-        xmin, ymin, xmax, ymax = x-r_pref-circle_inter_d, y-r_pref-circle_inter_d, x+r_pref+circle_inter_d, y+r_pref+circle_inter_d
+        xmin, ymin, xmax, ymax = x, y, x, y
         node_to_xyrepstat = {} # node to (x, y, representation, stat) where representation is ['single','cloud'] and state is ['start,'stop','isolated','continuous']
         h   = abs(y_max - y)
         svg = []
@@ -614,7 +614,7 @@ class SpreadLines(object):
         else: alter2s_to_bounds = None
 
         # Calculate the outline of the bin
-        _w_  = 2*r_pref
+        _w_  = 3*r_pref
         if alter1s_fm_bounds is not None: _w_ = max(_w_, alter1s_fm_bounds[2]-alter1s_fm_bounds[0])
         if alter1s_to_bounds is not None: _w_ = max(_w_, alter1s_to_bounds[2]-alter1s_to_bounds[0])
         if alter2s_fm_bounds is not None: _w_ = max(_w_, alter2s_fm_bounds[2]-alter2s_fm_bounds[0])
@@ -622,7 +622,7 @@ class SpreadLines(object):
         _w2_ = _w_/2.0
 
         # path_description = f'M {x-_w2_} {y+r_pref} L {x+_w2_} {y+r_pref} L {x+_w2_} {y-r_pref} L {x-_w2_} {y-r_pref} Z'
-        _ind_ = r_pref # indentation
+        _ind_ = max(r_pref,_w_/4.0) # indentation
 
         # Bottom alters
         pd = [f'M {x-_w2_} {y}']
@@ -854,6 +854,24 @@ class SpreadLines(object):
         svg.insert(0, f'<svg x="0" y="0" width="{self.w}" height="{self.h}" viewBox="{vx0} {vy0} {vx1-vx0} {vy1-vy0}">')
         svg.insert(1, f'<rect x="{vx0}" y="{vy0}" width="{vx1-vx0}" height="{vy1-vy0}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
         svg.insert(2, f'<line x1="{alter_inter_d}" y1="{y}" x2="{x-alter_inter_d - (xmax-xmin)/2}" y2="{y}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="3.0" />')
+
+        # Add information about missing bins (because no data existed at that point in time)
+        _hrun_, _vrun_ = self.r_pref*1.25, self.r_pref*2
+        for _bin_ in self.discontinuity_count_after_bin:
+            _missing_number_ = self.discontinuity_count_after_bin[_bin_]
+            _bounds_         = self.bin_to_bounds[_bin_]
+            _x_              = _bounds_[2] + self.alter_inter_d/2.0
+            _y_              = y - self.h/2
+            _d_              = [f'M {_x_-_hrun_} {_y_}']
+            _y_             += _vrun_
+            _turns_          = int(self.h/_vrun_)
+            for i in range(_turns_):
+                if i%2 == 0: _d_.append(f'L {_x_+_hrun_} {_y_}')
+                else:        _d_.append(f'L {_x_-_hrun_} {_y_}')
+                _y_ += _vrun_
+            svg.insert(3, f'<path d="{" ".join(_d_)}" stroke="{self.rt_self.co_mgr.getTVColor("context","highlight")}" stroke-width="0.5" fill="none" stroke-dasharray="3 3"/>')
+
+        # Conclude the SVG
         svg.append('</svg>')
         self.last_render = ''.join(svg)
         return self.last_render
