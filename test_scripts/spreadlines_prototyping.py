@@ -861,6 +861,7 @@ class SpreadLines(object):
         _hrun_, _vrun_ = self.r_pref*1.25, self.r_pref*2
         for _bin_ in self.discontinuity_count_after_bin:
             _missing_number_ = self.discontinuity_count_after_bin[_bin_]
+            if _bin_ not in self.bin_to_bounds: continue
             _bounds_         = self.bin_to_bounds[_bin_]
             _x_              = _bounds_[0] - self.alter_inter_d/2.0
             _y_              = y - self.h/2
