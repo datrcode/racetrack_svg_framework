@@ -707,15 +707,15 @@ class SpreadLines(object):
     # renderSVG()
     #
     def renderSVG(self):
-        vx0, vy0, vx1, vy1 = None, None, None, None
+        vx0, vy0, vx1, vy1 = None, None, None, None # view bounds
         svg = []
 
-        alter_inter_d   = self.alter_inter_d
-        max_bin_w       = self.max_bin_w
-        max_bin_h       = self.max_bin_h
-        min_channel_w   = self.min_channel_w
-        max_channel_w   = self.max_channel_w
-        channel_inter_d = self.channel_inter_d
+        alter_inter_d   = self.alter_inter_d        # distance between the bins
+        max_bin_w       = self.max_bin_w            # maximum width of a bin
+        max_bin_h       = self.max_bin_h            # maximum height of a bin (this is an approximation)
+        min_channel_w   = self.min_channel_w        # size of the channel (width of the channel bar ... but i don't think it's used that way)
+        max_channel_w   = self.max_channel_w        # ditto
+        channel_inter_d = self.channel_inter_d      # distance to use to separate channels
 
         # Bin Creation
         _bins_ordered_ = list(self.bin_to_timestamps.keys())
