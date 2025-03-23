@@ -860,14 +860,15 @@ class SpreadLines(object):
             _channel_max_y_ = max(_bounds_[3], _channel_max_y_)
         _hrun_, _vrun_ = self.r_pref*1.25, self.r_pref*2
         for _bin_ in self.discontinuity_count_after_bin:
+            if _bin_ == 0: continue # don't bother drawing before the first bin
             _missing_number_ = self.discontinuity_count_after_bin[_bin_]
             if _bin_ not in self.bin_to_bounds: continue
             _bounds_         = self.bin_to_bounds[_bin_]
             _x_              = _bounds_[0] - self.alter_inter_d/2.0
-            _y_              = y - self.h/2
+            _y_              = vy0
             _d_              = [f'M {_x_-_hrun_} {_y_}']
             _y_             += _vrun_
-            _turns_          = int(_channel_max_y_/_vrun_)
+            _turns_          = int(1+(vy1-vy0)/_vrun_)
             for i in range(_turns_):
                 if i%2 == 0: _d_.append(f'L {_x_+_hrun_} {_y_}')
                 else:        _d_.append(f'L {_x_-_hrun_} {_y_}')
