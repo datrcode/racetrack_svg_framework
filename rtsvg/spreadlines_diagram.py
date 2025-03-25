@@ -44,6 +44,7 @@ def spreadLines(rt_self,
                 h_collapsed_sections = 16,
                 
                 widget_id            = None,
+                draw_labels          = True,
                 w                    = 1024,
                 h                    = 960,
                 x_ins                = 32,
@@ -159,6 +160,7 @@ class SpreadLines(object):
         self.h_collapsed_sections = kwargs['h_collapsed_sections']
 
         self.widget_id           = f'spreadlines_{random.randint(0,65535)}' if kwargs['widget_id'] is None else kwargs['widget_id']
+        self.draw_labels         = kwargs['draw_labels']
         self.w                   = kwargs['w']
         self.h                   = kwargs['h']
         self.x_ins               = kwargs['x_ins']
@@ -366,7 +368,7 @@ class SpreadLines(object):
     # def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul=1, r_min=4.0, r_pref=7.0, circle_inter_d=2.0, circle_spacer=3, h_collapsed_sections=16):
     def renderAlter(self, nodes, befores, afters, x, y, y_max, w_max, mul, r_min, r_pref, circle_inter_d, circle_spacer, h_collapsed_sections, _bin_, _alter_, _alter_side_):
         # Bounds state & node positioning
-        xmin, ymin, xmax, ymax = x-r_pref-circle_inter_d, y-r_pref-circle_inter_d, x+r_pref+circle_inter_d, y+r_pref+circle_inter_d
+        xmin, ymin, xmax, ymax = x, y, x, y
         node_to_xyrepstat = {} # node to (x, y, representation, stat) where representation is ['single','cloud'] and state is ['start,'stop','isolated','continuous']
         h   = abs(y_max - y)
         svg = []
@@ -610,7 +612,7 @@ class SpreadLines(object):
         else: alter2s_to_bounds = None
 
         # Calculate the outline of the bin
-        _w_  = 2*r_pref
+        _w_  = 3*r_pref
         if alter1s_fm_bounds is not None: _w_ = max(_w_, alter1s_fm_bounds[2]-alter1s_fm_bounds[0])
         if alter1s_to_bounds is not None: _w_ = max(_w_, alter1s_to_bounds[2]-alter1s_to_bounds[0])
         if alter2s_fm_bounds is not None: _w_ = max(_w_, alter2s_fm_bounds[2]-alter2s_fm_bounds[0])
@@ -618,7 +620,7 @@ class SpreadLines(object):
         _w2_ = _w_/2.0
 
         # path_description = f'M {x-_w2_} {y+r_pref} L {x+_w2_} {y+r_pref} L {x+_w2_} {y-r_pref} L {x-_w2_} {y-r_pref} Z'
-        _ind_ = r_pref # indentation
+        _ind_ = max(r_pref,_w_/4.0) # indentation
 
         # Bottom alters
         pd = [f'M {x-_w2_} {y}']
@@ -701,15 +703,15 @@ class SpreadLines(object):
     # renderSVG()
     #
     def renderSVG(self):
-        vx0, vy0, vx1, vy1 = None, None, None, None
+        vx0, vy0, vx1, vy1 = None, None, None, None # view bounds
         svg = []
 
-        alter_inter_d   = self.alter_inter_d
-        max_bin_w       = self.max_bin_w
-        max_bin_h       = self.max_bin_h
-        min_channel_w   = self.min_channel_w
-        max_channel_w   = self.max_channel_w
-        channel_inter_d = self.channel_inter_d
+        alter_inter_d   = self.alter_inter_d        # distance between the bins
+        max_bin_w       = self.max_bin_w            # maximum width of a bin
+        max_bin_h       = self.max_bin_h            # maximum height of a bin (this is an approximation)
+        min_channel_w   = self.min_channel_w        # size of the channel (width of the channel bar ... but i don't think it's used that way)
+        max_channel_w   = self.max_channel_w        # ditto
+        channel_inter_d = self.channel_inter_d      # distance to use to separate channels
 
         # Bin Creation
         _bins_ordered_ = list(self.bin_to_timestamps.keys())
@@ -774,6 +776,7 @@ class SpreadLines(object):
                         bin_to_nodes_to_channel[_fm_bin_][_to_bin_][_node_]                                               = _channel_tuple_
             
         # Sort the channels & render the channels
+        _channel_max_y_ = 0
         channel_tuples.sort(key=lambda x: x[2]) # slightly non-optimal... because the two sides (fm, to) should be sorted in opposite directions
         for i in range(len(channel_tuples)):
             _start_, _end_, _y_, _n_, _fm_to_ = channel_tuples[i]
@@ -800,6 +803,7 @@ class SpreadLines(object):
 
             tuple_to_channel_geometry[channel_tuples[i]] = (_x_, _y_, _w_, _h_)
             svg.append(self.bubbleNumberOnLine(_x_, _x_ + _w_, _y_ + _h_/2.0, str(_n_), txt_h=12, color=self.rt_self.co_mgr.getTVColor('axis','major'), width=2.0))
+            _channel_max_y_ = max(_y_ + _h_ + self.txt_h, _channel_max_y_)
 
         # Draw the direct connects & the channel connections
         for i in range(len(_bins_ordered_)-1):
@@ -846,13 +850,55 @@ class SpreadLines(object):
                                 svg.insert(0, self.svgCrossConnect(_boundsn_[0], _xyrs_endpt_[1], _channel_geometry_[0] + _channel_geometry_[2], _channel_vmiddle_, color=self.rt_self.co_mgr.getTVColor('axis','major'), width=2.0))
                                 _already_drawn_.add(_coords_)
 
+        # Add information about missing bins (because no data existed at that point in time)
+        for _bin_ in self.bin_to_bounds:
+            _bounds_        = self.bin_to_bounds[_bin_]
+            _channel_max_y_ = max(_bounds_[3], _channel_max_y_)
+        _hrun_, _vrun_ = self.r_pref*1.25, self.r_pref*2
+        for _bin_ in self.discontinuity_count_after_bin:
+            if _bin_ == 0: continue # don't bother drawing before the first bin
+            _missing_number_ = self.discontinuity_count_after_bin[_bin_]
+            if _bin_ not in self.bin_to_bounds: continue
+            _bounds_         = self.bin_to_bounds[_bin_]
+            _x_              = _bounds_[0] - self.alter_inter_d/2.0
+            _y_              = vy0
+            _d_              = [f'M {_x_-_hrun_} {_y_}']
+            _y_             += _vrun_
+            _turns_          = int(1+(vy1-vy0)/_vrun_)
+            for i in range(_turns_):
+                if i%2 == 0: _d_.append(f'L {_x_+_hrun_} {_y_}')
+                else:        _d_.append(f'L {_x_-_hrun_} {_y_}')
+                _y_ += _vrun_
+            svg.insert(0, f'<path d="{" ".join(_d_)}" stroke="{self.rt_self.co_mgr.getTVColor("context","highlight")}" stroke-width="0.5" fill="none" stroke-dasharray="3 3"/>')
+
+        # Draw labels (if selected)
+        if self.draw_labels:
+            for _bin_ in self.bin_to_bounds:
+                _bounds_        = self.bin_to_bounds[_bin_]
+                _channel_max_y_ = max(_bounds_[3] + self.txt_h, _channel_max_y_)
+            for _bin_ in self.bin_to_timestamps:
+                if _bin_ in self.bin_to_bounds:
+                    _timestamp_ = self.bin_to_timestamps[_bin_]
+                    _bounds_    = self.bin_to_bounds[_bin_]
+                    _x_         = (_bounds_[0] + _bounds_[2])/2.0
+                    svg.insert(0, self.rt_self.svgText(self.formatTimestamp(_timestamp_), _x_, _channel_max_y_, txt_h=self.txt_h, anchor='middle'))
+            vy1 = _channel_max_y_ + self.txt_h
+
         # Add the header and the footer
         svg.insert(0, f'<svg x="0" y="0" width="{self.w}" height="{self.h}" viewBox="{vx0} {vy0} {vx1-vx0} {vy1-vy0}">')
         svg.insert(1, f'<rect x="{vx0}" y="{vy0}" width="{vx1-vx0}" height="{vy1-vy0}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
         svg.insert(2, f'<line x1="{alter_inter_d}" y1="{y}" x2="{x-alter_inter_d - (xmax-xmin)/2}" y2="{y}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="3.0" />')
+
+        # Conclude the SVG
         svg.append('</svg>')
         self.last_render = ''.join(svg)
         return self.last_render
+
+    def formatTimestamp(self, timestamp):
+        if   'h' in self.every: _format_ = "%Y-%m-%d %H"
+        elif 'd' in self.every: _format_ = "%Y-%m-%d"
+        else                  : _format_ = "%Y-%m-%d %H:%M:%S"
+        return timestamp.strftime(_format_)
 
     #
     # SVG Representation Renderer

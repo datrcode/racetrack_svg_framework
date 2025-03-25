@@ -1,11 +1,7 @@
-import pandas as pd
 import polars as pl
-import numpy as np
 import time
 import random
 import copy
-import rtsvg
-from rtsvg import RTEntityPosition
 
 #
 # spreadLines() - attempt to implement this visualization
