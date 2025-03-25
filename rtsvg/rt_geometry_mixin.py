@@ -32,6 +32,121 @@ __name__ = 'rt_geometry_mixin'
 #
 class RTGeometryMixin(object):
     #
+    # circlesOverlap() - determine if two circles overlap
+    #
+    def circlesOverlap(self, c0, c1): return (c0[0] - c1[0])**2 + (c0[1] - c1[1])**2 < (c0[2] + c1[2])**2
+
+    #
+    # circleOverlapArea() - determine the area of overlap between two circles
+    # - from chatgpt
+    #
+    def circleOverlapArea(self, c0, c1):
+        x0, y0, r0 = c0
+        x1, y1, r1 = c1
+        # Compute the distance between circle centers
+        d = sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2)
+        # No overlap
+        if d >= r0 + r1: return 0.0
+        # One circle is completely inside the other
+        if d <= abs(r0 - r1): return math.pi * min(r0, r1) ** 2
+        # Compute area of intersection
+        r0_sq, r1_sq = r0 ** 2, r1 ** 2
+        angle0 = 2 * acos((r0_sq + d**2 - r1_sq) / (2 * r0 * d))
+        angle1 = 2 * acos((r1_sq + d**2 - r0_sq) / (2 * r1 * d))
+        sector_area0 = 0.5 * r0_sq * (angle0 - sin(angle0))
+        sector_area1 = 0.5 * r1_sq * (angle1 - sin(angle1))
+        return sector_area0 + sector_area1
+
+    #
+    # svgVennDiagram() - render a venn diagram
+    #
+    def svgVennDiagram(self, 
+                    size_0,             # total area of set 0 
+                    size_1,             # total area of set 1
+                    size_intersection,  # shared area
+                    set0_color          = '#0000ff', 
+                    set1_color          = '#ff0000', 
+                    intersection_color  = '#ffdf00', 
+                    widget_id           = None, 
+                    fill_opacity        = 0.2,
+                    x_ins               = 8, 
+                    y_ins               = 8, 
+                    w                   = 128, 
+                    h                   = 128):
+        if widget_id is None: widget_id = 'svg_venn_diagram_' + str(random.randint(0,65535))
+        svg = [f'<svg id="{widget_id}" x="0" y="0" width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="{w}" height="{h}" fill="{self.co_mgr.getTVColor("background","default")}" />')
+        r_single_circle = min(w - 2*x_ins, h - 2*y_ins)/2.0 # if it were just a single circle
+        r_equal         = (w - 2*x_ins) / 3.5               # if they were both equal-sized circle w/out overlap (assumes x_ins and y_ins are the same... and w and h are the same)
+        r_equal_area    = pi * r_equal**2
+        if size_intersection > size_0 or size_intersection > size_1: raise Exception('size_intersection > size_0 or size_intersection > size_1')
+
+        set0_render  = f'fill="{set0_color}"         stroke="{set0_color}"         fill-opacity="{fill_opacity}"'
+        set1_render  = f'fill="{set1_color}"         stroke="{set1_color}"         fill-opacity="{fill_opacity}"'
+        inter_render = f'fill="{intersection_color}" stroke="{intersection_color}" fill-opacity="{fill_opacity}"'
+
+        set0_render  = f'stroke="{set0_color}"         stroke-width="2" fill-opacity="{fill_opacity}" fill="{set0_color}"'
+        set1_render  = f'stroke="{set1_color}"         stroke-width="2" fill-opacity="{fill_opacity}" fill="{set1_color}"'
+        inter_render = f'stroke="{intersection_color}" stroke-width="2" fill-opacity="{fill_opacity}" fill="#202020"'
+
+        if   size_0 == size_1 and size_1 == size_intersection:      svg.append(f'<circle cx="{w/2}" cy="{h/2}" r="{r_single_circle}" {inter_render} />')
+        elif size_0 > 0 and size_1 == 0 and size_intersection == 0: svg.append(f'<circle cx="{w/2}" cy="{h/2}" r="{r_single_circle}" {set0_render} />')
+        elif size_1 > 0 and size_0 == 0 and size_intersection == 0: svg.append(f'<circle cx="{w/2}" cy="{h/2}" r="{r_single_circle}" {set1_render} />')
+        elif size_intersection == 0:
+            _ratio_ = size_1 / size_0
+            a0,a1   = r_equal_area / _ratio_, r_equal_area * _ratio_
+            r0,r1   = (a0 / pi)**0.5, (a1 / pi)**0.5
+            while self.circlesOverlap((x_ins+r0,y_ins+r0,r0),(w-x_ins-r1,h-y_ins-r1,r1)): r0, r1 = r0 - 1, r1 - 1
+            svg.append(f'<circle cx="{x_ins + r0}"     cy="{y_ins + r0}"     r="{r0}" {set0_render} />')
+            svg.append(f'<circle cx="{w - x_ins - r1}" cy="{h - y_ins - r1}" r="{r1}" {set1_render} />')
+        elif size_0 == size_intersection:
+            svg.append(f'<circle cx="{w/2}" cy="{h/2}" r="{r_single_circle}" {set1_render} />')
+            r1 = r_single_circle
+            a1 = pi * r1**2
+            a0 = a1 * size_0 / size_1
+            r0 = (a0 / pi)**0.5
+            dr = r1 - r0
+            svg.append(f'<circle cx="{w/2}"    cy="{h/2}" r="{r1}" {set1_render} />')
+            svg.append(f'<circle cx="{w/2-dr}" cy="{h/2}" r="{r0}" {set0_render} />')
+        elif size_1 == size_intersection:
+            svg.append(f'<circle cx="{w/2}" cy="{h/2}" r="{r_single_circle}" {set0_render} />')
+            r0 = r_single_circle
+            a0 = pi * r0**2
+            a1 = a0 * size_1 / size_0
+            r1 = (a1 / pi)**0.5
+            dr = r0 - r1
+            svg.append(f'<circle cx="{w/2}"    cy="{h/2}" r="{r0}" {set0_render} />')
+            svg.append(f'<circle cx="{w/2+dr}" cy="{h/2}" r="{r1}" {set1_render} />')
+        elif size_0 != size_intersection and size_1 != size_intersection:
+            _inc_     = 0.02
+            _ratio_   = size_1 / size_0
+            a0,a1     = r_equal_area / _ratio_, r_equal_area * _ratio_
+            r0,r1     = (a0 / pi)**0.5, (a1 / pi)**0.5
+            # expand circles until they touch
+            while self.circlesOverlap((x_ins+r0,y_ins+r0,r0),(w-x_ins-r1,h-y_ins-r1,r1)) == False: r0, r1 = r0 + _inc_, r1 + _inc_
+            set0_xy   = (x_ins+r0,y_ins+r0,r0)
+            set1_xy   = (w-x_ins-r1,h-y_ins-r1,r1)
+            # continue expanding until they exceed the overlap ratio
+            while r0 < r_single_circle and r1 < r_single_circle:
+                a_overlap = self.circleOverlapArea((x_ins+r0,y_ins+r0,r0),(w-x_ins-r1,h-y_ins-r1,r1))
+                a0        = pi * r0**2
+                a1        = pi * r1**2
+                if a_overlap/a0 >= size_intersection/size_0 or a_overlap/a1 >= size_intersection/size_1: break
+                r0, r1    = r0 + _inc_, r1 + _inc_
+                set0_xy   = (x_ins+r0,   y_ins+r0,   r0)
+                set1_xy   = (w-x_ins-r1, h-y_ins-r1, r1)
+
+            svg.append(f'<circle cx="{set0_xy[0]}" cy="{set0_xy[1]}" r="{r0}" {set0_render} />')
+            svg.append(f'<circle cx="{set1_xy[0]}" cy="{set1_xy[1]}" r="{r1}" {set1_render} />')
+        else:
+            print(f'Unknown case in svgVennDiagram {size_0=} {size_1=} {size_intersection=}')
+        svg.append(self.svgText(str(size_0),            x_ins,   h-2))
+        svg.append(self.svgText(str(size_1),            w-x_ins, h-2, anchor='end'))
+        svg.append(self.svgText(str(size_intersection), w/2,     h-2, anchor='middle'))
+        svg.append('</svg>')
+        return ''.join(svg)
+
+    #
     # svgSmoothPath() - created a smoothed path for a given path
     #
     def svgSmoothPath(self, s, rx=20):
