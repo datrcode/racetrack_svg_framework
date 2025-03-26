@@ -429,7 +429,8 @@ class SCUPyramidMethodDiagram(object):
     # svgCairn()
     #
     def svgCairn(self,
-                 q_id, 
+                 q_id,
+                 highlight_scus             = None,
                  q_id_multiple              = 2, 
                  cell_w                     = 48,
                  cell_x_spacing             = 4,
@@ -532,6 +533,11 @@ class SCUPyramidMethodDiagram(object):
                     counts_per_source[_source_] += 1
                     _color_ = self.rt_self.co_mgr.getColor(_source_)
                     _svg_.append(f'<rect x="{_xywh_[0]}" y="{_xywh_[1]+source_y_offset[_source_]}" width="{_xywh_[2]}" height="{source_h}" fill="{_color_}" stroke="none" clip-path="url(#{clip_id})" />')
+                if highlight_scus is not None and _scu_ not in highlight_scus:
+                    _bg_color_  = self.rt_self.co_mgr.getTVColor("background", "default")
+                    _highlight_ = self.rt_self.co_mgr.getTVColor("context", "highlight")
+                    _svg_.append(f'<rect x="{_xywh_[0]}" y="{_xywh_[1]}" width="{_xywh_[2]}" height="{_xywh_[3]}" fill="{_bg_color_}" fill-opacity="0.8" stroke="{_highlight_}" stroke-width="0.75" rx="{rx}" />')
+                    _svg_.append(f'<line x1="{_xywh_[0]+rx}" y1="{_xywh_[1]}" x2="{_xywh_[0]+_xywh_[2]-rx}" y2="{_xywh_[1]+_xywh_[3]}" stroke="{_highlight_}" stroke-width="0.50" stroke-opacity="0.75" dasharray="2 2"/>')
             # Track max for possible histogram...
             _max_count_ = max(counts_per_source.values())
             if _max_count_ > overall_max_count: overall_max_count = _max_count_
