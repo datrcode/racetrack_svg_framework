@@ -435,3 +435,109 @@ pn.extension(design="material", sizing_mode="stretch_width")
         _html_footer_ = '</body></html>'
         return _html_header_ + ''.join(_htmls_) + _html_footer_
 
+    #
+    # createHTMLForSCUs() - same as before... but opposite SCU's (the ones present)
+    # ... should be refactored to be the same code base...
+    #
+    def createHTMLForSCUs(self, qids=None, uncovered_color='#a00000', covered_color='#a0a0a0', background_color='white'):
+        # Sort the Question ID's by coverage (lowest coverage to highest coverage)
+        _lu_ = {self.q_id_field:[], self.source_field:[], 'coverage':[], 'len_sum':[], 'len_summary':[], 'spans':[]}
+        qid_to_source_to_coverage = {}
+        for k, k_df in self.df.groupby([self.q_id_field, self.source_field]):
+            _percent_, _len_, _len_summary_, _spans_ = self.excerptCoverage(k[0], k[1])
+            _lu_[self.q_id_field].append(k[0]), _lu_[self.source_field].append(k[1]),      _lu_['coverage'].append(_percent_)
+            _lu_['len_sum'].append(_len_),      _lu_['len_summary'].append(_len_summary_), _lu_['spans'].append(_spans_)
+            if k[0] not in qid_to_source_to_coverage: qid_to_source_to_coverage[k[0]] = {}
+            qid_to_source_to_coverage[k[0]][k[1]] = _percent_
+        df_coverage         = pd.DataFrame(_lu_)
+        df_coverage_average = df_coverage.groupby(self.q_id_field).agg({'coverage': 'mean'}).sort_values('coverage').reset_index()
+        # Create the HTML
+        _htmls_ = []
+        _htmls_.append('''<style>
+.tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; }
+.tooltip .tooltiptext {
+  visibility: hidden; width: 800px; background-color: #555; color: #fff; text-align: center;
+  border-radius: 6px; padding: 5px 0; position: absolute; z-index: 1; bottom: 125%;
+  left: 50%; margin-left: -60px; opacity: 0; transition: opacity 0.3s; }
+.tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+  border-width: 5px; border-style: solid; border-color: #555 transparent transparent transparent; }
+.tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+</style>
+''')
+
+        for q_id in df_coverage_average[self.q_id_field]:
+            if qids is not None and q_id not in qids: continue
+            question = self.df.query(f'`{self.q_id_field}` == @q_id').iloc[0][self.question_field]
+            _htmls_.append(f'<h3> ({html.escape(str(q_id))}) {html.escape(str(question))} </h3>')
+
+            # For each source w/in the specific question id, sort from least to highest coverage
+            source_ordering = []
+            for source in df_coverage.query(f'`{self.q_id_field}` == @q_id').sort_values('coverage').reset_index()[self.source_field]: source_ordering.append(source)
+
+            # Table Header
+            _htmls_.append('<table>')
+            _htmls_.append('<tr align="center">')
+            for source in source_ordering:
+                _coverage_ = qid_to_source_to_coverage[q_id][source]
+                _htmls_.append(f'<td align="center"> <b> {html.escape(str(source))} </b> ({_coverage_:0.2f}) </td>')
+            _htmls_.append('</tr>')
+
+            # Summaries w/ Underlines
+            _htmls_.append('<tr>')
+            for source in source_ordering:
+                _summary_ = self.df.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source')[self.summary_field].unique()[0]
+                _summary_ = self.__applyUnderlines__(_summary_, df_coverage.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source').iloc[0]['spans'], uncovered_color, covered_color)
+                _htmls_.append(f'<td align="left" valign="top"> {_summary_} </td>')
+            _htmls_.append('</tr>')
+
+            # Figure out the order of the SCU's
+            _df_ = self.df.query(f'`{self.q_id_field}` == @q_id').dropna(subset=[self.excerpt_field]).reset_index().drop('index', axis=1)
+            _df_ = _df_[_df_[self.excerpt_field] != ""].reset_index()
+            _df_ = _df_.groupby(self.scu_field).size().reset_index().rename({0:'__count__'},axis=1).sort_values('__count__', ascending=False)
+            scu_ordering = []
+            scu_to_count = {}
+            for i in range(len(_df_)):
+                scu = _df_.iloc[i][self.scu_field]
+                scu_to_count[scu] = _df_.iloc[i]['__count__']
+                scu_ordering.append(scu)
+
+            _htmls_.append('<tr>')
+            for source in source_ordering: _htmls_.append('<td align="center"> SCU\'s </td>')
+            _htmls_.append('</tr>')
+
+            def examples(q_id, scu, source):
+                _df_examples_ = self.df.query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source and `{self.scu_field}` == @scu').reset_index()
+                _txts_ = []
+                for i in range(len(_df_examples_)):
+                    _possible_txt_ = _df_examples_.iloc[i][self.excerpt_field]
+                    if _possible_txt_ is not None:
+                        _possible_txt_ = str(_possible_txt_).strip()
+                        if _possible_txt_ == '': continue
+                        _txts_.append(html.escape(_possible_txt_))
+                return ' | '.join(_txts_)
+            
+            # List the present SCU's -- in order of most occuring scu to least occuring scu
+            _htmls_.append('<tr>')
+            for source in source_ordering:
+                _htmls_.append('<td align="left" valign="top">')
+                for scu in scu_ordering:
+                    _df_ = self.df.dropna(subset=[self.excerpt_field]).query(f'`{self.q_id_field}` == @q_id and `{self.source_field}` == @source and `{self.scu_field}` == @scu').reset_index()
+                    _df_ = _df_[_df_[self.excerpt_field] != ""].reset_index()
+                    if len(_df_) > 0: 
+                        _htmls_.append(f'<li>')
+                        _htmls_.append(f'[{scu_to_count[scu]}] ')
+                        _htmls_.append('<div class="tooltip">')
+                        _htmls_.append(f'{html.escape(str(scu))}')
+                        _htmls_.append('<span class="tooltiptext">')
+                        _htmls_.append(examples(q_id, scu, source))
+                        _htmls_.append('</span>')
+                        _htmls_.append('</div>')
+                        _htmls_.append(f'</li>')
+                _htmls_.append('</td>')
+            _htmls_.append('</tr>')
+
+            _htmls_.append('</table><hr>')
+
+        _html_header_ = f'<!DOCTYPE html><html><body style="background-color:{background_color};">'
+        _html_footer_ = '</body></html>'
+        return _html_header_ + ''.join(_htmls_) + _html_footer_
