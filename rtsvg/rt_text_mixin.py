@@ -1834,7 +1834,17 @@ class RTTextBlock(object):
         self.geom_to_word        = geom_to_word
         self.orig_to_xy          = orig_to_xy
         self.geom_to_punctuation = geom_to_punctuation
-        
+
+    #
+    # __len__() - return length of text
+    #
+    def __len__(self): return len(self.txt)
+
+    #
+    # __lt__() - less than
+    #
+    def __lt__(self, other): return len(self.txt) < len(other.txt)
+
     #
     # spanGeometry() - return a polygon that covers a specified text span.
     #
