@@ -1884,9 +1884,30 @@ class RTTextBlock(object):
 
     #
     # pixelRepr() - return a pixel level representation of the document
-    # - see the highlights() function below for regex formatting
     #
-    def pixelRepr(self, lu, w=64, draw_context=False, opacity=0.8, context_opacity=0.4, draw_background=True):
+    def pixelRepr(self, lu, w=64, draw_context=False, opacity=0.8, context_opacity=0.4, draw_background=True, index_length_mode=False):
+        ''' Return a pixel level representation of the document
+
+        Parameters:
+        -----------
+        lu : tuple
+            Lookup table of colors
+            {re_string:color} or 
+            {span:color}
+            
+        w : int
+            Width of document in pixels
+        draw_context : bool
+            Flag to draw context
+        opacity : float
+            Opacity of context
+        context_opacity : float
+            Opacity of context
+        draw_background : bool
+            Flag to draw background
+        index_length_mode : bool
+            Spans are (index, length) and not (index_0, index_1)
+        '''
         bounds_x,bounds_y,bounds_w,bounds_h = self.bounds
         scale = w / bounds_w
         h = w * bounds_h / bounds_w
@@ -1911,7 +1932,8 @@ class RTTextBlock(object):
         # Draw the highlights
         for k in lu.keys():
             if   type(k) == tuple:
-                _poly        = self.spanGeometry(k[0],k[1])
+                if index_length_mode:  _poly        = self.spanGeometry(k[0],k[0] + k[1])
+                else:                  _poly        = self.spanGeometry(k[0],k[1])
                 _poly_scaled = affinity.scale(_poly,xfact=scale,yfact=scale,origin=(0,0,0))
                 _co          = self.rt_self.co_mgr.getColor(lu[k])
                 svg.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill-opacity="{opacity}" fill="{_co}" />')
@@ -1920,8 +1942,7 @@ class RTTextBlock(object):
                 if re_match is not None and len(re_match) > 0:
                     i = 0
                     for _match in re_match:
-                        if type(_match) == tuple:
-                            _match = _match[0]
+                        if type(_match) == tuple: _match = _match[0]
                         i = self.txt.index(_match,i)
                         j = i + len(_match)
                         _poly        = self.spanGeometry(i,j)
@@ -1940,22 +1961,22 @@ class RTTextBlock(object):
     #   - lu['regex substring'] = '#000000' -- this needs to be grouped properly -- for example r'(([Mm]atch)(es){0,1})
     #   - lu['many']            = 'whatever' # any 'many' substrings will get colored with 'whatever' color lookup
     #
-    def highlightsOverlay(self, lu, opacity=0.4):
+    def highlightsOverlay(self, lu, opacity=0.4, index_length_mode=False):
         svg_underlay = ''
         for k in lu:
             _co = lu[k]
             if _co.startswith('#') == False or len(_co) != 7: # If it's not a hex hash color string... then look it up...
                 _co = self.rt_self.co_mgr.getColor(_co)
             if   type(k) == tuple:
-                _poly = self.spanGeometry(k[0],k[1])
+                if index_length_mode: _poly = self.spanGeometry(k[0],k[0] + k[1])
+                else:                 _poly = self.spanGeometry(k[0],k[1])
                 svg_underlay += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly)}" fill="{_co}" fill-opacity="{opacity}" />'
             elif type(k) == str:
                 re_match = re.findall(k,self.txt)
                 if re_match is not None and len(re_match) > 0:
                     i = 0
                     for _match in re_match:
-                        if type(_match) == tuple:
-                            _match = _match[0]
+                        if type(_match) == tuple: _match = _match[0]
                         i = self.txt.index(_match,i)
                         j = i + len(_match)
                         _poly = self.spanGeometry(i,j)
@@ -1967,39 +1988,8 @@ class RTTextBlock(object):
         x,y,w,h = self.bounds
         return f'<svg x="0" y="0" width="{w}" height="{h}">' + svg_underlay + '</svg>'
 
-    def highlights(self,lu,opacity=0.4):
-        return self.wrap(self.background() + self.unwrappedText() + self.highlightsOverlay(lu, opacity))
-
-    #
-    # __OLD_underlineSpan__() - internal primitive for underlining.
-    # ... this one performed it on a per word basis with gaps where there were spaces... and didn't look right...
-    #
-    def __OLD_underlineSpan__(self, i0, i1, _co=None, _stroke_w=None, y_offset=0, strikethrough=False):
-        y_adj = y_offset
-        if strikethrough:
-            y_adj = -self.txt_h/2
-        if _co is None:
-            _co = self.rt_self.co_mgr.getTVColor('data','default')
-        if _stroke_w is None:
-            _stroke_w = min(0.5 + self.txt_h/14, 2.5)
-        my_svg = ''
-        x0, x1, y = None,None,None
-        for i in range(i0,i1):
-            c, xy = self.txt[i], self.orig_to_xy[i]
-            if self.rt_self.__whitespace__(c) or self.rt_self.__punctuation__(c):
-                if x0 is not None:
-                    my_svg += f'<line x1="{x0}" y1="{y + 1 + _stroke_w + y_adj}" x2="{x1}" y2="{y + 1 + _stroke_w  + y_adj}" stroke="{_co}" stroke-width="{_stroke_w}" />'
-                    x0, x1, y = None,None,None
-            elif x0 is not None and y != xy[1]:
-                my_svg += f'<line x1="{x0}" y1="{y + 1 + _stroke_w  + y_adj}" x2="{x1}" y2="{y + 1 + _stroke_w  + y_adj}" stroke="{_co}"  stroke-width="{_stroke_w}" />'
-                x0, x1, y = None,None,None
-            elif x0 is None:
-                x0, x1, y = xy[0], xy[0] + self.rt_self.textLength(c, self.txt_h), xy[1]
-            else:
-                x1 = xy[0] + self.rt_self.textLength(c, self.txt_h)
-        if x0 is not None:
-            my_svg += f'<line x1="{x0}" y1="{y + 1 + _stroke_w + y_adj}" x2="{x1}" y2="{y + 1 + _stroke_w + y_adj}" stroke="{_co}"  stroke-width="{_stroke_w}" />'
-        return my_svg
+    def highlights(self, lu, opacity=0.4, index_length_mode=False):
+        return self.wrap(self.background() + self.unwrappedText() + self.highlightsOverlay(lu, opacity=opacity, index_length_mode=index_length_mode))
 
     #
     # __underlineSpan__() - internal primitive for underlining.
@@ -2032,7 +2022,7 @@ class RTTextBlock(object):
     #
     # underlines() - same format as above...
     #
-    def underlinesOverlay(self, lu, strikethrough=False, y_offset=0, underline_stroke_w=None):
+    def underlinesOverlay(self, lu, strikethrough=False, y_offset=0, underline_stroke_w=None, index_length_mode=False):
         svg_underlay = ''
         for k in lu:
             _co = lu[k]
@@ -2041,20 +2031,26 @@ class RTTextBlock(object):
             if _co.startswith('#') == False or len(_co) != 7: # If it's not a hex hash color string... then look it up...
                 _co = self.rt_self.co_mgr.getColor(_co)
             if   type(k) == tuple:
-                svg_underlay += self.__underlineSpan__(k[0], k[1], _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
+                if index_length_mode: i0, i1 = k[0], k[0] + k[1]
+                else:                 i0, i1 = k
+                svg_underlay += self.__underlineSpan__(i0, i1, _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
             elif type(k) == str:
-                i = 0
-                while k in self.txt[i:]:
-                    i = self.txt.index(k,i)
-                    svg_underlay += self.__underlineSpan__(i, i+len(k), _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
-                    i += len(k)
+                re_match = re.findall(k,self.txt)
+                if re_match is not None and len(re_match) > 0:
+                    i = 0
+                    for _match in re_match:
+                        if type(_match) == tuple: _match = _match[0]
+                        i = self.txt.index(_match,i)
+                        j = i + len(_match)
+                        svg_underlay += self.__underlineSpan__(i, j, _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
+                        i += len(_match)
             else:
                 raise Exception(f'RTTextBlock.highlights() - do not understand key value type {type(k)}')
         x,y,w,h = self.bounds
         return f'<svg x="0" y="0" width="{w}" height="{h}">' + svg_underlay + '</svg>'
 
-    def underlines(self, lu, strikethrough=False, y_offset=0, underline_stroke_w=2):
-        return self.wrap(self.background() + self.unwrappedText() + self.underlinesOverlay(lu, strikethrough, y_offset=y_offset, underline_stroke_w=underline_stroke_w))
+    def underlines(self, lu, strikethrough=False, y_offset=0, underline_stroke_w=2, index_length_mode=False):
+        return self.wrap(self.background() + self.unwrappedText() + self.underlinesOverlay(lu, strikethrough, y_offset=y_offset, underline_stroke_w=underline_stroke_w, index_length_mode=index_length_mode))
 
     #
     # unwrappedSVG() - return the unwrapped version of the SVG.
