@@ -1,6 +1,7 @@
 __name__ = 'xwords'
 
 import time
+import ast
 import rtsvg
 rt = rtsvg.RACETrack()
 
@@ -12,11 +13,12 @@ class XWords(object):
     # geometries_file   [(cluenum, xi, yi), ...]
     # blockers_file     [(xi,yi), ...]
     #
-    def __init__(self, rt_self, entries_file, geometries_file, blockers_file, cell_w=32, cell_h=32, txt_h=22, cluenum_txt_h=10):
+    def __init__(self, rt_self, entries_file, geometries_file, blockers_file, answers_file, cell_w=32, cell_h=32, txt_h=22, cluenum_txt_h=10):
         self.rt_self         = rt_self
         self.entries_file    = entries_file
         self.geometries_file = geometries_file
         self.blockers_file   = blockers_file
+        self.answers_file    = answers_file
         self.cell_w          = cell_w
         self.cell_h          = cell_h
         self.txt_h           = txt_h
@@ -24,11 +26,13 @@ class XWords(object):
 
         # Read the files
         with open(self.entries_file) as f:
-            self.entries    = eval(f.read())
+            self.entries    = ast.literal_eval(f.read())
         with open(self.geometries_file) as f:
-            self.geometries = eval(f.read())
+            self.geometries = ast.literal_eval(f.read())
         with open(self.blockers_file) as f:
-            self.blockers   = eval(f.read())
+            self.blockers   = ast.literal_eval(f.read())
+        with open(self.answers_file) as f:
+            self.answers    = ast.literal_eval(f.read())
         
         # Determine the number of tiles
         self.x_tiles, self.y_tiles = 1, 1
@@ -48,8 +52,11 @@ class XWords(object):
                 self.__is_blocker__ = False
                 self.__clues__      = {}
                 self.__guesses__    = {}
+                self.__answer__     = None
             def addGuess(self, cluenum, orientation, guess):
                 self.__guesses__[(cluenum, orientation)] = guess
+            def setAnswer(self, answer):
+                self.__answer__ = answer
             def setClueNumber(self, cluenum): 
                 self.__cluenum__ = cluenum
                 if self.__is_blocker__:
@@ -93,6 +100,20 @@ class XWords(object):
             xi, yi                        = blocker
             _cell_                        = self.cells[yi][xi]
             _cell_.setBlocker()
+        for cluenum_orientation in self.answers:
+            cluenum, orientation = cluenum_orientation
+            _num_of_letters_     = self.numberOfLetters(cluenum, orientation)
+            if len(self.answers[cluenum_orientation]) != _num_of_letters_:
+                raise Exception(f'XWords.__init__() -- number of letters mismatch {len(self.answers[cluenum_orientation])} != {_num_of_letters_} for {cluenum_orientation}')
+            _cell_               = self.cluenum_to_cell[cluenum]
+            if orientation == 'across':
+                for i in range(_num_of_letters_):
+                    _cell_across_ = self.cells[_cell_.yi][_cell_.xi + i]
+                    _cell_across_.setAnswer(self.answers[cluenum_orientation][i])
+            else:
+                for i in range(_num_of_letters_):
+                    _cell_down_ = self.cells[_cell_.yi + i][_cell_.xi]
+                    _cell_down_.setAnswer(self.answers[cluenum_orientation][i])
 
     #
     # _repr_svg_() - return an svg representation of the crossword puzzle
@@ -115,16 +136,34 @@ class XWords(object):
                 _cell_ = self.cells[yi][xi]
                 if _cell_.isBlocker(): continue
                 x, y = xi*self.cell_w, yi*self.cell_h
+                # Draw in the answer / faded ... only if there are no guesses
+                _answer_ = _cell_.__answer__
+                if _answer_ is not None: _answer_ = _answer_.upper()
+                if _cell_.__answer__ is not None and len(_cell_.__guesses__) == 0:
+                    svg.append(self.rt_self.svgText(_cell_.__answer__.upper(), x + self.cell_w/2.0, y + self.cell_h - 4, txt_h=self.txt_h, color='#d8d8d8', anchor='middle'))
+                # Draw in the guesses
                 _guesses_ = []
                 for k in _cell_.__guesses__.keys(): _guesses_.append(f'{_cell_.__guesses__[k]}')
-                _guesses_ = list(set(_guesses_))
+                _guesses_ = list(set(_guesses_)) # this is to remove duplicates ... in case it doesn't make sense the next time I see it...
                 if   len(_guesses_) == 1:
                     svg.append(self.rt_self.svgText(_guesses_[0], x + self.cell_w/2.0, y + self.cell_h - 4, txt_h=self.txt_h, color='black', anchor='middle'))
+                    print(_guesses_[0], _answer_, end='')
+                    if _answer_ is not None and _guesses_[0].upper() != _answer_:
+                        svg.append(f'<line x1="{x+2}" y1="{y+2}" x2="{x+self.cell_w-2}" y2="{y+self.cell_h-2}" stroke="red" stroke-width="1.0" />')
                 elif len(_cell_.__guesses__) == 2:
-                    svg.append(self.rt_self.svgText(_guesses_[0], x + 1*self.cell_w/4.0, y + self.cell_h     - 2, txt_h=self.txt_h//2, color='red', anchor='middle'))
-                    svg.append(self.rt_self.svgText(_guesses_[1], x + 3*self.cell_w/4.0, y + self.cell_h/2.0 - 2, txt_h=self.txt_h//2, color='red', anchor='middle'))
+                    _color_ = 'red' if _answer_ != _guesses_[0].upper() else 'black'
+                    svg.append(self.rt_self.svgText(_guesses_[0], x + 1*self.cell_w/4.0, y + self.cell_h     - 2, txt_h=self.txt_h//2, color=_color_, anchor='middle'))
+                    _color_ = 'red' if _answer_ != _guesses_[1].upper() else 'black'
+                    svg.append(self.rt_self.svgText(_guesses_[1], x + 3*self.cell_w/4.0, y + self.cell_h/2.0 - 2, txt_h=self.txt_h//2, color=_color_, anchor='middle'))
+                    if _answer_ is not None:
+                        if _guesses_[0].upper() != _answer_ and _guesses_[1].upper() != _answer_:
+                            svg.append(f'<line x1="{x+2}" y1="{y+2}" x2="{x+self.cell_w-2}" y2="{y+self.cell_h-2}" stroke="red" stroke-width="1.0" />')
+                        else:
+                            svg.append(f'<line x1="{x+2}" y1="{y+2}" x2="{x+self.cell_w/2}" y2="{y+self.cell_h/2}" stroke="red" stroke-width="1.0" />')
                 elif len(_cell_.__guesses__) >  2:
                     svg.append(self.rt_self.svgText('?', x + self.cell_w/2.0, y + self.cell_h - 2, txt_h=self.txt_h, color='red', anchor='middle'))
+                    print('should we really be here? xwords._repr_svg_()')
+                
         svg.append('</svg>')
         return ''.join(svg)
     
@@ -149,8 +188,16 @@ class XWords(object):
     # clue() - return the clue for a (cluenum, orientation)
     #
     def clue(self, cluenum, orientation):
-        return list(self.entries[(cluenum, orientation)])[0]
+        return self.entries[(cluenum, orientation)]
     
+    #
+    # answer()
+    #
+    def answer(self, cluenum, orientation):
+        return self.answers[(cluenum, orientation)]
+    
+
+
     #
     # crossCluesAtCellCoordinates()
     # - returns returned as a two tuples
