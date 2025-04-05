@@ -76,6 +76,8 @@ class XWords(object):
             def clearGuess(self, cluenum, orientation):
                 if (cluenum, orientation) in self.__guesses__:
                     del self.__guesses__[(cluenum, orientation)]
+            def clear(self):
+                self.__guesses__ = {}
 
         # Create a two dimensions structure that captures the state of each cell
         self.cells = [] # self.cells[yi][xi]
@@ -196,8 +198,6 @@ class XWords(object):
     def answer(self, cluenum, orientation):
         return self.answers[(cluenum, orientation)]
     
-
-
     #
     # crossCluesAtCellCoordinates()
     # - returns returned as a two tuples
@@ -253,6 +253,14 @@ class XWords(object):
             for i in range(_number_of_letters_):
                 _cell_to_mod_ = self.cells[_cell_.yi + i][_cell_.xi]
                 _cell_to_mod_.clearGuess(cluenum, orientation)
+
+    #
+    # clearAll()
+    #   
+    def clearAll(self):
+        for yi in range(self.y_tiles):
+            for xi in range(self.x_tiles):
+                self.cells[yi][xi].clear()
 
     #
     # describeMissingLetters()
