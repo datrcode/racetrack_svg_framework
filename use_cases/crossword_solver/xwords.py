@@ -66,6 +66,9 @@ class XWords(object):
                 if orientation in self.__clues__:
                     raise Exception(f'XWCell.addClue() -- orientation already set {orientation} ({self.xi},{self.yi})')
                 self.__clues__[orientation] = clue
+            def clearGuess(self, cluenum, orientation):
+                if (cluenum, orientation) in self.__guesses__:
+                    del self.__guesses__[(cluenum, orientation)]
 
         # Create a two dimensions structure that captures the state of each cell
         self.cells = [] # self.cells[yi][xi]
@@ -188,6 +191,21 @@ class XWords(object):
             for i in range(_number_of_letters_):
                 _cell_ = self.cells[_yi_ + i][_xi_]
                 _cell_.addGuess(cluenum, orientation, guess[i])
+
+    #
+    # clearGuess()
+    #
+    def clearGuess(self, cluenum, orientation):
+        _cell_              = self.cluenum_to_cell[cluenum]
+        _number_of_letters_ = self.numberOfLetters(cluenum, orientation)
+        if orientation == 'across':
+            for i in range(_number_of_letters_):
+                _cell_to_mod_ = self.cells[_cell_.yi][_cell_.xi + i]
+                _cell_to_mod_.clearGuess(cluenum, orientation)
+        else:
+            for i in range(_number_of_letters_):
+                _cell_to_mod_ = self.cells[_cell_.yi + i][_cell_.xi]
+                _cell_to_mod_.clearGuess(cluenum, orientation)
 
     #
     # describeMissingLetters()
