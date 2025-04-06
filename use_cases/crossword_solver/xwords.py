@@ -128,6 +128,7 @@ class XWords(object):
     #
     def _repr_svg_(self):
         svg = [f'<svg x="0" y="0" width="{self.w}" height="{self.h}" viewBox="-5 -5 {self.w+10} {self.h+10}">']
+        svg.append(f'<rect x="-5" y="-5" width="{self.w+10}" height="{self.h+10}" fill="#ffffff" />')
         for x_tile in range(self.x_tiles+1):
             svg.append(f'<line x1="{x_tile*self.cell_w}" y1="0" x2="{x_tile*self.cell_w}" y2="{self.h}" stroke="black" stroke-width="0.25" />')
         for y_tile in range(self.x_tiles+1):
