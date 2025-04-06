@@ -5,6 +5,12 @@ import ast
 import rtsvg
 rt = rtsvg.RACETrack()
 
+class XWordsSolver(object):
+    def __init__(self, xwords, **kwargs):
+        self.xwords = xwords
+    def solve(self):
+        pass
+
 class XWords(object):
     #
     # Constructor
@@ -148,20 +154,13 @@ class XWords(object):
                 for k in _cell_.__guesses__.keys(): _guesses_.append(f'{_cell_.__guesses__[k]}')
                 _guesses_ = list(set(_guesses_)) # this is to remove duplicates ... in case it doesn't make sense the next time I see it...
                 if   len(_guesses_) == 1:
-                    svg.append(self.rt_self.svgText(_guesses_[0], x + self.cell_w/2.0, y + self.cell_h - 4, txt_h=self.txt_h, color='black', anchor='middle'))
-                    print(_guesses_[0], _answer_, end='')
-                    if _answer_ is not None and _guesses_[0].upper() != _answer_:
-                        svg.append(f'<line x1="{x+2}" y1="{y+2}" x2="{x+self.cell_w-2}" y2="{y+self.cell_h-2}" stroke="red" stroke-width="1.0" />')
+                    _color_ = 'red' if _answer_ != _guesses_[0].upper() else 'black'
+                    svg.append(self.rt_self.svgText(_guesses_[0], x + self.cell_w/2.0, y + self.cell_h - 4, txt_h=self.txt_h, color=_color_, anchor='middle'))
                 elif len(_cell_.__guesses__) == 2:
                     _color_ = 'red' if _answer_ != _guesses_[0].upper() else 'black'
                     svg.append(self.rt_self.svgText(_guesses_[0], x + 1*self.cell_w/4.0, y + self.cell_h     - 2, txt_h=self.txt_h//2, color=_color_, anchor='middle'))
                     _color_ = 'red' if _answer_ != _guesses_[1].upper() else 'black'
                     svg.append(self.rt_self.svgText(_guesses_[1], x + 3*self.cell_w/4.0, y + self.cell_h/2.0 - 2, txt_h=self.txt_h//2, color=_color_, anchor='middle'))
-                    if _answer_ is not None:
-                        if _guesses_[0].upper() != _answer_ and _guesses_[1].upper() != _answer_:
-                            svg.append(f'<line x1="{x+2}" y1="{y+2}" x2="{x+self.cell_w-2}" y2="{y+self.cell_h-2}" stroke="red" stroke-width="1.0" />')
-                        else:
-                            svg.append(f'<line x1="{x+2}" y1="{y+2}" x2="{x+self.cell_w/2}" y2="{y+self.cell_h/2}" stroke="red" stroke-width="1.0" />')
                 elif len(_cell_.__guesses__) >  2:
                     svg.append(self.rt_self.svgText('?', x + self.cell_w/2.0, y + self.cell_h - 2, txt_h=self.txt_h, color='red', anchor='middle'))
                     print('should we really be here? xwords._repr_svg_()')
