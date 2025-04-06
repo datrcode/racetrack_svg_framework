@@ -285,3 +285,17 @@ class XWords(object):
             else:                     raise Exception(f'XWords.describeMissingLetters() -- unknown number of guesses: {len(_guesses_)}')
         return _strs_
 
+    def characterLevelAccuracy(self):
+        _correct_, _incorrect_, _total_ = 0, 0, 0
+        for yi in range(self.y_tiles):
+            for xi in range(self.x_tiles):
+                _cell_ = self.cells[yi][xi]
+                if _cell_.__answer__ is None: continue
+                if _cell_.isBlocker(): continue
+                _guesses_ = []
+                for k in _cell_.__guesses__.keys(): _guesses_.append(f'{_cell_.__guesses__[k]}')
+                _guesses_ = list(set(_guesses_))
+                if   len(_guesses_) == 1 and _guesses_[0].upper() == _cell_.__answer__.upper(): _correct_   += 1
+                else:                                                                           _incorrect_ += 1
+                _total_ += 1
+        return _correct_/_total_
