@@ -6,6 +6,8 @@ framework/__pycache__
 framework/.ipynb_checkpoints
 rtsvg/__pycache__
 rtsvg/.ipynb_checkpoints
+rtsvg/laguerre_voronoi_2d/__pycache__
+tests/__pycache__/*.pyc
 test_scripts/.ipynb_checkpoints
 test_scripts/__pycache__
 test_scripts/test_layout.csv
@@ -17,6 +19,4 @@ use_cases/2014_vast_challenge/*.partial
 use_cases/2014_vast_challenge/*.pkl
 use_cases/2014_vast_challenge/*.parquet
 use_cases/2014_vast_challenge/__pycache__
-tests/__pycache__/*.pyc
-rtsvg/laguerre_voronoi_2d/__pycache__/*.pyc
-use_cases/crossword_solver/__pycache__/*.pyc
+use_cases/crossword_solver/__pycache__
