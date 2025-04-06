@@ -269,7 +269,6 @@ class XWords(object):
         def suffix(n): return 'st' if n == 1 else 'nd' if n == 2 else 'rd' if n == 3 else 'th'
         _cell_              = self.cluenum_to_cell[cluenum]
         _number_of_letters_ = self.numberOfLetters(cluenum, orientation)
-        print(f'Clue {cluenum} is {orientation} with {_number_of_letters_} letters')
         _strs_              = []
         for i in range(_number_of_letters_):
             if   orientation == 'across': _cell_i_ = self.cells[_cell_.yi][_cell_.xi + i]
