@@ -2,14 +2,15 @@ __name__ = 'xwords'
 
 import time
 import ast
-import rtsvg
-rt = rtsvg.RACETrack()
+import networkx as nx
+#import rtsvg
+#rt = rtsvg.RACETrack()
 
 class XWordsSolver(object):
     def __init__(self, xwords, **kwargs):
         self.xwords = xwords
     def solve(self):
-        pass
+        raise Exception('XWordsSolver.solve() -- not implemented')
 
 class XWords(object):
     #
@@ -298,3 +299,24 @@ class XWords(object):
                 else:                                                                           _incorrect_ += 1
                 _total_ += 1
         return _correct_/_total_
+
+    #
+    # sweetClipGraphs() - construct two graphs per the following paper:
+    #
+    #  Language Models are Crossword Solvers
+    #  Soumadeep Saha,  Sutanoya Chakraborty, Saptarshi Saha, Utpal Garain 
+    #  Indian Statistical Institute Kolkata, India 
+    #  arXiv:2406.09043v1 [cs.CL] 13 Jun 2024
+    #
+    def sweepClipGraphs(self):
+        g_p, g_n = nx.Graph(), nx.Graph()
+        for yi in range(self.y_tiles):
+            for xi in range(self.x_tiles):
+                _cell_ = self.cells[yi][xi]
+                if _cell_.isBlocker() == False and len(_cell_.__guesses__) >= 2:
+                    _as_list_ = list(_cell_.__guesses__.keys())
+                    a_i, a_j     = _as_list_[0], _as_list_[1]
+                    a_i_u, a_j_v = _cell_.__guesses__[a_i], _cell_.__guesses__[a_j]
+                    if a_i_u == a_j_v: g_p.add_edge(a_i, a_j)
+                    else:              g_n.add_edge(a_i, a_j)
+        return g_p, g_n
