@@ -285,6 +285,30 @@ class XWords(object):
             else:                     raise Exception(f'XWords.describeMissingLetters() -- unknown number of guesses: {len(_guesses_)}')
         return _strs_
 
+    def createOverSpecifiedPrompt(self, cluenum, orientation):
+        def suffix(n): return 'st' if n == 1 else 'nd' if n == 2 else 'rd' if n == 3 else 'th'
+        clue           = self.clue(cluenum, orientation)
+        num_of_letters = self.numberOfLetters(cluenum, orientation)
+        s = f'What is the answer to the crossword puzzle clue "{clue}" which is {num_of_letters} letters long?'
+        other_orientation = 'across' if orientation == 'down' else 'down'
+        _cell_     = self.cluenum_to_cell[cluenum]
+        _xi_, _yi_ = _cell_.xi, _cell_.yi
+        for i in range(num_of_letters):
+            if orientation == 'across':
+                dy = 0
+                while _yi_ + dy > 0 and self.cells[_yi_+dy-1][_xi_].isBlocker() == False: dy -= 1
+                other_cluenum = self.cells[_yi_+dy][_xi_].__cluenum__
+                s += f'\n- The {i+1}{suffix(i+1)} letter is the {-dy+1}{suffix(-dy+1)} letter of the clue "{self.clue(other_cluenum, other_orientation)}".'
+                _xi_ += 1
+            else:
+                dx = 0
+                while _xi_ + dx > 0 and self.cells[_yi_][_xi_+dx-1].isBlocker() == False: dx -= 1
+                other_cluenum = self.cells[_yi_][_xi_+dx].__cluenum__
+                s += f'\n- The {i+1}{suffix(i+1)} letter is the {-dx+1}{suffix(-dx+1)} letter of the clue "{self.clue(other_cluenum, other_orientation)}".'
+                _yi_ += 1
+        s += f'\nreturn the answer as a JSON object.'
+        return s
+
     def characterLevelAccuracy(self):
         _correct_, _incorrect_, _total_ = 0, 0, 0
         for yi in range(self.y_tiles):
