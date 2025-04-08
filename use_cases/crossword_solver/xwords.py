@@ -165,11 +165,49 @@ class XWords(object):
                     svg.append(self.rt_self.svgText(_guesses_[1], x + 3*self.cell_w/4.0, y + self.cell_h/2.0 - 2, txt_h=self.txt_h//2, color=_color_, anchor='middle'))
                 elif len(_cell_.__guesses__) >  2:
                     svg.append(self.rt_self.svgText('?', x + self.cell_w/2.0, y + self.cell_h - 2, txt_h=self.txt_h, color='red', anchor='middle'))
-                    print('should we really be here? xwords._repr_svg_()')
-                
+                    print('should we really be here? xwords._repr_svg_()')                
         svg.append('</svg>')
         return ''.join(svg)
-    
+
+    #
+    # smallMultipleSVG() - return an svg representation for a small multiple
+    #
+    def smallMultipleSVG(self, s=5):
+        w_sm = self.x_tiles * s
+        h_sm = self.y_tiles * s
+        svg = [f'<svg x="0" y="0" width="{w_sm}" height="{h_sm}" >']
+        svg.append(f'<rect x="0" y="0" width="{w_sm}" height="{h_sm}" fill="#ffffff" />')
+        for x_tile in range(self.x_tiles+1):
+            svg.append(f'<line x1="{x_tile*s}" y1="0" x2="{x_tile*s}" y2="{h_sm}" stroke="black" stroke-width="0.1" />')
+        for y_tile in range(self.x_tiles+1):
+            svg.append(f'<line x1="0" y1="{y_tile*s}" x2="{w_sm}" y2="{y_tile*s}" stroke="black" stroke-width="0.1" />')
+        for blocker in self.blockers:
+            svg.append(f'<rect x="{blocker[0]*s}" y="{blocker[1]*s}" width="{s}" height="{s}" fill="black" />')
+        for yi in range(len(self.cells)):
+            for xi in range(len(self.cells[yi])):
+                _cell_ = self.cells[yi][xi]
+                if _cell_.isBlocker(): continue
+                x, y = xi*s, yi*s
+                # Draw in the answer / faded ... only if there are no guesses
+                _answer_ = _cell_.__answer__
+                if _answer_ is not None: _answer_ = _answer_.upper()
+                # Draw in the guesses
+                _guesses_ = []
+                for k in _cell_.__guesses__.keys(): _guesses_.append(f'{_cell_.__guesses__[k]}')
+                _guesses_ = list(set(_guesses_)) # this is to remove duplicates ... in case it doesn't make sense the next time I see it...
+                _color_   = None
+                if   len(_guesses_) == 1:
+                    _color_ = 'red' if _answer_ != _guesses_[0].upper() else 'green'
+                elif len(_cell_.__guesses__) == 2:
+                    if   _answer_ != _guesses_[0].upper() and _answer_ != _guesses_[1].upper(): _color_ = 'red'
+                    elif _answer_ != _guesses_[0].upper() or  _answer_ != _guesses_[1].upper(): _color_ = 'orange'
+                    else:                                                                       _color_ = 'green'
+                elif len(_cell_.__guesses__) >  2:
+                    _color_ = '#404040'
+                if _color_ is not None: svg.append(f'<rect x="{x}" y="{y}" width="{s}" height="{s}" fill="{_color_}" stroke="#ffffff" stroke-width="0.2" />')
+        svg.append('</svg>')
+        return ''.join(svg)
+
     #
     # numberOfLetters() - return the number of letters for a (cluenum, orientation)
     #
