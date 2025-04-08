@@ -21,3 +21,4 @@ use_cases/2014_vast_challenge/*.parquet
 use_cases/2014_vast_challenge/__pycache__
 use_cases/crossword_solver/__pycache__
 use_cases/crossword_solver/__pycache__/sweep_across_sweep_down_solver.cpython-312.pyc
+
