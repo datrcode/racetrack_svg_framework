@@ -199,11 +199,12 @@ class XWords(object):
                 if   len(_guesses_) == 1:
                     _color_ = 'red' if _answer_ != _guesses_[0].upper() else 'green'
                 elif len(_cell_.__guesses__) == 2:
-                    if   _answer_ != _guesses_[0].upper() and _answer_ != _guesses_[1].upper(): _color_ = 'red'
-                    elif _answer_ != _guesses_[0].upper() or  _answer_ != _guesses_[1].upper(): _color_ = 'orange'
+                    if   _answer_ != _guesses_[0].upper() and _answer_ != _guesses_[1].upper(): _color_ = '#818603'
+                    elif _answer_ == _guesses_[0].upper() or  _answer_ != _guesses_[1].upper(): _color_ = 'yellow'
+                    elif _answer_ != _guesses_[0].upper() or  _answer_ == _guesses_[1].upper(): _color_ = 'yellow'
                     else:                                                                       _color_ = 'green'
                 elif len(_cell_.__guesses__) >  2:
-                    _color_ = '#404040'
+                    _color_ = '#404040' # gray / shouldn't happen based on the current implementation
                 if _color_ is not None: svg.append(f'<rect x="{x}" y="{y}" width="{s}" height="{s}" fill="{_color_}" stroke="#ffffff" stroke-width="0.2" />')
         svg.append('</svg>')
         return ''.join(svg)
