@@ -58,6 +58,20 @@ class RTGeometryMixin(object):
         return sector_area0 + sector_area1
 
     #
+    # Derived From https://mathworld.wolfram.com/Circle-CircleIntersection.html
+    #
+    def overlappingCirclesIntersections(self, c0, c1):
+        """ Returns the intersection points of two overlapping circles. """
+        R, r  = c0[2], c1[2]
+        d  = self.segmentLength((c0, c1))
+        x  = (d**2 - r**2 + R**2)/(2.0*d)
+        a  = (1.0/d) * sqrt(4.0*d**2 * R**2 - (d**2 - r**2 + R**2)**2)
+        uv = self.unitVector((c0, c1))
+        pp = (-uv[1], uv[0])
+        return (c0[0] + uv[0]*x + pp[0] * (a/2.0), c0[1] + uv[1]*x + pp[1] * (a/2.0)), \
+               (c0[0] + uv[0]*x - pp[0] * (a/2.0), c0[1] + uv[1]*x - pp[1] * (a/2.0))  
+
+    #
     # svgVennDiagram() - render a venn diagram
     #
     def svgVennDiagram(self, 
