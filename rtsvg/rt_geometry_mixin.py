@@ -64,6 +64,7 @@ class RTGeometryMixin(object):
         """ Returns the intersection points of two overlapping circles. """
         R, r  = c0[2], c1[2]
         d  = self.segmentLength((c0, c1))
+        if d == 0.0: raise Exception('overlappingCirclesIntersections(): circles have the same center')
         x  = (d**2 - r**2 + R**2)/(2.0*d)
         a  = (1.0/d) * sqrt(4.0*d**2 * R**2 - (d**2 - r**2 + R**2)**2)
         uv = self.unitVector((c0, c1))
