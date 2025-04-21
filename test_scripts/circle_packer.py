@@ -100,10 +100,53 @@ class CirclePacker(object):
         cx3, cy3, r3  = self.circles_left.pop(0)
         xy0, xy1      = self.rt_self.overlappingCirclesIntersections((cx1,cy1,r1+r3),(cx2,cy2,r2+r3))
         cx3, cy3      = xy0[0], xy0[1]
-        self.packed.append((cx3, cy3, r3))
-        self.fwd, self.bck = {0:1, 1:3, 3:2, 2:0}, {1:0, 3:1, 2:3, 0:2}
-        if len(self.circles_left) == 0: return
 
+        if self.rt_self.circlesOverlap((cx0, cy0, r0), (cx3, cy3, r3)):
+            cx3, cy3      = xy1[0], xy1[1]
+            if self.rt_self.circlesOverlap((cx0, cy0, r0), (cx3, cy3, r3)):
+                xy0, xy1      = self.rt_self.overlappingCirclesIntersections((cx0,cy0,r0+r3),(cx2,cy2,r2+r3))
+                cx3, cy3      = xy0[0], xy0[1]
+                if self.rt_self.circlesOverlap((cx1, cy1, r1), (cx3, cy3, r3)):
+                    cx3, cy3      = xy1[0], xy1[1]
+                    if self.rt_self.circlesOverlap((cx1, cy1, r1), (cx3, cy3, r3)):
+                        xy0, xy1      = self.rt_self.overlappingCirclesIntersections((cx0,cy0,r0+r3),(cx1,cy1,r1+r3))
+                        cx3, cy3      = xy0[0], xy0[1]
+                        if self.rt_self.circlesOverlap((cx2, cy2, r2), (cx3, cy3, r3)):
+                            cx3, cy3      = xy1[0], xy1[1]
+                            if self.rt_self.circlesOverlap((cx2, cy2, r2), (cx3, cy3, r3)):
+                                self.debug_str = '6'
+                                raise Exception('__packFirstCircles__() - 6 - should not happen')
+                            else:
+                                self.debug_str = '5'
+                                raise Exception('__packFirstCircles__() - 5 - should not happen')
+                        else:
+                            self.debug_str = '4'
+                            self.fwd, self.bck = {0:3, 3:1, 1:0}, {3:0, 1:3, 0:1}        
+                    else:
+                        self.debug_str = '3'
+                        raise Exception('__packFirstCircles__() - 3 - should not happen')
+                else:
+                    self.debug_str = '2'
+                    self.fwd, self.bck = {0:3, 3:2, 2:1, 1:0}, {3:0, 2:3, 1:2, 0:1}
+            else:
+                self.debug_str = '1'
+                self.fwd, self.bck = {0:2, 2:3, 3:1, 1:0}, {2:0, 3:2, 1:3, 0:1}
+        else:            
+            if   self.packed[0][2] <= self.packed[1][2] and self.packed[0][2] <= self.packed[2][2] and self.packed[0][2] <= r3: # 0 is the smallest
+                self.debug_str = '00' # there are several variations
+                self.fwd, self.bck = {3:2, 2:1, 1:3}, {2:3, 1:2, 3:1}
+            elif self.packed[1][2] <= self.packed[0][2] and self.packed[1][2] <= self.packed[2][2] and self.packed[1][2] <= r3: # 1 is the smallest
+                self.debug_str = '01' # there are several variations
+                raise Exception('__packFirstCircles__() - 0 - should not happen (01)')
+            elif self.packed[2][2] <= self.packed[0][2] and self.packed[2][2] <= self.packed[1][2] and self.packed[2][2] <= r3: # 2 is the smallest
+                self.debug_str = '02' # there are several variations
+                raise Exception('__packFirstCircles__() - 0 - should not happen (02)')
+            else:                                                                                                               # 3 is the smallest
+                self.debug_str = '03' # there are several variations
+                self.fwd, self.bck = {0:2, 2:1, 1:0}, {2:0, 1:2, 0:1}
+
+        self.packed.append((cx3, cy3, r3))
+        
     #
     # _repr_svg_() - return an SVG representation
     #
@@ -111,7 +154,6 @@ class CirclePacker(object):
         w, h    = 250, 250
         _pkd_   = self.packed
         _chn_   = self.fwd
-        _color_ = '#000000'
         x0, y0, x1, y1 = _pkd_[0][0] - _pkd_[0][2] - 3, _pkd_[0][1] - _pkd_[0][2] - 3, _pkd_[0][0] + _pkd_[0][2] + 3, _pkd_[0][1] + _pkd_[0][2] + 3
         for i in range(1, len(_pkd_)):
             x0, y0, x1, y1 = min(x0, _pkd_[i][0] - _pkd_[i][2] - 3), min(y0, _pkd_[i][1] - _pkd_[i][2] - 3), max(x1, _pkd_[i][0] + _pkd_[i][2] + 3), max(y1, _pkd_[i][1] + _pkd_[i][2] + 3)
@@ -124,6 +166,7 @@ class CirclePacker(object):
             if len(self.nearest.queue) > 0 and i == self.nearest.queue[0][1]: _color_ = '#ff0000'
             else:                                                             _color_ = '#000000'
             svg.append(f'<circle cx="{_c_[0]}" cy="{_c_[1]}" r="{_c_[2]}" fill="none" stroke="{_color_}" stroke-width="0.2" />')
+        _color_ = '#000000'
         if len(_chn_.keys()) > 0: 
             _index_ = list(_chn_.keys())[0]
             for i in range(len(_chn_.keys())+1):
@@ -158,7 +201,7 @@ class CirclePacker(object):
         cm_i, cn_i          = self.nearest.queue[0][1], self.fwd[self.nearest.queue[0][1]]
         cm,   cn            = self.packed[cm_i], self.packed[cn_i]
         xy0, xy1            = self.rt_self.overlappingCirclesIntersections((cm[0], cm[1], cm[2] + c[2]), (cn[0], cn[1], cn[2] + c[2]))
-        c                   = (xy1[0], xy1[1], c[2])
+        c                   = (xy0[0], xy0[1], c[2])
         self.placing_circle = c
         # Repeat until the circle is placed
         circle_placed = False
@@ -188,7 +231,7 @@ class CirclePacker(object):
                 cn_i     = overlapped_after
                 cn       = self.packed[cn_i]
                 xy0, xy1 = self.rt_self.overlappingCirclesIntersections((cm[0], cm[1], cm[2] + c[2]), (cn[0], cn[1], cn[2] + c[2]))
-                c        = (xy1[0], xy1[1], c[2])
+                c        = (xy0[0], xy0[1], c[2])
                 self.placing_circle = c
             elif overlapped_before is not None:
                 self.__eraseChain__(self.fwd[overlapped_before], cm_i)
@@ -196,7 +239,7 @@ class CirclePacker(object):
                 cm_i     = overlapped_before
                 cm       = self.packed[cm_i]
                 xy0, xy1 = self.rt_self.overlappingCirclesIntersections((cm[0], cm[1], cm[2] + c[2]), (cn[0], cn[1], cn[2] + c[2]))
-                c        = (xy1[0], xy1[1], c[2])
+                c        = (xy0[0], xy0[1], c[2])
                 self.placing_circle = c
             else:
                 self.packed.append(c)
