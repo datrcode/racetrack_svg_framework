@@ -43,6 +43,12 @@ class CirclePacker(object):
         self.bck                 = {}
         self.r_max_so_far        = 0.0 # for optimization
         self.nearest             = queue.PriorityQueue()
+
+        self.r_min = self.r_max  = self.circles[0][2]
+        for c in self.circles: self.r_min, self.r_max = min(self.r_min, c[2]), max(self.r_max, c[2])
+
+        if (self.r_max / self.r_min) > 4.125: raise ValueError('The ratio of the largest circle to the smallest circle should be less than 4.125.')
+
         # Pack the first circles
         self.__packFirstCircles__()
         # Capture the maximum radius seen so far (for the optimization implementation)
