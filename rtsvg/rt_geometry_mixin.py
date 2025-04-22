@@ -24,6 +24,7 @@ import uuid
 import copy
 import heapq
 from .laguerre_voronoi_2d import laguerre_voronoi_2d
+from .circle_packer import CirclePacker
 
 __name__ = 'rt_geometry_mixin'
 
@@ -31,6 +32,13 @@ __name__ = 'rt_geometry_mixin'
 # Geometry Methods
 #
 class RTGeometryMixin(object):
+    #
+    # packCircles() - pack 
+    #
+    def packCircles(self, circles):
+        _cp_ = CirclePacker(self, circles)
+        return _cp_.packedCircles()
+    
     #
     # circlesOverlap() - determine if two circles overlap
     #

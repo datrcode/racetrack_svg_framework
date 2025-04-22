@@ -36,6 +36,13 @@ class CirclePacker(object):
     def __init__(self, rt_self, circles, epsilon=0.01):
         self.rt_self             = rt_self
         self.circles             = circles
+
+        self.r_min = self.r_max  = self.circles[0][2]
+        for c in self.circles: self.r_min, self.r_max = min(self.r_min, c[2]), max(self.r_max, c[2])
+
+        if (self.r_max / self.r_min) > 4.125:
+            self.circles = sorted(self.circles, key=lambda x: x[2], reverse=True)
+
         self.circles_left        = copy.deepcopy(self.circles)
         self.epsilon             = epsilon
         self.packed              = []
@@ -44,10 +51,7 @@ class CirclePacker(object):
         self.r_max_so_far        = 0.0 # for optimization
         self.nearest             = queue.PriorityQueue()
 
-        self.r_min = self.r_max  = self.circles[0][2]
-        for c in self.circles: self.r_min, self.r_max = min(self.r_min, c[2]), max(self.r_max, c[2])
 
-        if (self.r_max / self.r_min) > 4.125: raise ValueError('The ratio of the largest circle to the smallest circle should be less than 4.125.')
 
         # Pack the first circles
         self.__packFirstCircles__()
