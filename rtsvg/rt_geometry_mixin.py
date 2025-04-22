@@ -35,10 +35,41 @@ class RTGeometryMixin(object):
     #
     # packCircles() - pack 
     #
-    def packCircles(self, circles):
-        _cp_ = CirclePacker(self, circles)
-        return _cp_.packedCircles()
-    
+    def packCircles(self, circles, into_circle=None):
+        _cp_      = CirclePacker(self, circles)
+        _circles_ = _cp_.packedCircles()
+        if into_circle is not None: _circles_ = self.__translateAndScaleCircles__(_circles_, into_circle)
+        return _circles_
+
+    def __translateAndScaleCircles__(self, circles, into_circle):
+        x0, y0, x1, y1 = circles[0][0] - circles[0][2], circles[0][1] - circles[0][2], circles[0][0] + circles[0][2], circles[0][1] + circles[0][2]
+        for _circle_ in circles:
+            x0, y0 = min(x0, _circle_[0] - _circle_[2]), min(y0, _circle_[1] - _circle_[2])
+            x1, y1 = max(x1, _circle_[0] + _circle_[2]), max(y1, _circle_[1] + _circle_[2])
+        def circleIsWithin(c):
+            d_btwn_circles = sqrt((c[0] - into_circle[0])**2 + (c[1] - into_circle[1])**2)
+            return (d_btwn_circles+c[2]) <= into_circle[2]
+
+        x_mid,   y_mid   = (x1 + x0)/2.0,            (y1 + y0)/2.0
+        x_scale, y_scale = (x1 - x0)/into_circle[2], (y1 - y0)/into_circle[2]
+        _falls_outside_ = True
+        _scale_div_     = 2.0
+        while _falls_outside_:
+            scale           = max(x_scale, y_scale)/_scale_div_
+            fit             = []
+            _falls_outside_ = False
+            for i in range(len(circles)-1, -1, -1): # the circles on the outside are the ones that will fall outside... start there...
+                _circle_ = circles[i]
+                x = (_circle_[0] - x_mid)/scale + into_circle[0]
+                y = (_circle_[1] - y_mid)/scale + into_circle[1]
+                fit.append((x,y,_circle_[2]/scale))
+                if not circleIsWithin((x,y,_circle_[2]/scale)):
+                    _falls_outside_ = True
+                    break
+            _scale_div_ *= 0.99
+        print(_scale_div_)
+        return fit
+
     #
     # circlesOverlap() - determine if two circles overlap
     #
