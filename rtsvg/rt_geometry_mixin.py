@@ -67,7 +67,6 @@ class RTGeometryMixin(object):
                     _falls_outside_ = True
                     break
             _scale_div_ *= 0.99
-        print(_scale_div_)
         return fit
 
     #
