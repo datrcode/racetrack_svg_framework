@@ -35,16 +35,25 @@ class CirclePacker(object):
     #
     # __init__()
     #
-    def __init__(self, rt_self, circles, epsilon=0.01):
+    def __init__(self, rt_self, circles, epsilon=0.01, largest_to_smallest=True):
         self.rt_self             = rt_self
         self.circles             = circles
 
         # Find the min and max radii
+        circles_with_i = []
         self.r_min = self.r_max  = self.circles[0][2]
-        for c in self.circles: self.r_min, self.r_max = min(self.r_min, c[2]), max(self.r_max, c[2])
+        for i in range(len(self.circles)):
+            c = self.circles[i]
+            self.r_min, self.r_max = min(self.r_min, c[2]), max(self.r_max, c[2])
+            circles_with_i.append((c[0], c[1], c[2], i))
+        self.circles = circles_with_i
 
         # If the delta is too great, then sort
-        if (self.r_max / self.r_min) > 4.125: self.circles = sorted(self.circles, key=lambda x: x[2], reverse=True)
+        if (self.r_max / self.r_min) > 4.125: 
+            self.circles = sorted(self.circles, key=lambda x: x[2], reverse=largest_to_smallest)
+            pre_sorted   = True
+        else:
+            pre_sorted   = False
 
         self.circles_left        = copy.deepcopy(self.circles)
         self.epsilon             = epsilon
@@ -65,7 +74,13 @@ class CirclePacker(object):
             self.nearest.put((c[0]**2 + c[1]**2, i))
         # Pack the circles iteratively
         while len(self.circles_left) > 0: self.__packNextCircle__()
-    
+
+        # Unsort it back into the original
+        if pre_sorted == True: self.packed = sorted(self.packed, key=lambda x: x[3])
+        wout_i = []
+        for c in self.packed: wout_i.append((c[0], c[1], c[2]))
+        self.packed = wout_i
+
     #
     # packedCircles() - return the packed circles
     #
@@ -77,32 +92,32 @@ class CirclePacker(object):
     #
     def __packFirstCircles__(self):
         # Circle 1
-        cx0, cy0, r0  = self.circles_left.pop(0)
+        cx0, cy0, r0, i0  = self.circles_left.pop(0)
         cx0 = cy0 = 0.0
-        self.packed.append((cx0, cy0, r0))
+        self.packed.append((cx0, cy0, r0, i0))
         self.fwd, self.bck = {0:0}, {0:0}
         if len(self.circles_left) == 0: return
 
         # Circle 2
-        cx1, cy1, r1  = self.circles_left.pop(0)
-        cy1           = 0.0
-        cx1           = r0 + r1
-        self.packed.append((cx1, 0.0, r1))
+        cx1, cy1, r1, i1  = self.circles_left.pop(0)
+        cy1               = 0.0
+        cx1               = r0 + r1
+        self.packed.append((cx1, 0.0, r1, i1))
         self.fwd, self.bck = {0:1, 1:0}, {0:1, 1:0}
         if len(self.circles_left) == 0: return
 
         # Circle 3
-        cx2, cy2, r2  = self.circles_left.pop(0)
-        xy0, xy1      = self.rt_self.overlappingCirclesIntersections((cx0,cy0,r0+r2),(cx1,cy1,r1+r2))
-        cx2, cy2      = xy0[0], xy0[1]
-        self.packed.append((cx2, cy2, r2))
+        cx2, cy2, r2, i2  = self.circles_left.pop(0)
+        xy0, xy1          = self.rt_self.overlappingCirclesIntersections((cx0,cy0,r0+r2),(cx1,cy1,r1+r2))
+        cx2, cy2          = xy0[0], xy0[1]
+        self.packed.append((cx2, cy2, r2, i2))
         self.fwd, self.bck = {0:1, 1:2, 2:0}, {1:0, 2:1, 0:2}
         if len(self.circles_left) == 0: return
 
         # Circle 4
-        cx3, cy3, r3  = self.circles_left.pop(0)
-        xy0, xy1      = self.rt_self.overlappingCirclesIntersections((cx1,cy1,r1+r3),(cx2,cy2,r2+r3))
-        cx3, cy3      = xy0[0], xy0[1]
+        cx3, cy3, r3, i3  = self.circles_left.pop(0)
+        xy0, xy1          = self.rt_self.overlappingCirclesIntersections((cx1,cy1,r1+r3),(cx2,cy2,r2+r3))
+        cx3, cy3          = xy0[0], xy0[1]
 
         if self.rt_self.circlesOverlap((cx0, cy0, r0), (cx3, cy3, r3)):
             cx3, cy3      = xy1[0], xy1[1]
@@ -138,7 +153,7 @@ class CirclePacker(object):
             else:                                                                                                               # 3 is the smallest
                 self.fwd, self.bck = {0:2, 2:1, 1:0}, {2:0, 1:2, 0:1}
 
-        self.packed.append((cx3, cy3, r3))
+        self.packed.append((cx3, cy3, r3, i3))
 
     #
     # __packNextCircle__() - pack the next circle in this list
@@ -157,7 +172,7 @@ class CirclePacker(object):
         cm_i, cn_i          = self.nearest.queue[0][1], self.fwd[self.nearest.queue[0][1]]
         cm,   cn            = self.packed[cm_i], self.packed[cn_i]
         xy0, xy1            = self.rt_self.overlappingCirclesIntersections((cm[0], cm[1], cm[2] + c[2]), (cn[0], cn[1], cn[2] + c[2]))
-        c                   = (xy0[0], xy0[1], c[2])
+        c                   = (xy0[0], xy0[1], c[2], c[3])
         # Repeat until the circle is placed
         circle_placed = False
         while circle_placed == False:
@@ -184,21 +199,21 @@ class CirclePacker(object):
                 cn_i     = overlapped_after
                 cn       = self.packed[cn_i]
                 xy0, xy1 = self.rt_self.overlappingCirclesIntersections((cm[0], cm[1], cm[2] + c[2]), (cn[0], cn[1], cn[2] + c[2]))
-                c        = (xy0[0], xy0[1], c[2])
+                c        = (xy0[0], xy0[1], c[2], c[3])
             elif overlapped_after  is not None:
                 self.__eraseChain__(cn_i, self.bck[overlapped_after])
                 while self.nearest.queue[0][1] not in self.fwd.keys(): self.nearest.get() # find the next nearest circle that is still in the chain
                 cn_i     = overlapped_after
                 cn       = self.packed[cn_i]
                 xy0, xy1 = self.rt_self.overlappingCirclesIntersections((cm[0], cm[1], cm[2] + c[2]), (cn[0], cn[1], cn[2] + c[2]))
-                c        = (xy0[0], xy0[1], c[2])
+                c        = (xy0[0], xy0[1], c[2], c[3])
             elif overlapped_before is not None:
                 self.__eraseChain__(self.fwd[overlapped_before], cm_i)
                 while self.nearest.queue[0][1] not in self.fwd.keys(): self.nearest.get() # find the next nearest circle that is still in the chain
                 cm_i     = overlapped_before
                 cm       = self.packed[cm_i]
                 xy0, xy1 = self.rt_self.overlappingCirclesIntersections((cm[0], cm[1], cm[2] + c[2]), (cn[0], cn[1], cn[2] + c[2]))
-                c        = (xy0[0], xy0[1], c[2])
+                c        = (xy0[0], xy0[1], c[2], c[3])
             else:
                 self.packed.append(c)
                 _index_           = len(self.packed) - 1
