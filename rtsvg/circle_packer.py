@@ -35,7 +35,7 @@ class CirclePacker(object):
     #
     # __init__()
     #
-    def __init__(self, rt_self, circles, epsilon=0.01, largest_to_smallest=True):
+    def __init__(self, rt_self, circles, epsilon=0.01, largest_to_smallest=True, keep_order=True):
         self.rt_self             = rt_self
         self.circles             = circles
 
@@ -77,8 +77,9 @@ class CirclePacker(object):
         # Pack the circles iteratively
         while len(self.circles_left) > 0: self.__packNextCircle__()
 
-        # Unsort it back into the original
-        if pre_sorted == True: self.packed = sorted(self.packed, key=lambda x: x[3])
+        # Unsort it back into the original ... then remove the sorting index
+        # ... note that unsorting will mess up the chains
+        if pre_sorted and keep_order: self.packed = sorted(self.packed, key=lambda x: x[3])
         wout_i = []
         for c in self.packed: wout_i.append((c[0], c[1], c[2]))
         self.packed = wout_i
@@ -148,10 +149,8 @@ class CirclePacker(object):
                         cx3, cy3      = xy0[0], xy0[1]
                         if self.rt_self.circlesOverlap((cx2, cy2, r2), (cx3, cy3, r3)):
                             cx3, cy3      = xy1[0], xy1[1]
-                            if self.rt_self.circlesOverlap((cx2, cy2, r2), (cx3, cy3, r3)):
-                                raise Exception('__packFirstCircles__() - 6 - should not happen')
-                            else:
-                                raise Exception('__packFirstCircles__() - 5 - should not happen')
+                            if self.rt_self.circlesOverlap((cx2, cy2, r2), (cx3, cy3, r3)): raise Exception('__packFirstCircles__() - 6 - should not happen')
+                            else:                                                           raise Exception('__packFirstCircles__() - 5 - should not happen')
                         else:
                             self.fwd, self.bck = {0:3, 3:1, 1:0}, {3:0, 1:3, 0:1}        
                     else:
@@ -159,7 +158,7 @@ class CirclePacker(object):
                 else:
                     self.fwd, self.bck = {0:3, 3:2, 2:1, 1:0}, {3:0, 2:3, 1:2, 0:1}
             else:
-                self.fwd, self.bck = {0:2, 2:3, 3:1, 1:0}, {2:0, 3:2, 1:3, 0:1}
+                self.fwd, self.bck = {0:2, 1:0, 2:3, 3:1}, {2:0, 0:1, 3:2, 1:3}
         else:            
             if   self.packed[0][2] <= self.packed[1][2] and self.packed[0][2] <= self.packed[2][2] and self.packed[0][2] <= r3: # 0 is the smallest
                 self.fwd, self.bck = {3:2, 2:1, 1:3}, {2:3, 1:2, 3:1}
@@ -297,6 +296,7 @@ class CirclePacker(object):
             if len(self.nearest.queue) > 0 and i == self.nearest.queue[0][1]: _color_ = '#ff0000'
             else:                                                             _color_ = '#000000'
             svg.append(f'<circle cx="{_c_[0]}" cy="{_c_[1]}" r="{_c_[2]}" fill="none" stroke="{_color_}" stroke-width="0.2" />')
+            #svg.append(self.rt_self.svgText(str(i), _c_[0], _c_[1], txt_h=3))
         _color_ = '#000000'
         if len(_chn_.keys()) > 0: 
             _index_ = list(_chn_.keys())[0]
