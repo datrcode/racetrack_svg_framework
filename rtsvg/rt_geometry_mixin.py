@@ -41,6 +41,10 @@ class RTGeometryMixin(object):
         if into_circle is not None: _circles_ = self.__translateAndScaleCircles__(_circles_, into_circle)
         return _circles_
 
+    #
+    # __translateAndScaleCircles__() -- not a general method ... but designed for the CirclePacker
+    # ... and it only really does scaling ... not some translations that would be required to get a better fit
+    #
     def __translateAndScaleCircles__(self, circles, into_circle):
         x0, y0, x1, y1 = circles[0][0] - circles[0][2], circles[0][1] - circles[0][2], circles[0][0] + circles[0][2], circles[0][1] + circles[0][2]
         for _circle_ in circles:
