@@ -63,15 +63,17 @@ class CirclePacker(object):
         self.r_max_so_far        = 0.0 # for optimization
         self.nearest             = queue.PriorityQueue()
 
-        # Pack the first circles
+        # Pack the first circles and center them
         self.__packFirstCircles__()
+        self.__recenterPackedCircles__()
+
         # Capture the maximum radius seen so far (for the optimization implementation)
         for i in range(len(self.packed)): self.r_max_so_far = max(self.r_max_so_far, self.packed[i][2])
         # Create a priority queue to find the circle w/in the chain that is closest to the origin
         for i in range(len(self.packed)):
             if i not in self.fwd: continue
             c = self.packed[i]
-            self.nearest.put((c[0]**2 + c[1]**2, i))
+            self.nearest.put((sqrt(c[0]**2 + c[1]**2)+c[2], i))
         # Pack the circles iteratively
         while len(self.circles_left) > 0: self.__packNextCircle__()
 
@@ -84,8 +86,23 @@ class CirclePacker(object):
     #
     # packedCircles() - return the packed circles
     #
-    def packedCircles(self):
-        return self.packed
+    def packedCircles(self): return self.packed
+
+    #
+    # __packedCircleExtents__() - determine the extents of the packed circles to include the radii
+    #
+    def __packedCircleExtents__(self):
+        _pkd_ = self.packed
+        x0, y0, x1, y1 = _pkd_[0][0] - _pkd_[0][2], _pkd_[0][1] - _pkd_[0][2], _pkd_[0][0] + _pkd_[0][2], _pkd_[0][1] + _pkd_[0][2]
+        for i in range(1, len(_pkd_)): x0, y0, x1, y1 = min(x0, _pkd_[i][0] - _pkd_[i][2]), min(y0, _pkd_[i][1] - _pkd_[i][2]), max(x1, _pkd_[i][0] + _pkd_[i][2]), max(y1, _pkd_[i][1] + _pkd_[i][2])
+        return x0, y0, x1, y1
+
+    #
+    # __recenterPackedCircles__() - recenter the packed circles in place
+    #
+    def __recenterPackedCircles__(self):
+        x0, y0, x1, y1 = self.__packedCircleExtents__()
+        for i in range(len(self.packed)): self.packed[i] = (self.packed[i][0] - (x0 + x1)/2.0, self.packed[i][1] - (y0 + y1)/2.0, self.packed[i][2], self.packed[i][3])
 
     #
     # __packFirstThreeCircles__()
@@ -221,7 +238,7 @@ class CirclePacker(object):
                 self.bck[cn_i], self.fwd[_index_] = _index_, cn_i
                 circle_placed     = True
                 self.r_max_so_far = max(self.r_max_so_far, self.packed[-1][2])
-                self.nearest.put((c[0]**2 + c[1]**2, _index_))
+                self.nearest.put((sqrt(c[0]**2 + c[1]**2)+c[2], _index_))
                 while self.nearest.queue[0][1] not in self.fwd.keys(): self.nearest.get() # find the next nearest circle that is still in the chain
 
     #
@@ -269,9 +286,8 @@ class CirclePacker(object):
         w, h    = 250, 250
         _pkd_   = self.packed
         _chn_   = self.fwd
-        x0, y0, x1, y1 = _pkd_[0][0] - _pkd_[0][2] - 3, _pkd_[0][1] - _pkd_[0][2] - 3, _pkd_[0][0] + _pkd_[0][2] + 3, _pkd_[0][1] + _pkd_[0][2] + 3
-        for i in range(1, len(_pkd_)):
-            x0, y0, x1, y1 = min(x0, _pkd_[i][0] - _pkd_[i][2] - 3), min(y0, _pkd_[i][1] - _pkd_[i][2] - 3), max(x1, _pkd_[i][0] + _pkd_[i][2] + 3), max(y1, _pkd_[i][1] + _pkd_[i][2] + 3)
+        x0, y0, x1, y1 = self.__packedCircleExtents__()
+        x0, y0, x1, y1 = x0-3, y0-3, x1+3, y1+3
         svg = [f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="{x0} {y0} {x1-x0} {y1-y0}" xmlns="http://www.w3.org/2000/svg">']
         svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="#ffffff" />')
         svg.append(f'<line x1="0.0"  y1="{y0}" x2="0.0"  y2="{y1}" stroke="#ff0000" stroke-width="0.1" />')
