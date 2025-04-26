@@ -22,6 +22,7 @@ from math import sqrt, acos, pi, cos, sin, atan2
 import random
 import uuid
 import copy
+import time
 import heapq
 from .laguerre_voronoi_2d import laguerre_voronoi_2d
 from .circle_packer import CirclePacker
@@ -38,14 +39,18 @@ class RTGeometryMixin(object):
     def packCircles(self, circles, into_circle=None):
         _cp_      = CirclePacker(self, circles)
         _circles_ = _cp_.packedCircles()
-        if into_circle is not None: _circles_ = self.__translateAndScaleCircles__(_circles_, into_circle)
+        if into_circle is not None: _circles_ = self.__translateAndScaleCircles__(_circles_, into_circle, _cp_)
         return _circles_
 
     #
     # __translateAndScaleCircles__() -- not a general method ... but designed for the CirclePacker
     # ... and it only really does scaling ... not some translations that would be required to get a better fit
+    # ... it'd be faster to use the fwd chain in the cp object...
+    # ... but in timing it, the packing itself takes a lot more time (100K circles on a M1 Pro)
+    # ... 2.48s for packing
+    # ... 0.08s for scaling
     #
-    def __translateAndScaleCircles__(self, circles, into_circle):
+    def __translateAndScaleCircles__(self, circles, into_circle, cp):
         x0, y0, x1, y1 = circles[0][0] - circles[0][2], circles[0][1] - circles[0][2], circles[0][0] + circles[0][2], circles[0][1] + circles[0][2]
         for _circle_ in circles:
             x0, y0 = min(x0, _circle_[0] - _circle_[2]), min(y0, _circle_[1] - _circle_[2])
