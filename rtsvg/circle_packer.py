@@ -79,7 +79,15 @@ class CirclePacker(object):
 
         # Unsort it back into the original ... then remove the sorting index
         # ... note that unsorting will mess up the chains
-        if pre_sorted and keep_order: self.packed = sorted(self.packed, key=lambda x: x[3])
+        if pre_sorted and keep_order:
+            new_fwd, new_bck = {}, {}
+            for k in self.fwd:
+                new_k = self.packed[k][3]
+                new_v = self.packed[self.fwd[k]][3]
+                new_fwd[new_k] = new_v
+                new_bck[new_v] = new_k
+            self.fwd, self.bck = new_fwd, new_bck
+            self.packed = sorted(self.packed, key=lambda x: x[3])
         wout_i = []
         for c in self.packed: wout_i.append((c[0], c[1], c[2]))
         self.packed = wout_i
