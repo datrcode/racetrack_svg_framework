@@ -320,6 +320,12 @@ class CirclePacker(object):
         svg.append('</svg>')
         return ''.join(svg)
 
+    #
+    # __approximateInscribedCircle__() - approximate the inscribed circle
+    # ... given an initial point, determine the three furthest points within the packed circles
+    # ... from these points, calculate the inscribed circle
+    # ... not guaranteed to even return a circle that completely contains all of the packed circles
+    #
     def __approximateInscribedCircle__(self, xy=None, angular_distance=pi/3.0):
         # Get just the border circles
         _border_circles_ = []
@@ -368,3 +374,37 @@ class CirclePacker(object):
         p0, p1, p2 = (_sorter_[i0][1], _sorter_[i0][2]), (_sorter_[i1][1], _sorter_[i1][2]), (_sorter_[i2][1], _sorter_[i2][2])
         _circle_ = self.rt_self.threePointCircle(p0, p1, p2)
         return _circle_, [p0, p1, p2]
+
+    #
+    # optimalInscriptionCircle() - find an optimal circle that inscribes all of the circles
+    # ... I couldn't fit in "bestThingThatICouldDoWithMyMeagerSkillsInscriptionCircle()"
+    #
+    def optimalInscriptionCircle(self, iterations=10, angular_distance=pi/3.0):
+        _border_circles_ = []
+        _packed_circles_ = self.packedCircles()
+        for k, v in self.fwd.items(): _border_circles_.append(_packed_circles_[v])
+        def __findRMax__(_xycoord_):
+            _r_max_ = 0.0
+            for _bc_ in _border_circles_:
+                _r_ = self.rt_self.segmentLength((_xycoord_, _bc_)) + _bc_[2]
+                _r_max_ = max(_r_max_, _r_)
+            return _r_max_
+        # Start with the initial approximation based on the extents
+        # ... for some reason, this works best for four circles
+        _x0_, _y0_, _x1_, _y1_ = self.__packedCircleExtents__()
+        _xy_ = (_x0_ + _x1_) / 2.0, (_y0_ + _y1_) / 2.0
+        _r_best_, _xy_best_ = __findRMax__(_xy_), _xy_
+        if len(_border_circles_) < 3: return (_xy_best_[0], _xy_best_[1], _r_best_) # technique doesn't work for 2 circles (or less)
+        # Iterate on the appoximation X tiles
+        for i in range(iterations):
+            _circle_, _points_ = self.__approximateInscribedCircle__(xy=_xy_, angular_distance=angular_distance)
+            _xy_ = (_circle_[0], _circle_[1])
+            # Find the new r
+            _r_max_ = __findRMax__(_xy_)
+            for _bc_ in _border_circles_:
+                _r_ = self.rt_self.segmentLength((_xy_, _bc_)) + _bc_[2]
+                _r_max_ = max(_r_max_, _r_)
+            if _r_best_ is None or _r_max_ < _r_best_:
+                _r_best_ = _r_max_
+                _xy_best_ = _xy_
+        return (_xy_best_[0], _xy_best_[1], _r_best_)
