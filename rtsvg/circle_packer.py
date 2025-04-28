@@ -317,6 +317,10 @@ class CirclePacker(object):
                 svg.append(f'<line x1="{xy1[0]}" y1="{xy1[1]}" x2="{xy1[0] - 1*uv[0] + 0.5*perp[0]}" y2="{xy1[1] - 1*uv[1] + 0.5*perp[1]}" stroke="{_color_}" stroke-width="0.1" />')
                 svg.append(f'<line x1="{xy1[0]}" y1="{xy1[1]}" x2="{xy1[0] - 1*uv[0] - 0.5*perp[0]}" y2="{xy1[1] - 1*uv[1] - 0.5*perp[1]}" stroke="{_color_}" stroke-width="0.1" />')
                 _index_  = _index_next_
+        
+        _optimal_ = self.optimalInscriptionCircle()
+        svg.append(f'<circle cx="{_optimal_[0]}" cy="{_optimal_[1]}" r="{_optimal_[2]}" fill="none" stroke="#000000" stroke-width="0.2" />')
+
         svg.append('</svg>')
         return ''.join(svg)
 
