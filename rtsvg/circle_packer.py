@@ -1,6 +1,6 @@
 import copy
 import queue
-from math import sqrt, acos, pi
+from math import sqrt, acos, pi, atan2
 
 __name__ = 'circle_packer'
 
@@ -320,3 +320,51 @@ class CirclePacker(object):
         svg.append('</svg>')
         return ''.join(svg)
 
+    def __approximateInscribedCircle__(self, xy=None, angular_distance=pi/3.0):
+        # Get just the border circles
+        _border_circles_ = []
+        _packed_circles_ = self.packedCircles()
+        for k, v in self.fwd.items(): _border_circles_.append(_packed_circles_[v])
+        if xy is None:
+            _x0_, _y0_, _x1_, _y1_ = self.__packedCircleExtents__()
+            _xcen_, _ycen_ = (_x0_ + _x1_) / 2.0, (_y0_ + _y1_) / 2.0
+        else: _xcen_, _ycen_ = xy
+        # For all of the border circles, calculate how far they are (furthest point) from the center
+        _sorter_ = []
+        _furthest_ = None
+        for i in range(len(_border_circles_)):
+            _c_  = _border_circles_[i]
+            _l_  = sqrt((_c_[0] - _xcen_)**2 + (_c_[1] - _ycen_)**2) + _c_[2]
+            _uv_ = self.rt_self.unitVector(((_xcen_, _ycen_), (_c_[0], _c_[1])))
+            _xouter_, _youter_ = _xcen_ + _l_ * _uv_[0], _ycen_ + _l_ * _uv_[1]
+            if _furthest_ is None or _l_ > _furthest_: _furthest_ = _l_
+            _sorter_.append((_l_, _xouter_, _youter_, atan2(_youter_ - _ycen_, _xouter_ - _xcen_), i))
+        # Pick the three largest distances as long as they have sufficient angular distances
+        _sorter_.sort(reverse=True)
+        # Choose the first point
+        i0 = 0
+        # Find the second point
+        i1 = None
+        i  = 1
+        while i1 is None and i < len(_sorter_):
+            _angle_d_  = pi - abs(abs(_sorter_[i][3] - _sorter_[i0][3]) - pi)
+            if _angle_d_ >= angular_distance: i1 = i
+            i += 1
+        if i1 is None: i1 = 1
+        # Find the third point
+        i2 = None
+        i  = i1 + 1
+        while i2 is None and i < len(_sorter_):
+            _angle0_d_  = pi - abs(abs(_sorter_[i][3] - _sorter_[i0][3]) - pi)
+            _angle1_d_  = pi - abs(abs(_sorter_[i][3] - _sorter_[i1][3]) - pi)
+            if _angle0_d_ >= angular_distance and _angle1_d_ >= angular_distance: i2 = i
+            i += 1
+        if i2 is None: # just take the first point that isn't one of the other points
+            i = 1 # i0 + 1
+            while i2 is None and i < len(_sorter_):
+                if i != i1: i2 = i
+                i += 1
+        # Create the circle from those three points:
+        p0, p1, p2 = (_sorter_[i0][1], _sorter_[i0][2]), (_sorter_[i1][1], _sorter_[i1][2]), (_sorter_[i2][1], _sorter_[i2][2])
+        _circle_ = self.rt_self.threePointCircle(p0, p1, p2)
+        return _circle_, [p0, p1, p2]
