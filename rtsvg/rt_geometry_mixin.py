@@ -42,44 +42,6 @@ class RTGeometryMixin(object):
         return _circles_
 
     #
-    # __translateAndScaleCircles__() -- not a general method ... but designed for the CirclePacker
-    # ... and it only really does scaling ... not some translations that would be required to get a better fit
-    # ... it'd be faster to use the fwd chain in the cp object...
-    # ... but in timing it, the packing itself takes a lot more time (100K circles on a M1 Pro)
-    # ... 2.48s for packing
-    # ... 0.08s for scaling
-    #
-    # DONT USE / REPLACED WITH A FIT METHOD WITHIN THE CIRCLE PACKER Class
-    #
-    def XXX__translateAndScaleCircles__(self, circles, into_circle, cp):   
-        x0, y0, x1, y1 = circles[0][0] - circles[0][2], circles[0][1] - circles[0][2], circles[0][0] + circles[0][2], circles[0][1] + circles[0][2]
-        for _circle_ in circles:
-            x0, y0 = min(x0, _circle_[0] - _circle_[2]), min(y0, _circle_[1] - _circle_[2])
-            x1, y1 = max(x1, _circle_[0] + _circle_[2]), max(y1, _circle_[1] + _circle_[2])
-        def circleIsWithin(c):
-            d_btwn_circles = sqrt((c[0] - into_circle[0])**2 + (c[1] - into_circle[1])**2)
-            return (d_btwn_circles+c[2]) <= into_circle[2]
-
-        x_mid,   y_mid   = (x1 + x0)/2.0,            (y1 + y0)/2.0
-        x_scale, y_scale = (x1 - x0)/into_circle[2], (y1 - y0)/into_circle[2]
-        _falls_outside_ = True
-        _scale_div_     = 2.0
-        while _falls_outside_:
-            scale           = max(x_scale, y_scale)/_scale_div_
-            fit             = []
-            _falls_outside_ = False
-            for i in range(len(circles)-1, -1, -1): # the circles on the outside are the ones that will fall outside... start there...
-                _circle_ = circles[i]
-                x = (_circle_[0] - x_mid)/scale + into_circle[0]
-                y = (_circle_[1] - y_mid)/scale + into_circle[1]
-                fit.append((x,y,_circle_[2]/scale))
-                if not circleIsWithin((x,y,_circle_[2]/scale)):
-                    _falls_outside_ = True
-                    break
-            _scale_div_ *= 0.99
-        return fit
-
-    #
     # circlesOverlap() - determine if two circles overlap
     #
     def circlesOverlap(self, c0, c1): return (c0[0] - c1[0])**2 + (c0[1] - c1[1])**2 < (c0[2] + c1[2])**2
