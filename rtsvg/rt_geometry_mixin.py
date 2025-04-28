@@ -38,8 +38,7 @@ class RTGeometryMixin(object):
     #
     def packCircles(self, circles, into_circle=None):
         _cp_      = CirclePacker(self, circles)
-        _circles_ = _cp_.packedCircles()
-        if into_circle is not None: _circles_ = self.__translateAndScaleCircles__(_circles_, into_circle, _cp_)
+        _circles_ = _cp_.packedCircles(into_circle)
         return _circles_
 
     #
@@ -50,7 +49,9 @@ class RTGeometryMixin(object):
     # ... 2.48s for packing
     # ... 0.08s for scaling
     #
-    def __translateAndScaleCircles__(self, circles, into_circle, cp):
+    # DONT USE / REPLACED WITH A FIT METHOD WITHIN THE CIRCLE PACKER Class
+    #
+    def XXX__translateAndScaleCircles__(self, circles, into_circle, cp):   
         x0, y0, x1, y1 = circles[0][0] - circles[0][2], circles[0][1] - circles[0][2], circles[0][0] + circles[0][2], circles[0][1] + circles[0][2]
         for _circle_ in circles:
             x0, y0 = min(x0, _circle_[0] - _circle_[2]), min(y0, _circle_[1] - _circle_[2])

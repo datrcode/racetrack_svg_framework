@@ -95,7 +95,18 @@ class CirclePacker(object):
     #
     # packedCircles() - return the packed circles
     #
-    def packedCircles(self): return self.packed
+    def packedCircles(self, into_circle=None):
+        if into_circle is None: return copy.deepcopy(self.packed)
+        _inscribed_ = self.optimalInscriptionCircle()
+        scale       = _inscribed_[2] / into_circle[2]
+        _return_    = []
+        for i in range(len(self.packed)):
+            _to_transform_ = self.packed[i]
+            x = (_to_transform_[0] - _inscribed_[0])/scale + into_circle[0]
+            y = (_to_transform_[1] - _inscribed_[1])/scale + into_circle[1]
+            r = _to_transform_[2] / scale
+            _return_.append((x,y,r))
+        return _return_
 
     #
     # __packedCircleExtents__() - determine the extents of the packed circles to include the radii
