@@ -76,6 +76,7 @@ class RTPieChartMixin(object):
                  # ------------------------------------------------- # custom render for this component
                  style                : str             = 'pie',     # 'pie' or 'waffle'
                  min_render_angle_deg : int             = 5,         # minimum render angle
+                 donut_h              : int             = 20,        # height of the donut ring
                  # ------------------------------------------------- # visualization geometry / etc.
                  track_state          : bool            = False,     # track state for interactive filtering
                  x_view               : int             = 0,         # x offset for the view
@@ -106,11 +107,13 @@ class RTPieChartMixin(object):
             Use a set operation to determine the size of the pie slices in combination with "count_by".
 
         style : str
-            The style of the chart.  Either 'pie' or 'waffle'.  Pie is the default and handles more cases.
+            The style of the chart.  Either 'pie', 'donut', or 'waffle'.  Pie is the default and handles more cases.
 
         min_render_angle_deg : int
             The minimum angle in degrees to render a slice.  The default is 5 degrees.
         
+        donut_h: int
+            Height of the donut ring if the style is set to "donut"
         
         Other Parameters
         -----------------
@@ -174,6 +177,7 @@ class RTPieChartMixin(object):
             self.count_by_set         = kwargs['count_by_set']
             self.style                = kwargs['style']
             self.min_render_angle_deg = kwargs['min_render_angle_deg']
+            self.donut_h              = kwargs['donut_h']
             self.track_state          = kwargs['track_state']
             self.x_view               = kwargs['x_view']
             self.y_view               = kwargs['y_view']
@@ -214,20 +218,17 @@ class RTPieChartMixin(object):
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
-            if self.last_render is None:
-                self.renderSVG()
+            if self.last_render is None: self.renderSVG()
             return self.last_render
 
         #
         # renderSVG() - create the SVG
         #
         def renderSVG(self, just_calc_max=False):
-            if self.track_state:
-                self.geom_to_df = {}
+            if self.track_state: self.geom_to_df = {}
 
             # Color ordering
-            if self.global_color_order is None:
-                self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
+            if self.global_color_order is None: self.global_color_order = self.rt_self.colorRenderOrder(self.df, self.color_by, self.count_by, self.count_by_set)
            
             #
             # Geometry
@@ -250,20 +251,14 @@ class RTPieChartMixin(object):
             
             if len(self.df) > 0:
                 # Render the different styles
-                if self.style   == 'pie':
-                    if   self.rt_self.isPandas(self.df):
-                        svg += self.__renderPieStyle_pandas__(w_usable, h_usable)
-                    elif self.rt_self.isPolars(self.df):
-                        svg += self.__renderPieStyle_polars__(w_usable, h_usable)
-                    else:
-                        raise Exception("RTPieChart() - only pandas and polars supported")
+                if self.style == 'pie' or self.style == 'donut':
+                    if   self.rt_self.isPandas(self.df): svg += self.__renderPieStyle_pandas__(w_usable, h_usable)
+                    elif self.rt_self.isPolars(self.df): svg += self.__renderPieStyle_polars__(w_usable, h_usable)
+                    else:                                raise Exception("RTPieChart() - only pandas and polars supported")
                 elif self.style == 'waffle':
-                    if   self.rt_self.isPandas(self.df):                
-                        svg += self.__renderWaffleStyle__(w_usable, h_usable)
-                    else:
-                        raise Exception('RTPieChart() - only pandas is supported for waffle style')
-                else:
-                    raise Exception(f'RTPieChart() - do not under style "{self.style}"')
+                    if   self.rt_self.isPandas(self.df): svg += self.__renderWaffleStyle__(w_usable, h_usable)
+                    else:                                raise Exception('RTPieChart() - only pandas is supported for waffle style')
+                else: raise Exception(f'RTPieChart() - do not under style "{self.style}"')
 
             svg += '</svg>'
             self.last_render = svg
@@ -335,15 +330,14 @@ class RTPieChartMixin(object):
         def __renderPieStyle_polars__(self, w_usable, h_usable):
             cx = self.x_ins + w_usable/2
             cy = self.y_ins + h_usable/2
-            if w_usable < h_usable:
-                r = w_usable/2
-            else:
-                r = h_usable/2
+            if w_usable < h_usable: r = w_usable/2
+            else:                   r = h_usable/2
             default_color = self.rt_self.co_mgr.getTVColor('data','default')
 
             # Draw the default data color circle...
-            svg = f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{default_color}" stroke-opacity="0.0" />'
-
+            if   self.style == 'pie':   svg = [f'<circle r="{r}" cx="{cx}" cy="{cy}" fill="{default_color}" stroke-opacity="0.0" />']
+            elif self.style == 'donut': svg = [f'<path d="{self.rt_self.genericArc(cx, cy, 0.0, 359.9, r-self.donut_h, r)}" fill="{default_color}" stroke-opacity="0.0" />']
+    
             # Otherwise, break the cases down by how we're counting...
             if self.color_by is not None:
                 counter = self.rt_self.polarsCounter(self.df, self.color_by, self.count_by, self.count_by_set)
@@ -353,6 +347,8 @@ class RTPieChartMixin(object):
                 deg, not_rendered = 0, []
                 my_intersection = self.rt_self.__myIntersection__(self.global_color_order['index'], counter[self.color_by])
                 for cb_bin in my_intersection:
+                    if type(cb_bin) != tuple: cb_bin_as_tuple = (cb_bin,)
+                    else:                     cb_bin_as_tuple = cb_bin
                     my_color = cb_bin
                     my_total = counter.filter(pl.col(self.color_by) == cb_bin)['__count__'][0]
                     # Replicated arc code
@@ -361,30 +357,53 @@ class RTPieChartMixin(object):
                         _co = self.rt_self.co_mgr.getColor(my_color)
                         deg_end = deg + degrees_to_render
                         if degrees_to_render >= 360.0:
-                            svg += f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{_co}" stroke-opacity="0.0" />'
+                            if   self.style == 'pie':    svg.append(f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{_co}" stroke-opacity="0.0" />')
+                            elif self.style == 'donut':  svg.append(f'<path d="{self.rt_self.genericArc(cx, cy, 0.0, 360.0, r-self.donut_h, r)}" fill="{_co}" stroke-opacity="0.0" />')
                         else:
-                            svg += f'<path d="{arcPath(cx,cy,r,deg,deg_end)}" fill="{_co}" stroke-opacity="0.0" />'
-
+                            if   self.style == 'pie':   _path_ = self.rt_self.genericArc(cx, cy, deg, deg_end, 0.0,            r)
+                            elif self.style == 'donut': _path_ = self.rt_self.genericArc(cx, cy, deg, deg_end, r-self.donut_h, r)
+                            svg.append(f'<path d="{_path_}" fill="{_co}" stroke-opacity="0.0" />')
                             if self.track_state:
-                                _poly_points = [[cx,cy]]
-                                for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
-                                    _poly_angle = pi * (_poly_degree-90) / 180.0 
-                                    _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
-                                self.geom_to_df[Polygon(_poly_points)] = tracking_gb[cb_bin]
+                                if   self.style == 'pie': _poly_points = [[cx,cy]]
+                                elif self.style == 'donut': _poly_points = []
+                                _poly_degree_ = deg
+                                while _poly_degree_ <= deg_end:
+                                    _poly_angle = pi * _poly_degree_ / 180.0 
+                                    _x_, _y_ = cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r
+                                    _poly_points.append([_x_, _y_])
+                                    _poly_degree_ += 1.0
+                                if self.style == 'donut':
+                                    while _poly_degree_ >= deg:
+                                        _poly_angle = pi * _poly_degree_ / 180.0 
+                                        _x_, _y_ = cx + cos(_poly_angle)*(r-self.donut_h), cy + sin(_poly_angle)*(r-self.donut_h)
+                                        _poly_points.append([_x_, _y_])
+                                        _poly_degree_ -= 1.0
+                                self.geom_to_df[Polygon(_poly_points)] = tracking_gb[cb_bin_as_tuple]
                         deg = deg_end
                     elif self.track_state:
-                        not_rendered.append(tracking_gb[cb_bin])
-                
+                        not_rendered.append(tracking_gb[cb_bin_as_tuple])
+
+
                 # For any arcs that weren't long enough allocate them to the end
                 if len(not_rendered) > 0 and self.track_state:
-                    deg_end = 359
-                    _poly_points = [[cx,cy]]
-                    for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
-                        _poly_angle = pi * (_poly_degree-90) / 180.0 
-                        _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
+                    deg_end = 360
+                    if   self.style == 'pie':   _poly_points = [[cx,cy]]
+                    elif self.style == 'donut': _poly_points = []
+                    _poly_degree_ = deg
+                    while _poly_degree_ <= deg_end:
+                        _poly_angle = pi * _poly_degree_ / 180.0 
+                        _x_, _y_ = cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r
+                        _poly_points.append([_x_, _y_])
+                        _poly_degree_ += 1.0
+                    if self.style == 'donut':
+                        while _poly_degree_ >= deg:
+                            _poly_angle = pi * _poly_degree_ / 180.0 
+                            _x_, _y_ = cx + cos(_poly_angle)*(r-self.donut_h), cy + sin(_poly_angle)*(r-self.donut_h)
+                            _poly_points.append([_x_, _y_])
+                            _poly_degree_ -= 1.0
                     self.geom_to_df[Polygon(_poly_points)] = not_rendered
 
-            return svg
+            return ''.join(svg)
 
         #
         # Render the standard pie chart style
@@ -392,15 +411,14 @@ class RTPieChartMixin(object):
         def __renderPieStyle_pandas__(self, w_usable, h_usable):
             cx = self.x_ins + w_usable/2
             cy = self.y_ins + h_usable/2
-            if w_usable < h_usable:
-                r = w_usable/2
-            else:
-                r = h_usable/2
+            if    w_usable < h_usable: r = w_usable/2
+            else:                      r = h_usable/2
             default_color = self.rt_self.co_mgr.getTVColor('data','default')
 
             # Draw the default data color circle...
-            svg = f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{default_color}" stroke-opacity="0.0" />'
-            
+            if   self.style == 'pie':   svg = [f'<circle r="{r}" cx="{cx}" cy="{cy}" fill="{default_color}" stroke-opacity="0.0" />']
+            elif self.style == 'donut': svg = [f'<path d="{self.rt_self.genericArc(cx, cy, 0.0, 359.9, r-self.donut_h, r)}" fill="{default_color}" stroke-opacity="0.0" />']
+
             # Otherwise, break the cases down by how we're counting...
             if self.color_by is not None:
                 # Count By Rows
@@ -421,9 +439,8 @@ class RTPieChartMixin(object):
                     total_i = self.count_by
 
                 # Create a groupby just for state tracking
-                if self.track_state:
-                    tracking_gb = self.df.groupby(self.color_by)
-                    
+                if self.track_state: tracking_gb = self.df.groupby(self.color_by)
+
                 # Common render code
                 deg, not_rendered = 0, []
                 my_intersection = self.rt_self.__myIntersection__(self.global_color_order.index,tmp_df.index)
@@ -436,15 +453,27 @@ class RTPieChartMixin(object):
                         _co = self.rt_self.co_mgr.getColor(my_color)
                         deg_end = deg + degrees_to_render
                         if degrees_to_render >= 360.0:
-                            svg += f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{_co}" stroke-opacity="0.0" />'
+                            if   self.style == 'pie':    svg.append(f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{_co}" stroke-opacity="0.0" />')
+                            elif self.style == 'donut':  svg.append(f'<path d="{self.rt_self.genericArc(cx, cy, 0.0, 360.0, r-self.donut_h, r)}" fill="{_co}" stroke-opacity="0.0" />')
                         else:
-                            svg += f'<path d="{arcPath(cx,cy,r,deg,deg_end)}" fill="{_co}" stroke-opacity="0.0" />'
-
+                            if   self.style == 'pie':   _path_ = self.rt_self.genericArc(cx, cy, deg, deg_end, 0.0,            r)
+                            elif self.style == 'donut': _path_ = self.rt_self.genericArc(cx, cy, deg, deg_end, r-self.donut_h, r)
+                            svg.append(f'<path d="{_path_}" fill="{_co}" stroke-opacity="0.0" />')
                             if self.track_state:
-                                _poly_points = [[cx,cy]]
-                                for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
-                                    _poly_angle = pi * (_poly_degree-90) / 180.0 
-                                    _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
+                                if   self.style == 'pie': _poly_points = [[cx,cy]]
+                                elif self.style == 'donut': _poly_points = []
+                                _poly_degree_ = deg
+                                while _poly_degree_ <= deg_end:
+                                    _poly_angle = pi * _poly_degree_ / 180.0 
+                                    _x_, _y_ = cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r
+                                    _poly_points.append([_x_, _y_])
+                                    _poly_degree_ += 1.0
+                                if self.style == 'donut':
+                                    while _poly_degree_ >= deg:
+                                        _poly_angle = pi * _poly_degree_ / 180.0 
+                                        _x_, _y_ = cx + cos(_poly_angle)*(r-self.donut_h), cy + sin(_poly_angle)*(r-self.donut_h)
+                                        _poly_points.append([_x_, _y_])
+                                        _poly_degree_ -= 1.0
                                 self.geom_to_df[Polygon(_poly_points)] = tracking_gb.get_group(cb_bin)
                         deg = deg_end
                     elif self.track_state:
@@ -452,14 +481,24 @@ class RTPieChartMixin(object):
                 
                 # For any arcs that weren't long enough allocate them to the end
                 if len(not_rendered) > 0 and self.track_state:
-                    deg_end = 359
-                    _poly_points = [[cx,cy]]
-                    for _poly_degree in range(floor(deg),ceil(deg_end)+1,1):
-                        _poly_angle = pi * (_poly_degree-90) / 180.0 
-                        _poly_points.append([cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r])
+                    deg_end = 360
+                    if   self.style == 'pie':   _poly_points = [[cx,cy]]
+                    elif self.style == 'donut': _poly_points = []
+                    _poly_degree_ = deg
+                    while _poly_degree_ <= deg_end:
+                        _poly_angle = pi * _poly_degree_ / 180.0 
+                        _x_, _y_ = cx + cos(_poly_angle)*r, cy + sin(_poly_angle)*r
+                        _poly_points.append([_x_, _y_])
+                        _poly_degree_ += 1.0
+                    if self.style == 'donut':
+                        while _poly_degree_ >= deg:
+                            _poly_angle = pi * _poly_degree_ / 180.0 
+                            _x_, _y_ = cx + cos(_poly_angle)*(r-self.donut_h), cy + sin(_poly_angle)*(r-self.donut_h)
+                            _poly_points.append([_x_, _y_])
+                            _poly_degree_ -= 1.0
                     self.geom_to_df[Polygon(_poly_points)] = not_rendered
 
-            return svg
+            return ''.join(svg)
         
         #
         # smallMultipleFeatureVector()
