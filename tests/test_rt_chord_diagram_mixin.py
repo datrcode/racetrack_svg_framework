@@ -331,11 +331,10 @@ class Testrt_chord_diagram_mixin(unittest.TestCase):
         self.rt_self.chordDiagram(txt_h=16, **params).renderSVG()
         self.rt_self.chordDiagram(txt_h=16, label_only={'a','d'}, **params).renderSVG()
 
-
     def test_ch2_batch_7(self):
         df = pl.DataFrame({'fm':['a',  'a',  'a',  'a',  'b',  'b',  'b',  'c',  'c',  'd',  'd',  'd', 'd'],
-                        'to':['b',  'c',  'd',  'b',  'a',  'b',  'c',  'a',  'b',  'c',  'a',  'b', 'd'],
-                        'ct':[10,   20,   5,    1,    20,   3,    5,    10,   15,   5,    10,   50,  20]})
+                           'to':['b',  'c',  'd',  'b',  'a',  'b',  'c',  'a',  'b',  'c',  'a',  'b', 'd'],
+                           'ct':[10,   20,   5,    1,    20,   3,    5,    10,   15,   5,    10,   50,  20]})
 
         params = {'df':df, 'relationships':[('fm','to')], 'equal_size_nodes':True, 'draw_labels':True}
         self.rt_self.chordDiagram(**params).renderSVG()
@@ -353,6 +352,26 @@ class Testrt_chord_diagram_mixin(unittest.TestCase):
         self.rt_self.chordDiagram(**params, link_style='wide', count_by='ct').renderSVG()
         self.rt_self.chordDiagram(**params, link_style='wide', count_by='ct', count_by_set=True).renderSVG()
 
+    def test_ch2_batch_7_trackstate(self):
+        df = pl.DataFrame({'fm':['a',  'a',  'a',  'a',  'b',  'b',  'b',  'c',  'c',  'd',  'd',  'd', 'd'],
+                           'to':['b',  'c',  'd',  'b',  'a',  'b',  'c',  'a',  'b',  'c',  'a',  'b', 'd'],
+                           'ct':[10,   20,   5,    1,    20,   3,    5,    10,   15,   5,    10,   50,  20]})
+
+        params = {'df':df, 'relationships':[('fm','to')], 'equal_size_nodes':True, 'draw_labels':True, 'track_state':True}
+        self.rt_self.chordDiagram(**params).renderSVG()
+        self.rt_self.chordDiagram(**params, count_by='ct').renderSVG()
+        self.rt_self.chordDiagram(**params, count_by='ct', count_by_set=True).renderSVG()
+        self.rt_self.chordDiagram(**params, link_style='wide').renderSVG()
+        self.rt_self.chordDiagram(**params, link_style='wide', count_by='ct').renderSVG()
+        self.rt_self.chordDiagram(**params, link_style='wide', count_by='ct', count_by_set=True).renderSVG()
+
+        params = {'df':df, 'relationships':[('fm','to')], 'equal_size_nodes':False, 'draw_labels':True, 'track_state':True}
+        self.rt_self.chordDiagram(**params).renderSVG()
+        self.rt_self.chordDiagram(**params, count_by='ct').renderSVG()
+        self.rt_self.chordDiagram(**params, count_by='ct', count_by_set=True).renderSVG()
+        self.rt_self.chordDiagram(**params, link_style='wide').renderSVG()
+        self.rt_self.chordDiagram(**params, link_style='wide', count_by='ct').renderSVG()
+        self.rt_self.chordDiagram(**params, link_style='wide', count_by='ct', count_by_set=True).renderSVG()
 
 if __name__ == '__main__':
     unittest.main()
