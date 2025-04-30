@@ -49,6 +49,30 @@ class Testrt_small_multiples_mixin(unittest.TestCase):
         self.rt_self.smallMultiples(df,    y_axis_independent=False, x_axis_independent=False, **params).renderSVG()
         self.rt_self.smallMultiples(df_pl, y_axis_independent=False, x_axis_independent=False, **params).renderSVG()
 
+    def test_batch_1_track_state(self):
+        df = pd.DataFrame({'cat':['a',  'a',     'b',   'b',   'c',   'c',   'd',   'd',   'd'],
+                           'bin':['x',  'y',     'x',   'y',   'x',   'y',   'x',   'y',   'z'],
+                           'num':[80,   20,      70,    30,    200,   200,   100,   800,   100]})
+        df_pl = pl.DataFrame(df)
+        params = {'category_by':'cat', 'sm_type':'pieChart', 'color_by':'bin', 'count_by':'num', 'w_sm_override':64, 'h_sm_override':64, 'w':512, 'track_state':True}
+        self.rt_self.smallMultiples(df,    **params).renderSVG()
+        self.rt_self.smallMultiples(df_pl, **params).renderSVG()
+        self.rt_self.smallMultiples(df,    sort_by='records', **params).renderSVG()
+        self.rt_self.smallMultiples(df_pl, sort_by='records', **params).renderSVG()
+        self.rt_self.smallMultiples(df,    sort_by='field', sort_by_field='num', **params).renderSVG()
+        self.rt_self.smallMultiples(df_pl, sort_by='field', sort_by_field='num', **params).renderSVG()
+        self.rt_self.smallMultiples(df,    show_df_multiple=False, **params).renderSVG()
+        self.rt_self.smallMultiples(df_pl, show_df_multiple=False, **params).renderSVG()
+        self.rt_self.smallMultiples(df,    max_categories=2,       **params).renderSVG()
+        self.rt_self.smallMultiples(df_pl, max_categories=2,       **params).renderSVG()
+        params = {'category_by':'cat', 'sm_type':'histogram', 'sm_params':{'bin_by':'bin'}, 'color_by':'bin', 'count_by':'num', 'w_sm_override':64, 'h_sm_override':64, 'w':512, 'track_state':True}
+        self.rt_self.smallMultiples(df,    **params).renderSVG()
+        self.rt_self.smallMultiples(df_pl, **params).renderSVG()
+        self.rt_self.smallMultiples(df,    y_axis_independent=False, **params).renderSVG()
+        self.rt_self.smallMultiples(df_pl, y_axis_independent=False, **params).renderSVG()
+        self.rt_self.smallMultiples(df,    y_axis_independent=False, x_axis_independent=False, **params).renderSVG()
+        self.rt_self.smallMultiples(df_pl, y_axis_independent=False, x_axis_independent=False, **params).renderSVG()
+
     def test_batch_2(self):
         df = pd.DataFrame({'cat':[ 1,   1,   1,     2,   2,   2,   2,    2,    2,    2,    2,    2],
                         'fm': ['a', 'b', 'c',   'w', 'x', 'y', 'z',  'w',  'w',  'w',  'z',  'z'],

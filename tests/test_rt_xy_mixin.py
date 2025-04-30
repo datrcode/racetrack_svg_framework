@@ -73,9 +73,18 @@ class Testrt_xy_mixin(unittest.TestCase):
         df2 = pd.DataFrame({'timestamp':['2023-01-01', '2023-01-02', '2023-01-03'], 'value':    [1020,         900,          1030], 'gb':['b','b','b']})
         df2 = self.rt_self.columnsAreTimestamps(df2, 'timestamp')
         df2_pl = pl.DataFrame(df2)
-
         self.rt_self.xy(df,    x_field='timestamp', y_field='value', line_groupby_field='gb', df2=df2,    x2_field='timestamp',y2_field='value',line2_groupby_field='gb', **self.my_vars_b1).renderSVG()
         self.rt_self.xy(df_pl, x_field='timestamp', y_field='value', line_groupby_field='gb', df2=df2_pl, x2_field='timestamp',y2_field='value',line2_groupby_field='gb', **self.my_vars_b1).renderSVG()
+
+    def test_timestamps_track_state(self):
+        df  = pd.DataFrame({'timestamp':['2023-01-01', '2023-01-02', '2023-01-03'], 'value':    [10,           20,           15],   'gb':['a','a','a']})
+        df  = self.rt_self.columnsAreTimestamps(df, 'timestamp')
+        df_pl = pl.DataFrame(df)
+        df2 = pd.DataFrame({'timestamp':['2023-01-01', '2023-01-02', '2023-01-03'], 'value':    [1020,         900,          1030], 'gb':['b','b','b']})
+        df2 = self.rt_self.columnsAreTimestamps(df2, 'timestamp')
+        df2_pl = pl.DataFrame(df2)
+        self.rt_self.xy(df,    x_field='timestamp', y_field='value', line_groupby_field='gb', df2=df2,    x2_field='timestamp',y2_field='value',line2_groupby_field='gb', track_state=True, **self.my_vars_b1).renderSVG()
+        self.rt_self.xy(df_pl, x_field='timestamp', y_field='value', line_groupby_field='gb', df2=df2_pl, x2_field='timestamp',y2_field='value',line2_groupby_field='gb', track_state=True, **self.my_vars_b1).renderSVG()
 
     def test_timestamps_2(self):
         x_values   = [1,      2,       3,     1,      2,      3,      1,      2,      3]

@@ -150,6 +150,11 @@ class Testrt_liknode_mixin(unittest.TestCase):
         self.rt_self.linkNode(self.df_pl_b1, self.relates_b1, self.pos_b1).renderSVG()
         self.rt_self.link    (self.df_pl_b1, self.relates_b1, self.pos_b1).renderSVG()
 
+    def test_simple_track_state(self):
+        self.rt_self.linkNode(self.df_b1,    self.relates_b1, self.pos_b1, track_state=True).renderSVG()
+        self.rt_self.linkNode(self.df_pl_b1, self.relates_b1, self.pos_b1, track_state=True).renderSVG()
+        self.rt_self.link    (self.df_pl_b1, self.relates_b1, self.pos_b1, track_state=True).renderSVG()
+
     def test_simpleSizes(self):
         self.rt_self.linkNode(self.df_b1,    self.relates_b1, self.pos_b1, count_by='ct', link_size='vary',  node_size='vary').renderSVG()
         self.rt_self.linkNode(self.df_pl_b1, self.relates_b1, self.pos_b1, count_by='ct', link_size='vary',  node_size='vary').renderSVG()

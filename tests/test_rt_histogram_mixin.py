@@ -94,6 +94,37 @@ class Testrt_histogram_mixin(unittest.TestCase):
         _str_ = 'color'
         self.rt_self.histogram(df_pl, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
 
+    def test_batch_2_track_state(self):
+        df = pd.DataFrame({'bin':   ['a',   'a',     'b',   'b',     'c',   'c',    'c',      'd',   'd',     'd',    'd'],
+                           'bin2':  ['x',   'x',     'x',   'x',     'x',   'y',    'z',      'x',   'y',     'z',    'w'],
+                           'amt':   [10,    5,       10,    30,      1,     2,      1,        1,      2,      3,      4],
+                           'amt2':  [1,     2,       1,     2,       1,     2,      3,        1,      2,      3,      4],
+                           'color': ['red', 'blue',  'red', 'red',   'red', 'blue', 'yellow', 'blue', 'blue', 'blue', 'red']})
+        df_pl = pl.DataFrame(df)
+
+        _parms_ = {'w':160, 'h':128, 'track_state':True}
+        
+        _str_ = 'bin'
+        self.rt_self.histogram(df, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
+        _str_ = 'bin2'
+        self.rt_self.histogram(df, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
+        _str_ = 'amt'
+        self.rt_self.histogram(df, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
+        _str_ = 'amt2'
+        self.rt_self.histogram(df, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
+        _str_ = 'color'
+        self.rt_self.histogram(df, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
+
+        _str_ = 'bin'
+        self.rt_self.histogram(df_pl, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
+        _str_ = 'bin2'
+        self.rt_self.histogram(df_pl, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
+        _str_ = 'amt'
+        self.rt_self.histogram(df_pl, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
+        _str_ = 'amt2'
+        self.rt_self.histogram(df_pl, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
+        _str_ = 'color'
+        self.rt_self.histogram(df_pl, bin_by=_str_, count_by=_str_, color_by=_str_, **_parms_).renderSVG()
 
     def test_batch_3(self):
         df = pd.DataFrame({'bin':  ['a','a','b','b','b','c'], 
@@ -101,6 +132,22 @@ class Testrt_histogram_mixin(unittest.TestCase):
                           'count':[10, 5,   8,  3,  1,  4]})
 
         params = {'df':df, 'bin_by':'bin', 'count_by':'count', 'w':128, 'h':108}
+        self.rt_self.histogram(**params).renderSVG()
+        labels = {'a':'expansion', 'b':'way too many words', 'c':'even more more more more more words go here'}
+        self.rt_self.histogram(labels=labels, **params).renderSVG()
+        params['bin_by'] = ['bin','bin2']
+        self.rt_self.histogram(**params).renderSVG()
+        labels = {'a | 1':'first a', 'c | 4':'fourth "c"'}
+        self.rt_self.histogram(labels=labels, **params).renderSVG()
+        hst = self.rt_self.histogram(labels=labels, **params)
+        self.rt_self.tile([self.rt_self.annotateEntities(hst, ['first a', 'b | 3'])])._repr_svg_()
+
+    def test_batch_3_track_state(self):
+        df = pd.DataFrame({'bin':  ['a','a','b','b','b','c'], 
+                          'bin2': [ 1,  2,  1,  2,  3,  4],
+                          'count':[10, 5,   8,  3,  1,  4]})
+
+        params = {'df':df, 'bin_by':'bin', 'count_by':'count', 'w':128, 'h':108, 'track_state':True}
         self.rt_self.histogram(**params).renderSVG()
         labels = {'a':'expansion', 'b':'way too many words', 'c':'even more more more more more words go here'}
         self.rt_self.histogram(labels=labels, **params).renderSVG()

@@ -52,6 +52,17 @@ class Testrt_temporal_barchart_mixin(unittest.TestCase):
         self.rt_self.temporalBarChart(self.df_pl.filter(pl.col('color') =="blue"),  count_by='count',     color_by='color', w=1280, h=64).renderSVG()
         self.rt_self.xy              (self.df, x_field ='timestamp', y_field='count',  color_by='color', dot_size=None, line_groupby_field='color', w=1280,h=128).renderSVG()
 
+    def test_batch_1_track_state(self):
+        self.rt_self.temporalBarChart(self.df,                                      count_by='count',     color_by='color', w=1280, track_state=True).renderSVG()
+        self.rt_self.temporalBarChart(self.df_pl,                                   count_by='count',     color_by='color', w=1280, track_state=True).renderSVG()
+        self.rt_self.temporalBarChart(self.df.query('color=="red"'),                count_by='count',     color_by='color', w=1280, h=64, track_state=True).renderSVG()
+        self.rt_self.temporalBarChart(self.df_pl.filter(pl.col('color') =="red"),   count_by='count',     color_by='color', w=1280, h=64, track_state=True).renderSVG()
+        self.rt_self.temporalBarChart(self.df.query('color=="green"'),              count_by='count',     color_by='color', w=1280, h=64, track_state=True).renderSVG()
+        self.rt_self.temporalBarChart(self.df_pl.filter(pl.col('color') =="green"), count_by='count',     color_by='color', w=1280, h=64, track_state=True).renderSVG()
+        self.rt_self.temporalBarChart(self.df.query('color=="blue"'),               count_by='count',     color_by='color', w=1280, h=64, track_state=True).renderSVG()
+        self.rt_self.temporalBarChart(self.df_pl.filter(pl.col('color') =="blue"),  count_by='count',     color_by='color', w=1280, h=64, track_state=True).renderSVG()
+        self.rt_self.xy              (self.df, x_field ='timestamp', y_field='count',  color_by='color', dot_size=None, line_groupby_field='color', w=1280, h=128, track_state=True).renderSVG()
+
     def test_batch_2(self):
         df_agg = self.rt_self.temporalStatsAggregationWithGBFields(self.df, ts_field='timestamp', fields='count', freq='W', gb_fields='color').reset_index()
         self.rt_self.temporalBarChart(self.df.query('color == "red"'),             count_by='count', color_by='color', w=768, ignore_unintuitive=False).renderSVG()
