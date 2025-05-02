@@ -108,16 +108,18 @@ class RTColorManager:
         self.spectrum_palettes.append(['#e2eeec','#cfdbda','#8aaaa5','#cabd9a','#a5956d']) # pastels - source:  https://colorpalettes.net/color-palette-4545/
         self.spectrum_palettes.append(['#f6e8b8','#eec76f','#d2973e','#eec76f','#f6e8b8']) # pastels - source:  https://colorpalettes.net/color-palette-4514/
         # continuous
-        self.spectrum_palettes.append(['#F6E8B8', '#EEC76F', '#D2973E', '#96581C', '#683611']), # https://colorpalettes.net/color-palette-4514/
-        self.spectrum_palettes.append(['#EFE4CF', '#CDB184', '#A18748', '#6F6E31', '#28340B']), # https://colorpalettes.net/color-palette-4482/
-        self.spectrum_palettes.append(['#DABEB6', '#EED0C6', '#E3D4D0', '#B2B9BF', '#7A8D9B']), # https://colorpalettes.net/color-palette-4448/
+        self.spectrum_palettes.append(['#F6E8B8', '#EEC76F', '#D2973E', '#96581C', '#683611']) # https://colorpalettes.net/color-palette-4514/
+        self.spectrum_palettes.append(['#EFE4CF', '#CDB184', '#A18748', '#6F6E31', '#28340B']) # https://colorpalettes.net/color-palette-4482/
+        self.spectrum_palettes.append(['#DABEB6', '#EED0C6', '#E3D4D0', '#B2B9BF', '#7A8D9B']) # https://colorpalettes.net/color-palette-4448/
         # divergent
-        self.spectrum_palettes.append(['#92DAD9', '#DCEBEB', '#F7E2E1', '#ECA4A4', '#AC6869']), # https://colorpalettes.net/color-palette-4501/
-        self.spectrum_palettes.append(['#65b2c6', '#c0cccc', '#d6c2bc', '#d57276', '#d73d6c']), # https://colorpalettes.net/color-palette-4315/
+        self.spectrum_palettes.append(['#92DAD9', '#DCEBEB', '#F7E2E1', '#ECA4A4', '#AC6869']) # https://colorpalettes.net/color-palette-4501/
+        self.spectrum_palettes.append(['#65b2c6', '#c0cccc', '#d6c2bc', '#d57276', '#d73d6c']) # https://colorpalettes.net/color-palette-4315/
         # contrast
-        self.spectrum_palettes.append(['#181D3B', '#3C4A79', '#F6D98F', '#CC979F', '#833E5B']), # https://colorpalettes.net/color-palette-4471/
-        self.spectrum_palettes.append(['#6E4B6B', '#537197', '#42A1A5', '#CBC2BB', '#BE867E']), # https://colorpalettes.net/color-palette-4410/
-        self.spectrum_palettes.append(['#efc67c', '#fcf3b5', '#b1d1ed', '#fca3b5', '#ba83c4']), # https://colorpalettes.net/color-palette-4203/
+        self.spectrum_palettes.append(['#181D3B', '#3C4A79', '#F6D98F', '#CC979F', '#833E5B']) # https://colorpalettes.net/color-palette-4471/
+        self.spectrum_palettes.append(['#6E4B6B', '#537197', '#42A1A5', '#CBC2BB', '#BE867E']) # https://colorpalettes.net/color-palette-4410/
+        self.spectrum_palettes.append(['#efc67c', '#fcf3b5', '#b1d1ed', '#fca3b5', '#ba83c4']) # https://colorpalettes.net/color-palette-4203/
+
+        self.spectrum_palettes.append(['#66101f', '#855a5c', '#8a8e91', '#b8d4e3', '#eeffdb']) # https://coolors.co/66101f-855a5c-8a8e91-b8d4e3-eeffdb
 
         self.spectrum_colors_orig = self.brewerColors('diverging', 11, 3) # self.spectrum_palettes[0]
         self.spectrum_colors      = self.spectrum_colors_orig
