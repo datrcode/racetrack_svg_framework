@@ -358,7 +358,7 @@ class RTPieChartMixin(object):
                         deg_end = deg + degrees_to_render
                         if degrees_to_render >= 360.0:
                             if   self.style == 'pie':    svg.append(f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{_co}" stroke-opacity="0.0" />')
-                            elif self.style == 'donut':  svg.append(f'<path d="{self.rt_self.genericArc(cx, cy, 0.0, 360.0, r-self.donut_h, r)}" fill="{_co}" stroke-opacity="0.0" />')
+                            elif self.style == 'donut':  svg.append(f'<path d="{self.rt_self.genericArc(cx, cy, 0.0, 359.9, r-self.donut_h, r)}" fill="{_co}" stroke-opacity="0.0" />')
                         else:
                             if   self.style == 'pie':   _path_ = self.rt_self.genericArc(cx, cy, deg, deg_end, 0.0,            r)
                             elif self.style == 'donut': _path_ = self.rt_self.genericArc(cx, cy, deg, deg_end, r-self.donut_h, r)
@@ -454,7 +454,7 @@ class RTPieChartMixin(object):
                         deg_end = deg + degrees_to_render
                         if degrees_to_render >= 360.0:
                             if   self.style == 'pie':    svg.append(f'<ellipse rx="{r}" ry="{r}" cx="{cx}" cy="{cy}" fill="{_co}" stroke-opacity="0.0" />')
-                            elif self.style == 'donut':  svg.append(f'<path d="{self.rt_self.genericArc(cx, cy, 0.0, 360.0, r-self.donut_h, r)}" fill="{_co}" stroke-opacity="0.0" />')
+                            elif self.style == 'donut':  svg.append(f'<path d="{self.rt_self.genericArc(cx, cy, 0.0, 359.9, r-self.donut_h, r)}" fill="{_co}" stroke-opacity="0.0" />')
                         else:
                             if   self.style == 'pie':   _path_ = self.rt_self.genericArc(cx, cy, deg, deg_end, 0.0,            r)
                             elif self.style == 'donut': _path_ = self.rt_self.genericArc(cx, cy, deg, deg_end, r-self.donut_h, r)
