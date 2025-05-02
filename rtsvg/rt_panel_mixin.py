@@ -433,7 +433,7 @@ class RTReactiveHTML(ReactiveHTML):
                             _df = _df.drop(set(_df.columns) - set(self.df.columns))
 
                     # Remove data option...
-                    if self.df_level > 0 and self.drag_shiftkey:
+                    if self.drag_shiftkey:
                         if   self.rt_self.isPandas(self.df):
                             _df = self.dfs[self.df_level].query('index not in @_df.index')
                         elif self.rt_self.isPolars(self.df):
