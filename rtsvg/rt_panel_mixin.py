@@ -92,13 +92,20 @@ class RTPanelMixin(object):
         ----------
         df : DataFrame
             The dataframe to be rendered
+
         spec : dict
             Layout specification
+
         w, h : int
             Width and height of the layout
+
         rt_params : dict
+            Params passed to all of the widgets within the layout
+
         h_gap, v_gap, widget_h_gap, widget_v_gap : int
             Horizontal, vertical, and widget gap between views
+        
+        To debug, use the ".show()" version of the instance.  Then, errors (and prints) will be sent back to the notebook.
         '''
         return RTReactiveHTML(df, self, spec, w, h, rt_params, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
 
