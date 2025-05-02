@@ -452,7 +452,7 @@ class RTReactiveHTML(ReactiveHTML):
                                     break
                         elif self.rt_self.isPolars(self.df):
                             for i in range(len(self.dfs)):
-                                if len(self.dfs[i]) == len(_df) and self.dfs[i].frame_equal(_df):
+                                if len(self.dfs[i]) == len(_df) and self.dfs[i].equals(_df):
                                     i_found = i
                                     break
 
