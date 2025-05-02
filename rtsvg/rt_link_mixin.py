@@ -497,8 +497,10 @@ class RTLinkMixin(object):
             for _node_ in self.all_nodes - self.pos.keys(): self.pos[_node_] = (random.random(),random.random())
 
             # Use a shadow pos that's forced to floats
-            _pos_ = {}
-            for k in self.pos.keys(): _pos_[k] = [float(self.pos[k][0]), float(self.pos[k][1])]
+            _xpos_, _ypos_ = {}, {}
+            for k in self.pos.keys():
+                _xpos_[k] = float(self.pos[k][0])
+                _ypos_[k] = float(self.pos[k][1])
 
             # Create the operations to fill in the world coordinates for all relationship pairs
             _operations_, self.xcols, self.ycols = [], [], []
@@ -507,14 +509,14 @@ class RTLinkMixin(object):
                 _fm_  = _rel_[0]
                 _fmx_ = f'__rel{i}_fm_wx__'
                 _fmy_ = f'__rel{i}_fm_wy__'
-                _operations_.append(pl.col(_fm_).replace_strict(_pos_, default=None, return_dtype=pl.List(pl.Float32)).list.get(0).alias(_fmx_))
-                _operations_.append(pl.col(_fm_).replace_strict(_pos_, default=None, return_dtype=pl.List(pl.Float32)).list.get(1).alias(_fmy_))
+                _operations_.append(pl.col(_fm_).replace_strict(_xpos_, default=None).alias(_fmx_))
+                _operations_.append(pl.col(_fm_).replace_strict(_ypos_, default=None).alias(_fmy_))
                 self.xcols.append(_fmx_), self.ycols.append(_fmy_)
                 _to_  = _rel_[1]
                 _tox_ = f'__rel{i}_to_wx__'
                 _toy_ = f'__rel{i}_to_wy__'
-                _operations_.append(pl.col(_to_).replace_strict(_pos_, default=None, return_dtype=pl.List(pl.Float32)).list.get(0).alias(_tox_))
-                _operations_.append(pl.col(_to_).replace_strict(_pos_, default=None, return_dtype=pl.List(pl.Float32)).list.get(1).alias(_toy_))
+                _operations_.append(pl.col(_to_).replace_strict(_xpos_, default=None).alias(_tox_))
+                _operations_.append(pl.col(_to_).replace_strict(_ypos_, default=None).alias(_toy_))
                 self.xcols.append(_tox_), self.ycols.append(_toy_)
             
             # Execute the operations
