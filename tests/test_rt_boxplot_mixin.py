@@ -18,8 +18,6 @@ import polars as pl
 import numpy as np
 import random
 
-from math import sin, cos, sqrt, pi
-
 from rtsvg import *
 
 class Testrt_boxplot_mixin(unittest.TestCase):
