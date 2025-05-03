@@ -1435,7 +1435,7 @@ for (i=32;i<128;i++) {
                             svg += f'<line x1="{mycx-1}" y1="{sy-1}" x2="{mycx+1}" y2="{sy+1}" stroke="{color}" stroke-width="0.5" />'
                             svg += f'<line x1="{mycx-1}" y1="{sy+1}" x2="{mycx+1}" y2="{sy-1}" stroke="{color}" stroke-width="0.5" />'
                     else:
-                        for ksw,ksw_df in _df.groupby(color_by):
+                        for ksw,ksw_df in _df.group_by(color_by):
                             my_color = self.co_mgr.getColor(ksw)
                             for v in ksw_df[count_by]:
                                 sy    = yT(v)

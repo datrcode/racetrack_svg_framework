@@ -368,6 +368,7 @@ class RTBoxplotMixin(object):
                         _index = order[i].rows()[0][:len(self.bin_by)]
                         if len(self.bin_by) == 1: _index = _index[0]
                         _value = order['__count__'][i]
+                        if type(_index) is not tuple: _index = (_index,)
                         _df    = gb[_index]
 
                     if self.style == 'boxplot' or self.style == 'boxplot_w_swarm':
@@ -420,6 +421,7 @@ class RTBoxplotMixin(object):
                     _index = order[i].rows()[0][:len(self.bin_by)]
                     if len(self.bin_by) == 1: _index = _index[0]
                     _value = order['__count__'][i]
+                    if type(_index) is not tuple: _index = (_index,)
                     _df    = gb[_index]
 
                 px     = max_bar_h * _value / group_by_max
