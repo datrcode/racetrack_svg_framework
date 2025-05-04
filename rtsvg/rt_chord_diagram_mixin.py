@@ -2284,9 +2284,13 @@ class RTChordDiagramMixin(object):
                     if len(self.label_only) == 0 or node in self.label_only or _label_ in self.label_only:
                         if self.label_style == 'circular':
                             _id_ = self.rt_self.encSVGID(node)
+                            _angle_diff_ = self.node_to_arc[node][1] - self.node_to_arc[node][0]
+                            _label_circ_ = self.circ * _angle_diff_/360.0
+                            _label_adj_  = self.rt_self.cropText(_label_, self.txt_h, _label_circ_)
+                            if _label_adj_.endswith('...'): _label_adj_ = _label_adj_[:-3].strip()
                             txt_offset = -3 - self.txt_offset
                             svg.append(f'''<text width="500" font-family="{self.rt_self.default_font}" font-size="{self.txt_h}px" dy="{txt_offset}" >''')
-                            svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{_label_}</textPath></text>''')
+                            svg.append(f'''<textPath alignment-baseline="top" xlink:href="#{self.widget_id}-{_id_}">{_label_adj_}</textPath></text>''')
                         elif self.label_style == 'radial':                            
                             angle_avg  = (self.node_to_arc[node][0] + self.node_to_arc[node][1])/2.0
                             txt_offset = self.txt_offset + self.txt_h/3
