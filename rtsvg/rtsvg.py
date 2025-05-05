@@ -579,7 +579,8 @@ class RACETrack(RTAnnotationsMixin,
                     df = df.with_columns(pl.concat_str(_intermediate_dow_, _intermediate_hour_).alias(tfield))
                 elif transform == 'year':
                     # df = df.with_columns(pl.col(field).dt.strftime('%Y').cast(pl.Int64).alias(tfield))
-                    df = df.with_columns(pl.col(field).dt.strftime('%Y').cast(pl.Int64).alias(tfield))
+                    # df = df.with_columns(pl.col(field).dt.strftime('%Y').cast(pl.Int64).alias(tfield))
+                    df = df.with_columns(pl.col(field).dt.strftime('%Y').alias(tfield))
                 elif transform == 'year_quarter':
                     _intermediate_quarter_ = '__quarter__'                    
                     df = df.with_columns(pl.col(field).dt.quarter().cast(str).alias(_intermediate_quarter_))
