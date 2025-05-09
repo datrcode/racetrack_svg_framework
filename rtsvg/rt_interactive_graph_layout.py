@@ -582,30 +582,28 @@ y   | line layout
                 self.__refreshView__(info=False, all_ents=False, sel_ents=False)
 
             #
-            # "T" - Collapse
+            # "T" - Collapse (to a point, horizontal line, or vertical line)
             #
-            elif len(self.selected_entities) > 0 and self.key_op_finished == 't':
-                for _entity_ in self.selected_entities:
-                    xy = _ln_.pos[_entity_]
-                    _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), _ln_.yT_inv(self.y_mouse))
-                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
-
-                self.__refreshView__(info=False)
-
-            #
-            # "Y" - Organize Selected into a Vertical or Horizontal Line
-            #
-            elif self.key_op_finished == 'y' or self.key_op_finished == 'Y':
-                if self.key_op_finished == 'Y':
+            elif len(self.selected_entities) > 0 and (self.key_op_finished == 't' or self.key_op_finished == 'T'):
+                # Horizontal Collapse
+                if   self.shiftkey:
                     for _entity_ in self.selected_entities:
                         xy = _ln_.pos[_entity_]
                         _ln_.pos[_entity_] = (xy[0], _ln_.yT_inv(self.y_mouse))
-                else:
+
+                # Vertical Collapse
+                elif self.ctrlkey:
                     for _entity_ in self.selected_entities:
                         xy = _ln_.pos[_entity_]
                         _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), xy[1])
-                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
 
+                # Collapse to a single point
+                else:
+                    for _entity_ in self.selected_entities:
+                        xy = _ln_.pos[_entity_]
+                        _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), _ln_.yT_inv(self.y_mouse))
+
+                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
                 self.__refreshView__(info=False)
 
             #
@@ -707,9 +705,7 @@ y   | line layout
             elif self.key_op_finished == 'G':
                 if   self.layout_mode == 'grid':      self.layout_mode = 'circle'
                 elif self.layout_mode == 'circle':    self.layout_mode = 'sunflower'
-                elif self.layout_mode == 'sunflower': self.layout_mode = 'line'
-                elif self.layout_mode == 'line':      self.layout_mode = 'h-line'
-                elif self.layout_mode == 'h-line':    self.layout_mode = 'v-line'
+                elif self.layout_mode == 'sunflower': self.layout_mode = 'grid'
                 else:                                 self.layout_mode = 'grid'
 
                 self.__refreshView__(comp=False, all_ents=False, sel_ents=False)
@@ -861,16 +857,14 @@ y   | line layout
             else if (event.key == "E") { data.key_op_finished = 'E';  } // Expand (w/ digraph)
             else if (event.key == "g") { state.layout_op      = true; } // Mouse press is layout shape
             else if (event.key == "G") { data.key_op_finished = 'G';  } // Iterate through layout shapes
-            else if (event.key == "n") { data.key_op_finished = 'n';  } // Iterate through selection methdology
             else if (event.key == "q") { data.key_op_finished = 'q';  } // Invert selection
             else if (event.key == "Q") { data.key_op_finished = 'Q';  } // Select common neighbors to selected nodes
             else if (event.key == "s") { data.key_op_finished = 's';  } // Set sticky labels
             else if (event.key == "S") { data.key_op_finished = 'S';  } // Subtract selected from sticky labels
             else if (event.key == "t") { data.key_op_finished = 't';  } // Collapse selected to a single point
+            else if (event.key == "T") { data.key_op_finished = 'T';  } // Horizontally collapse selected
             else if (event.key == "w") { data.key_op_finished = 'w';  } // Add to sticky labels (it's right above 's')
             else if (event.key == "W") { data.key_op_finished = 'W';  } // Iterate through label settings
-            else if (event.key == "y") { data.key_op_finished = 'y';  } // Arrange selected into a verticle line at mouse
-            else if (event.key == "Y") { data.key_op_finished = 'Y';  } // Arrange selected into a horizontal line at mouse
             else if (event.key == "p") { data.key_op_finished = 'p';  } // push the stack (remove the selected from the current graph)
             else if (event.key == "P") { data.key_op_finished = 'P';  } // pop the stack (add removed nodes back in)
             else if (event.key == "1" || event.key == "!") { data.key_op_finished = '1';  }
