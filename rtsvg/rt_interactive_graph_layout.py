@@ -839,6 +839,7 @@ y   | line layout
             state.move_op            = false;
             state.unselected_move_op = false;
             state.layout_op          = false; // true if next mouse button 1 press is the begin of a layout
+            state.layout_line_flag   = false; // true if the shape will be overrode by the line version
             state.layout_op_shape    = "";    // trigger field for python to peform the layout operation
             data.middle_op_finished  = false;
             data.move_op_finished    = false;
@@ -855,8 +856,11 @@ y   | line layout
             else if (event.key == "C") { data.key_op_finished = 'C';  } // Zoom to selected + neighbors
             else if (event.key == "e") { data.key_op_finished = 'e';  } // Expand
             else if (event.key == "E") { data.key_op_finished = 'E';  } // Expand (w/ digraph)
-            else if (event.key == "g") { state.layout_op      = true; } // Mouse press is layout shape
+            else if (event.key == "g") { state.layout_op        = true; // Mouse press is layout shape
+                                         state.layout_line_flag = false; } 
             else if (event.key == "G") { data.key_op_finished = 'G';  } // Iterate through layout shapes
+            else if (event.key == "p") { data.key_op_finished = 'p';  } // push the stack (remove the selected from the current graph)
+            else if (event.key == "P") { data.key_op_finished = 'P';  } // pop the stack (add removed nodes back in)
             else if (event.key == "q") { data.key_op_finished = 'q';  } // Invert selection
             else if (event.key == "Q") { data.key_op_finished = 'Q';  } // Select common neighbors to selected nodes
             else if (event.key == "s") { data.key_op_finished = 's';  } // Set sticky labels
@@ -865,8 +869,10 @@ y   | line layout
             else if (event.key == "T") { data.key_op_finished = 'T';  } // Horizontally collapse selected
             else if (event.key == "w") { data.key_op_finished = 'w';  } // Add to sticky labels (it's right above 's')
             else if (event.key == "W") { data.key_op_finished = 'W';  } // Iterate through label settings
-            else if (event.key == "p") { data.key_op_finished = 'p';  } // push the stack (remove the selected from the current graph)
-            else if (event.key == "P") { data.key_op_finished = 'P';  } // pop the stack (add removed nodes back in)
+            else if (event.key == "y") { state.layout_op        = true; // Mouse press is layout line
+                                         state.layout_line_flag = true;  }
+            else if (event.key == "Y") { state.layout_op        = true; // Mouse press is layout line
+                                         state.layout_line_flag = true; }
             else if (event.key == "1" || event.key == "!") { data.key_op_finished = '1';  }
             else if (event.key == "2" || event.key == "@") { data.key_op_finished = '2';  }
             else if (event.key == "3" || event.key == "#") { data.key_op_finished = '3';  }
@@ -884,7 +890,7 @@ y   | line layout
         'keyUp':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
-            if (event.key == "g") { state.layout_op = false; }
+            if (event.key == "g" || event.key == "y" || event.key == "Y") { state.layout_op = state.layout_line_flag = false; }
             svgparent.focus(); // else it loses focus on every render...
         """,
         'moveEverything':"""
@@ -918,7 +924,14 @@ y   | line layout
                 state.y0_drag  = event.offsetY;
                 state.x1_drag  = event.offsetX;
                 state.y1_drag  = event.offsetY;
-                if (state.layout_op) { state.layout_op_shape = data.layout_mode; self.myUpdateLayoutOp();
+                if (state.layout_op) { 
+                    if (state.layout_line_flag) { 
+                        if      (data.ctrlkey)  { state.layout_op_shape = "v-line"; }
+                        else if (data.shiftkey) { state.layout_op_shape = "h-line"; }
+                        else                    { state.layout_op_shape = "line";   }
+                    }
+                    else                        { state.layout_op_shape = data.layout_mode; }
+                    self.myUpdateLayoutOp();
                 } else               { state.drag_op         = true;             self.myUpdateDragRect(); }
             } else if (event.button == 1) {
                 data.x0_middle = data.x1_middle = event.offsetX;
