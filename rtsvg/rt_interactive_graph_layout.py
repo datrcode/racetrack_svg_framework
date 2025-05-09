@@ -48,7 +48,7 @@ c   | reset view or focus view on selected
 e   | expand selection
     | shft-e expand selection (directed graph)
 g   | layout upon next mouse drag
-G   | cycle through layout modes
+G   | cycle through layout modes (rectangular, circular, or sunflower)
 p   | keep only selected nodes (push stack)
 P   | pop stack
 q   | invert selection
@@ -58,6 +58,7 @@ S   | remove sticky labels from selected
 t   | consolidate all nodes at the mouse location
     | shft-t horizontally
     | ctrl-t vertically
+u   | undo last layout action
 w   | add selected nodes to sticky labels
 W   | cycle label visibility (all | sticky | none)
 y   | line layout
@@ -72,7 +73,7 @@ y   | line layout
     #
     # Inner Modification for RT SVG Render
     #
-    mod_inner = param.String(default="""<circle cx="300" cy="200" r="10" fill="red" />""")
+    mod_inner       = param.String(default="""<circle cx="300" cy="200" r="10" fill="red" />""")
 
     #
     # All Entities Path
@@ -82,17 +83,17 @@ y   | line layout
     #
     # Selection Path
     #
-    selectionpath = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
+    selectionpath   = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
 
     #
     # Information String
     #
-    info_str              = param.String(default=" | | grid")
+    info_str        = param.String(default=" | | grid")
 
     #
     # Layout Mode String
     #
-    layout_mode           = param.String(default="grid")
+    layout_mode     = param.String(default="grid")
 
     #
     # Panel Template
@@ -172,6 +173,10 @@ y   | line layout
                          '''          onmousedown="${script('downMove')}"        onmousemove="${script('moveEverything')}" ''' + \
                          '''          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" /> ''' + \
                          '''</svg>'''
+
+        # Previous layouts (for undo operations)
+        self.previous_layouts = []
+        self.max_undo_levels  = 20
 
         # - Create a lock for threading
         self.lock = threading.Lock()
@@ -332,6 +337,13 @@ y   | line layout
         return _ln_
 
     #
+    # __cacheNodePositions__() - cache the node positions for undo operations
+    #
+    def __cacheNodePositions__(self):
+        self.previous_layouts.append(copy.deepcopy(self.dfs_layout[self.df_level].pos))
+        while len(self.previous_layouts) > self.max_undo_levels: self.previous_layouts.pop(0)
+
+    #
     # applyLayoutOp() - apply layout operation to the selected entities.
     #
     def applyLayoutOp(self, event):
@@ -344,8 +356,8 @@ y   | line layout
             if len(as_list) > 1:
                 if   self.layout_shape == "grid":
                     pos_adj = self.rt_self.rectangularArrangement(self.graphs[self.df_level], as_list, bounds=(x0,y0,x1,y1))
-                    for _node_ in pos_adj:
-                        _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
+                    self.__cacheNodePositions__()
+                    for _node_ in pos_adj: _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
                     nodes_moved = True
                 elif self.layout_shape == "circle":
                     wx0, wy0 = _ln_.xT_inv(x0), _ln_.yT_inv(y0)
@@ -353,13 +365,14 @@ y   | line layout
                     r = sqrt((wx0 - wx1)**2 + (wy0 - wy1)**2)
                     if r < 0.001: r = 0.001
                     pos_adj = self.rt_self.circularOptimizedArrangement(self.graphs[self.df_level], as_list, _ln_.pos, xy=(wx0,wy0), r=r)
+                    self.__cacheNodePositions__()
                     for _node_ in pos_adj: _ln_.pos[_node_] = (pos_adj[_node_][0],pos_adj[_node_][1])
                     nodes_moved = True
                 elif self.layout_shape == "sunflower":
                     r = sqrt((x0 - x1)**2 + (y0 - y1)**2)
                     pos_adj = self.rt_self.sunflowerSeedArrangement(self.graphs[self.df_level], as_list, xy=(x0,y0), r_max=r)
-                    for _node_ in pos_adj:
-                        _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
+                    self.__cacheNodePositions__()
+                    for _node_ in pos_adj: _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
                     nodes_moved = True
                 elif self.layout_shape == "line" or self.layout_shape == "v-line" or self.layout_shape == "h-line":
                     if   self.layout_shape == "v-line": x0, x1, dx = x1, x1, 0
@@ -367,9 +380,11 @@ y   | line layout
                     wx0, wy0 = _ln_.xT_inv(x0), _ln_.yT_inv(y0)
                     wx1, wy1 = _ln_.xT_inv(x1), _ln_.yT_inv(y1)
                     pos_adj = self.rt_self.linearOptimizedArrangement(self.graphs[self.df_level], as_list, _ln_.pos, ((wx0,wy0),(wx1,wy1)))
+                    self.__cacheNodePositions__()
                     for _node_ in pos_adj: _ln_.pos[_node_] = (pos_adj[_node_][0],pos_adj[_node_][1])
                     nodes_moved = True
             elif len(as_list) == 1:
+                self.__cacheNodePositions__()
                 _ln_.pos[as_list[0]] = (float(_ln_.xT_inv((x0+x1)/2)), float(_ln_.yT_inv((y0+y1)/2)))
                 nodes_moved = True
 
@@ -585,6 +600,8 @@ y   | line layout
             # "T" - Collapse (to a point, horizontal line, or vertical line)
             #
             elif len(self.selected_entities) > 0 and (self.key_op_finished == 't' or self.key_op_finished == 'T'):
+                self.__cacheNodePositions__()
+
                 # Horizontal Collapse
                 if   self.shiftkey:
                     for _entity_ in self.selected_entities:
@@ -603,6 +620,18 @@ y   | line layout
                         xy = _ln_.pos[_entity_]
                         _ln_.pos[_entity_] = (_ln_.xT_inv(self.x_mouse), _ln_.yT_inv(self.y_mouse))
 
+                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
+                self.__refreshView__(info=False)
+
+            elif self.key_op_finished == 'u' and len(self.previous_layouts) > 0:
+                # Restore the last layout
+                _previous_pos_ = self.previous_layouts[-1]
+                for _entity_ in _previous_pos_: _ln_.pos[_entity_] = _previous_pos_[_entity_]
+
+                # Remove the last layout from the stack
+                self.previous_layouts = self.previous_layouts[:-1]
+
+                # Invalidate the renders and refresh the view
                 for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
                 self.__refreshView__(info=False)
 
@@ -787,6 +816,7 @@ y   | line layout
                     _point_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((self.drag_x0,self.drag_y0))
                     self.__refreshView__(comp=False, all_ents=False)
                 else:
+                    self.__cacheNodePositions__()
                     self.dfs_layout[self.df_level].__moveSelectedEntities__((self.drag_x1 - self.drag_x0, self.drag_y1 - self.drag_y0), my_selection=self.selected_entities)
                     self.__refreshView__()
                     for i in range(len(self.dfs_layout)):
@@ -867,6 +897,7 @@ y   | line layout
             else if (event.key == "S") { data.key_op_finished = 'S';  } // Subtract selected from sticky labels
             else if (event.key == "t") { data.key_op_finished = 't';  } // Collapse selected to a single point
             else if (event.key == "T") { data.key_op_finished = 'T';  } // Horizontally collapse selected
+            else if (event.key == "u") { data.key_op_finished = 'u';  } // Undo last layout
             else if (event.key == "w") { data.key_op_finished = 'w';  } // Add to sticky labels (it's right above 's')
             else if (event.key == "W") { data.key_op_finished = 'W';  } // Iterate through label settings
             else if (event.key == "y") { state.layout_op        = true; // Mouse press is layout line
