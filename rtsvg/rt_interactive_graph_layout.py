@@ -90,11 +90,6 @@ y   | line layout
     info_str              = param.String(default=" | | grid")
 
     #
-    # Operation String
-    #
-    op_str                = param.String(default="Select")
-
-    #
     # Layout Mode String
     #
     layout_mode           = param.String(default="grid")
@@ -115,7 +110,6 @@ y   | line layout
     <rect id="screen" x="0" y="0" width="600" height="400" opacity="0.05"
           onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"
           onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />
-    <text id="opstr"   x="598" y="12"  fill="#000000" font-size="10px" text-anchor="end"> ${op_str} </text>
     <text id="infostr" x="5"   y="398" fill="#000000" font-size="10px"> ${info_str} </text>
     <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"
           onmousedown="${script('downAllEntities')}" onmousemove="${script('moveEverything')}" 
@@ -170,7 +164,6 @@ y   | line layout
                          '''    <rect id="screen" x="0" y="0" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" opacity="0.05" ''' + \
                          '''          onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}" ''' + \
                          '''          onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" /> ''' + \
-                         '''    <text id="opstr"   x="''' + str(self.w-2) + '''" y="12"  fill="#000000" font-size="10px" text-anchor="end"> ${op_str} </text> ''' + \
                          '''    <text id="infostr" x="5"   y="''' + str(self.h-4) + '''" fill="#000000" font-size="10px"> ${info_str} </text> ''' + \
                          '''    <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none" ''' + \
                          '''          onmousedown="${script('downAllEntities')}" onmousemove="${script('moveEverything')}"  ''' + \
@@ -707,17 +700,7 @@ y   | line layout
                 else:                             self.selected_entities = _match_
 
                 self.__refreshView__(comp=False, all_ents=False)
-            
-            #
-            # Next Selection Op Settings...
-            # ... this replaces the shift and ctrl and ctrl-shift operators -- those aren't reliabel across IDE's...
-            #
-            elif self.key_op_finished == 'n':
-                if   self.op_str == 'Select':   self.op_str = 'Add'
-                elif self.op_str == 'Add':      self.op_str = 'Subtract'
-                elif self.op_str == 'Subtract': self.op_str = 'Intersect'
-                else:                           self.op_str = 'Select'
-            
+                        
             #
             # Next Layout Option
             #
@@ -804,7 +787,7 @@ y   | line layout
         self.lock.acquire()
         try:
             if self.move_op_finished:
-                if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1 and self.op_str == 'Subtract':
+                if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1 and self.shiftkey:
                     _point_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((self.drag_x0,self.drag_y0))
                     self.__refreshView__(comp=False, all_ents=False)
                 else:
@@ -827,9 +810,9 @@ y   | line layout
                 _overlapping_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((_x_,_y_))
                 if _overlapping_entities_ is None: _overlapping_entities_ = set()
 
-                if   self.op_str == 'Add':      self.selected_entities = (set(self.selected_entities) | set(_overlapping_entities_))
-                elif self.op_str == 'Subtract': self.selected_entities = (set(self.selected_entities) - set(_overlapping_entities_))
-                else:                           self.selected_entities = set(_overlapping_entities_)
+                if   self.ctrlkey:  self.selected_entities = (set(self.selected_entities) | set(_overlapping_entities_))
+                elif self.shiftkey: self.selected_entities = (set(self.selected_entities) - set(_overlapping_entities_))
+                else:               self.selected_entities = set(_overlapping_entities_)
 
                 if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1:
                     pass # just do the selection operation
@@ -851,7 +834,6 @@ y   | line layout
     _scripts = {
         'render':"""
             mod.innerHTML            = data.mod_inner;
-            opstr.innerHTML          = data.op_str;
             infostr.innerHTML        = data.info_str;
             state.x0_drag            = state.y0_drag = -10;
             state.x1_drag            = state.y1_drag =  -5;
@@ -1049,7 +1031,6 @@ y   | line layout
         'mod_inner':"""
             mod.innerHTML     = data.mod_inner;
             infostr.innerHTML = data.info_str;
-            opstr.innerHTML   = data.op_str;
             svgparent.focus(); // else it loses focus on every render...
         """,
         'selectionpath':"""
@@ -1058,12 +1039,6 @@ y   | line layout
         """,
         'info_str': """
             infostr.innerHTML = data.info_str;
-            opstr.innerHTML   = data.op_str;
-            svgparent.focus(); // else it loses focus on every render...
-        """,
-        'op_str': """
-            infostr.innerHTML = data.info_str;
-            opstr.innerHTML   = data.op_str;
             svgparent.focus(); // else it loses focus on every render...
         """,
         'myUpdateDragRect':"""
@@ -1074,10 +1049,10 @@ y   | line layout
                 h = Math.abs(state.y1_drag - state.y0_drag)
                 drag.setAttribute('x',x);     drag.setAttribute('y',y);
                 drag.setAttribute('width',w); drag.setAttribute('height',h);
-                if      (data.op_str == "Intersect")  drag.setAttribute('stroke','#0000ff');
-                else if (data.op_str == "Subtract")   drag.setAttribute('stroke','#ff0000');
-                else if (data.op_str == "Add")        drag.setAttribute('stroke','#00ff00');
-                else                                  drag.setAttribute('stroke','#000000');
+                if      (data.shftkey && data.ctrlkey)  drag.setAttribute('stroke','#0000ff');
+                else if (data.shftkey)                  drag.setAttribute('stroke','#ff0000');
+                else if (                data.ctrlkey)  drag.setAttribute('stroke','#00ff00');
+                else                                    drag.setAttribute('stroke','#000000');
             } else {
                 drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
                 drag.setAttribute('width',5); drag.setAttribute('height',5);
