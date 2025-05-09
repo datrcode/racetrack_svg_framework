@@ -340,7 +340,8 @@ y   | line layout
     # __cacheNodePositions__() - cache the node positions for undo operations
     #
     def __cacheNodePositions__(self):
-        self.previous_layouts.append(copy.deepcopy(self.dfs_layout[self.df_level].pos))
+        _copy_ = copy.deepcopy(self.dfs_layout[self.df_level].pos)
+        if len(self.previous_layouts) == 0 or self.previous_layouts[-1] != _copy_: self.previous_layouts.append(_copy_)
         while len(self.previous_layouts) > self.max_undo_levels: self.previous_layouts.pop(0)
 
     #
