@@ -913,11 +913,25 @@ class RTLinkMixin(object):
                                     pl.col(_syfld_).alias('__sy__'), 
                                     pl.col(_nmfld_).alias('__nm__')]
                     _dfs_.append(self.df.with_columns(*_operations_).drop_nulls(subset=['__sx__','__sy__','__nm__']))
-            self.df_node = pl.concat(_dfs_).group_by(['__sx__','__sy__']). \
-                                            agg((pl.len()/2.0).alias('__count__'), pl.col('__nm__').unique(),
-                                                 pl.col('__color_nodes__').n_unique().alias('__color_nodes_nuniq__'),
-                                                 pl.col('__color_default__').first(),
-                                                 pl.col('__color_nodes__').first().alias('__color_nodes_first__'))
+
+            # Concatenate them all together
+            self.df_node = pl.concat(_dfs_)
+
+            # Handle the node color dictionary ... not ideal here because we already did work on the node color... but no where else to really put it
+            if self.node_color is not None and type(self.node_color) == dict:
+                _filled_ = {}
+                for k,v in self.node_color.items():
+                    _color_     = v if len(v) == 7 and v[0] == '#' else self.rt_self.co_mgr.getColor(v)
+                    _filled_[k] = _color_
+                _color_      = self.rt_self.co_mgr.getTVColor('data','default')
+                self.df_node = self.df_node.with_columns(pl.col('__nm__').replace_strict(_filled_, default=_color_).alias('__color_nodes__'))
+
+            # Group by sx/sy and count and figure out the coloring
+            self.df_node = self.df_node.group_by(['__sx__','__sy__']). \
+                                        agg((pl.len()/2.0).alias('__count__'), pl.col('__nm__').unique(),
+                                             pl.col('__color_nodes__').n_unique().alias('__color_nodes_nuniq__'),
+                                             pl.col('__color_default__').first(),
+                                             pl.col('__color_nodes__').first().alias('__color_nodes_first__'))
             self.df_node = self.df_node.with_columns(pl.col('__nm__').list.len().alias('__nodes__'),
                                                      pl.col('__nm__').list.get(0).alias('__first__'),
                                                      (pl.when(pl.col('__color_nodes_nuniq__')==1).then(pl.col('__color_nodes_first__')).otherwise(pl.col('__color_default__'))).alias('__color_nodes_final__'))
