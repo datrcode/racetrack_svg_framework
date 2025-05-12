@@ -390,9 +390,10 @@ class RTLinkMixin(object):
             self.link_size_lu = {'small':1, 'medium':3, 'large':5, 'nil':0.2}
 
             # Tracking state
-            self.geom_to_df  = {}
-            self.last_render = None
-            self.node_coords = {}
+            self.color_nodes_final = {}
+            self.geom_to_df        = {}
+            self.last_render       = None
+            self.node_coords       = {}
 
         #
         # labelOnly() - set the label only set
@@ -936,6 +937,13 @@ class RTLinkMixin(object):
                                                      pl.col('__nm__').list.get(0).alias('__first__'),
                                                      (pl.when(pl.col('__color_nodes_nuniq__')==1).then(pl.col('__color_nodes_first__')).otherwise(pl.col('__color_default__'))).alias('__color_nodes_final__'))
 
+            # Capture node color if state tracking enabled
+            def captureFinalNodeColor():
+                if self.track_state:
+                    for _nodes_list_, _color_ in self.df_node.select('__nm__', '__color_nodes_final__').iter_rows():
+                        for _node_ in _nodes_list_:
+                            self.color_nodes_final[_node_] = _color_
+
             # Create the node SVG
             if    self.node_size is None: _svg_strs_ = []
             elif  self.node_size in self.node_size_lu or type(self.node_size) == int or type(self.node_size) == float:
@@ -945,18 +953,20 @@ class RTLinkMixin(object):
                 # Single nodes
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
                             pl.lit(f'" r="{_sz_}" fill="'),  pl.col('__color_nodes_final__'), pl.lit('" stroke="#000000" stroke-width="{stroke_width}" />')]
-                df_node_singles = self.df_node.filter(pl.col('__nodes__')==1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
+                df_node_singles = self.df_node.filter(pl.col('__nodes__')==1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))                
                 _svg_strs_ = list(set(df_node_singles.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
                 # Multi nodes // nodes that are collapsed into a single pixel
                 _str_op_ = [pl.lit('<use href="#cloud" x="'), pl.col('__sx__'), pl.lit('" y="'), pl.col('__sy__'), pl.lit('" />')]
                 df_node_multis  = self.df_node.filter(pl.col('__nodes__')>1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_.extend(list(set(df_node_multis.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique())))
+                captureFinalNodeColor()
             elif self.node_size == 'vary':
                 self.df_node = self.df_node.with_columns((self.node_size_min + (self.node_size_max - self.node_size_min) * (pl.col('__count__') - pl.col('__count__').min()) / (0.01 + pl.col('__count__').max() - pl.col('__count__').min())).alias('__sz__'))
                 _str_op_ = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'),       pl.col('__sy__'),
                             pl.lit('" r="'), pl.col('__sz__'), pl.lit(f'" fill="'), pl.col('__color_nodes_final__'), pl.lit('" stroke="#000000" stroke-width="{stroke_width}" />')]
                 self.df_node = self.df_node.with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_ = list(set(self.df_node.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
+                captureFinalNodeColor()
             else: _svg_strs_ = []
 
             # Add labels
@@ -1065,6 +1075,21 @@ class RTLinkMixin(object):
         def entitiesAtPoint(self, xy):
             _poly_ = Polygon([(xy[0]-5,xy[1]-5),(xy[0]-5,xy[1]+5),(xy[0]+5,xy[1]+5),(xy[0]+5,xy[1]-5)])
             return self.overlappingEntities(_poly_)
+
+
+        #
+        # nodeColor() - return the color of the final rendering of the node
+        # - None if no color
+        #
+        def nodeColor(self, node):
+            if node in self.color_nodes_final: return self.color_nodes_final[node]
+            return None
+
+        #
+        # nodesWithColor() - return a list of nodes with a specific color
+        #
+        def nodesWithColor(self, color):
+            return [k for k,v in self.color_nodes_final.items() if v == color]
 
         #
         # __createPathDescriptionOfSelectedEntities__() - create an svg path description of the selected entities
