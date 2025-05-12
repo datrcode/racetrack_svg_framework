@@ -40,6 +40,18 @@ class RTGraphInteractiveLayout(ReactiveHTML):
     # Print Representation
     #
     def __str__(self): return """
+External Methods:
+
+register_companion_viz(viz)
+unregister_companion_viz(viz)
+
+saveLayout(filename)
+loadLayout(filename)
+
+selectEntities(selection, set_op='replace'|'add'|'subtract'|'intersect', method='exact'|'substring'|'regex', ignore_case=True)
+selectedEntities() - labeled nodes (if labels are set)
+selectedNodes() - dataframe nodes
+
 -------------------------------------------------
 Interactivity Key Commands
 ----+--------------------------------------------
@@ -196,6 +208,9 @@ y   | line layout
         # For companion visualizations
         self.companions = []
 
+    #
+    # vvv -- These methods are for external callers
+    #
 
     # register companion visualizations
     def register_companion_viz(self, viz):
@@ -295,7 +310,6 @@ y   | line layout
 
         self.__refreshView__(comp=False)
 
-
     #
     # selectedEntities() - return the selected entities
     #
@@ -327,6 +341,10 @@ y   | line layout
             return _set_
         else:
             return set(self.selected_entities) # no node labels, it's the same... return a copy
+
+    #
+    # ^^^ -- These methods are for external callers
+    #
 
     #
     # __renderView__() - render the view
