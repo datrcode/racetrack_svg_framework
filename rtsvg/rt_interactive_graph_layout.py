@@ -52,6 +52,8 @@ selectEntities(selection, set_op='replace'|'add'|'subtract'|'intersect', method=
 selectedEntities() - labeled nodes (if labels are set)
 selectedNodes() - dataframe nodes
 
+forceRender() - force a re-render (e.g., if the ln parameters were externally changed)
+
 -------------------------------------------------
 Interactivity Key Commands
 ----+--------------------------------------------
@@ -341,6 +343,14 @@ y   | line layout
             return _set_
         else:
             return set(self.selected_entities) # no node labels, it's the same... return a copy
+
+    #
+    # forceRender() - force a render of the view
+    # - performs at all levels of the stack
+    #
+    async def forceRender(self):
+        for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
+        self.__refreshView__()
 
     #
     # ^^^ -- These methods are for external callers
