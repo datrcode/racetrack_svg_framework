@@ -345,12 +345,15 @@ y   | line layout
             return set(self.selected_entities) # no node labels, it's the same... return a copy
 
     #
-    # forceRender() - force a render of the view
+    # updateLinkNodeParam() - update a param & refresh the views
     # - performs at all levels of the stack
     #
-    async def forceRender(self):
-        for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
-        self.__refreshView__()
+    def updateLinkNodeParam(self, name, value):
+        self.ln_params[name] = value
+        for i in range(len(self.dfs_layout)): 
+            setattr(self.dfs_layout[i], name, value)
+            self.dfs_layout[i].invalidateRender()
+        self.__refreshView__(comp=True)
 
     #
     # ^^^ -- These methods are for external callers
