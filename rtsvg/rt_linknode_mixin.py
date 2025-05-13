@@ -1085,9 +1085,10 @@ class RTLinkNodeMixin(object):
                 self.count_by_set = rt_self.countBySet(self.df, self.count_by)
             
             # Tracking state
-            self.geom_to_df  = {}
-            self.last_render = None
-            self.node_coords = {}
+            self.geom_to_df        = {}
+            self.last_render       = None
+            self.node_coords       = {}
+            self.color_nodes_final = {}
 
         #
         # __calculateGeometry__() - determine the geometry for the view
@@ -1783,6 +1784,7 @@ class RTLinkNodeMixin(object):
                                         else:
                                             _co        = self.rt_self.co_mgr.getTVColor('data','default')
                                             _co_border = self.rt_self.co_mgr.getTVColor('data','default_border')
+                                        self.color_nodes_final[node_str] = _co
                                     elif self.node_color == 'vary' and self.color_by is not None and self.color_by in self.df.columns:
                                         _co_set = set(k_df[self.color_by])
                                         if len(_co_set) == 1:
@@ -1791,6 +1793,7 @@ class RTLinkNodeMixin(object):
                                         else:
                                             _co        = self.rt_self.co_mgr.getTVColor('data','default')
                                             _co_border = _co
+                                        self.color_nodes_final[node_str] = _co
                                     elif self.node_color is not None and self.node_color.startswith('#'):
                                         _co        = self.node_color
                                         if self.node_border_color is not None:  _co_border = self.node_border_color
@@ -2109,6 +2112,20 @@ class RTLinkNodeMixin(object):
                 return self.rt_self.concatDataFrames(_dfs)
             else:
                 return None
+
+        #
+        # nodeColor() - return the color of the final rendering of the node
+        # - None if no color
+        #
+        def nodeColor(self, node):
+            if node in self.color_nodes_final: return self.color_nodes_final[node]
+            return None
+
+        #
+        # nodesWithColor() - return a list of nodes with a specific color
+        #
+        def nodesWithColor(self, color):
+            return [k for k,v in self.color_nodes_final.items() if v == color]
 
         #
         # overlappingEntities() - Determine which entity geometrics overlap with a specific region
