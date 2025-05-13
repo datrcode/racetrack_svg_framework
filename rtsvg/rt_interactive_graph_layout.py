@@ -55,6 +55,14 @@ selectedNodes() - dataframe nodes
 forceRender() - force a re-render (e.g., if the ln parameters were externally changed)
 
 -------------------------------------------------
+Set Operations For Selection
+------------+------------------------------------
+<none>      | replace (default)
+shift       | subtrace from current selection
+ctrl        | add to current selection
+ctrl-shift  | intersect with current selection
+
+-------------------------------------------------
 Interactivity Key Commands
 ----+--------------------------------------------
 c   | reset view or focus view on selected
@@ -78,6 +86,7 @@ W   | cycle label visibility (all | sticky | none)
 y   | line layout
     | shft-y horizontally
     | ctrl-y vertically
+z   | select node by color (shift, ctrl, and ctrl-shift apply)
 1-6 | select numbered degree
 7   | select degree 10 -> 20
 8   | select degree 20 -> 50
