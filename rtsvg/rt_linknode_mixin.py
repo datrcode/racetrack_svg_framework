@@ -2122,10 +2122,10 @@ class RTLinkNodeMixin(object):
             return None
 
         #
-        # nodesWithColor() - return a list of nodes with a specific color
+        # nodesWithColor() - return a set of nodes with a specific color
         #
         def nodesWithColor(self, color):
-            return [k for k,v in self.color_nodes_final.items() if v == color]
+            return set([k for k,v in self.color_nodes_final.items() if v == color])
 
         #
         # overlappingEntities() - Determine which entity geometrics overlap with a specific region

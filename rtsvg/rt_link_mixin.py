@@ -939,10 +939,9 @@ class RTLinkMixin(object):
 
             # Capture node color if state tracking enabled
             def captureFinalNodeColor():
-                if self.track_state:
-                    for _nodes_list_, _color_ in self.df_node.select('__nm__', '__color_nodes_final__').iter_rows():
-                        for _node_ in _nodes_list_:
-                            self.color_nodes_final[_node_] = _color_
+                for _nodes_list_, _color_ in self.df_node.select('__nm__', '__color_nodes_final__').iter_rows():
+                    for _node_ in _nodes_list_:
+                        self.color_nodes_final[_node_] = _color_
 
             # Create the node SVG
             if    self.node_size is None: _svg_strs_ = []
@@ -1086,10 +1085,10 @@ class RTLinkMixin(object):
             return None
 
         #
-        # nodesWithColor() - return a list of nodes with a specific color
+        # nodesWithColor() - return a set of nodes with a specific color
         #
         def nodesWithColor(self, color):
-            return [k for k,v in self.color_nodes_final.items() if v == color]
+            return set([k for k,v in self.color_nodes_final.items() if v == color])
 
         #
         # __createPathDescriptionOfSelectedEntities__() - create an svg path description of the selected entities

@@ -692,6 +692,22 @@ y   | line layout
                     self.ln_params['label_only'] = self.sticky_labels
 
                 self.__refreshView__(all_ents=False, sel_ents=False)
+            
+            #
+            # "Z" - Select nodes with the same color as the one that the mouse is over
+            #
+            elif self.key_op_finished == 'z' or self.key_op_finished == 'Z':
+                _entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((self.x_mouse,self.y_mouse))
+                if _entities_ is None: _entities_ = set()
+                _colors_    = set()
+                for _entity_ in _entities_: _colors_.add(self.dfs_layout[self.df_level].nodeColor(_entity_))
+                _entities_  = set()
+                for _color_ in _colors_: _entities_ = _entities_ | set(self.dfs_layout[self.df_level].nodesWithColor(_color_))
+                if self.shiftkey and self.ctrlkey: _set_op_ = 'intersect'
+                elif self.shiftkey:                _set_op_ = 'subtract'
+                elif self.ctrlkey:                 _set_op_ = 'add'
+                else:                              _set_op_ = 'replace'
+                self.selectEntities(_entities_, _set_op_, 'exact')
 
             #
             # 'C' - Center on Selected (if selected) or Reset View (if not selected) / Selected + Neighbors
@@ -935,7 +951,9 @@ y   | line layout
             else if (event.key == "y") { state.layout_op        = true; // Mouse press is layout line
                                          state.layout_line_flag = true;  }
             else if (event.key == "Y") { state.layout_op        = true; // Mouse press is layout line
-                                         state.layout_line_flag = true; }
+                                         state.layout_line_flag = true;  }
+            else if (event.key == "z" ||                                // Select nodes with the same color as the one under the mouse
+                     event.key == "Z") { data.key_op_finished = 'z';     }
             else if (event.key == "1" || event.key == "!") { data.key_op_finished = '1';  }
             else if (event.key == "2" || event.key == "@") { data.key_op_finished = '2';  }
             else if (event.key == "3" || event.key == "#") { data.key_op_finished = '3';  }
