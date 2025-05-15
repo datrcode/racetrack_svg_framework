@@ -381,7 +381,7 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
     #
     def __cacheNodePositions__(self):
         _copy_ = copy.deepcopy(self.dfs_layout[self.df_level].pos)
-        if len(self.previous_layouts) == 0 or self.previous_layouts[-1] != _copy_: self.previous_layouts.append(_copy_)
+        self.previous_layouts.append(_copy_) # if len(self.previous_layouts) == 0 or self.previous_layouts[-1] != _copy_ # doesn't work with the output of nx.spring_layout()...
         while len(self.previous_layouts) > self.max_undo_levels: self.previous_layouts.pop(0)
 
     #
