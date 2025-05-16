@@ -28,14 +28,14 @@ import copy
 
 from shapely import Polygon
 
-from .rt_layouts_mixin import RTComponentsLayout
+from .rt_stackable import RTStackable
 
-__name__ = 'rt_interactive_graph_layout'
+__name__ = 'rt_graph_interactive_layout'
 
 #
 # ReactiveHTML Class for Panel Implementation
 #
-class RTGraphInteractiveLayout(ReactiveHTML):
+class RTGraphInteractiveLayout(ReactiveHTML, RTStackable):
     #
     # Print Representation
     #
@@ -530,7 +530,7 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
 
         self.__refreshView__()
         for c in self.companions:
-            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.popStack(callers=callers)
+            if isinstance(c, RTStackable): c.popStack(callers=callers)
 
     #
     # setStackPosition() - set to a specific position
@@ -547,7 +547,7 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
 
         self.__refreshView__()
         for c in self.companions:
-            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.setStackPosition(i_found, callers=callers)
+            if isinstance(c, RTStackable): c.setStackPosition(i_found, callers=callers)
 
     #
     # pushStack() - push a dataframe onto the stack
@@ -575,7 +575,7 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
         self.__refreshView__()
 
         for c in self.companions:
-            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.pushStack(df, callers=callers)
+            if isinstance(c, RTStackable): c.pushStack(df, callers=callers)
 
     #
     # applyKeyOp() - apply specified key operation
