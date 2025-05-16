@@ -28,8 +28,9 @@ import copy
 
 from shapely import Polygon
 
+from .rt_stackable                import RTStackable
 from .rt_graph_interactive_layout import RTGraphInteractiveLayout
-from .rt_reactive_html            import RTReactiveHTML
+from .rt_coordinated_views        import RTCoordinatedViews
 
 __name__ = 'rt_panel_mixin'
 
@@ -108,7 +109,7 @@ class RTPanelMixin(object):
         
         To debug, use the ".show()" version of the instance.  Then, errors (and prints) will be sent back to the notebook.
         '''
-        return RTReactiveHTML(df, self, spec, w, h, rt_params, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
+        return RTCoordinatedViews(df, self, spec, w, h, rt_params, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
 
     #
     # RTFontMetricsPanel - determine the font metrics for a specific
@@ -817,7 +818,7 @@ Y   | horizontal layout
 
         self.__refreshView__()
         for c in self.companions:
-            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.popStack(callers=callers)
+            if isinstance(c, RTStackable): c.popStack(callers=callers)
 
     #
     # setStackPosition() - set to a specific position
@@ -834,7 +835,7 @@ Y   | horizontal layout
 
         self.__refreshView__()
         for c in self.companions:
-            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.setStackPosition(i_found, callers=callers)
+            if isinstance(c, RTStackable): c.setStackPosition(i_found, callers=callers)
 
     #
     # pushStack() - push a dataframe onto the stack
@@ -862,7 +863,7 @@ Y   | horizontal layout
         self.__refreshView__()
 
         for c in self.companions:
-            if isinstance(c, RTReactiveHTML) or isinstance(c, RTGraphInteractiveLayout): c.pushStack(df, callers=callers)
+            if isinstance(c, RTStackable): c.pushStack(df, callers=callers)
 
     #
     # applyKeyOp() - apply specified key operation

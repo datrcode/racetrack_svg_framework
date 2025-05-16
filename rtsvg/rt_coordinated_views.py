@@ -22,13 +22,12 @@ from panel.reactive import ReactiveHTML
 
 from .rt_stackable import RTStackable
 
-__name__ = 'rt_reactive_html'
+__name__ = 'rt_coordinated_views'
 
 #
-# ReactiveHTML Class for Panel Implementation
-# - This is the coordinated view version of panel
+# ReactiveHTML Class for Coordinated Views Panel Implementation
 #
-class RTReactiveHTML(ReactiveHTML, RTStackable):
+class RTCoordinatedViews(ReactiveHTML, RTStackable):
     #
     # Inner Modification for RT SVG Render
     #
