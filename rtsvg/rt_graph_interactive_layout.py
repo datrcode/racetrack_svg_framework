@@ -174,7 +174,7 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
         else:                                                       self.label_mode    = 'no labels'
         if 'label_only' in ln_params:                               self.sticky_labels = set(ln_params['label_only'])
         else:                                                       self.sticky_labels = set()
-        self.selected_entities = set(self.sticky_labels) # if there are set labels, select them by default
+        self.selected_entities = set()
 
         # Recast the template with the width's and height's
         self._template = '''<svg id="svgparent" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" tabindex="0" ''' + \
@@ -570,7 +570,7 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
         self.dfs_layout .append(_ln_)
         self.graphs     .append(g)
         self.df_level += 1
-        self.selected_entities = set()
+        self.selected_entities = self.selected_entities & g.nodes()
 
         self.__refreshView__()
 
