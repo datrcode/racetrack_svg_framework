@@ -54,7 +54,7 @@ class RTPanelMixin(object):
     #
     # interactiveGraphLayout()
     #
-    def interactiveGraphLayout(self, df, ln_params, w=600, h=400, **kwargs):
+    def interactiveGraphLayout(self, df, ln_params, w=600, h=400, use_linknode=False, **kwargs):
         ''' Interactive Graph Layout using Panel Architecture
 
         Parameters
@@ -67,10 +67,13 @@ class RTPanelMixin(object):
         
         w, h : int
             Width and height of the layout
+        
+        use_linknode : bool
+            Use LinkNode() (which implements more rendering features) instead of link()
 
         Use saveLayout() and loadLayout() to store and retrieve layouts in parquet format
         '''
-        return RTGraphInteractiveLayout(self, df, ln_params, w, h, **kwargs)
+        return RTGraphInteractiveLayout(self, df, ln_params, w, h, use_linknode, **kwargs)
 
     #
     # interactivePanel() - coordinated views with configurable components.

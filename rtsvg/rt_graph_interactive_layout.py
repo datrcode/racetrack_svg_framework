@@ -148,11 +148,12 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
     # Constructor
     #
     def __init__(self,
-                 rt_self,           # RACETrack instance
-                 df,                # data frame
-                 ln_params,         # linknode params
-                 w           =600,  # width
-                 h           =400,  # height
+                 rt_self,              # RACETrack instance
+                 df,                   # data frame
+                 ln_params,            # linknode params
+                 w            = 600,   # width
+                 h            = 400,   # height
+                 use_linknode = False, # use linknode (vice link)
                  **kwargs):
         # Setup specific instance information
         # - Copy the member variables
@@ -162,6 +163,7 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
         self.pos               = ln_params['pos']
         self.w                 = w
         self.h                 = h
+        self.use_linknode      = use_linknode
         self.kwargs            = kwargs
         self.df                = self.rt_self.copyDataFrame(df)
         self.df_level          = 0
@@ -372,8 +374,8 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
     # __renderView__() - render the view
     #
     def __renderView__(self, __df__):
-        # _ln_ = self.rt_self.linkNode(__df__, w=self.w, h=self.h, **self.ln_params)
-        _ln_ = self.rt_self.link(__df__, w=self.w, h=self.h, **self.ln_params)
+        if self.use_linknode or self.rt_self.isPandas(__df__): _ln_ = self.rt_self.linkNode(__df__, w=self.w, h=self.h, **self.ln_params)
+        else:                                                  _ln_ = self.rt_self.link    (__df__, w=self.w, h=self.h, **self.ln_params)
         return _ln_
 
     #
