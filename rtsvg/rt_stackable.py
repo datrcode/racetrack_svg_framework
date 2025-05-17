@@ -24,3 +24,9 @@ class RTStackable(object):
         pass
     def pushStack(self, df, callers=None):
         pass
+
+class RTSelectable(object):
+    def __init__(self):
+        pass
+    def __setSelectedEntitiesAndNotifyOthers__(self, _set_, callers=None):
+        pass
