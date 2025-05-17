@@ -304,7 +304,7 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
                 for _node_ in all_nodes:
                     _node_cased_ = str(_node_).lower() if ignore_case else _node_
                     if _node_cased_ in selection_as_set: _set_.add(_node_)
-                self.__setSelectedEntitiesAndNotifyOthers__(_set_)
+                self.setSelectedEntitiesAndNotifyOthers(_set_)
             else: # just use the selection
                 if ignore_case:
                     _set_ = set()
@@ -314,10 +314,10 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
                 else:
                     _set_ = selection_as_set & all_nodes
 
-        if   set_op == 'replace':   self.__setSelectedEntitiesAndNotifyOthers__(_set_)
-        elif set_op == 'add':       self.__setSelectedEntitiesAndNotifyOthers__(self.selected_entities | _set_)
-        elif set_op == 'subtract':  self.__setSelectedEntitiesAndNotifyOthers__(self.selected_entities - _set_)
-        elif set_op == 'intersect': self.__setSelectedEntitiesAndNotifyOthers__(self.selected_entities & _set_)
+        if   set_op == 'replace':   self.setSelectedEntitiesAndNotifyOthers(_set_)
+        elif set_op == 'add':       self.setSelectedEntitiesAndNotifyOthers(self.selected_entities | _set_)
+        elif set_op == 'subtract':  self.setSelectedEntitiesAndNotifyOthers(self.selected_entities - _set_)
+        elif set_op == 'intersect': self.setSelectedEntitiesAndNotifyOthers(self.selected_entities & _set_)
 
         self.__refreshView__(comp=False)
 
@@ -386,16 +386,22 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
 
 
     #
-    # __setSelectedEntitiesAndNotifyOthers__() - set the selected entities & notify any companion views
+    # setSelectedEntitiesAndNotifyOthers() - set the selected entities & notify any companion views
     #
-    def __setSelectedEntitiesAndNotifyOthers__(self, _set_, callers=None):
+    def setSelectedEntitiesAndNotifyOthers(self, _set_, callers=None):
         if callers is not None and self in callers: return
-        if callers is None: callers = set([self])
-        else:               callers.add(self)
+        if callers is None: 
+            callers  = set([self])
+            im_first = True
+        else:               
+            callers.add(self)
+            im_first = False
 
         self.selected_entities = set(_set_)
+        if im_first == False: self.__refreshView__(comp=False, all_ents=False)
+
         for c in self.companions:
-            if isinstance(c, RTSelectable): c.__setSelectedEntitiesAndNotifyOthers__(_set_, callers=callers)
+            if isinstance(c, RTSelectable): c.setSelectedEntitiesAndNotifyOthers(_set_, callers=callers)
 
     #
     # applyLayoutOp() - apply layout operation to the selected entities.
@@ -583,7 +589,7 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
         self.dfs_layout .append(_ln_)
         self.graphs     .append(g)
         self.df_level += 1
-        self.__setSelectedEntitiesAndNotifyOthers__(self.selected_entities & g.nodes())
+        self.setSelectedEntitiesAndNotifyOthers(self.selected_entities & g.nodes())
         self.__refreshView__()
 
         for c in self.companions:
@@ -607,13 +613,13 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
                         for _nbor_ in _digraph_.neighbors(_node_):
                             _new_set_.add(_nbor_)
 
-                    self.__setSelectedEntitiesAndNotifyOthers__(_new_set_)
+                    self.setSelectedEntitiesAndNotifyOthers(_new_set_)
                 else:
                     _new_set_ = set(self.selected_entities)
                     for _node_ in self.selected_entities:
                         for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
                             _new_set_.add(_nbor_)
-                    self.__setSelectedEntitiesAndNotifyOthers__(_new_set_)
+                    self.setSelectedEntitiesAndNotifyOthers(_new_set_)
 
                 self.__refreshView__(comp=False, all_ents=False)
 
@@ -635,7 +641,7 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
                     for _node_ in self.graphs[self.df_level]:
                         if _node_ not in self.selected_entities:
                             _new_set_.add(_node_)
-                    self.__setSelectedEntitiesAndNotifyOthers__(_new_set_)
+                    self.setSelectedEntitiesAndNotifyOthers(_new_set_)
 
                 self.__refreshView__(comp=False, all_ents=False)
 
@@ -792,9 +798,9 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
                     for _node_ in self.graphs[self.df_level]:
                         if self.graphs[self.df_level].degree(_node_) == _degree_: _match_.add(_node_)
 
-                if   self.shiftkey:               self.__setSelectedEntitiesAndNotifyOthers__(self.selected_entities - _match_)
-                elif len(self.selected_entities): self.__setSelectedEntitiesAndNotifyOthers__(self.selected_entities & _match_)
-                else:                             self.__setSelectedEntitiesAndNotifyOthers__(_match_)
+                if   self.shiftkey:               self.setSelectedEntitiesAndNotifyOthers(self.selected_entities - _match_)
+                elif len(self.selected_entities): self.setSelectedEntitiesAndNotifyOthers(self.selected_entities & _match_)
+                else:                             self.setSelectedEntitiesAndNotifyOthers(_match_)
 
                 self.__refreshView__(comp=False, all_ents=False)
                         
@@ -863,10 +869,10 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
                 _overlapping_entities_  = set(self.dfs_layout[self.df_level].overlappingEntities(_rect_))
                 if _overlapping_entities_ is None: _overlapping_entities_ = set()
 
-                if   self.shiftkey and self.ctrlkey: self.__setSelectedEntitiesAndNotifyOthers__(set(self.selected_entities) & set(_overlapping_entities_))
-                elif self.shiftkey:                  self.__setSelectedEntitiesAndNotifyOthers__(set(self.selected_entities) - set(_overlapping_entities_))
-                elif self.ctrlkey:                   self.__setSelectedEntitiesAndNotifyOthers__(set(self.selected_entities) | set(_overlapping_entities_))
-                else:                                self.__setSelectedEntitiesAndNotifyOthers__(_overlapping_entities_)
+                if   self.shiftkey and self.ctrlkey: self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) & set(_overlapping_entities_))
+                elif self.shiftkey:                  self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) - set(_overlapping_entities_))
+                elif self.ctrlkey:                   self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) | set(_overlapping_entities_))
+                else:                                self.setSelectedEntitiesAndNotifyOthers(_overlapping_entities_)
                 
                 self.__refreshView__(comp=False, all_ents=False)
 
@@ -906,9 +912,9 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
                 _overlapping_entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((_x_,_y_))
                 if _overlapping_entities_ is None: _overlapping_entities_ = set()
 
-                if   self.ctrlkey:  self.__setSelectedEntitiesAndNotifyOthers__((set(self.selected_entities) | set(_overlapping_entities_)))
-                elif self.shiftkey: self.__setSelectedEntitiesAndNotifyOthers__((set(self.selected_entities) - set(_overlapping_entities_)))
-                else:               self.__setSelectedEntitiesAndNotifyOthers__(set(_overlapping_entities_))
+                if   self.ctrlkey:  self.setSelectedEntitiesAndNotifyOthers((set(self.selected_entities) | set(_overlapping_entities_)))
+                elif self.shiftkey: self.setSelectedEntitiesAndNotifyOthers((set(self.selected_entities) - set(_overlapping_entities_)))
+                else:               self.setSelectedEntitiesAndNotifyOthers(set(_overlapping_entities_))
 
                 if self.drag_x0 == self.drag_x1 and self.drag_y0 == self.drag_y1:
                     pass # just do the selection operation

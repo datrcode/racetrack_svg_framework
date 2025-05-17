@@ -28,5 +28,5 @@ class RTStackable(object):
 class RTSelectable(object):
     def __init__(self):
         pass
-    def __setSelectedEntitiesAndNotifyOthers__(self, _set_, callers=None):
+    def setSelectedEntitiesAndNotifyOthers(self, _set_, callers=None):
         pass
