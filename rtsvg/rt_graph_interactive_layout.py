@@ -13,6 +13,37 @@
 # limitations under the License.
 #
 
+#
+# Things To Add (Loosely Grouped):
+#
+# - Add all records on (currently) visible edges (don't want to push onto the stack though... so unsure how to do this)
+#   (if selected nodes, limit to them)
+# - Add all records on (currently) visible nodes (don't want to push onto the stack though... so unsure how to do this)
+#   (if selected nodes, limit to them)
+# - Only keep a single record on visible edges (should make everything faster) (subsetOneRecordPerEdge)
+#
+#
+# - Treemap based layout on node colors (if selected nodes, only treemap those & fit them in the selection bounds)
+# - The templated layouts for simple patterns
+#
+#
+# - Tagging (would require pre-setup work but then maybe key to do the following ... needs to be associated w/ node color lookups)
+# -- Add tag to selected node(s) (replace version)
+# -- Add tag to selected node(s) (in addition to already assigned tags)
+# -- Propagate tags from selected node(s) to their neighbors ... not as simple as it looks because of edge cases
+# -- Remove tag from selected node(s)
+# (would need a mechanism to select which tag is to be applied/removed)
+#
+#
+# Other Changes:
+#
+# (Selected nodes into system clipboard -- is that possible in javascript? or in the python side?)
+# (Optimize the circular layout to minimize connection lengths / edge crossings)
+# (Dynamic labels? ... maybe make a dummy label & then dynamically reposition it?)
+# (Edge labels? ... don't think either linkNode or link support edge labels)
+# (Render help ... or at least the cheat sheet of key commands)
+#
+
 import pandas as pd
 import polars as pl
 
