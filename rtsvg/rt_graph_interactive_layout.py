@@ -24,23 +24,24 @@
 #
 #
 # - Treemap based layout on node colors (if selected nodes, only treemap those & fit them in the selection bounds)
+#   (difference between collapse them to a node, do a grid layout, or do something smarter that organizes the nodes within the treemap layout)
 # - The templated layouts for simple patterns
 #
 #
-# - Tagging (would require pre-setup work but then maybe key to do the following ... needs to be associated w/ node color lookups)
+# - Tagging (would require pre-setup work but then maybe key/key combos to do the following ... needs to be associated w/ node color lookups)
 # -- Add tag to selected node(s) (replace version)
 # -- Add tag to selected node(s) (in addition to already assigned tags)
 # -- Propagate tags from selected node(s) to their neighbors ... not as simple as it looks because of edge cases
 # -- Remove tag from selected node(s)
-# (would need a mechanism to select which tag is to be applied/removed)
-#
+#    (would need a mechanism to select which tag is to be applied/removed)
+# -- Probably need multiple labels ... node label (from the dataframe), node label lookups, and then the node color lookups
 #
 # Other Changes:
 #
-# (Selected nodes into system clipboard -- is that possible in javascript? or in the python side?)
+# (Selected nodes copied into system clipboard -- is that possible in javascript? or on the python side?)
 # (Optimize the circular layout to minimize connection lengths / edge crossings)
 # (Dynamic labels? ... maybe make a dummy label & then dynamically reposition it?)
-# (Edge labels? ... don't think either linkNode or link support edge labels)
+# (Edge labels? ... linkNode supports.... but not link)
 # (Render help ... or at least the cheat sheet of key commands)
 #
 
