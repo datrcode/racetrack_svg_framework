@@ -473,10 +473,6 @@ class RTLinkNodeMixin(object):
                                                # ... or a dictionary of the field tuples node to an SVG small multiple
                                                # ... or a function pointer to a shape function
                  node_opacity      = 1.0,      # fixed node opacity                 
-                 node_labels       = None,     # Dictionary of node string to array of strings for additional labeling options
-                 node_labels_only  = False,    # Only label based on the node_labels dictionary
-                 label_only        = set(),    # label only set - only label these nodes
-                 node_label_max_w  = 64,       # max label width for a node in pixels -- None means no limit
 
                  node_size_max     = 4,        # for node vary...
                  node_size_min     = 0.3,      # for node vary...
@@ -500,6 +496,11 @@ class RTLinkNodeMixin(object):
                  link_size_min     = 0.25,     # for link vary...
 
                  # -----------------------     # label information
+
+                 node_labels       = None,     # Dictionary of node string to array of strings for additional labeling options
+                 node_labels_only  = False,    # Only label based on the node_labels dictionary
+                 label_only        = set(),    # label only set - only label these nodes
+                 node_label_max_w  = 64,       # max label width for a node in pixels -- None means no limit
 
                  link_labels       = False,    # label links (by color_by... if link_color is 'vary'... and label only is empty or contains the label)
 
@@ -634,6 +635,9 @@ class RTLinkNodeMixin(object):
 
         link_dash: None | str | dict[relationship-tuple:str] | function
             SVG dash patterns for links
+        
+        link_labels: bool
+            Render labels on the links - the label is derived from the "color_by" dataframe field
 
         link_max_curvature_px: int | float
 
