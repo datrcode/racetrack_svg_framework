@@ -71,8 +71,6 @@ e   | expand selection
     | shft-e expand selection (directed graph)
 g   | layout upon next mouse drag
 G   | cycle through layout modes (rectangular, circular, or sunflower)
-p   | keep only selected nodes (push stack)
-P   | pop stack
 q   | invert selection
 Q   | common neighbors
 s   | set sticky labels
@@ -83,6 +81,8 @@ t   | consolidate all nodes at the mouse location
 u   | undo last layout action
 w   | add selected nodes to sticky labels
 W   | cycle label visibility (all | sticky | none)
+x   | remove selected nodes (push stack)
+X   | pop stack
 y   | line layout
     | shft-y horizontally
     | ctrl-y vertically
@@ -771,10 +771,11 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
                     for i in range(len(self.dfs_layout)):
                         if i != self.df_level: self.dfs_layout[i].applyViewConfiguration(_ln_)
             #
-            # 'p' - filter nodes in / out of view
+            # 'x' - remove selected nodes from the dataset (push the stack)
+            # ... 'X' restore removed nodes (pop the stack)
             #
-            elif self.key_op_finished == 'p' or self.key_op_finished == 'P':
-                if self.key_op_finished == 'P' and self.df_level > 0: # pop the stack
+            elif self.key_op_finished == 'x' or self.key_op_finished == 'X':
+                if self.key_op_finished == 'X' and self.df_level > 0: # pop the stack
                     self.popStack()
 
                 elif len(self.selected_entities) > 0: # push the stack
@@ -967,8 +968,6 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
             else if (event.key == "g") { state.layout_op        = true; // Mouse press is layout shape
                                          state.layout_line_flag = false; } 
             else if (event.key == "G") { data.key_op_finished = 'G';  } // Iterate through layout shapes
-            else if (event.key == "p") { data.key_op_finished = 'p';  } // push the stack (remove the selected from the current graph)
-            else if (event.key == "P") { data.key_op_finished = 'P';  } // pop the stack (add removed nodes back in)
             else if (event.key == "q") { data.key_op_finished = 'q';  } // Invert selection
             else if (event.key == "Q") { data.key_op_finished = 'Q';  } // Select common neighbors to selected nodes
             else if (event.key == "s") { data.key_op_finished = 's';  } // Set sticky labels
@@ -978,6 +977,8 @@ z   | select node by color (shift, ctrl, and ctrl-shift apply)
             else if (event.key == "u") { data.key_op_finished = 'u';  } // Undo last layout
             else if (event.key == "w") { data.key_op_finished = 'w';  } // Add to sticky labels (it's right above 's')
             else if (event.key == "W") { data.key_op_finished = 'W';  } // Iterate through label settings
+            else if (event.key == "x") { data.key_op_finished = 'x';  } // push the stack (remove the selected from the current graph)
+            else if (event.key == "X") { data.key_op_finished = 'X';  } // pop the stack (add removed nodes back in)
             else if (event.key == "y") { state.layout_op        = true; // Mouse press is layout line
                                          state.layout_line_flag = true;  }
             else if (event.key == "Y") { state.layout_op        = true; // Mouse press is layout line
