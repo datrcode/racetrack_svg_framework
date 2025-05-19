@@ -38,8 +38,11 @@ class XWords(object):
             self.geometries = ast.literal_eval(f.read())
         with open(self.blockers_file) as f:
             self.blockers   = ast.literal_eval(f.read())
-        with open(self.answers_file) as f:
-            self.answers    = ast.literal_eval(f.read())
+        if self.answers_file is not None:
+            with open(self.answers_file) as f:
+                self.answers    = ast.literal_eval(f.read())
+        else:
+            self.answers = {}
         
         # Determine the number of tiles
         self.x_tiles, self.y_tiles = 1, 1
