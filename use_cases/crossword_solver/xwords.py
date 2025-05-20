@@ -33,14 +33,14 @@ class XWords(object):
 
         # Read the files
         with open(self.entries_file) as f:
-            self.entries    = ast.literal_eval(f.read())
+            self.entries     = ast.literal_eval(f.read())
         with open(self.geometries_file) as f:
-            self.geometries = ast.literal_eval(f.read())
+            self.geometries  = ast.literal_eval(f.read())
         with open(self.blockers_file) as f:
-            self.blockers   = ast.literal_eval(f.read())
+            self.blockers    = ast.literal_eval(f.read())
         if self.answers_file is not None:
             with open(self.answers_file) as f:
-                self.answers    = ast.literal_eval(f.read())
+                self.answers = ast.literal_eval(f.read())
         else:
             self.answers = {}
         
@@ -233,7 +233,8 @@ class XWords(object):
     # clue() - return the clue for a (cluenum, orientation)
     #
     def clue(self, cluenum, orientation):
-        return self.entries[(cluenum, orientation)]
+        if (cluenum, orientation) in self.entries: return self.entries[(cluenum, orientation)]
+        else:                                      return None
     
     #
     # answer()
