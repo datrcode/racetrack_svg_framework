@@ -957,7 +957,10 @@ class RTLinkMixin(object):
                 df_node_singles = self.df_node.filter(pl.col('__nodes__')==1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))                
                 _svg_strs_ = list(set(df_node_singles.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
                 # Multi nodes // nodes that are collapsed into a single pixel
-                _str_op_ = [pl.lit('<use href="#cloud" x="'), pl.col('__sx__'), pl.lit('" y="'), pl.col('__sy__'), pl.lit('" />')]
+                _str_op_ = [pl.lit('<use href="#cloud" x="'), pl.col('__sx__'), 
+                            pl.lit('" y="'), pl.col('__sy__'),
+                            pl.lit('" fill="'), pl.col('__color_nodes_final__'),
+                            pl.lit('" stroke-width="0.5" />')]
                 df_node_multis  = self.df_node.filter(pl.col('__nodes__')>1).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))
                 _svg_strs_.extend(list(set(df_node_multis.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique())))
                 captureFinalNodeColor()
@@ -1020,7 +1023,7 @@ class RTLinkMixin(object):
 
             # Start the SVG Frame
             svg = [f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">']
-            svg.append(self.rt_self.iconCloud(id="cloud")) # behind the background...
+            svg.append(self.rt_self.iconCloud(id="cloud", bg=None, stroke_width=None)) # behind the background...
             background_color = self.rt_self.co_mgr.getTVColor('background','default')
             svg.append(f'<rect width="{self.w-1}" height="{self.h-1}" x="0" y="0" fill="{background_color}" stroke="{background_color}" />')
             self.defer_render = [] # Any deferred rendering (compatibility with linkNode)
