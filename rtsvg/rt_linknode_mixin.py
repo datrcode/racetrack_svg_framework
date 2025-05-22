@@ -1394,12 +1394,9 @@ class RTLinkNodeMixin(object):
                         raise Exception('RTLinkNodeMixin.__renderLinks__() - only pandas and polars supported')
 
                     if self.rt_self.isPandas(self.df):
-                        if self.count_by is None: 
-                            gb_sz = gb.size()
-                        elif count_by_set:
-                            gb_sz = gb[self.count_by].nunique()
-                        else:
-                            gb_sz = gb[self.count_by].sum()
+                        if   self.count_by is None:  gb_sz = gb.size()
+                        elif count_by_set:           gb_sz = gb[self.count_by].nunique()
+                        else:                        gb_sz = gb[self.count_by].sum()
                     else:
                         counter = self.rt_self.polarsCounter(df_filtered, list(rel_tuple[:2]), self.count_by, self.count_by_set)
 
@@ -1409,12 +1406,9 @@ class RTLinkNodeMixin(object):
                             _weight_ =  gb_sz.iloc[gb_sz_i]
                             gb_sz_i  += 1
                         else:
-                            if self.count_by is None:
-                                _weight_ = len(k_df)
-                            elif count_by_set:
-                                _weight_ = k_df[self.count_by].n_unique()
-                            else:
-                                _weight_ = k_df[self.count_by].sum()
+                            if   self.count_by is None: _weight_ = len(k_df)
+                            elif count_by_set:          _weight_ = k_df[self.count_by].n_unique()
+                            else:                       _weight_ = k_df[self.count_by].sum()
 
                         k_fm   = k[:len(fm_flds)]
                         k_to   = k[len(fm_flds):]
@@ -1433,27 +1427,19 @@ class RTLinkNodeMixin(object):
                         if self.node_size is not None and self.node_size != 'hidden' and (self.link_arrow == True or self.link_shape == 'arrow'):
                             node_sz = self.__nodeSize__()
                             if node_sz > 1 and l > 5+2*node_sz: # node has to be larger than 1... and the distance between the two also needs to be large
-                                if   self.node_shape is None:
-                                    shape1 = 'circle'
-                                elif type(self.node_shape) == str:
-                                    shape1 = self.node_shape
-                                elif type(self.node_shape) == dict and fm_str in self.node_shape.keys():
-                                    shape1 = self.node_shape[fm_str]
-                                else:
-                                    shape1 = None
+                                if   self.node_shape is None:                                            shape1 = 'circle'
+                                elif type(self.node_shape) == str:                                       shape1 = self.node_shape
+                                elif type(self.node_shape) == dict and fm_str in self.node_shape.keys(): shape1 = self.node_shape[fm_str]
+                                else:                                                                    shape1 = None
 
                                 x1_orig, y1_orig = x1, y1
                                 if shape1 is not None:
                                     x1, y1 = self.rt_self.shapeAttachmentPoint(shape1, x1, y1, node_sz, x2, y2)
 
-                                if   self.node_shape is None:
-                                    shape2 = 'circle'
-                                elif type(self.node_shape) == str:
-                                    shape2 = self.node_shape
-                                elif type(self.node_shape) == dict and to_str in self.node_shape.keys():
-                                    shape2 = self.node_shape[to_str]
-                                else:
-                                    shape2 = None
+                                if   self.node_shape is None:                                            shape2 = 'circle'
+                                elif type(self.node_shape) == str:                                       shape2 = self.node_shape
+                                elif type(self.node_shape) == dict and to_str in self.node_shape.keys(): shape2 = self.node_shape[to_str]
+                                else:                                                                    shape2 = None
 
                                 if shape2 is not None:
                                     x2, y2 = self.rt_self.shapeAttachmentPoint(shape2, x2, y2, node_sz, x1_orig, y1_orig)
@@ -1465,22 +1451,14 @@ class RTLinkNodeMixin(object):
                             if type(self.link_size) == dict:
                                 if rel_tuple in self.link_size.keys():
                                     _str_ = self.link_size[rel_tuple]
-                                    if   type(_str_) == int or type(_str_) == float:
-                                        _this_sz = _str_
-                                    elif _str_ == 'small':
-                                        _this_sz = 1
-                                    elif _str_ == 'medium':
-                                        _this_sz = 3
-                                    elif _str_ == 'large':
-                                        _this_sz = 5
-                                    elif _str_ == 'nil':
-                                        _this_sz = 0.2
-                                    else:
-                                        _this_sz = 0.0
-                                else:
-                                    _this_sz = 0.0
-                            else:
-                                _this_sz = _sz
+                                    if   type(_str_) == int or type(_str_) == float: _this_sz = _str_
+                                    elif _str_ == 'small':                           _this_sz = 1
+                                    elif _str_ == 'medium':                          _this_sz = 3
+                                    elif _str_ == 'large':                           _this_sz = 5
+                                    elif _str_ == 'nil':                             _this_sz = 0.2
+                                    else:                                            _this_sz = 0.0
+                                else: _this_sz = 0.0
+                            else: _this_sz = _sz
 
                         # Vector info
                         dx, dy = x2 - x1, y2 - y1
@@ -1567,14 +1545,10 @@ class RTLinkNodeMixin(object):
                             x6 = x2 - dx*2*self.link_arrow_length + dy*1.8*self.link_arrow_length/4
                             y6 = y2 - dy*2*self.link_arrow_length - dx*1.8*self.link_arrow_length/4
 
-                            if   self.link_arrow_style ==  'kite':
-                                svg.append(f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ')
-                            elif self.link_arrow_style ==  'kite_v2': 
-                                svg.append(f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x5} {y5} L {x6} {y6} L {x2} {y2} L {x4} {y4} Z" ') # arrow head is not filled
-                            elif self.link_arrow_style ==  'kite_v3':
-                                svg.append(f'<path d="M {x1} {y1} L {x6} {y6} L {x5} {y5} L {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ') # arrow body is not filled
-                            else:
-                                raise Exception('link_arrow_style must be "kite" or "kite_v2" or "kite_v3"')
+                            if   self.link_arrow_style ==  'kite':     svg.append(f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ')
+                            elif self.link_arrow_style ==  'kite_v2':  svg.append(f'<path d="M {x1} {y1} L {x3} {y3} L {x2} {y2} L {x5} {y5} L {x6} {y6} L {x2} {y2} L {x4} {y4} Z" ') # arrow head is not filled
+                            elif self.link_arrow_style ==  'kite_v3':  svg.append(f'<path d="M {x1} {y1} L {x6} {y6} L {x5} {y5} L {x1} {y1} L {x3} {y3} L {x2} {y2} L {x4} {y4} Z" ') # arrow body is not filled
+                            else: raise Exception('link_arrow_style must be "kite" or "kite_v2" or "kite_v3"')
 
                             svg.append(f'fill-opacity="{self.link_opacity}" fill="{_co}" stroke-width="{_this_sz}" stroke="{_co}" stroke-opacity="{self.link_opacity}" />')
                         elif self.link_shape == 'curve':
@@ -1678,16 +1652,11 @@ class RTLinkNodeMixin(object):
         # __nodeSize__() - return the node size
         #
         def __nodeSize__(self):
-            if   type(self.node_size) == int or type(self.node_size) == float:
-                _sz = self.node_size
-            elif self.node_size == 'small':
-                _sz = 2
-            elif self.node_size == 'medium':
-                _sz = 5
-            elif self.node_size == 'large':
-                _sz = 8
-            else: # Vary
-                _sz = 1
+            if   type(self.node_size) == int or type(self.node_size) == float:   _sz = self.node_size
+            elif self.node_size == 'small':                                      _sz = 2
+            elif self.node_size == 'medium':                                     _sz = 5
+            elif self.node_size == 'large':                                      _sz = 8
+            else:                                                                _sz = 1 # Vary
             return _sz
 
         #
