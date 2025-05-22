@@ -685,12 +685,36 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             # "S" - Set Sticky Labels & Remove Sticky Labels
             #
             elif self.key_op_finished == 's' or self.key_op_finished == 'S':
-                if self.key_op_finished == 'S': self.sticky_labels = self.sticky_labels - self.selected_entities
-                else:                           self.sticky_labels = set(self.selected_entities) # make a new set object
-                if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
-                self.ln_params['label_only']  = self.sticky_labels
+                _label_set_changed_ = True
+                if   self.shiftkey and self.ctrlkey:
+                    if   self.label_mode == 'all labels':    
+                        self.label_mode = 'sticky labels'
+                        _ln_.labelOnly(self.sticky_labels)
+                        _ln_.drawLabels(True)
+                        self.ln_params['draw_labels'] = True
+                    elif self.label_mode == 'sticky labels':
+                        self.label_mode = 'no labels'
+                        _ln_.drawLabels(False)
+                        self.ln_params['draw_labels'] = False                        
+                    else:                                    
+                        self.label_mode = 'all labels'
+                        _ln_.drawLabels(True)
+                        self.ln_params['draw_labels'] = True
+                        _ln_.labelOnly(set())
+                    _label_set_changed_ = False
+                    self.__refreshView__(all_ents=False, sel_ents=False)
+                elif self.shiftkey:
+                    self.sticky_labels  = self.sticky_labels - self.selected_entities # subtract from the current set
+                elif                   self.ctrlkey:
+                    self.sticky_labels = self.sticky_labels | self.selected_entities  # add to the current set
+                else:
+                    self.sticky_labels  = set(self.selected_entities)                 # make a new set object with the selected
 
-                self.__refreshView__(info=False, all_ents=False, sel_ents=False)
+                # if the set of sticky labels has changed, update the label set & refresh
+                if _label_set_changed_:
+                    if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
+                    self.ln_params['label_only'] = self.sticky_labels
+                    self.__refreshView__(info=False, all_ents=False, sel_ents=False)
 
             #
             # "T" - Collapse (to a point, horizontal line, or vertical line)
@@ -730,32 +754,6 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 # Invalidate the renders and refresh the view
                 for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
                 self.__refreshView__(info=False)
-
-            #
-            # "W" - Remove Sticky Labels & Label Toggles
-            #
-            elif self.key_op_finished == 'w' or self.key_op_finished == 'W':
-                if self.key_op_finished == 'W':
-                    if   self.label_mode == 'all labels':    
-                        self.label_mode = 'sticky labels'
-                        _ln_.labelOnly(self.sticky_labels)
-                        _ln_.drawLabels(True)
-                        self.ln_params['draw_labels'] = True
-                    elif self.label_mode == 'sticky labels':
-                        self.label_mode = 'no labels'
-                        _ln_.drawLabels(False)
-                        self.ln_params['draw_labels'] = False                        
-                    else:                                    
-                        self.label_mode = 'all labels'
-                        _ln_.drawLabels(True)
-                        self.ln_params['draw_labels'] = True
-                        _ln_.labelOnly(set())
-                else:
-                    self.sticky_labels = self.sticky_labels | self.selected_entities
-                    if self.label_mode == 'sticky labels': _ln_.labelOnly(self.sticky_labels)
-                    self.ln_params['label_only'] = self.sticky_labels
-
-                self.__refreshView__(all_ents=False, sel_ents=False)
             
             #
             # "Z" - Select nodes with the same color as the one that the mouse is over
@@ -1009,8 +1007,6 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             else if (event.key == "t") { data.key_op_finished = 't';  } // Collapse selected to a single point
             else if (event.key == "T") { data.key_op_finished = 'T';  } // Horizontally collapse selected
             else if (event.key == "u") { data.key_op_finished = 'u';  } // Undo last layout
-            else if (event.key == "w") { data.key_op_finished = 'w';  } // Add to sticky labels (it's right above 's')
-            else if (event.key == "W") { data.key_op_finished = 'W';  } // Iterate through label settings
             else if (event.key == "x") { data.key_op_finished = 'x';  } // push the stack (remove the selected from the current graph)
             else if (event.key == "X") { data.key_op_finished = 'X';  } // pop the stack (add removed nodes back in)
             else if (event.key == "y") { state.layout_op        = true; // Mouse press is layout line
