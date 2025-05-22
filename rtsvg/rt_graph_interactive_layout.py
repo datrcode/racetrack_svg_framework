@@ -212,6 +212,14 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         else:                                                       self.sticky_labels = set()
         self.selected_entities = set()
 
+        # Constants
+        self.GRID                 = 'grid'
+        self.CIRCLE               = 'circle'
+        self.SUNFLOWER            = 'sunflower'
+        self.GRID_BY_COLOR        = 'grid (color)'
+        self.GRID_BY_COLOR_CLOUDS = 'grid (color, clouds)'
+        self.layout_modes         = [self.GRID, self.CIRCLE, self.SUNFLOWER, self.GRID_BY_COLOR, self.GRID_BY_COLOR_CLOUDS]
+
         # Recast the template with the width's and height's
         self._template = '''<svg id="svgparent" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" tabindex="0" ''' + \
                          '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}"> ''' + \
@@ -450,12 +458,20 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             nodes_moved = False
             _ln_        = self.dfs_layout[self.df_level]
             if len(as_list) > 1:
-                if   self.layout_shape == "grid":
+                if   self.layout_shape == self.GRID:
                     pos_adj = self.rt_self.rectangularArrangement(self.graphs[self.df_level], as_list, bounds=(x0,y0,x1,y1))
                     self.__cacheNodePositions__()
                     for _node_ in pos_adj: _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
                     nodes_moved = True
-                elif self.layout_shape == "circle":
+                elif self.layout_shape == self.GRID_BY_COLOR or self.layout_shape == self.GRID_BY_COLOR_CLOUDS:
+                    _node_to_color_ = {}
+                    for _node_ in as_list: _node_to_color_[_node_] = _ln_.nodeColor(_node_)
+                    pos_adj = self.rt_self.treeMapNodeColorPlacement(self.graphs[self.df_level], as_list, _node_to_color_, 
+                                                                     collapse=(self.layout_shape == self.GRID_BY_COLOR_CLOUDS),
+                                                                     bounds=(x0,y0,x1,y1))
+                    for _node_ in pos_adj: _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
+                    nodes_moved = True
+                elif self.layout_shape == self.CIRCLE:
                     wx0, wy0 = _ln_.xT_inv(x0), _ln_.yT_inv(y0)
                     wx1, wy1 = _ln_.xT_inv(x1), _ln_.yT_inv(y1)
                     r = sqrt((wx0 - wx1)**2 + (wy0 - wy1)**2)
@@ -464,7 +480,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                     self.__cacheNodePositions__()
                     for _node_ in pos_adj: _ln_.pos[_node_] = (pos_adj[_node_][0],pos_adj[_node_][1])
                     nodes_moved = True
-                elif self.layout_shape == "sunflower":
+                elif self.layout_shape == self.SUNFLOWER:
                     r = sqrt((x0 - x1)**2 + (y0 - y1)**2)
                     pos_adj = self.rt_self.sunflowerSeedArrangement(self.graphs[self.df_level], as_list, xy=(x0,y0), r_max=r)
                     self.__cacheNodePositions__()
@@ -838,16 +854,14 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 else:                             self.setSelectedEntitiesAndNotifyOthers(_match_)
 
                 self.__refreshView__(comp=False, all_ents=False)
-                        
+
             #
             # Next Layout Option
             #
             elif self.key_op_finished == 'G':
-                if   self.layout_mode == 'grid':      self.layout_mode = 'circle'
-                elif self.layout_mode == 'circle':    self.layout_mode = 'sunflower'
-                elif self.layout_mode == 'sunflower': self.layout_mode = 'grid'
-                else:                                 self.layout_mode = 'grid'
-
+                _index_          = self.layout_modes.index(self.layout_mode)
+                self.layout_mode = self.layout_modes[(_index_+1) % len(self.layout_modes)]
+            
                 self.__refreshView__(comp=False, all_ents=False, sel_ents=False)
 
         finally:
@@ -1102,7 +1116,9 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 layoutsunflower.setAttribute("cx", state.x0_drag);
                 layoutsunflower.setAttribute("cy", state.y0_drag);
                 layoutsunflower.setAttribute("r",  Math.sqrt(dx*dx + dy*dy));            
-            } else if (state.layout_op_shape == "grid")      { reset_rect = false;
+            } else if (state.layout_op_shape == "grid" || 
+                       state.layout_op_shape == "grid (color)" || 
+                       state.layout_op_shape == "grid (color, clouds)") { reset_rect = false;
                 layoutrect.setAttribute("x", Math.min(state.x0_drag, state.x1_drag));
                 layoutrect.setAttribute("y", Math.min(state.y0_drag, state.y1_drag));
                 layoutrect.setAttribute("width",  Math.abs(dx));
