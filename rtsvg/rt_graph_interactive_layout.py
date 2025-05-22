@@ -35,6 +35,8 @@
 # -- Remove tag from selected node(s)
 #    (would need a mechanism to select which tag is to be applied/removed)
 # -- Probably need multiple labels ... node label (from the dataframe), node label lookups, and then the node color lookups
+#    ... note that it looks like linkNode handles dataframe node name w/ label lookups differently than link does
+#    ... and there's confusion about selectEntities() and selectedEntities() vis-a-vis node labels lookups
 #
 # Other Changes:
 #
@@ -90,7 +92,7 @@ forceRender() - force a re-render (e.g., if the ln parameters were externally ch
 Set Operations For Selection
 ------------+------------------------------------
 <none>      | replace (default)
-shift       | subtrace from current selection
+shift       | subtract from current selection
 ctrl        | add to current selection
 ctrl-shift  | intersect with current selection
 
@@ -100,25 +102,25 @@ Interactivity Key Commands
 c   | reset view or focus view on selected
     | shft-c focus view on selected + neighbors
 e   | expand selection
-    | shft-e expand selection (directed graph)
+    | shift-e       | expand selection (directed graph)
 g   | layout upon next mouse drag
-G   | cycle through layout modes (rectangular, circular, or sunflower)
+    | shift-g       | cycle through layout modes (rectangular, circular, or sunflower)
 q   | invert selection
-Q   | common neighbors
+    | shift-q       | common neighbors
 s   | set sticky labels
-S   | remove sticky labels from selected
+    | shift-s       | remove sticky labels from selected
+    | ctrl-s        | add selected to sticky labels
+    | ctrl-shift-s  | cycle label visibility (all | sticky | none) 
 t   | consolidate all nodes at the mouse location
-    | shft-t horizontally
-    | ctrl-t vertically
+    | shift-t       | horizontally
+    | ctrl-t        | vertically
 u   | undo last layout action
-w   | add selected nodes to sticky labels
-W   | cycle label visibility (all | sticky | none)
 x   | remove selected nodes (push stack)
-X   | pop stack
+    | shift-x       | pop stack
 y   | line layout
-    | shft-y horizontally
-    | ctrl-y vertically
-z   | select node by color (shift, ctrl, and ctrl-shift apply)
+    | shift-y       | horizontally
+    | ctrl-y        | vertically
+z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
 1-6 | select numbered degree
 7   | select degree 10 -> 20
 8   | select degree 20 -> 50
