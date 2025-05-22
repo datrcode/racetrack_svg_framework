@@ -23,7 +23,7 @@
 # - Only keep a single record on visible edges (should make everything faster) (subsetOneRecordPerEdge)
 #
 #
-# - Treemap based layout on node colors (if selected nodes, only treemap those & fit them in the selection bounds)
+# - MOSTLY DONE - Treemap based layout on node colors (if selected nodes, only treemap those & fit them in the selection bounds)
 #   (difference between collapse them to a node, do a grid layout, or do something smarter that organizes the nodes within the treemap layout)
 # - The templated layouts for simple patterns
 #
