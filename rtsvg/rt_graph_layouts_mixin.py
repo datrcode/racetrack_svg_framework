@@ -27,6 +27,8 @@ import random
 
 import os
 
+from collections.abc import Iterable
+
 from math import sqrt, pi, cos, sin, ceil, floor, inf, atan2
 from dataclasses import dataclass
 
@@ -348,8 +350,55 @@ class RTGraphLayoutsMixin(object):
         return top_ten
 
     #
+    # treeMapNodeColorPlacement() - place nodes in a tree map based on node color (if the node's color is assigned in the node_color_lu)
+    # - pos gets modified in place (and also returned)
+    #
+    def treeMapNodeColorPlacement(self, 
+                                  g             : nx.Graph, 
+                                  nodes         : Iterable[str],
+                                  node_color_lu : dict[str, str], 
+                                  pos           : dict[str, tuple[float,float]]  = None,
+                                  collapse      : bool                           = False, 
+                                  bounds        : tuple[float,float,float,float] = (0,0,1,1)) -> dict[str, tuple[float,float]]:
+        if pos is None: pos = {}
+
+        # Re-arrange to color -> nodes
+        _color_to_nodes_ = {}
+        for _node_ in nodes:
+            if _node_ in node_color_lu: _color_ = node_color_lu[_node_]
+            else:                       _color_ = self.co_mgr.getTVColor('data','default')
+            if _color_ not in _color_to_nodes_: _color_to_nodes_[_color_] = set()
+            _color_to_nodes_[_color_].add(_node_)
+
+        # Determine the sizes of each set & sort by size
+        _color_size_tuples_ = []
+        for _color_ in _color_to_nodes_: _color_size_tuples_.append((len(_color_to_nodes_[_color_]), _color_))
+        _color_size_tuples_.sort(reverse=True)
+
+        # Places the sizes into an array by itself / with the same order as the _color__size_tuples_
+        _color_sizes_ = []
+        for _tuple_ in _color_size_tuples_: _color_sizes_.append(_tuple_[0])
+
+        # Perform the treemap operation via squarify library
+        _normalized_sizes_   = squarify.normalize_sizes(_color_sizes_, bounds[2]-bounds[0], bounds[3]-bounds[1])
+        _treemap_rectangles_ = squarify.squarify(_normalized_sizes_, bounds[0], bounds[1], bounds[2]-bounds[0], bounds[3]-bounds[1])
+
+        # Place the nodes
+        for i in range(len(_color_size_tuples_)):
+            _color_  = _color_size_tuples_[i][1]
+            _rect_   = _treemap_rectangles_[i]
+            _bounds_ = (_rect_['x'], _rect_['y'], _rect_['x'] + _rect_['dx'], _rect_['y'] + _rect_['dy'])
+            if collapse:
+                for _node_ in _color_to_nodes_[_color_]: pos[_node_] = (_bounds_[0]+_bounds_[2])/2.0, (_bounds_[1]+_bounds_[3])/2.0
+            else:
+                self.rectangularArrangement(g, _color_to_nodes_[_color_], pos=pos, bounds=_bounds_)
+
+        return pos
+
+    #
     # rectangularArrangement() - arrange a list of nodes in a rectangular shape.
     # - bounds = (x0,y0,x1,y1) where x0 < x1 and y0 < y1
+    # - pos gets modified in place & returned
     #
     def rectangularArrangement(self, g, nodes, pos=None, bounds=(0,0,1,1)):
         x0, y0, x1, y1 = bounds
