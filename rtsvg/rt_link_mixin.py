@@ -1,4 +1,4 @@
-# Copyright 2023 David Trimm
+# Copyright 2025 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -824,25 +824,62 @@ class RTLinkMixin(object):
             _set_ = set() # final set of SVG tags to append to the SVG array of strings
 
             for i in range(len(self.relationships)):
-                _operations_, _color_calcs_, _gb_str_  = [], [], []
+                _operations_, _color_calcs_, _gb_str_                    = [], [], []
+                _diff_ops_, _mag_ops_, _uv_ops_, _puv_ops_, _spline_ops_ = [], [], [], [], []
 
                 _link_  = '__rel_link__'
                 _fm_sx_, _fm_sy_ = f'__rel{i}_fm_sx__', f'__rel{i}_fm_sy__'
                 _to_sx_, _to_sy_ = f'__rel{i}_to_sx__', f'__rel{i}_to_sy__'
+                _dx_,    _dy_    = f'__dx{i}__',        f'__dy{i}__'
+                _mag_            = f'__mag{i}__'
+                _u_,     _v_     = f'__u{i}__',         f'__v{i}__'
+                _pu_,    _pv_    = f'__pu{i}__',        f'__pv{i}__'
+                _xo0_,   _yo0_   = f'__xo0{i}__',       f'__yo0{i}__'
+                _xo1_,   _yo1_   = f'__xo1{i}__',       f'__yo1{i}__'
                 _gb_str_.extend([_fm_sx_, _fm_sy_, _to_sx_, _to_sy_])
-                if self.link_size == 'vary':
-                    _str_ops_ = [pl.lit('<line x1="'), pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
-                                 pl.lit('" x2="'),     pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
-                                 pl.lit('" stroke="'), pl.col('__color_links_final__'), pl.lit('" stroke-width="'),
-                                 self.link_size_min + (self.link_size_max - self.link_size_min)*(pl.col('__count__') - pl.col('__count__').min())/(0.01 + pl.col('__count__').max() - pl.col('__count__').min()),
-                                 pl.lit(f'" opacity="{self.link_opacity}" />')]
+                if self.link_shape == 'curve':
+                    if self.link_size == 'vary':
+                        _str_ops_ = [pl.lit('<path d="M '), pl.col(_fm_sx_), pl.lit(' '), pl.col(_fm_sy_), 
+                                     pl.lit(' C '), pl.col(_xo0_), pl.lit(' '), pl.col(_yo0_),
+                                     pl.lit(' '), pl.col(_xo1_), pl.lit(' '), pl.col(_yo1_), pl.lit(' '),    
+                                     pl.col(_to_sx_), pl.lit(' '), pl.col(_to_sy_), 
+                                     pl.lit('" fill="none" stroke="'), pl.col('__color_links_final__'), pl.lit('" stroke-width="'),
+                                     self.link_size_min + (self.link_size_max - self.link_size_min)*(pl.col('__count__') - pl.col('__count__').min())/(0.01 + pl.col('__count__').max() - pl.col('__count__').min()),
+                                     pl.lit(f'" opacity="{self.link_opacity}" />')]
+                    else:
+                        _str_ops_ = [pl.lit('<path d="M '), pl.col(_fm_sx_), pl.lit(' '), pl.col(_fm_sy_), 
+                                     pl.lit(' C '), pl.col(_xo0_), pl.lit(' '), pl.col(_yo0_),
+                                     pl.lit(' '), pl.col(_xo1_), pl.lit(' '), pl.col(_yo1_), pl.lit(' '),    
+                                     pl.col(_to_sx_), pl.lit(' '), pl.col(_to_sy_),  
+                                     pl.lit(f'" fill="none" stroke="'), pl.col('__color_links_final__'), pl.lit(f'" stroke-width="{_sz_}" opacity="{self.link_opacity}" />')]
                 else:
-                    _str_ops_ = [pl.lit('<line x1="'),  pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
-                                 pl.lit('" x2="'),      pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
-                                 pl.lit(f'" stroke="'), pl.col('__color_links_final__'), pl.lit(f'" stroke-width="{_sz_}" opacity="{self.link_opacity}" />')]
+                    if self.link_size == 'vary':
+                        _str_ops_ = [pl.lit('<line x1="'), pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
+                                     pl.lit('" x2="'),     pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
+                                     pl.lit('" stroke="'), pl.col('__color_links_final__'), pl.lit('" stroke-width="'),
+                                     self.link_size_min + (self.link_size_max - self.link_size_min)*(pl.col('__count__') - pl.col('__count__').min())/(0.01 + pl.col('__count__').max() - pl.col('__count__').min()),
+                                     pl.lit(f'" opacity="{self.link_opacity}" />')]
+                    else:
+                        _str_ops_ = [pl.lit('<line x1="'),  pl.col(_fm_sx_), pl.lit('" y1="'), pl.col(_fm_sy_), 
+                                     pl.lit('" x2="'),      pl.col(_to_sx_), pl.lit('" y2="'), pl.col(_to_sy_), 
+                                     pl.lit(f'" stroke="'), pl.col('__color_links_final__'), pl.lit(f'" stroke-width="{_sz_}" opacity="{self.link_opacity}" />')]
 
                 _color_calcs_.append((pl.when(pl.col('__color_links_nuniq__')==1).then(pl.col('__color_links_first__')).otherwise(pl.col('__color_default__'))).alias('__color_links_final__'))
                 _operations_.append(pl.concat_str(_str_ops_).alias(_link_))
+
+                if self.link_shape == 'curve':
+                    _diff_ops_   = [(pl.col(_to_sx_)-pl.col(_fm_sx_)).alias(_dx_), 
+                                    (pl.col(_to_sy_)-pl.col(_fm_sy_)).alias(_dy_)] 
+                    _mag_ops_    = [((pl.col(_dx_)**2 + pl.col(_dy_)**2).sqrt()).alias(_mag_)]
+                    _uv_ops_     = [(pl.when(pl.col(_mag_) == 0).then(0).otherwise(pl.col(_dx_)/pl.col(_mag_))).alias(_u_),
+                                    (pl.when(pl.col(_mag_) == 0).then(0).otherwise(pl.col(_dy_)/pl.col(_mag_))).alias(_v_)]
+                    _puv_ops_    = [(-1.0*pl.col(_v_)).alias(_pu_), 
+                                          pl.col(_u_) .alias(_pv_)]
+                    _along_mag_div_, _out_mag_div_ = 3.0, 10.0
+                    _spline_ops_ = [(pl.col(_fm_sx_) + pl.col(_mag_)*pl.col(_u_)/_along_mag_div_ + pl.col(_mag_)*pl.col(_pu_)/_out_mag_div_).alias(_xo0_),
+                                    (pl.col(_fm_sy_) + pl.col(_mag_)*pl.col(_v_)/_along_mag_div_ + pl.col(_mag_)*pl.col(_pv_)/_out_mag_div_).alias(_yo0_),
+                                    (pl.col(_to_sx_) - pl.col(_mag_)*pl.col(_u_)/_along_mag_div_ + pl.col(_mag_)*pl.col(_pu_)/_out_mag_div_).alias(_xo1_),
+                                    (pl.col(_to_sy_) - pl.col(_mag_)*pl.col(_v_)/_along_mag_div_ + pl.col(_mag_)*pl.col(_pv_)/_out_mag_div_).alias(_yo1_)]
 
                 # Define the color operations
                 color_operations = [pl.col('__color_links__').n_unique().alias('__color_links_nuniq__'),
@@ -853,20 +890,35 @@ class RTLinkMixin(object):
                 # count by a field
                 if self.link_size == 'vary' and self.count_by_set == False and self.count_by in self.df:
                     self.df_link = self.df.group_by(_gb_str_). \
-                                        agg(pl.sum(self.count_by).alias('__count__'), *color_operations). \
-                                        with_columns(*_color_calcs_). \
-                                        with_columns(*_operations_)
+                                           agg(pl.sum(self.count_by).alias('__count__'), *color_operations). \
+                                           with_columns(*_color_calcs_). \
+                                           with_columns(*_diff_ops_).    \
+                                           with_columns(*_mag_ops_).     \
+                                           with_columns(*_uv_ops_).      \
+                                           with_columns(*_puv_ops_).     \
+                                           with_columns(*_spline_ops_).  \
+                                           with_columns(*_operations_)
                 # count by a field (set-based)
                 elif self.link_size == 'vary' and self.count_by_set == True and self.count_by in self.df:
                     self.df_link = self.df.group_by(_gb_str_). \
-                                        agg(pl.col(self.count_by).n_unique().alias('__count__'), *color_operations). \
-                                        with_columns(*_color_calcs_). \
-                                        with_columns(*_operations_)
+                                           agg(pl.col(self.count_by).n_unique().alias('__count__'), *color_operations). \
+                                           with_columns(*_color_calcs_). \
+                                           with_columns(*_diff_ops_).    \
+                                           with_columns(*_mag_ops_).     \
+                                           with_columns(*_uv_ops_).      \
+                                           with_columns(*_puv_ops_).     \
+                                           with_columns(*_spline_ops_).  \
+                                           with_columns(*_operations_)
                 # else either no counting or by the number of rows
                 else:
                     self.df_link = self.df.group_by(_gb_str_). \
                                            agg(pl.len().alias('__count__'), *color_operations). \
                                            with_columns(*_color_calcs_). \
+                                           with_columns(*_diff_ops_).    \
+                                           with_columns(*_mag_ops_).     \
+                                           with_columns(*_uv_ops_).      \
+                                           with_columns(*_puv_ops_).     \
+                                           with_columns(*_spline_ops_).  \
                                            with_columns(*_operations_)
 
                 # Return the list of links
