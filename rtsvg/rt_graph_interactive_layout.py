@@ -26,10 +26,12 @@
 # - Make the stack the top level and then whatever this one currently is... and get rid of everything else
 # - Make this current stack the top level... and get rid of everything else
 # - Remove the current from the top stack and then show whatever is left over...
+#   (should we add rendering of the current stack into link() as well?  bad for modularity :( ... but all this javascript is a mess anyway)
 #
 #
 # - MOSTLY DONE - Treemap based layout on node colors (if selected nodes, only treemap those & fit them in the selection bounds)
 #   (difference between collapse them to a node, do a grid layout, or do something smarter that organizes the nodes within the treemap layout)
+#   ... // common theme of "optimizing node selection in a structure"
 # - The templated layouts for simple patterns
 #
 #
@@ -46,10 +48,12 @@
 # Other Changes:
 #
 # (Selected nodes copied into system clipboard -- is that possible in javascript? or on the python side?)
-# (Optimize the circular layout to minimize connection lengths / edge crossings)
+# (Optimize the circular layout to minimize connection lengths / edge crossings) // common theme of "optimizing node selection in a structure"
 # (Dynamic labels? ... maybe make a dummy label i the template & then dynamically reposition it? ... needs to all be done in Javascript...)
 # (Edge labels? ... linkNode supports.... but not link)
 # (Render help ... or at least the cheat sheet of key commands)
+# (More granularity on selections -- especially when a cloud has some selected elements & some not)
+# ... the selection implementation is complex because it modifies a single SVG path element...
 #
 
 import pandas as pd
