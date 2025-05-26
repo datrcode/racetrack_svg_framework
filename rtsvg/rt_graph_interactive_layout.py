@@ -23,10 +23,12 @@
 # - Only keep a single record on visible edges (should make everything faster) (subsetOneRecordPerEdge)
 #
 #
-# - Make the stack the top level and then whatever this one currently is... and get rid of everything else
-# - Make this current stack the top level... and get rid of everything else
-# - Remove the current from the top stack and then show whatever is left over...
-#   (should we add rendering of the current stack into link() as well?  bad for modularity :( ... but all this javascript is a mess anyway)
+# - Make the stack the top level and then whatever this one currently is... and get rid of everything else ... stack == |2|
+#   (I don't care how I got here... get rid of all the intermediate stacks)
+# - Make this current stack the top level... and get rid of everything else ... stack == |1|
+#   (I only care about this data... nothing else... get rid of everything else) // seems like this could be "don't do this by accident"
+# - Remove the current from the top stack and then show whatever is left over... stack == |2|
+#   (This is the stuff I definitely don't want)
 #
 #
 # - MOSTLY DONE - Treemap based layout on node colors (if selected nodes, only treemap those & fit them in the selection bounds)
@@ -109,7 +111,7 @@ ctrl-shift  | intersect with current selection
 Interactivity Key Commands
 ----+--------------------------------------------
 c   | reset view or focus view on selected
-    | shft-c focus view on selected + neighbors
+    | shift-c focus view on selected + neighbors
 e   | expand selection
     | shift-e       | expand selection (directed graph)
 g   | layout upon next mouse drag
@@ -123,7 +125,7 @@ s   | set sticky labels
 t   | consolidate all nodes at the mouse location
     | shift-t       | horizontally
     | ctrl-t        | vertically
-u   | undo last layout action
+u   | undo last layout action (limited undo's)
 x   | remove selected nodes (push stack)
     | shift-x       | pop stack
 y   | line layout
