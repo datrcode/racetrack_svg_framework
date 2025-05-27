@@ -1,4 +1,4 @@
-# Copyright 2024 David Trimm
+# Copyright 2025 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,20 +51,15 @@ class RTAnnotationsMixin(object):
     # OKAY ... I'M SURE THIS IS GOING TO MESS SOMETHING UP DOWNSTREAM...
     #
     def tag(self, df, df_sub, tag, op='add', field='__tag__'):
-        if op != 'add' and op != 'set':
-            raise Exception('tag() - only operations supported are "set" and "add" (default)')
-        if self.isPandas(df):
-            return self.__tag_pandas__(df, df_sub, tag, op, field)
-        elif self.isPolars(df):
-            return self.__tag_polars__(df, df_sub, tag, op, field)
-        else:
-            raise Exception('tag() - only pandas and polars implemented')
+        if op != 'add' and op != 'set':   raise Exception('tag() - only operations supported are "set" and "add" (default)')
+        if self.isPandas(df):             return self.__tag_pandas__(df, df_sub, tag, op, field)
+        elif self.isPolars(df):           return self.__tag_polars__(df, df_sub, tag, op, field)
+        else:                             raise Exception('tag() - only pandas and polars implemented')
 
     # pandas version
     def __tag_pandas__(self, df, df_sub, tag, op, field):
         if op == 'set' or field not in df.columns:
-            if field not in df.columns:
-                df[field] = ''
+            if field not in df.columns: df[field] = ''
             df.loc[df.index.isin(df_sub.index), field] = tag
         else: # add
             df.update(df.loc[df.index.isin(df_sub.index), field].apply(lambda x: self.__addToTag__(x, tag)))
@@ -74,8 +69,7 @@ class RTAnnotationsMixin(object):
     def __tag_polars__(self, df, df_sub, tag, op, field):
         ee_but_tag = list(set(df.columns) - set([field]))
         if op == 'set' or field not in df.columns:
-            if field not in df.columns:
-                df = df.with_columns(pl.lit('').alias(field))
+            if field not in df.columns: df = df.with_columns(pl.lit('').alias(field))
             df_sub = df_sub.with_columns(pl.lit(tag).alias(field))
             df = df.update(df_sub, on=ee_but_tag)
         else:
@@ -86,8 +80,7 @@ class RTAnnotationsMixin(object):
 
     # mechanics to add to a tag
     def __addToTag__(self, orig, to_add):
-        if orig is None:
-            return to_add
+        if orig is None: return to_add
         else:
             orig, to_add = str(orig), str(to_add)
             _set_ = set(orig.split('|'))
@@ -98,10 +91,8 @@ class RTAnnotationsMixin(object):
                 _value_   = _tv_[1] if len(_tv_) == 2 else '' # pull out value
                 _new_set_ = set()
                 for x in _set_:
-                    if '=' in x and x.split('=')[0] == _type_:
-                        _new_set_.add(to_add)
-                    else:
-                        _new_set_.add(x)
+                    if '=' in x and x.split('=')[0] == _type_: _new_set_.add(to_add)
+                    else:                                      _new_set_.add(x)
                 _set_ = _new_set_
             _joined_ = '|'.join(sorted(list(_set_)))
             if len(_joined_) > 0 and _joined_[0] == '|':

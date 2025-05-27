@@ -45,7 +45,12 @@
 #    (would need a mechanism to select which tag is to be applied/removed)
 # -- Probably need multiple labels ... node label (from the dataframe), node label lookups, and then the node color lookups
 #    ... note that it looks like linkNode handles dataframe node name w/ label lookups differently than link does
-#    ... and there's confusion about selectEntities() and selectedEntities() vis-a-vis node labels lookups
+#    ... and there's confusion about selectEntities() and selectedEntities() vis-a-vis node label lookups
+# - Entity Tagging vs Record Tagging ... stuff above is about entity tagging
+#   ... Record tagging is also relevant ... and there are some helper methods put together in the rt_annotations_mixin.py file
+#       (however, that tag stuff is just set/add ... needs to include remove ... and it's unclear how to propagate to sub-dataframes...)
+#   ... however, it's unclear how to propagate a record tag to all of the dataframes in the stack at once
+#   ... linknode is entity tagging ... histogram is either entity or record tagging ... xy is record tagging ... temporal is record tagging
 #
 # Other Changes:
 #
