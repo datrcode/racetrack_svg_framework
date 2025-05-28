@@ -50,9 +50,12 @@ class RTAnnotationsMixin(object):
     # IN_PLACE VERSION ... AS LONG AS THE CONVENTION IS "df = rt.tag()" THEN ITS
     # OKAY ... I'M SURE THIS IS GOING TO MESS SOMETHING UP DOWNSTREAM...
     #
+    # NOTE: SINCE POLARS DOESN'T HAVE THE CONCEPT OF AN INDEX, UNIQUE ROWS THAT
+    # ARE DUPLICATIVE GET MULTIPLIED OUT BY THIS METHOD...
+    #
     def tag(self, df, df_sub, tag, op='add', field='__tag__'):
         if op != 'add' and op != 'set':   raise Exception('tag() - only operations supported are "set" and "add" (default)')
-        if self.isPandas(df):             return self.__tag_pandas__(df, df_sub, tag, op, field)
+        if   self.isPandas(df):           return self.__tag_pandas__(df, df_sub, tag, op, field)
         elif self.isPolars(df):           return self.__tag_polars__(df, df_sub, tag, op, field)
         else:                             raise Exception('tag() - only pandas and polars implemented')
 
@@ -71,11 +74,11 @@ class RTAnnotationsMixin(object):
         if op == 'set' or field not in df.columns:
             if field not in df.columns: df = df.with_columns(pl.lit('').alias(field))
             df_sub = df_sub.with_columns(pl.lit(tag).alias(field))
-            df = df.update(df_sub, on=ee_but_tag)
+            df     = df.update(df_sub, how='left', on=ee_but_tag)
         else:
-            _fn_ = lambda x: self.__addToTag__(x, tag)
+            _fn_   = lambda x: self.__addToTag__(x, tag)
             df_sub = df_sub.with_columns(pl.col(field).map_elements(_fn_))
-            df = df.update(df_sub, on=ee_but_tag)
+            df     = df.update(df_sub, how='left', on=ee_but_tag)
         return df
 
     # mechanics to add to a tag
