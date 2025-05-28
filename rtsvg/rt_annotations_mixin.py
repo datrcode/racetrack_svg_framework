@@ -72,18 +72,22 @@ class RTAnnotationsMixin(object):
     def __tag_polars__(self, df, df_sub, tag, op, field):
         ee_but_tag = list(set(df.columns) - set([field]))
         if op == 'set' or field not in df.columns:
-            if field not in df.columns: df = df.with_columns(pl.lit('').alias(field))
+            if field not in df.columns:     df     = df.with_columns(pl.lit('').alias(field))
+            if field not in df_sub.columns: df_sub = df_sub.with_columns(pl.lit('').alias(field))
             df_sub = df_sub.with_columns(pl.lit(tag).alias(field))
             df     = df.update(df_sub, how='left', on=ee_but_tag)
         else:
             _fn_   = lambda x: self.__addToTag__(x, tag)
-            df_sub = df_sub.with_columns(pl.col(field).map_elements(_fn_))
+            if field not in df_sub.columns: 
+                if field not in df.columns: df_sub = df_sub.with_columns(pl.lit('').alias(field))
+                else:                       df_sub = df_sub.join(df, how='inner', on=ee_but_tag)
+            df_sub = df_sub.with_columns(pl.col(field).map_elements(_fn_, return_dtype=pl.String))
             df     = df.update(df_sub, how='left', on=ee_but_tag)
         return df
 
     # mechanics to add to a tag
     def __addToTag__(self, orig, to_add):
-        if orig is None: return to_add
+        if orig is None or orig == '': return to_add
         else:
             orig, to_add = str(orig), str(to_add)
             _set_ = set(orig.split('|'))
@@ -98,8 +102,7 @@ class RTAnnotationsMixin(object):
                     else:                                      _new_set_.add(x)
                 _set_ = _new_set_
             _joined_ = '|'.join(sorted(list(_set_)))
-            if len(_joined_) > 0 and _joined_[0] == '|':
-                _joined_ = _joined_[1:]
+            if len(_joined_) > 0 and _joined_[0] == '|': _joined_ = _joined_[1:] # does this ever happen?
             return _joined_
 
     #
