@@ -85,25 +85,53 @@ class RTAnnotationsMixin(object):
             df     = df.update(df_sub, how='left', on=ee_but_tag)
         return df
 
+    # normalize a tag
+    # - ensure no duplicate types
+    # - ensure no empty strings
+    # - ensure sorting
+    def __tagNormalizer__(self, tag):
+        if tag is None:       return ''
+        if type(tag) is str:  tag = tag.split('|')
+        if type(tag) is list: tag = set(tag)
+        _sort_ = sorted(list(tag))
+        _norm_ = []
+        _seen_ = set()
+        for x in _sort_:
+            if x == '': continue
+            if '=' in x and x.split('=')[0] in _seen_: continue
+            _seen_.add(x.split('=')[0])
+            _norm_.append(x)
+        return '|'.join(_norm_)
+
     # mechanics to add to a tag
     def __addToTag__(self, orig, to_add):
-        if orig is None or orig == '': return to_add
-        else:
-            orig, to_add = str(orig), str(to_add)
-            _set_ = set(orig.split('|'))
-            _set_.add(to_add)
-            if '=' in to_add: # may need to dedupe type-value
-                _tv_      = to_add.split('=')                 # split type value
-                _type_    = _tv_[0]                           # pull out type
-                _value_   = _tv_[1] if len(_tv_) == 2 else '' # pull out value
-                _new_set_ = set()
-                for x in _set_:
-                    if '=' in x and x.split('=')[0] == _type_: _new_set_.add(to_add)
-                    else:                                      _new_set_.add(x)
-                _set_ = _new_set_
-            _joined_ = '|'.join(sorted(list(_set_)))
-            if len(_joined_) > 0 and _joined_[0] == '|': _joined_ = _joined_[1:] # does this ever happen?
-            return _joined_
+        if to_add is None and orig is None: return ''
+        if to_add is None:                  return self.__tagNormalizer__(orig)
+        if orig   is None or orig == '':    return self.__tagNormalizer__(to_add)
+        orig, to_add = str(orig), str(to_add)
+        _set_ = set(orig.split('|'))
+        _set_.add(to_add)
+        if '=' in to_add: # may need to dedupe type-value
+            _tv_      = to_add.split('=')                 # split type value
+            _type_    = _tv_[0]                           # pull out type
+            _value_   = _tv_[1] if len(_tv_) == 2 else '' # pull out value
+            _new_set_ = set()
+            for x in _set_:
+                if '=' in x and x.split('=')[0] == _type_: _new_set_.add(to_add)
+                else:                                      _new_set_.add(x)
+            _set_ = _new_set_
+        return self.__tagNormalizer__(_set_)
+
+    # mechanics to remove from a tag
+    def __removeFromTag__(self, orig, to_remove):
+        if orig is None or orig == '': return ''
+        _set_       = set(orig.split('|'))
+        _clean_set_ = set() 
+        for x in _set_:
+            if '=' in x and x.split('=')[0] == to_remove: continue
+            if x == to_remove: continue
+            _clean_set_.add(x)
+        return self.__tagNormalizer__(_clean_set_)
 
     #
     # legendForSpectrum()
