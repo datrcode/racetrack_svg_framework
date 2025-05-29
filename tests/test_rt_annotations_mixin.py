@@ -62,7 +62,22 @@ class Testrt_annotations_mixin(unittest.TestCase):
             ('down|up||||||',        'down|up'),
             ('down|||up||||||',      'down|up'),
             ('down||||up',           'down|up'),
-            ('color=red|color=blue', 'color=blue'), # first type/value found wins
+            ('color=red|color=blue', 'color=blue'), # first type/value found wins (by alphabetical order)
         ]
         for _test_ in _tests_: assert self.rt_self.__tagNormalizer__(_test_[0]) == _test_[1]
     
+    def test_removeFromTag(self):
+        _tests_ = [
+            ('',                                    'mytag',      ''),
+            ('mytag',                               'mytag',      ''),
+            ('notmytag',                            'mytag',      'notmytag'),
+            ('notmytag|mytag|mytag|mytag',          'mytag',      'notmytag'),
+            ('color=red|color=blue',                'color=red',  'color=blue'),
+            ('color=red|color=blue',                'color=blue', 'color=red'),
+            ('color=red|color=blue',                'color',      ''),
+            ('color=red|color=blue|mytag',          'color',      'mytag'),
+            ('notmytag|color=red|color=blue|mytag', 'color',      'mytag|notmytag'),
+        ]
+        for _test_ in _tests_: assert self.rt_self.__removeFromTag__(_test_[0], _test_[1]) == _test_[2]
+
+
