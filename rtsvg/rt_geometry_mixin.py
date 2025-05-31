@@ -165,8 +165,12 @@ class RTGeometryMixin(object):
     #
     # rayIntersectsSegment() - does a ray intersect a line segment?
     # - ChatGPT Version
-    # - Doesn't work for the end points of the segments (sometimes)
-    #
+    # - Failure rate of about 22% for the xy1_segment side... no failure rate for the xy0_segment side
+    # - ... so depending on the next level up algorithm, sometimes you want xy1 to be detected...
+    #       and sometimes you don't... as an example if you are checking for point within a polygon
+    #       then you *DONT* want xy1 to be detected (because it messes up the winding order).
+    #       In either case, you *DO* want it to be consistent -- either it always detects xy1 or it
+    #       never does.  So... as currently done, it fails that criteria...
     def rayIntersectsSegment(self, xy_ray, uv_ray, xy0_segment, xy1_segment):
         """
         Determines if a ray intersects a line segment and returns the intersection point if it exists.
@@ -198,7 +202,7 @@ class RTGeometryMixin(object):
         u = ((x_r - x0) * dy_r - (y_r - y0) * dx_r) / det
         
         # Check if intersection is valid (t >= 0 for ray, 0 <= u <= 1 for segment)
-        if t >= 0 and 0 <= u <= 1: return (x_r + t * dx_r, y_r + t * dy_r)
+        if t >= 0.0 and 0.0 <= u <= 1.0: return (x_r + t * dx_r, y_r + t * dy_r)
         
         return None
 
