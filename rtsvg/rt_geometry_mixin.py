@@ -171,7 +171,10 @@ class RTGeometryMixin(object):
     #       then you *DONT* want xy1 to be detected (because it messes up the winding order).
     #       In either case, you *DO* want it to be consistent -- either it always detects xy1 or it
     #       never does.  So... as currently done, it fails that criteria...
-    def rayIntersectsSegment(self, xy_ray, uv_ray, xy0_segment, xy1_segment):
+    # - ... so I'm going to make it so that you can specify whether or not you want xy1 to be detected
+    #       by default it *WONT* include the xy1 endpoint...
+    # - ... aim is for a tolerance in the 10e-9 range...
+    def rayIntersectsSegment(self, xy_ray, uv_ray, xy0_segment, xy1_segment, include_xy1_endpoint=False, epsilon=1e-9):
         """
         Determines if a ray intersects a line segment and returns the intersection point if it exists.
         
@@ -187,23 +190,21 @@ class RTGeometryMixin(object):
         x_r,  y_r  = xy_ray
         dx_r, dy_r = uv_ray
         x0,   y0   = xy0_segment
-        x1,   y1   = xy1_segment
-        
+        x1,   y1   = xy1_segment    
         # Segment direction vector
         dx_s, dy_s = x1 - x0, y1 - y0
-        
         # Compute determinant
         det = -dx_r * dy_s + dy_r * dx_s
-        
         if abs(det) < 1e-10: return None # Lines are parallel or collinear
-        
         # Compute parameters t and u
         t = ((x_r - x0) * dy_s - (y_r - y0) * dx_s) / det
         u = ((x_r - x0) * dy_r - (y_r - y0) * dx_r) / det
-        
         # Check if intersection is valid (t >= 0 for ray, 0 <= u <= 1 for segment)
-        if t >= 0.0 and 0.0 <= u <= 1.0: return (x_r + t * dx_r, y_r + t * dy_r)
-        
+        if t >= 0.0:
+            if include_xy1_endpoint:
+                if 0.0 <= u <= 1.0+epsilon: return (x_r + t * dx_r, y_r + t * dy_r)
+            else:
+                if 0.0 <= u <  1.0-epsilon: return (x_r + t * dx_r, y_r + t * dy_r)
         return None
 
     #
