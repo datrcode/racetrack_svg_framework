@@ -51,6 +51,9 @@
 #       (however, that tag stuff is just set/add ... needs to include remove ... and it's unclear how to propagate to sub-dataframes...)
 #   ... however, it's unclear how to propagate a record tag to all of the dataframes in the stack at once
 #   ... linknode is entity tagging ... histogram is either entity or record tagging ... xy is record tagging ... temporal is record tagging
+#   ... record tagging should really just be done as columns ... it could be a more complicated construct but that's just going to
+#       mess up the purpose of things in columns...
+#   ... entity tagging should underly the entire system and not be hacked together on a per component basis...
 #
 # Other Changes:
 #
