@@ -27,6 +27,45 @@ class Testrt_geometry_mixin(unittest.TestCase):
         super().__init__(*args, **kwargs)
         self.rt_self = RACETrack()
 
+    def test_rayIntersectsSegment_Case1And2(self):
+        _ep_ = 1e-8 # starts falling apart if smaller now... so 1e-9 has errors...
+        x    = lambda: random.uniform(-1.0, 1.0)
+        for i in range(10_000):
+            _xy_       = (x(),x())
+            _p0_, _p1_ = (x(),x()), (x(),x())
+            _p_        = _p1_
+            _uv_       = (_p_[0]-_xy_[0], _p_[1]-_xy_[1])
+            _xy_inter_ = self.rt_self.rayIntersectsSegment(_xy_,_uv_,_p0_, _p1_, include_xy1_endpoint=False)
+            assert _xy_inter_ is None
+            _xy_inter_ = self.rt_self.rayIntersectsSegment(_xy_,_uv_,_p0_, _p1_, include_xy1_endpoint=True)
+            assert _xy_inter_ is not None
+
+    def test_rayIntersectsSegment_Case3And4(self):
+        _ep_ = 1e-8 # starts falling apart if smaller now... so 1e-9 has errors...
+        x    = lambda: random.uniform(-1.0, 1.0)
+        for i in range(10_000):
+            _xy_       = (x(),x())
+            _p0_, _p1_ = (x(),x()), (x(),x())
+            _p_        = (_p1_[0] - _ep_ * (_p1_[0] - _p0_[0]), _p1_[1] - _ep_ * (_p1_[1] - _p0_[1]))
+            _uv_       = (_p_[0]-_xy_[0], _p_[1]-_xy_[1])
+            _xy_inter_ = self.rt_self.rayIntersectsSegment(_xy_,_uv_,_p0_, _p1_, include_xy1_endpoint=False)
+            assert _xy_inter_ is not None
+            _xy_inter_ = self.rt_self.rayIntersectsSegment(_xy_,_uv_,_p0_, _p1_, include_xy1_endpoint=True)
+            assert _xy_inter_ is not None
+
+    def test_rayIntersectsSegment_Case5And6(self):
+        _ep_ = 1e-8 # starts falling apart if smaller now... so 1e-9 has errors...
+        x    = lambda: random.uniform(-1.0, 1.0)
+        for i in range(10_000):
+            _xy_       = (x(),x())
+            _p0_, _p1_ = (x(),x()), (x(),x())
+            _p_        = (_p1_[0] + _ep_ * (_p1_[0] - _p0_[0]), _p1_[1] + _ep_ * (_p1_[1] - _p0_[1]))
+            _uv_       = (_p_[0]-_xy_[0], _p_[1]-_xy_[1])
+            _xy_inter_ = self.rt_self.rayIntersectsSegment(_xy_,_uv_,_p0_, _p1_, include_xy1_endpoint=False)
+            assert _xy_inter_ is None
+            _xy_inter_ = self.rt_self.rayIntersectsSegment(_xy_,_uv_,_p0_, _p1_, include_xy1_endpoint=True)
+            assert _xy_inter_ is None
+
     def test_averagDegrees(self):
         self.assertAlmostEqual(self.rt_self.averageDegrees([180]), 180)
         self.assertAlmostEqual(self.rt_self.averageDegrees([180,190]), 185)
