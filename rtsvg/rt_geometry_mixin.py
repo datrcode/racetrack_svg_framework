@@ -163,6 +163,70 @@ class RTGeometryMixin(object):
         return (X_solution, Y_solution, R_solution)
 
     #
+    # rayIntersectsSegment() - does a ray intersect a line segment?
+    # - ChatGPT Version
+    # - Doesn't work for the end points of the segments (sometimes)
+    #
+    def rayIntersectsSegment(self, xy_ray, uv_ray, xy0_segment, xy1_segment):
+        """
+        Determines if a ray intersects a line segment and returns the intersection point if it exists.
+        
+        Parameters:
+        xy_ray: tuple (x, y) - Origin of the ray
+        uv_ray: tuple (dx, dy) - Direction vector of the ray
+        xy0_segment: tuple (x0, y0) - First endpoint of the segment
+        xy1_segment: tuple (x1, y1) - Second endpoint of the segment
+        
+        Returns:
+        tuple (x, y) if intersection exists, else None
+        """
+        x_r,  y_r  = xy_ray
+        dx_r, dy_r = uv_ray
+        x0,   y0   = xy0_segment
+        x1,   y1   = xy1_segment
+        
+        # Segment direction vector
+        dx_s, dy_s = x1 - x0, y1 - y0
+        
+        # Compute determinant
+        det = -dx_r * dy_s + dy_r * dx_s
+        
+        if abs(det) < 1e-10: return None # Lines are parallel or collinear
+        
+        # Compute parameters t and u
+        t = ((x_r - x0) * dy_s - (y_r - y0) * dx_s) / det
+        u = ((x_r - x0) * dy_r - (y_r - y0) * dx_r) / det
+        
+        # Check if intersection is valid (t >= 0 for ray, 0 <= u <= 1 for segment)
+        if t >= 0 and 0 <= u <= 1: return (x_r + t * dx_r, y_r + t * dy_r)
+        
+        return None
+
+    #
+    # rayIntersectsSegmentSVG() - visual representation of the above method...
+    #
+    def rayIntersectsSegmentSVG(self, xy, uv, p0, p1, line_width=0.02, circle_r=0.02, w=384, h=384):
+        x0, y0, x1, y1 = min(p0[0],p1[0]), min(p0[1],p1[1]), max(p0[0], p1[0]), max(p0[1], p1[1])
+        x0, y0         = min(x0, xy[0]), min(y0, xy[1])
+        x1, y1         = max(x1, xy[0]), max(y1, xy[1])
+        xperc, yperc   = (x1-x0)*0.1, (y1-y0)*0.1
+        x0, y0, x1, y1 = x0-xperc, y0-yperc, x1+xperc, y1+yperc
+        _xy_           = self.rayIntersectsSegment(xy, uv, p0, p1)
+        _color_        = '#ff0000' if _xy_ is None else "#3CAD3C"
+        svg            = [f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="{x0} {y0} {x1-x0} {y1-y0}\" xmlns="http://www.w3.org/2000/svg">']
+        svg.append       (f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="#ffffff" />')
+        svg.append       (f'<line x1="{p0[0]}" y1="{p0[1]}" x2="{p1[0]}" y2="{p1[1]}" stroke="#000000" stroke-width="{line_width}" />')
+        svg.append       (f'<circle cx="{p0[0]}" cy="{p0[1]}" r="{circle_r}" fill="#000000"/>')
+        svg.append       (f'<circle cx="{p1[0]}" cy="{p1[1]}" r="{circle_r}" fill="#000000"/>')
+        svg.append       (f'<path d="M {xy[0]} {xy[1]} L {xy[0] + uv[0]} {xy[1] + uv[1]}" fill="none" stroke="{_color_}" stroke-width="{line_width}" />')
+        svg.append       (f'<circle cx="{xy[0]}" cy="{xy[1]}" r="{circle_r}" fill="{_color_}" />')
+        if _xy_ is not None:
+            svg.append   (f'<line x1="{_xy_[0]}" y1="{_xy_[1]}" x2="{xy[0]}" y2="{xy[1]}" stroke="#5858ce" stroke-width="{line_width/4.0}" />')
+            svg.append   (f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{circle_r}" fill="#5858ce" />')
+        svg.append('</svg>')
+        return ''.join(svg)
+
+    #
     # svgVennDiagram() - render a venn diagram
     #
     def svgVennDiagram(self, 
