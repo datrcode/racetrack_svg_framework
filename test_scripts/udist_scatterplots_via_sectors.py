@@ -54,10 +54,12 @@ class UDistScatterPlotsViaSectors(object):
             # Multiply out the points against all the other points
             # ... greatly explodes the dataframe
             #
-            df = df.with_columns(pl.struct(['x','y']).implode().alias('_implode_')) \
+            df = df.with_columns(pl.struct(['x','y','__index__']).implode().alias('_implode_')) \
                    .explode('_implode_')                                            \
-                   .with_columns(pl.col('_implode_').struct.field('x').alias('_xo_'),
-                                 pl.col('_implode_').struct.field('y').alias('_yo_'))
+                   .with_columns(pl.col('_implode_').struct.field('x')        .alias('_xo_'),
+                                 pl.col('_implode_').struct.field('y')        .alias('_yo_'),
+                                 pl.col('_implode_').struct.field('__index__').alias('_indexo_'))
+            df = df.filter(pl.col('__index__') != pl.col('_indexo_')) # don't compare the point with itself
 
             #
             # Determine the sector for the other point in relationship to this point...
