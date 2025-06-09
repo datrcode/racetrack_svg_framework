@@ -18,6 +18,7 @@ class UDistScatterPlotsViaSectors(object):
     def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.01, iterations=32, debug=True):
         self.vector_scalar = vector_scalar
         self.iterations    = iterations
+        self.debug         = debug
 
         # Create the debugging structures
         self.df_at_iteration_start    = []
@@ -202,6 +203,67 @@ class UDistScatterPlotsViaSectors(object):
             df        = df_uv.join(df_orig, on=['__index__'], how='left') # add the weight back in
 
             self.df_results = df
+
+
+
+    #
+    # svgOfPoint() // debugging
+    #
+    def svgOfPoint(self, rt, point_i=0, iteration=0):
+        if self.debug == False: raise Exception('This function is for debugging only')
+        svg  = [f'<svg x="0" y="0" width="768" height="768" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="1" height="1" x="0" y="0" fill="#ffffff" />')
+        # Draw the sectors
+        df_points_with_sectors = self.df_fully_filled[iteration]
+        _df_ = df_points_with_sectors.filter(pl.col('__index__') == point_i)
+        x, y = _df_['x'][0], _df_['y'][0]
+        for i in range(len(_df_)):
+            r0s0_xi,  r0s0_yi  = _df_['r0s0_xi'][i],  _df_['r0s0_yi'][i]
+            r0s1_xi,  r0s1_yi  = _df_['r0s1_xi'][i],  _df_['r0s1_yi'][i]
+            r1s0_xi,  r1s0_yi  = _df_['r1s0_xi'][i],  _df_['r1s0_yi'][i]
+            r1s1_xi,  r1s1_yi  = _df_['r1s1_xi'][i],  _df_['r1s1_yi'][i]
+            corner_x, corner_y = _df_['corner_x'][i], _df_['corner_y'][i]
+            d = None
+            if   r0s0_xi is not None and r1s0_xi is not None: d = f"M {x} {y} L {r0s0_xi} {r0s0_yi} L {r1s0_xi} {r1s0_yi} Z"
+            elif r0s1_xi is not None and r1s1_xi is not None: d = f"M {x} {y} L {r0s1_xi} {r0s1_yi} L {r1s1_xi} {r1s1_yi} Z"
+            else:                                             d = f"M {x} {y} L {r0s0_xi} {r0s0_yi} L {corner_x} {corner_y} L {r1s1_xi} {r1s1_yi} Z"
+            if d is not None: svg.append(f'<path d="{d}" stroke="{rt.co_mgr.getColor(_df_['sector'][i])}" fill="{rt.co_mgr.getColor(_df_['sector'][i])}" fill-opacity="0.3" stroke-width="0.002" />')
+            anchor_u, anchor_v = _df_['anchor_u'][i], _df_['anchor_v'][i]
+            svg.append(f'<line x1="{x}" y1="{y}" x2="{x + anchor_u*0.1}" y2="{y + anchor_v*0.1}" stroke="{rt.co_mgr.getColor(_df_['sector'][i])}" stroke-width="0.002" />')
+
+        # Draw the points
+        _df_ = self.df_sector_determinations[iteration].filter(pl.col('__index__') == point_i)
+        for i in range(len(_df_)): svg.append(f'<circle cx="{_df_['_xo_'][i]}" cy="{_df_['_yo_'][i]}" r="{0.002}" fill="{rt.co_mgr.getColor(_df_['sector'][i])}" />')
+
+        svg.append('</svg>')
+        return ''.join(svg)
+
+    #
+    # renderSector() // debugging
+    #
+    def renderSector(self, rt, point_i=0, sector=0, iteration=0):
+        if self.debug == False: raise Exception('This function is for debugging only')
+        svg  = [f'<svg x="0" y="0" width="256" height="256" viewBox="-0.01 -0.01 1.02 1.02" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="1" height="1" x="0" y="0" fill="#ffffff" />')
+        # Draw the sectors
+        _df_ = self.df_fully_filled[iteration].filter(pl.col('__index__') == point_i)
+        x, y = _df_['x'][0], _df_['y'][0]
+        for i in range(len(_df_)):
+            if _df_['sector'][i] != sector: continue
+            r0s0_xi,  r0s0_yi  = _df_['r0s0_xi'][i],  _df_['r0s0_yi'][i]
+            r0s1_xi,  r0s1_yi  = _df_['r0s1_xi'][i],  _df_['r0s1_yi'][i]
+            r1s0_xi,  r1s0_yi  = _df_['r1s0_xi'][i],  _df_['r1s0_yi'][i]
+            r1s1_xi,  r1s1_yi  = _df_['r1s1_xi'][i],  _df_['r1s1_yi'][i]
+            corner_x, corner_y = _df_['corner_x'][i], _df_['corner_y'][i]
+            d = None
+            if   r0s0_xi is not None and r1s0_xi is not None: d = f"M {x} {y} L {r0s0_xi} {r0s0_yi} L {r1s0_xi} {r1s0_yi} Z"
+            elif r0s1_xi is not None and r1s1_xi is not None: d = f"M {x} {y} L {r0s1_xi} {r0s1_yi} L {r1s1_xi} {r1s1_yi} Z"
+            else:                                             d = f"M {x} {y} L {r0s0_xi} {r0s0_yi} L {corner_x} {corner_y} L {r1s1_xi} {r1s1_yi} Z"
+            if d is not None: svg.append(f'<path d="{d}" stroke="{rt.co_mgr.getColor(_df_['sector'][i])}" fill="{rt.co_mgr.getColor(_df_['sector'][i])}" fill-opacity="0.3" stroke-width="0.002" />')
+            anchor_u, anchor_v = _df_['anchor_u'][i], _df_['anchor_v'][i]
+            svg.append(f'<line x1="{x}" y1="{y}" x2="{x + anchor_u*0.1}" y2="{y + anchor_v*0.1}" stroke="{rt.co_mgr.getColor(_df_['sector'][i])}" stroke-width="0.002" />')
+        svg.append('</svg>')
+        return ''.join(svg)
 
 #
 #
