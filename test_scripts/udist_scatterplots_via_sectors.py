@@ -1,5 +1,5 @@
 #
-# Polarse implementation of the following:
+# Polars implementation of the following:
 #
 # H. Rave, V. Molchanov and L. Linsen, "Uniform Sample Distribution in Scatterplots via Sector-based Transformation," 
 # 2024 IEEE Visualization and Visual Analytics (VIS), St. Pete Beach, FL, USA, 2024, pp. 156-160, 
@@ -262,6 +262,23 @@ class UDistScatterPlotsViaSectors(object):
             if d is not None: svg.append(f'<path d="{d}" stroke="{rt.co_mgr.getColor(_df_['sector'][i])}" fill="{rt.co_mgr.getColor(_df_['sector'][i])}" fill-opacity="0.3" stroke-width="0.002" />')
             anchor_u, anchor_v = _df_['anchor_u'][i], _df_['anchor_v'][i]
             svg.append(f'<line x1="{x}" y1="{y}" x2="{x + anchor_u*0.1}" y2="{y + anchor_v*0.1}" stroke="{rt.co_mgr.getColor(_df_['sector'][i])}" stroke-width="0.002" />')
+        svg.append('</svg>')
+        return ''.join(svg)
+
+    #
+    # _repr_svg_() -- simple SVG representation of the results
+    #
+    def _repr_svg_(self):
+        x0, y0, x1, y1 = self.df_results['x'].min(), self.df_results['y'].min(), self.df_results['x'].max(), self.df_results['y'].max()
+        xperc, yperc   = (x1-x0)*0.01, (y1-y0)*0.01
+        x0, y0, x1, y1 = x0-xperc, y0-yperc, x1+xperc, y1+yperc
+        svg = []
+        svg.append(f'<svg x="0" y="0" width="256" height="256" viewBox="{x0} {y0} {x1-x0} {y1-y0}" xmlns="http://www.w3.org/2000/svg">')
+        svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" x="0" y="0" fill="#ffffff" />')
+        if 'c' in self.df_results.columns:
+            for i in range(len(self.df_results)): svg.append(f'<circle cx="{self.df_results["x"][i]}" cy="{self.df_results["y"][i]}" r="{0.005}" fill="{self.df_results["c"][i]}" />')
+        else:
+            for i in range(len(self.df_results)): svg.append(f'<circle cx="{self.df_results["x"][i]}" cy="{self.df_results["y"][i]}" r="{0.005}" fill="#404040" />')
         svg.append('</svg>')
         return ''.join(svg)
 
