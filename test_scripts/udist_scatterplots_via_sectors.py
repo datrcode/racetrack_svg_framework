@@ -15,7 +15,7 @@ import time
 __name__ = 'udist_scatterplots_via_sectors'
 
 class UDistScatterPlotsViaSectors(object):
-    def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.01, iterations=32, debug=True):
+    def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.01, iterations=4, debug=True):
         self.vector_scalar = vector_scalar
         self.iterations    = iterations
         self.debug         = debug
@@ -202,9 +202,7 @@ class UDistScatterPlotsViaSectors(object):
                                            (pl.col('y') + pl.col('_v_')).alias('y'))
             df        = df_uv.join(df_orig, on=['__index__'], how='left') # add the weight back in
 
-            self.df_results = df
-
-
+        self.df_results = df
 
     #
     # svgOfPoint() // debugging
@@ -319,7 +317,7 @@ class UDistScatterPlotsViaSectors(object):
 #
 # xyUniformSampleDistributionSectorTransform() - implementation of the referenced paper
 #
-def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=None, colors=None, iterations=4, sectors=16, border_perc=0.01, vector_scalar=0.1):
+def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=None, colors=None, iterations=4, sectors=16, vector_scalar=0.01):
     svgs, svgs_for_sectors = [], []
     # Normalize the coordinates to be between 0.0 and 1.0
     def normalizeCoordinates(xs, ys):
@@ -328,14 +326,12 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
         if ymin == ymax: ymin -= 0.0001; ymax += 0.0001
         xs_new, ys_new = [], []
         for x, y in zip(xs, ys):
-            xs_new.append((x-xmin)/(xmax-xmin))
-            ys_new.append((y-ymin)/(ymax-ymin))
+            xs_new.append(0.02 + 0.96*(x-xmin)/(xmax-xmin))
+            ys_new.append(0.02 + 0.96*(y-ymin)/(ymax-ymin))
         return xs_new, ys_new
     # Force all the coordinates to be between 0 and 1
     xvals, yvals = normalizeCoordinates(xvals, yvals)    
     xmin, ymin, xmax, ymax = 0.0, 0.0, 1.0, 1.0
-    xperc, yperc = (xmax-xmin)*border_perc, (ymax-ymin)*border_perc
-    xmin, ymin, xmax, ymax = xmin-xperc, ymin-yperc, xmax+xperc, ymax+yperc
     # Determine the average density (used for expected density calculations)
     if weights is None: weights = np.ones(len(xvals))
     weight_sum = sum(weights)
@@ -453,8 +449,6 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
         xvals, yvals = xvals_next, yvals_next
         xvals, yvals = normalizeCoordinates(xvals, yvals)
         xmin, ymin, xmax, ymax = 0.0, 0.0, 1.0, 1.0
-        xperc, yperc = (xmax-xmin)*border_perc, (ymax-ymin)*border_perc
-        xmin, ymin, xmax, ymax = xmin-xperc, ymin-yperc, xmax+xperc, ymax+yperc
 
     # Copy of the animation creation from the class / modified to work here
     r, animation_dur, w, h = 0.004, "4s", 512, 512
@@ -462,7 +456,6 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
     svg = [f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="{x0} {y0} {x1-x0} {y1-y0}" xmlns="http://www.w3.org/2000/svg">']
     svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" x="0" y="0" fill="#ffffff" />')
     _df_ = dfs[0]
-    print(f'{len(dfs)} dataframes')
     x_ops, y_ops = [pl.col('xn_0')], [pl.col('yn_0')]
     for i in range(1, len(dfs)): 
         _df_ = _df_.join(dfs[i], on=['x','y'], suffix=f'_{i}')
