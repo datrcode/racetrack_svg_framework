@@ -319,6 +319,7 @@ class UDistScatterPlotsViaSectors(object):
 #
 def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=None, colors=None, iterations=4, sectors=16, vector_scalar=0.01):
     svgs, svgs_for_sectors = [], []
+    _fine_ = {'iteration':[], 'point_i':[], 'x':[], 'y':[], 'sector_w':[], 'sector_a':[], 'sector_u':[], 'sector_v':[], 'u':[], 'v':[]}
     # Normalize the coordinates to be between 0.0 and 1.0
     def normalizeCoordinates(xs, ys):
         xmin, ymin, xmax, ymax = min(xs), min(ys), max(xs), max(ys)
@@ -334,9 +335,10 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
     xmin, ymin, xmax, ymax = 0.0, 0.0, 1.0, 1.0
     # Determine the average density (used for expected density calculations)
     if weights is None: weights = np.ones(len(xvals))
-    weight_sum = sum(weights)
-    area_total = ((xmax-xmin)*(ymax-ymin))
-    density_avg = weight_sum / area_total
+    weight_sum   = sum(weights)
+    area_total   = ((xmax-xmin)*(ymax-ymin))
+    density_avg  = weight_sum / area_total
+    iters        = 0
     # Determine the side and xy that a specific ray hits
     def sideAndXY(xy, uv):
         _xyi_ = rt.rayIntersectsSegment(xy, uv, (xmin, ymin), (xmax, ymin))
@@ -372,7 +374,7 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
         _sector_anchor_.append(a + pi + ainc/2.0)
         a += ainc
     # Calculate the UV vector for a specific point
-    def ptUVVec(x,y):
+    def ptUVVec(x, y, point_i):
         svg_sectors = [f'<svg x="0" y="0" width="512" height="512" viewBox="{xmin} {ymin} {xmax-xmin} {ymax-ymin}" xmlns="http://www.w3.org/2000/svg">']
         svg_sectors.append(f'<rect x="{xmin}" y="{ymin}" width="{xmax-xmin}" height="{ymax-ymin}" fill="#ffffff" />')
         _sector_sum_ = {}
@@ -422,6 +424,17 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
             if _diff_ < 0.0: _color_ = rt.co_mgr.getColor(s) # '#0000ff'
             else:            _color_ = rt.co_mgr.getColor(s) # '#ff0000'
             svg_sectors.append(f'<path d="{d}" stroke="{rt.co_mgr.getColor(s)}" fill="{_color_}" fill-opacity="0.3" stroke-width="0.002"/>')
+            _fine_['iteration'].append(iters)
+            _fine_['point_i'].append(point_i)
+            _fine_['x'].append(x)
+            _fine_['y'].append(y)
+            _fine_['sector_w'].append(_sector_sum_ [s])
+            _fine_['sector_a'].append(_sector_area_[s])
+            _fine_['sector_u'].append(cos(_sector_anchor_[s]))
+            _fine_['sector_v'].append(sin(_sector_anchor_[s]))
+            _fine_['u'].append(u)
+            _fine_['v'].append(v)
+
         # Return the value
         svg_sectors.append(f'<line x1="{x}" y1="{y}" x2="{x+3*u}" y2="{y+3*v}" stroke="#ff0000" stroke-width="0.01" />')
         svg_sectors.append('</svg>')
@@ -431,13 +444,13 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
     # Iterations...
     _df_  = pl.DataFrame({'x':xvals, 'y':yvals, 'c':colors})
     dfs = [_df_]
-    for iters in range(iterations):
+    while iters < iterations:
         svg = [f'<svg x="0" y="0" width="256" height="256" viewBox="{xmin} {ymin} {xmax-xmin} {ymax-ymin}" xmlns="http://www.w3.org/2000/svg">']
         svg.append(f'<rect x="{xmin}" y="{ymin}" width="{xmax-xmin}" height="{ymax-ymin}" x="0" y="0" fill="#ffffff" />')
         xvals_next, yvals_next = [], []
         for j in range(len(xvals)):
             _x_, _y_ = xvals[j], yvals[j]
-            uv = ptUVVec(_x_, _y_)
+            uv = ptUVVec(_x_, _y_, j)
             svg.append(f'<line x1="{_x_}" y1="{_y_}" x2="{_x_+uv[0]}" y2="{_y_+uv[1]}" stroke="#a0a0a0" stroke-width="0.001" />')
             _color_ = colors[j] if colors is not None else '#000000'
             svg.append(f'<circle cx="{_x_}" cy="{_y_}" r="0.004" fill="{_color_}" />')
@@ -449,6 +462,7 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
         xvals, yvals = xvals_next, yvals_next
         xvals, yvals = normalizeCoordinates(xvals, yvals)
         xmin, ymin, xmax, ymax = 0.0, 0.0, 1.0, 1.0
+        iters += 1
 
     # Copy of the animation creation from the class / modified to work here
     r, animation_dur, w, h = 0.004, "4s", 512, 512
@@ -474,7 +488,7 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
     svg_animation = ''.join(svg)
 
     # Return
-    return xvals, yvals, svgs, svgs_for_sectors, svg_animation
+    return xvals, yvals, svgs, svgs_for_sectors, svg_animation, pl.DataFrame(_fine_)
 
 #
 # xyUniformSampleDistributionSectorTransform() - implementation of the referenced paper
