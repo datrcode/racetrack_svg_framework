@@ -319,7 +319,8 @@ class UDistScatterPlotsViaSectors(object):
 #
 def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=None, colors=None, iterations=4, sectors=16, vector_scalar=0.01):
     svgs, svgs_for_sectors = [], []
-    _fine_ = {'iteration':[], 'point_i':[], 'x':[], 'y':[], 'sector_w':[], 'sector_a':[], 'sector_u':[], 'sector_v':[], 'u':[], 'v':[]}
+    _fine_ = {'iteration':[], 'point_i':[], 'x':[], 'y':[], 's':[], 's_wgt':[], 's_area':[], 's_u':[], 's_v':[], 'u_sum':[], 'v_sum':[]}
+
     # Normalize the coordinates to be between 0.0 and 1.0
     def normalizeCoordinates(xs, ys):
         xmin, ymin, xmax, ymax = min(xs), min(ys), max(xs), max(ys)
@@ -428,12 +429,13 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
             _fine_['point_i'].append(point_i)
             _fine_['x'].append(x)
             _fine_['y'].append(y)
-            _fine_['sector_w'].append(_sector_sum_ [s])
-            _fine_['sector_a'].append(_sector_area_[s])
-            _fine_['sector_u'].append(cos(_sector_anchor_[s]))
-            _fine_['sector_v'].append(sin(_sector_anchor_[s]))
-            _fine_['u'].append(u)
-            _fine_['v'].append(v)
+            _fine_['s'].append(s)
+            _fine_['s_wgt'].append(_sector_sum_ [s])
+            _fine_['s_area'].append(_sector_area_[s])
+            _fine_['s_u'].append(cos(_sector_anchor_[s]))
+            _fine_['s_v'].append(sin(_sector_anchor_[s]))
+            _fine_['u_sum'].append(u)
+            _fine_['v_sum'].append(v)
 
         # Return the value
         svg_sectors.append(f'<line x1="{x}" y1="{y}" x2="{x+3*u}" y2="{y+3*v}" stroke="#ff0000" stroke-width="0.01" />')
