@@ -282,6 +282,34 @@ class UDistScatterPlotsViaSectors(object):
         svg.append('</svg>')
         return ''.join(svg)
 
+    #
+    # animateIterations()
+    #
+    def animateIterations(self, r=0.004, w=512, h=512, animation_dur="10s"):
+        if self.debug == False: raise Exception('This function is for debugging only')
+        x0, y0, x1, y1 = -0.01, -0.01, 1.02, 1.02
+        svg = [f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="{x0} {y0} {x1-x0} {y1-y0}" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" x="0" y="0" fill="#ffffff" />')
+        _df_ = self.df_uv[0].drop(['_u_','_v_'])
+        x_ops, y_ops = [pl.col('x_0')], [pl.col('y_0')]
+        for i in range(1, len(self.df_uv)): 
+            _df_ = _df_.join(self.df_uv[i].drop(['_u_', '_v_']), on='__index__', suffix=f'_{i}')
+            x_ops.append(pl.col(f'x_{i}')), y_ops.append(pl.col(f'y_{i}'))
+        x_ops.extend(x_ops[::-1]), y_ops.extend(y_ops[::-1])
+        x_ops.extend(['x_0', 'x_0', 'x_0']), y_ops.extend(['y_0', 'y_0', 'y_0']) # so there's a slight delay before it starts all over again
+        _df_  = _df_.rename({'x':'x_0','y':'y_0'})
+        _df_ = _df_.with_columns(pl.concat_str(x_ops, separator=';').alias('x_anim'), pl.concat_str(y_ops, separator=';').alias('y_anim'))
+        if 'c' in self.df_at_iteration_start[0].columns: _df_ = _df_.join(self.df_at_iteration_start[0].drop(['x','y','w']), on='__index__')
+        else:                                            _df_ = _df_.with_columns(pl.lit('#000000').alias('c'))
+        for i in range(len(_df_)):
+            _color_ = _df_['c'][i]
+            svg.append(f'<circle cx="{_df_["x_0"][i]}" cy="{_df_["y_0"][i]}" r="{r}" fill="{_color_}">')
+            svg.append(f'<animate attributeName="cx" values="{_df_["x_anim"][i]}" dur="{animation_dur}" repeatCount="indefinite" />')
+            svg.append(f'<animate attributeName="cy" values="{_df_["y_anim"][i]}" dur="{animation_dur}" repeatCount="indefinite" />')
+            svg.append(f'</circle>')
+        svg.append('</svg>')
+        return ''.join(svg)
+
 #
 #
 # The following are reference implementations that are straightforward python
