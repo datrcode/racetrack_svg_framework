@@ -433,6 +433,8 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
         return u,v
 
     # Iterations...
+    _df_  = pl.DataFrame({'x':xvals, 'y':yvals, 'c':colors})
+    dfs = [_df_]
     for iters in range(iterations):
         svg = [f'<svg x="0" y="0" width="256" height="256" viewBox="{xmin} {ymin} {xmax-xmin} {ymax-ymin}" xmlns="http://www.w3.org/2000/svg">']
         svg.append(f'<rect x="{xmin}" y="{ymin}" width="{xmax-xmin}" height="{ymax-ymin}" x="0" y="0" fill="#ffffff" />')
@@ -447,14 +449,39 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
             xvals_next.append(_x_next_), yvals_next.append(_y_next_)
         svg.append('</svg>')
         svgs.append(''.join(svg))
+        dfs.append(pl.DataFrame({'x':dfs[0]['x'], 'y':dfs[0]['y'], 'xn':xvals_next, 'yn':yvals_next}))
         xvals, yvals = xvals_next, yvals_next
-        xvals, yvals = normalizeCoordinates(xvals, yvals)    
+        xvals, yvals = normalizeCoordinates(xvals, yvals)
         xmin, ymin, xmax, ymax = 0.0, 0.0, 1.0, 1.0
         xperc, yperc = (xmax-xmin)*border_perc, (ymax-ymin)*border_perc
         xmin, ymin, xmax, ymax = xmin-xperc, ymin-yperc, xmax+xperc, ymax+yperc
 
+    # Copy of the animation creation from the class / modified to work here
+    r, animation_dur, w, h = 0.004, "4s", 512, 512
+    x0, y0, x1, y1 = -0.01, -0.01, 1.02, 1.02
+    svg = [f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="{x0} {y0} {x1-x0} {y1-y0}" xmlns="http://www.w3.org/2000/svg">']
+    svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" x="0" y="0" fill="#ffffff" />')
+    _df_ = dfs[0]
+    print(f'{len(dfs)} dataframes')
+    x_ops, y_ops = [pl.col('xn_0')], [pl.col('yn_0')]
+    for i in range(1, len(dfs)): 
+        _df_ = _df_.join(dfs[i], on=['x','y'], suffix=f'_{i}')
+        x_ops.append(pl.col(f'xn_{i}')), y_ops.append(pl.col(f'yn_{i}'))
+    x_ops.extend(x_ops[::-1]), y_ops.extend(y_ops[::-1])
+    x_ops.extend(['xn_0', 'xn_0', 'xn_0']), y_ops.extend(['yn_0', 'yn_0', 'yn_0']) # so there's a slight delay before it starts all over again
+    _df_  = _df_.rename({'x':'xn_0','y':'yn_0', 'xn':'xn_1', 'yn':'yn_1'})
+    _df_ = _df_.with_columns(pl.concat_str(x_ops, separator=';').alias('x_anim'), pl.concat_str(y_ops, separator=';').alias('y_anim'))
+    for i in range(len(_df_)):
+        _color_ = _df_['c'][i]
+        svg.append(f'<circle cx="{_df_["xn_0"][i]}" cy="{_df_["yn_0"][i]}" r="{r}" fill="{_color_}">')
+        svg.append(f'<animate attributeName="cx" values="{_df_["x_anim"][i]}" dur="{animation_dur}" repeatCount="indefinite" />')
+        svg.append(f'<animate attributeName="cy" values="{_df_["y_anim"][i]}" dur="{animation_dur}" repeatCount="indefinite" />')
+        svg.append(f'</circle>')
+    svg.append('</svg>')
+    svg_animation = ''.join(svg)
+
     # Return
-    return xvals, yvals, svgs, svgs_for_sectors
+    return xvals, yvals, svgs, svgs_for_sectors, svg_animation
 
 #
 # xyUniformSampleDistributionSectorTransform() - implementation of the referenced paper
