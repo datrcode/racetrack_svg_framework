@@ -22,6 +22,7 @@ class UDistScatterPlotsViaSectors(object):
 
         # Create the debugging structures
         self.df_at_iteration_start    = []
+        self.df_sector_sums           = []
         self.df_sector_determinations = []
         self.df_sector_angles         = []
         self.df_sector_angles_joined  = []
@@ -76,6 +77,8 @@ class UDistScatterPlotsViaSectors(object):
             #
             df   = df.group_by(['__index__','x','y','sector']).agg((pl.col('w').sum()).alias('_w_sum_'), (pl.col('w').sum() / df_weight_sum).alias('_w_ratio_'))
 
+            if debug: self.df_sector_sums.append(df.clone())
+
             #
             # Create the sector angle dataframe
             # ... this is a small dataframe that covers just 16 sectors ...
@@ -122,7 +125,7 @@ class UDistScatterPlotsViaSectors(object):
             if debug: self.df_sector_angles.append(df_sector_angles)
 
             # Join w/ sector information
-            df = df.join(df_sector_angles, on='sector')
+            df = df.join(df_sector_angles, on='sector', how='left')
 
             if debug: self.df_sector_angles_joined.append(df)
 
