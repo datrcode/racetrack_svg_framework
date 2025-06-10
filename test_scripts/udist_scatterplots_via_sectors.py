@@ -24,6 +24,7 @@ class UDistScatterPlotsViaSectors(object):
         self.df_at_iteration_start    = []
         self.df_sector_determinations = []
         self.df_sector_angles         = []
+        self.df_sector_angles_joined  = []
         self.df_fully_filled          = []
         self.df_uv                    = []
 
@@ -123,6 +124,8 @@ class UDistScatterPlotsViaSectors(object):
             # Join w/ sector information
             df = df.join(df_sector_angles, on='sector')
 
+            if debug: self.df_sector_angles_joined.append(df)
+
             # Create rays for each sector angles
             df = df.with_columns((pl.col('a0').cos()).alias('xa0'), (pl.col('a0').sin()).alias('ya0'), # uv for angle 0
                                  (pl.col('a1').cos()).alias('xa1'), (pl.col('a1').sin()).alias('ya1')) # uv for angle 1
@@ -196,6 +199,8 @@ class UDistScatterPlotsViaSectors(object):
             #
             # _diff_ = (_sector_sum_[s]/weight_sum) - (_sector_area_[s]/area_total)
             # u, v   = u + _scalar_ * _diff_ * cos(_sector_anchor_[s]), v + _scalar_ * _diff_ * sin(_sector_anchor_[s])
+            #
+            # So.... the issue is that we need the sectors that have zero weights because those all add to the u,v vector...
             #
             _diff_op_ = (pl.col('_w_ratio_') - pl.col('area')) # diff = sector_sum/weight_sum - sector_area/area_total # area_total == 1.0 since that was the normalization
             df_uv     = df.group_by(['__index__','x','y']).agg( (vector_scalar * _diff_op_ * pl.col('anchor_u')).sum().alias('_u_'),
