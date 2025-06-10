@@ -23,6 +23,7 @@ class UDistScatterPlotsViaSectors(object):
         # Create the debugging structures
         self.df_at_iteration_start    = []
         self.df_sector_sums           = []
+        self.df_sector_fill           = []
         self.df_sector_determinations = []
         self.df_sector_angles         = []
         self.df_sector_angles_joined  = []
@@ -33,8 +34,8 @@ class UDistScatterPlotsViaSectors(object):
         if weights is None: weights = np.ones(len(x_vals))
 
         # Prepare the initial dataframe
-        if colors is None: df      = pl.DataFrame({'x':x_vals, 'y':y_vals, 'w':weights})            .with_row_index('__index__')
-        else:              df      = pl.DataFrame({'x':x_vals, 'y':y_vals, 'w':weights, 'c':colors}).with_row_index('__index__')
+        if colors is None: df = pl.DataFrame({'x':x_vals, 'y':y_vals, 'w':weights})            .with_row_index('__index__').with_columns(pl.lit('#000000').alias('c'))
+        else:              df = pl.DataFrame({'x':x_vals, 'y':y_vals, 'w':weights, 'c':colors}).with_row_index('__index__')
         df_orig = df.clone()
 
         #
@@ -51,6 +52,11 @@ class UDistScatterPlotsViaSectors(object):
                                  (0.02 + 0.96 * (pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min())).alias('y'))
 
             if debug: self.df_at_iteration_start.append(df.clone())
+
+            #
+            # All Sectors DataFrame
+            #
+            df_all_sectors = df.join(pl.DataFrame({'sector': [i for i in range(16)]}), how='cross').drop(['w','c'])
 
             #
             # Multiply out the points against all the other points
@@ -73,11 +79,18 @@ class UDistScatterPlotsViaSectors(object):
             if debug: self.df_sector_determinations.append(df.clone())
 
             #
-            # Sum the weights for each sector ... the smaller this dataframe, the better for the next step
+            # Sum the weights for each sector ... this is missing sectors (and empty sectors (which are the ones missing) are needed later)
             #
             df   = df.group_by(['__index__','x','y','sector']).agg((pl.col('w').sum()).alias('_w_sum_'), (pl.col('w').sum() / df_weight_sum).alias('_w_ratio_'))
 
             if debug: self.df_sector_sums.append(df.clone())
+
+            #
+            # Add the missing sectors back in...
+            #
+            df = df_all_sectors.join(df, on=['__index__','x','y','sector'], how='left').with_columns(pl.col('_w_sum_').fill_null(0), pl.col('_w_ratio_').fill_null(0))
+
+            if debug: self.df_sector_fill.append(df.clone())
 
             #
             # Create the sector angle dataframe
