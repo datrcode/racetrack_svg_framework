@@ -521,8 +521,9 @@ def xyUniformSampleDistributionSectorTransformDEBUG(rt, xvals, yvals, weights=No
 #
 # xyUniformSampleDistributionSectorTransform() - implementation of the referenced paper
 # ... the above version is debug ... this removes all of the svg creation
+# ... may have messed this one up in the conversion process...
 #
-def xyUniformSampleDistributionSectorTransform(rt, xvals, yvals, weights=None, iterations=4, sectors=16, border_perc=0.01, vector_scalar=0.1):
+def xyUniformSampleDistributionSectorTransform(rt, xvals, yvals, weights=None, colors=None, iterations=4, sectors=16, vector_scalar=0.01):
     # Normalize the coordinates to be between 0.0 and 1.0
     def normalizeCoordinates(xs, ys):
         xmin, ymin, xmax, ymax = min(xs), min(ys), max(xs), max(ys)
@@ -530,20 +531,19 @@ def xyUniformSampleDistributionSectorTransform(rt, xvals, yvals, weights=None, i
         if ymin == ymax: ymin -= 0.0001; ymax += 0.0001
         xs_new, ys_new = [], []
         for x, y in zip(xs, ys):
-            xs_new.append((x-xmin)/(xmax-xmin))
-            ys_new.append((y-ymin)/(ymax-ymin))
+            xs_new.append(0.02 + 0.96*(x-xmin)/(xmax-xmin))
+            ys_new.append(0.02 + 0.96*(y-ymin)/(ymax-ymin))
         return xs_new, ys_new
     # Force all the coordinates to be between 0 and 1
     xvals, yvals = normalizeCoordinates(xvals, yvals)    
     xmin, ymin, xmax, ymax = 0.0, 0.0, 1.0, 1.0
-    xperc, yperc = (xmax-xmin)*border_perc, (ymax-ymin)*border_perc
-    xmin, ymin, xmax, ymax = xmin-xperc, ymin-yperc, xmax+xperc, ymax+yperc
     # Determine the average density (used for expected density calculations)
     if weights is None: weights = np.ones(len(xvals))
-    weight_sum = sum(weights)
-    area_total = ((xmax-xmin)*(ymax-ymin))
-    density_avg = weight_sum / area_total
-    # Determine the side and xy that a specific ray hits
+    weight_sum   = sum(weights)
+    area_total   = ((xmax-xmin)*(ymax-ymin))
+    density_avg  = weight_sum / area_total
+    iters        = 0
+
     def sideAndXY(xy, uv):
         _xyi_ = rt.rayIntersectsSegment(xy, uv, (xmin, ymin), (xmax, ymin))
         if _xyi_ is not None: return 0, _xyi_
@@ -617,9 +617,11 @@ def xyUniformSampleDistributionSectorTransform(rt, xvals, yvals, weights=None, i
             _diff_ = (_sector_sum_[s]/weight_sum) - (_sector_area_[s]/area_total)
             u, v   = u + _scalar_ * _diff_ * cos(_sector_anchor_[s]), v + _scalar_ * _diff_ * sin(_sector_anchor_[s])
         return u,v
-
+    
     # Iterations...
-    for iters in range(iterations):
+    _df_  = pl.DataFrame({'x':xvals, 'y':yvals, 'c':colors})
+    dfs = [_df_]
+    while iters < iterations:
         xvals_next, yvals_next = [], []
         for j in range(len(xvals)):
             _x_, _y_ = xvals[j], yvals[j]
@@ -627,10 +629,9 @@ def xyUniformSampleDistributionSectorTransform(rt, xvals, yvals, weights=None, i
             _x_next_, _y_next_ = _x_ + uv[0], _y_ + uv[1]
             xvals_next.append(_x_next_), yvals_next.append(_y_next_)
         xvals, yvals = xvals_next, yvals_next
-        xvals, yvals = normalizeCoordinates(xvals, yvals)    
+        xvals, yvals = normalizeCoordinates(xvals, yvals)
         xmin, ymin, xmax, ymax = 0.0, 0.0, 1.0, 1.0
-        xperc, yperc = (xmax-xmin)*border_perc, (ymax-ymin)*border_perc
-        xmin, ymin, xmax, ymax = xmin-xperc, ymin-yperc, xmax+xperc, ymax+yperc
+        iters += 1
 
     # Return
     return xvals, yvals
