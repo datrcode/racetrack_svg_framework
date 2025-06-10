@@ -15,10 +15,13 @@ import time
 __name__ = 'udist_scatterplots_via_sectors'
 
 class UDistScatterPlotsViaSectors(object):
-    def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.01, iterations=4, debug=True):
+    def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.01, iterations=4, debug=False):
         self.vector_scalar = vector_scalar
         self.iterations    = iterations
         self.debug         = debug
+        self.time_lu       = {'prepare_df':0.0, 'normalize':0.0, 'all_sectors':0.0, 'explode_points':0.0, 'arctangents':0.0, 'sector_sums':0.0, 
+                              'add_missing_sectors':0.0, 'prepare_sector_angles':0.0, 'join_sector_angles':0.0, 'ray_segment_intersections':0.0,
+                              'area_calc':0.0, 'sector_uv_summation':0.0, 'point_update':0.0,}
 
         # Create the debugging structures
         self.df_at_iteration_start    = []
@@ -34,9 +37,11 @@ class UDistScatterPlotsViaSectors(object):
         if weights is None: weights = np.ones(len(x_vals))
 
         # Prepare the initial dataframe
+        t = time.time()
         if colors is None: df = pl.DataFrame({'x':x_vals, 'y':y_vals, 'w':weights})            .with_row_index('__index__').with_columns(pl.lit('#000000').alias('c'))
         else:              df = pl.DataFrame({'x':x_vals, 'y':y_vals, 'w':weights, 'c':colors}).with_row_index('__index__')
         df_orig = df.clone()
+        self.time_lu['prepare_df'] += (time.time() - t)
 
         #
         # Perform each iteration
@@ -48,55 +53,64 @@ class UDistScatterPlotsViaSectors(object):
             #
             # Normalize the points to 0.02 to 0.98 (want to give it a little space around the edges to that there are sectors to move into)
             #
+            t = time.time()
             df = df.with_columns((0.02 + 0.96 * (pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min())).alias('x'), 
                                  (0.02 + 0.96 * (pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min())).alias('y'))
-
             if debug: self.df_at_iteration_start.append(df.clone())
+            self.time_lu['normalize'] += (time.time() - t)
 
             #
             # All Sectors DataFrame
             #
+            t = time.time()
             df_all_sectors = df.join(pl.DataFrame({'sector': [i for i in range(16)]}), how='cross').drop(['w','c'])
+            self.time_lu['all_sectors'] += (time.time() - t)
 
             #
             # Multiply out the points against all the other points
             # ... greatly explodes the dataframe
             #
+            t = time.time()
             df = df.with_columns(pl.struct(['x','y','__index__']).implode().alias('_implode_')) \
                    .explode('_implode_')                                            \
                    .with_columns(pl.col('_implode_').struct.field('x')        .alias('_xo_'),
                                  pl.col('_implode_').struct.field('y')        .alias('_yo_'),
                                  pl.col('_implode_').struct.field('__index__').alias('_indexo_'))
             df = df.filter(pl.col('__index__') != pl.col('_indexo_')) # don't compare the point with itself
+            self.time_lu['explode_points'] += (time.time() - t)
 
             #
             # Determine the sector for the other point in relationship to this point...
             #
+            t = time.time()
             _dx_ = pl.col('_xo_') - pl.col('x')
             _dy_ = pl.col('_yo_') - pl.col('y')
             df   = df.with_columns(((16*(pl.arctan2(_dy_, _dx_) + pl.lit(pi))/(pl.lit(2*pi))).cast(pl.Int64)).alias('sector'))
-
             if debug: self.df_sector_determinations.append(df.clone())
+            self.time_lu['arctangents'] += (time.time() - t)
 
             #
             # Sum the weights for each sector ... this is missing sectors (and empty sectors (which are the ones missing) are needed later)
             #
+            t = time.time()
             df   = df.group_by(['__index__','x','y','sector']).agg((pl.col('w').sum()).alias('_w_sum_'), (pl.col('w').sum() / df_weight_sum).alias('_w_ratio_'))
-
             if debug: self.df_sector_sums.append(df.clone())
+            self.time_lu['sector_sums'] += (time.time() - t)
 
             #
             # Add the missing sectors back in...
             #
+            t = time.time()
             df = df_all_sectors.join(df, on=['__index__','x','y','sector'], how='left').with_columns(pl.col('_w_sum_').fill_null(0), pl.col('_w_ratio_').fill_null(0))
-
             if debug: self.df_sector_fill.append(df.clone())
+            self.time_lu['add_missing_sectors'] += (time.time() - t)
 
             #
             # Create the sector angle dataframe
             # ... this is a small dataframe that covers just 16 sectors ...
             # ... it will be joined with the points dataframe to calculate the area of each sector for each point
             #
+            t = time.time()
             _lu_ = {'sector':[], 
                     'a0':[],       'a0u':[],       'a0v':[],                 # Ray 0 angle & uv components
                     'a1':[],       'a1u':[],       'a1v':[],                 # Ray 1 angle & uv components
@@ -134,15 +148,17 @@ class UDistScatterPlotsViaSectors(object):
             df_sector_angles = pl.DataFrame(_lu_)
             df_sector_angles = df_sector_angles.with_columns((pl.col('s0x1') - pl.col('s0x0')).alias('s0u'), (pl.col('s0y1') - pl.col('s0y0')).alias('s0v'),
                                                              (pl.col('s1x1') - pl.col('s1x0')).alias('s1u'), (pl.col('s1y1') - pl.col('s1y0')).alias('s1v'))
-
             if debug: self.df_sector_angles.append(df_sector_angles)
+            self.time_lu['prepare_sector_angles'] += (time.time() - t)
 
             # Join w/ sector information
+            t  = time.time()
             df = df.join(df_sector_angles, on='sector', how='left')
-
             if debug: self.df_sector_angles_joined.append(df)
+            self.time_lu['join_sector_angles'] += (time.time() - t)
 
             # Create rays for each sector angles
+            t  = time.time()
             df = df.with_columns((pl.col('a0').cos()).alias('xa0'), (pl.col('a0').sin()).alias('ya0'), # uv for angle 0
                                  (pl.col('a1').cos()).alias('xa1'), (pl.col('a1').sin()).alias('ya1')) # uv for angle 1
 
@@ -176,11 +192,13 @@ class UDistScatterPlotsViaSectors(object):
 
                                  pl.when((pl.col('r1s1_t') >= 0.0) & (pl.col('r1s1_u') >= 0.0) & (pl.col('r1s1_u') <= 1.0)).then(pl.col('x') + pl.col('r1s1_t') * pl.col('a1u')).otherwise(None).alias('r1s1_xi'),
                                  pl.when((pl.col('r1s1_t') >= 0.0) & (pl.col('r1s1_u') >= 0.0) & (pl.col('r1s1_u') <= 1.0)).then(pl.col('y') + pl.col('r1s1_t') * pl.col('a1v')).otherwise(None).alias('r1s1_yi'),)
+            self.time_lu['ray_segment_intersections'] += (time.time() - t)
 
             #
             # Area Calculation using Shoelace Formula
             #
             # Case 0 ... which is X_X_ ... which is the first and second ray both hit the first segment
+            t = time.time()
             _c0_0p_x_, _c0_0p_y_, _c0_0q_x_, _c0_0q_y_ = pl.col('r0s0_xi'), pl.col('r0s0_yi'), pl.col('r1s0_xi'), pl.col('r1s0_yi')
             _c0_1p_x_, _c0_1p_y_, _c0_1q_x_, _c0_1q_y_ = pl.col('r1s0_xi'), pl.col('r1s0_yi'), pl.col('x'),       pl.col('y')
             _c0_2p_x_, _c0_2p_y_, _c0_2q_x_, _c0_2q_y_ = pl.col('x'),       pl.col('y'),       pl.col('r0s0_xi'), pl.col('r0s0_yi')
@@ -201,32 +219,30 @@ class UDistScatterPlotsViaSectors(object):
                         (_c2_1p_x_*_c2_1q_y_ - _c2_1q_x_*_c2_1p_y_) + 
                         (_c2_2p_x_*_c2_2q_y_ - _c2_2q_x_*_c2_2p_y_) +
                         (_c2_3p_x_*_c2_3q_y_ - _c2_3q_x_*_c2_3p_y_))/2.0).abs().alias('area')
-
             df = df.with_columns(pl.when(pl.col('r0s0_xi').is_not_null() & pl.col('r1s0_xi').is_not_null()).then(_c0_op_)
                                    .when(pl.col('r0s1_xi').is_not_null() & pl.col('r1s1_xi').is_not_null()).then(_c1_op_)
                                    .when(pl.col('r0s0_xi').is_not_null() & pl.col('r1s1_xi').is_not_null()).then(_c2_op_)
                                    .otherwise(pl.lit(None).alias('area')))
-
             if debug: self.df_fully_filled.append(df)
+            self.time_lu['area_calc'] += (time.time() - t)
 
             #
             # With the sector sums, adjust the point based on the ratio of the sector area / sector density...
             # ... results of this iteration will be stored in the _xnext_ and _ynext_ fields of the dataframe
+            # ... really important:  empty sectors need to be included in the calculation...
             #
-            # _diff_ = (_sector_sum_[s]/weight_sum) - (_sector_area_[s]/area_total)
-            # u, v   = u + _scalar_ * _diff_ * cos(_sector_anchor_[s]), v + _scalar_ * _diff_ * sin(_sector_anchor_[s])
-            #
-            # So.... the issue is that we need the sectors that have zero weights because those all add to the u,v vector...
-            #
+            t = time.time()
             _diff_op_ = (pl.col('_w_ratio_') - pl.col('area')) # diff = sector_sum/weight_sum - sector_area/area_total # area_total == 1.0 since that was the normalization
             df_uv     = df.group_by(['__index__','x','y']).agg( (vector_scalar * _diff_op_ * pl.col('anchor_u')).sum().alias('_u_'),
                                                                 (vector_scalar * _diff_op_ * pl.col('anchor_v')).sum().alias('_v_'))
-        
             if debug: self.df_uv.append(df_uv.clone())
+            self.time_lu['sector_uv_summation'] += (time.time() - t)
 
+            t = time.time()
             df_uv     = df_uv.with_columns((pl.col('x') + pl.col('_u_')).alias('x'), 
                                            (pl.col('y') + pl.col('_v_')).alias('y'))
             df        = df_uv.join(df_orig, on=['__index__'], how='left') # add the weight back in
+            self.time_lu['point_update'] += (time.time() - t)
 
         self.df_results = df
 
