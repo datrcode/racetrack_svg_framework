@@ -194,7 +194,10 @@ class UDistScatterPlotsViaSectors(object):
             # With the sector sums, adjust the point based on the ratio of the sector area / sector density...
             # ... results of this iteration will be stored in the _xnext_ and _ynext_ fields of the dataframe
             #
-            _diff_op_ = (pl.col('_w_ratio_') - pl.col('area'))
+            # _diff_ = (_sector_sum_[s]/weight_sum) - (_sector_area_[s]/area_total)
+            # u, v   = u + _scalar_ * _diff_ * cos(_sector_anchor_[s]), v + _scalar_ * _diff_ * sin(_sector_anchor_[s])
+            #
+            _diff_op_ = (pl.col('_w_ratio_') - pl.col('area')) # diff = sector_sum/weight_sum - sector_area/area_total # area_total == 1.0 since that was the normalization
             df_uv     = df.group_by(['__index__','x','y']).agg( (vector_scalar * _diff_op_ * pl.col('anchor_u')).sum().alias('_u_'),
                                                                 (vector_scalar * _diff_op_ * pl.col('anchor_v')).sum().alias('_v_'))
         
