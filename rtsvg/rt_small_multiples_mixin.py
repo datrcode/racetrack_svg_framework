@@ -1580,8 +1580,8 @@ def __fieldOrder_polars__(rt_self,
                     _arr.append(_dow)
             return pl.DataFrame({'field':_arr})
         else:
-            return df.groupby(field).count()
+            return df.group_by(field).count()
     # Alphabetical
     else:
-        df = df.drop(df.columns - set([field])).rename({field:'field'}).unique()
+        df = df.drop(set(df.columns) - set([field])).rename({field:'field'}).unique()
         return df.sort('field')
