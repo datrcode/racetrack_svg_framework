@@ -165,6 +165,50 @@ class RTPeriodicBarChartMixin(object):
                          draw_labels           = True,          # draw labels flag
                          draw_border           = True,          # draw a border around the bar chart
                          draw_context          = True):         # draw background hints about the years, months, days, etc.
+        """ periodicBarChart() - periodic barchart
+
+        Parameters
+        ----------
+        time_period : str
+            periodicity to render: 'quarter', 'month', 'day', 'day_of_week', 'day_of_week_hour', 'hour', 'minute', 'second'
+        ts_field : str
+            timestamp field // if None, will be auto-detected
+        color_by : str
+            column to use for color
+        count_by : str
+            none means just count rows, otherwise, use a field to sum by
+        count_by_set : bool
+            count by using a set operation
+        style : str
+            'barchart' or 'boxplot' or 'boxplot_w_swarm'
+        cap_swarm_at : int
+            cap the swarm plot at the specified number... if set to None, then no caps
+
+        Parameters (Small Multiples)
+        ----------------------------
+
+        global_color_order : list
+            color by ordering... if none (default), will be created and filled in...
+        global_max : float
+            maximum to use for the bar heights
+        global_min : float
+            minimum (only used for the boxplot style(s))
+        just_calc_max : bool
+            forces return of the maximum for this render config
+
+        Parameters (Generic)
+        --------------------
+
+        widget_id : str
+            naming the svg elements
+        draw_labels : bool
+            draw labels flag
+        draw_border : bool
+            draw a border around the bar chart
+        draw_context : bool
+            draw background hints about the years, months, days, etc.
+
+        """
         _params_ = locals().copy()
         _params_.pop('self')
         return self.RTPeriodicBarChart(self, **_params_)
