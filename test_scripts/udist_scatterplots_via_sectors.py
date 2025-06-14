@@ -67,6 +67,10 @@ class UDistScatterPlotsViaSectors(object):
             self.time_lu['all_sectors'] += (time.time() - t)
 
             #
+            # vvv -- PERFORMANCE ISSUE
+            #
+
+            #
             # Multiply out the points against all the other points
             # ... greatly explodes the dataframe
             #
@@ -90,12 +94,16 @@ class UDistScatterPlotsViaSectors(object):
             self.time_lu['arctangents'] += (time.time() - t)
 
             #
-            # Sum the weights for each sector ... this is missing sectors (and empty sectors (which are the ones missing) are needed later)
+            # Sum the weights for each sector ... this is missing sectors (empty sectors (which are the ones missing) are needed later for the algo to work correctly)
             #
             t = time.time()
             df   = df.group_by(['__index__','x','y','sector']).agg((pl.col('w').sum()).alias('_w_sum_'), (pl.col('w').sum() / df_weight_sum).alias('_w_ratio_'))
             if debug: self.df_sector_sums.append(df.clone())
             self.time_lu['sector_sums'] += (time.time() - t)
+
+            #
+            # ^^^ -- PERFORMANCE ISSUE
+            #
 
             #
             # Add the missing sectors back in...
