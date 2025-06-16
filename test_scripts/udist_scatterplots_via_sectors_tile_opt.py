@@ -17,7 +17,7 @@ import time
 __name__ = 'udist_scatterplots_via_sectors_tile_opt'
 
 class UDistScatterPlotsViaSectorsTileOpt(object):
-    def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.01, iterations=4, debug=False):
+    def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.01, iterations=4, debug=False, num_of_tiles=32):
         self.vector_scalar = vector_scalar
         self.iterations    = iterations
         self.debug         = debug
@@ -64,7 +64,6 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         #
         # Prepare the xo/yo dataframe
         #
-        num_of_tiles = 32
         _iota_       = 10e-6
         t = time.time()
         # Tile (xi,yi) --> (x0, y0, x1, y1) where the bounds are [x0,x1) and [y0,y1)
@@ -151,7 +150,6 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             t = time.time()
             df_all_sectors = df.join(pl.DataFrame({'sector': [i for i in range(16)]}), how='cross').drop(['w','c'])
             self.time_lu['all_sectors'] += (time.time() - t)
-
 
             '''
             #
