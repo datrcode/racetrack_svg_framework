@@ -12,6 +12,7 @@ import polars  as     pl
 import numpy   as     np
 from   math    import pi, sin, cos, atan2
 from   shapely import Polygon
+from   os.path import exists
 import time
 
 __name__ = 'udist_scatterplots_via_sectors_tile_opt'
@@ -64,58 +65,11 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         #
         # Prepare the xo/yo dataframe
         #
-        _iota_       = 10e-6
         t = time.time()
-        # Tile (xi,yi) --> (x0, y0, x1, y1) where the bounds are [x0,x1) and [y0,y1)
-        tile_to_rect = {}
-        for xi in range(num_of_tiles):
-            x0, x1 = xi/float(num_of_tiles), (xi+1)/float(num_of_tiles)
-            for yi in range(num_of_tiles):
-                y0, y1 = yi/float(num_of_tiles), (yi+1)/float(num_of_tiles)
-                tile_to_rect[(xi,yi)] = (x0, y0, x1, y1)
-        # Determine which tiles (xo,yo) need to be checked for sector comparisons the hard way
-        offtiles_intersected_by_rays = set()
-        for _tile_ in [(0,0), (0, num_of_tiles-1), (num_of_tiles-1, num_of_tiles-1), (num_of_tiles-1, 0)]:
-            xi,  yi  = _tile_
-            x0,  y0, x1, y1 = tile_to_rect[_tile_]
-            xm,  ym         = (x0+x1)/2.0, (y0+y1)/2.0
-            _positions_ = [(x0+_iota_, y0+_iota_),(xm, y0+_iota_),(x1-_iota_, y0+_iota_),
-                            (x0+_iota_, ym),       (xm, ym),       (x1-_iota_, ym),
-                            (x0+_iota_, y1-_iota_),(xm, y1-_iota_),(x1-_iota_, y1-_iota_)]
-            for _position_ in _positions_:
-                xpt, ypt = _position_
-                for _sector_ in range(16):
-                    a0, a1         = _sector_*2*pi/16, (_sector_+1)*2*pi/16
-                    u0, v0, u1, v1 = cos(a0), sin(a0), cos(a1), sin(a1)
-                    for _tile_ in tile_to_rect:
-                        x0, y0, x1, y1 = tile_to_rect[_tile_]
-                        if rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x1, y0), (x1, y1)) or \
-                           rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y1), (x1, y1)) or \
-                           rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x1, y0), (x1, y1)) or \
-                           rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y1), (x1, y1)): offtiles_intersected_by_rays.add((_tile_[0]-xi, _tile_[1]-yi))
-        # Determine the min and max x/y offsets
-        xo_min, xo_max, yo_min, yo_max = 0, 0, 0, 0 # xi_min=-63 yi_min=-63 xi_max=63 yi_max=63 // for num_of_tiles = 64
-        for _xyo_ in offtiles_intersected_by_rays:
-            xo, yo = _xyo_
-            xo_min, xo_max = min(xo, xo_min), max(xo, xo_max)
-            yo_min, yo_max = min(yo, yo_min), max(yo, yo_max)
-        xoyo_to_sector, sectors_seen = {}, set()
-        for xo in range(xo_min, xo_max+1):
-            for yo in range(yo_min, yo_max+1):
-                if (xo,yo) in offtiles_intersected_by_rays: continue
-                xm, ym   = xo, yo
-                _sector_ = int(16*(atan2(ym, xm)+pi)/(2*pi))
-                xoyo_to_sector[(xo,yo)] = _sector_
-                sectors_seen.add(_sector_)
-        _lu_ = {'xo':[], 'yo':[], 'sector':[]}
-        for _xyo_ in offtiles_intersected_by_rays:
-            xo, yo = _xyo_
-            _lu_['xo'].append(xo), _lu_['yo'].append(yo), _lu_['sector'].append(-1)
-        for _xyo_ in xoyo_to_sector:
-            xo, yo   = _xyo_
-            _sector_ = xoyo_to_sector[_xyo_]
-            _lu_['xo'].append(xo), _lu_['yo'].append(yo), _lu_['sector'].append(_sector_)
-        df_xoyo_sector = pl.DataFrame(_lu_)
+        self.xoyo_filename = 'udist_scatterplots_via_sectors_tile_opt.parquet'
+        if exists(self.xoyo_filename) == False: self.createXoYoDataframeFile()
+        df_xoyo_sector = pl.read_parquet(self.xoyo_filename).filter(pl.col('num_of_tiles') == num_of_tiles).drop('num_of_tiles')
+        if len(df_xoyo_sector) == 0: raise Exception('No xo/yo sector data found for num_of_tiles = %d' % num_of_tiles)
         self.time_lu['xoyo_sector_creation'] = time.time() - t
 
         #
@@ -497,3 +451,91 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             svg.append(f'</circle>')
         svg.append('</svg>')
         return ''.join(svg)
+
+    #
+    #
+    #
+    def createXoYoDataframeFile(self):
+
+        def rayIntersectsSegment(xy_ray, uv_ray, xy0_segment, xy1_segment, include_xy1_endpoint=False, epsilon=1e-9):
+            x_r,  y_r  = xy_ray
+            dx_r, dy_r = uv_ray
+            x0,   y0   = xy0_segment
+            x1,   y1   = xy1_segment    
+            # Segment direction vector
+            dx_s, dy_s = x1 - x0, y1 - y0
+            # Compute determinant
+            det = -dx_r * dy_s + dy_r * dx_s
+            if abs(det) < 1e-10: return None # Lines are parallel or collinear
+            # Compute parameters t and u
+            t = ((x_r - x0) * dy_s - (y_r - y0) * dx_s) / det
+            u = ((x_r - x0) * dy_r - (y_r - y0) * dx_r) / det
+            # Check if intersection is valid (t >= 0 for ray, 0 <= u <= 1 for segment)
+            if t >= 0.0:
+                if include_xy1_endpoint:
+                    if 0.0 <= u <= 1.0+epsilon: return (x_r + t * dx_r, y_r + t * dy_r)
+                else:
+                    if 0.0 <= u <  1.0-epsilon: return (x_r + t * dx_r, y_r + t * dy_r)
+            return None
+
+        dfs = []
+        for num_of_tiles in [16,32,64,128,256]:
+            #
+            # Prepare the xo/yo dataframe
+            #
+            _iota_ = 10e-6
+            # Tile (xi,yi) --> (x0, y0, x1, y1) where the bounds are [x0,x1) and [y0,y1)
+            tile_to_rect = {}
+            for xi in range(num_of_tiles):
+                x0, x1 = xi/float(num_of_tiles), (xi+1)/float(num_of_tiles)
+                for yi in range(num_of_tiles):
+                    y0, y1 = yi/float(num_of_tiles), (yi+1)/float(num_of_tiles)
+                    tile_to_rect[(xi,yi)] = (x0, y0, x1, y1)
+            # Determine which tiles (xo,yo) need to be checked for sector comparisons the hard way
+            offtiles_intersected_by_rays = set()
+            for _tile_ in [(0,0), (0, num_of_tiles-1), (num_of_tiles-1, num_of_tiles-1), (num_of_tiles-1, 0)]:
+                xi,  yi  = _tile_
+                x0,  y0, x1, y1 = tile_to_rect[_tile_]
+                xm,  ym         = (x0+x1)/2.0, (y0+y1)/2.0
+                _positions_ = [(x0+_iota_, y0+_iota_),(xm, y0+_iota_),(x1-_iota_, y0+_iota_),
+                                (x0+_iota_, ym),       (xm, ym),       (x1-_iota_, ym),
+                                (x0+_iota_, y1-_iota_),(xm, y1-_iota_),(x1-_iota_, y1-_iota_)]
+                for _position_ in _positions_:
+                    xpt, ypt = _position_
+                    for _sector_ in range(16):
+                        a0, a1         = _sector_*2*pi/16, (_sector_+1)*2*pi/16
+                        u0, v0, u1, v1 = cos(a0), sin(a0), cos(a1), sin(a1)
+                        for _tile_ in tile_to_rect:
+                            x0, y0, x1, y1 = tile_to_rect[_tile_]
+                            if rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x1, y0), (x1, y1)) or \
+                            rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y1), (x1, y1)) or \
+                            rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x1, y0), (x1, y1)) or \
+                            rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y1), (x1, y1)): offtiles_intersected_by_rays.add((_tile_[0]-xi, _tile_[1]-yi))
+            # Determine the min and max x/y offsets
+            xo_min, xo_max, yo_min, yo_max = 0, 0, 0, 0 # xi_min=-63 yi_min=-63 xi_max=63 yi_max=63 // for num_of_tiles = 64
+            for _xyo_ in offtiles_intersected_by_rays:
+                xo, yo = _xyo_
+                xo_min, xo_max = min(xo, xo_min), max(xo, xo_max)
+                yo_min, yo_max = min(yo, yo_min), max(yo, yo_max)
+            xoyo_to_sector, sectors_seen = {}, set()
+            for xo in range(xo_min, xo_max+1):
+                for yo in range(yo_min, yo_max+1):
+                    if (xo,yo) in offtiles_intersected_by_rays: continue
+                    xm, ym   = xo, yo
+                    _sector_ = int(16*(atan2(ym, xm)+pi)/(2*pi))
+                    xoyo_to_sector[(xo,yo)] = _sector_
+                    sectors_seen.add(_sector_)
+            _lu_ = {'xo':[], 'yo':[], 'sector':[]}
+            for _xyo_ in offtiles_intersected_by_rays:
+                xo, yo = _xyo_
+                xoyo_to_sector[(xo,yo)] = -1
+                _lu_['xo'].append(xo), _lu_['yo'].append(yo), _lu_['sector'].append(-1)
+            for _xyo_ in xoyo_to_sector:
+                xo, yo   = _xyo_
+                _sector_ = xoyo_to_sector[_xyo_]
+                _lu_['xo'].append(xo), _lu_['yo'].append(yo), _lu_['sector'].append(_sector_)
+            df_xoyo_sector = pl.DataFrame(_lu_).with_columns(pl.lit(num_of_tiles).alias('num_of_tiles'))
+            dfs.append(df_xoyo_sector)
+
+        df = pl.concat(dfs)
+        df.write_parquet(self.xoyo_filename)
