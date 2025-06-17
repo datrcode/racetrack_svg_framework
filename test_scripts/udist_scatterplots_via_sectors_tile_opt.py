@@ -104,48 +104,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             t = time.time()
             df_all_sectors = df.join(pl.DataFrame({'sector': [i for i in range(16)]}), how='cross').drop(['w','c'])
             self.time_lu['all_sectors'] += (time.time() - t)
-
-            '''
-            #
-            # vvv -- PERFORMANCE ISSUE
-            #
-
-            #
-            # Multiply out the points against all the other points
-            # ... greatly explodes the dataframe
-            #
-            t = time.time()
-            df = df.with_columns(pl.struct(['x','y','__index__']).implode().alias('_implode_')) \
-                   .explode('_implode_')                                            \
-                   .with_columns(pl.col('_implode_').struct.field('x')        .alias('_xo_'),
-                                 pl.col('_implode_').struct.field('y')        .alias('_yo_'),
-                                 pl.col('_implode_').struct.field('__index__').alias('_indexo_'))
-            df = df.filter(pl.col('__index__') != pl.col('_indexo_')) # don't compare the point with itself
-            self.time_lu['explode_points'] += (time.time() - t)
-
-            #
-            # Determine the sector for the other point in relationship to this point...
-            #
-            t = time.time()
-            _dx_ = pl.col('_xo_') - pl.col('x')
-            _dy_ = pl.col('_yo_') - pl.col('y')
-            df   = df.with_columns(((16*(pl.arctan2(_dy_, _dx_) + pl.lit(pi))/(pl.lit(2*pi))).cast(pl.Int64)).alias('sector'))
-            if debug: self.df_sector_determinations.append(df.clone())
-            self.time_lu['arctangents'] += (time.time() - t)
-
-            #
-            # Sum the weights for each sector ... this is missing sectors (empty sectors (which are the ones missing) are needed later for the algo to work correctly)
-            #
-            t = time.time()
-            df   = df.group_by(['__index__','x','y','sector']).agg((pl.col('w').sum()).alias('_w_sum_'), (pl.col('w').sum() / df_weight_sum).alias('_w_ratio_'))
-            if debug: self.df_sector_sums.append(df.clone())
-            self.time_lu['sector_sums'] += (time.time() - t)
-
-            #
-            # ^^^ -- PERFORMANCE ISSUE
-            #
-            '''
-
+            
             #
             # vvv -- New Performant Version -- vvv
             #
@@ -177,8 +136,9 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             # Separate into "easy way" and "hard way"
             t = time.time()
             df_easy_way = df.filter(pl.col('sector') != -1)
-            df_hard_way = df.filter(pl.col('sector') == -1).join(df_w_tile.drop(['c']), left_on=['xi_tile_sums','yi_tile_sums'], right_on=['xi','yi'])
-            df_hard_way = df_hard_way.filter(pl.col('__index__') != pl.col('__index___right'))
+            df_hard_way = df.filter(pl.col('sector') == -1) \
+                            .join(df_w_tile.drop(['c']), left_on=['xi_tile_sums','yi_tile_sums'], right_on=['xi','yi']) \
+                            .filter(pl.col('__index__') != pl.col('__index___right'))
             self.time_lu['separate_easy_hard_way'] += (time.time() - t)
 
             # Hard way calculation ... determine the sector on a per point basis
