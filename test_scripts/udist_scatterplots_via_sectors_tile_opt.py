@@ -439,7 +439,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             return None
 
         dfs = []
-        for num_of_tiles in [16,32,64,128,256]:
+        for num_of_tiles in [16, 32, 64, 128, 256, 512]:
             #
             # Prepare the xo/yo dataframe
             #
@@ -468,9 +468,9 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                         for _tile_ in tile_to_rect:
                             x0, y0, x1, y1 = tile_to_rect[_tile_]
                             if rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x1, y0), (x1, y1)) or \
-                            rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y1), (x1, y1)) or \
-                            rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x1, y0), (x1, y1)) or \
-                            rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y1), (x1, y1)): offtiles_intersected_by_rays.add((_tile_[0]-xi, _tile_[1]-yi))
+                               rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y1), (x1, y1)) or \
+                               rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x1, y0), (x1, y1)) or \
+                               rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y1), (x1, y1)): offtiles_intersected_by_rays.add((_tile_[0]-xi, _tile_[1]-yi))
             # Determine the min and max x/y offsets
             xo_min, xo_max, yo_min, yo_max = 0, 0, 0, 0 # xi_min=-63 yi_min=-63 xi_max=63 yi_max=63 // for num_of_tiles = 64
             for _xyo_ in offtiles_intersected_by_rays:
