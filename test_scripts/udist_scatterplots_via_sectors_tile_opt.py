@@ -32,7 +32,6 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         self.df_at_iteration_start      = []
         self.df_all_sectors             = []
         self.df_sector_fill             = []
-        self.df_sector_determinations   = []
         self.df_tile_sums               = []
         self.df_tile_determinations     = []
         self.df_cross_join_tile_offsets = []
