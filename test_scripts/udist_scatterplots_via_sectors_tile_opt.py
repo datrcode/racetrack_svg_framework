@@ -29,14 +29,22 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                               'sector_sums':0.0,}
 
         # Create the debugging structures
-        self.df_at_iteration_start    = []
-        self.df_sector_sums           = []
-        self.df_sector_fill           = []
-        self.df_sector_determinations = []
-        self.df_sector_angles         = []
-        self.df_sector_angles_joined  = []
-        self.df_fully_filled          = []
-        self.df_uv                    = []
+        self.df_at_iteration_start      = []
+        self.df_all_sectors             = []
+        self.df_sector_fill             = []
+        self.df_sector_determinations   = []
+        self.df_tile_sums               = []
+        self.df_tile_determinations     = []
+        self.df_cross_join_tile_offsets = []
+        self.df_join_sector_info        = []
+        self.df_separate_easy_way       = []
+        self.df_separate_hard_way       = []
+        self.df_hard_way_arctangents    = []
+        self.df_sector_sums             = []
+        self.df_sector_angles           = []
+        self.df_sector_angles_joined    = []
+        self.df_fully_filled            = []
+        self.df_uv                      = []
 
         # Create weights if none were set
         if weights is None: weights = np.ones(len(x_vals))
@@ -103,6 +111,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             #
             t = time.time()
             df_all_sectors = df.join(pl.DataFrame({'sector': [i for i in range(16)]}), how='cross').drop(['w','c'])
+            if debug: self.df_all_sectors.append(df_all_sectors.clone())
             self.time_lu['all_sectors'] += (time.time() - t)
             
             #
@@ -113,11 +122,13 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             t = time.time()
             df_w_tile = df.with_columns((pl.col('x') * num_of_tiles).cast(pl.Int16).alias('xi'), 
                                         (pl.col('y') * num_of_tiles).cast(pl.Int16).alias('yi'))
+            if debug: self.df_tile_determinations.append(df_w_tile.clone())
             self.time_lu['determine_tile'] += (time.time() - t)
 
             # Determine the sum of the weights in each tile (tile_sum)
             t = time.time()
             df_tile_sums = df_w_tile.group_by(['xi','yi']).agg(pl.col('w').sum().alias('tile_sum'))
+            if debug: self.df_tile_sums.append(df_tile_sums.clone())
             self.time_lu['tile_sums'] += (time.time() - t)
 
             # Cross join all filled in tiles with the original points & then compute the x/y offset (xo,yo)
@@ -125,12 +136,14 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             df           = df_w_tile.join(df_tile_sums, how='cross').rename({'xi_right':'xi_tile_sums', 'yi_right':'yi_tile_sums'}). \
                                                                      with_columns((pl.col('xi_tile_sums') - pl.col('xi')).alias('xo'),
                                                                                   (pl.col('yi_tile_sums') - pl.col('yi')).alias('yo'))
+            if debug: self.df_cross_join_tile_offsets.append(df.clone())
             self.time_lu['cross_join_tile_offsets'] += (time.time() - t)
 
             # Pull the sector information from the df_xoyo_sector dataframe ... any sector == -1 needs to be done the hard way
             # ... hard way == atan2 on the individual point level
             t = time.time()
             df          = df.join(df_xoyo_sector, on=['xo','yo'])
+            if debug: self.df_join_sector_info.append(df.clone())
             self.time_lu['join_sector_info'] += (time.time() - t)
 
             # Separate into "easy way" and "hard way"
@@ -139,12 +152,15 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             df_hard_way = df.filter(pl.col('sector') == -1) \
                             .join(df_w_tile.drop(['c']), left_on=['xi_tile_sums','yi_tile_sums'], right_on=['xi','yi']) \
                             .filter(pl.col('__index__') != pl.col('__index___right'))
+            if debug: self.df_separate_easy_way.append(df_easy_way.clone())
+            if debug: self.df_separate_hard_way.append(df_hard_way.clone())
             self.time_lu['separate_easy_hard_way'] += (time.time() - t)
 
             # Hard way calculation ... determine the sector on a per point basis
             t = time.time()
             _dx_, _dy_ = pl.col('x_right') - pl.col('x'), pl.col('y_right') - pl.col('y')
             df_hard_way = df_hard_way.with_columns(((16*(pl.arctan2(_dy_, _dx_) + pl.lit(pi))/(pl.lit(2*pi))).cast(pl.Int64)).alias('sector'))
+            if debug: self.df_hard_way_arctangents.append(df_hard_way.clone())
             self.time_lu['hard_way_arctangents'] += (time.time() - t)
 
             # Sector Summation
@@ -153,6 +169,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             df_hard_way = df_hard_way.group_by(['__index__','x','y','sector']).agg(pl.col('w_right').sum().alias('_w_sum_'))
             df          = pl.concat([df_easy_way, df_hard_way])
             df          = df.group_by(['__index__','x','y','sector']).agg(pl.col('_w_sum_').sum()).with_columns((pl.col('_w_sum_') / df_weight_sum).alias('_w_ratio_'))
+            if debug: self.df_sector_sums.append(df.clone())
             self.time_lu['sector_sums'] += (time.time() - t)
 
             #
