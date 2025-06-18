@@ -163,6 +163,15 @@ class RTGeometryMixin(object):
         return (X_solution, Y_solution, R_solution)
 
     #
+    # pointRightOfLine() - is a point to the right of a line?
+    # ... and by right i may mean left of the line
+    #
+    def pointRightOfLine(self, line, xy):
+        x0, y0, x1, y1 = line[0][0], line[0][1], line[1][0], line[1][1]
+        x2, y2         = xy
+        return (x0 - x2) * (y1 - y2) - (y0 - y2) * (x1 - x2) > 0.0
+
+    #
     # rayIntersectsSegment() - does a ray intersect a line segment?
     # - ChatGPT Version
     # - Failure rate of about 22% for the xy1_segment side... no failure rate for the xy0_segment side
