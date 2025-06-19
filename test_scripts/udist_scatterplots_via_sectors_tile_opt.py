@@ -21,6 +21,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
     def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.01, iterations=4, debug=False, num_of_tiles=32):
         self.vector_scalar = vector_scalar
         self.iterations    = iterations
+        self.num_of_tiles  = num_of_tiles
         self.debug         = debug
         self.time_lu       = {'prepare_df':0.0, 'normalize':0.0, 'all_sectors':0.0, 'explode_points':0.0, 'arctangents':0.0, 'sector_sums':0.0, 
                               'add_missing_sectors':0.0, 'prepare_sector_angles':0.0, 'join_sector_angles':0.0, 'ray_segment_intersections':0.0,
@@ -427,6 +428,14 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             svg.append(f'</circle>')
         svg.append('</svg>')
         return ''.join(svg)
+
+    #
+    # tileBounds()
+    #
+    def tileBounds(self, xi, yi):
+        x0, x1 = xi/float(self.num_of_tiles), (xi+1)/float(self.num_of_tiles)
+        y0, y1 = yi/float(self.num_of_tiles), (yi+1)/float(self.num_of_tiles)
+        return (x0, y0, x1, y1)
 
     #
     #
