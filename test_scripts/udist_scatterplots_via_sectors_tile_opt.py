@@ -76,8 +76,8 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         t = time.time()
         self.xoyo_filename = 'udist_scatterplots_via_sectors_tile_opt.parquet'
         if exists(self.xoyo_filename) == False: self.createXoYoDataframeFile()
-        df_xoyo_sector = pl.read_parquet(self.xoyo_filename).filter(pl.col('num_of_tiles') == num_of_tiles).drop('num_of_tiles')
-        if len(df_xoyo_sector) == 0: raise Exception('No xo/yo sector data found for num_of_tiles = %d' % num_of_tiles)
+        self.df_xoyo_sector = pl.read_parquet(self.xoyo_filename).filter(pl.col('num_of_tiles') == num_of_tiles).drop('num_of_tiles').unique()
+        if len(self.df_xoyo_sector) == 0: raise Exception('No xo/yo sector data found for num_of_tiles = %d' % num_of_tiles)
         self.time_lu['xoyo_sector_creation'] = time.time() - t
 
         #
@@ -142,7 +142,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             # Pull the sector information from the df_xoyo_sector dataframe ... any sector == -1 needs to be done the hard way
             # ... hard way == atan2 on the individual point level
             t = time.time()
-            df          = df.join(df_xoyo_sector, on=['xo','yo'])
+            df          = df.join(self.df_xoyo_sector, on=['xo','yo'])
             if debug: self.df_join_sector_info.append(df.clone())
             self.time_lu['join_sector_info'] += (time.time() - t)
 
