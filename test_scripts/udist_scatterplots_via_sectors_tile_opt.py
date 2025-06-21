@@ -37,6 +37,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         self.df_cross_join_tile_offsets = []
         self.df_join_sector_info        = []
         self.df_separate_easy_way       = []
+        self.df_separate_medium_way     = []
         self.df_separate_hard_way       = []
         self.df_hard_way_arctangents    = []
         self.df_sector_sums             = []
@@ -148,12 +149,15 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
 
             # Separate into "easy way" and "hard way"
             t = time.time()
-            df_easy_way = df.filter(pl.col('sector') != -1)
-            df_hard_way = df.filter(pl.col('sector') == -1) \
-                            .join(df_w_tile.drop(['c']), left_on=['xi_tile_sums','yi_tile_sums'], right_on=['xi','yi']) \
-                            .filter(pl.col('__index__') != pl.col('__index___right'))
-            if debug: self.df_separate_easy_way.append(df_easy_way.clone())
-            if debug: self.df_separate_hard_way.append(df_hard_way.clone())
+            df_easy_way   = df.filter(pl.col('sector') != -1)
+            df_hard_way   = df.filter(pl.col('sector') == -1) \
+                              .join(df_w_tile.drop(['c']), left_on=['xi_tile_sums','yi_tile_sums'], right_on=['xi','yi']) \
+                              .filter(pl.col('__index__') != pl.col('__index___right'))
+            df_medium_way = df_hard_way.filter(pl.col('u').is_not_null())
+            df_hard_way   = df_hard_way.filter(pl.col('u').is_null())
+            if debug: self.df_separate_easy_way  .append(df_easy_way.clone())
+            if debug: self.df_separate_medium_way.append(df_medium_way.clone())
+            if debug: self.df_separate_hard_way  .append(df_hard_way.clone())
             self.time_lu['separate_easy_hard_way'] += (time.time() - t)
 
             # Hard way calculation ... determine the sector on a per point basis
@@ -426,6 +430,23 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             svg.append(f'<animate attributeName="cx" values="{_df_["x_anim"][i]}" dur="{animation_dur}" repeatCount="indefinite" />')
             svg.append(f'<animate attributeName="cy" values="{_df_["y_anim"][i]}" dur="{animation_dur}" repeatCount="indefinite" />')
             svg.append(f'</circle>')
+        svg.append('</svg>')
+        return ''.join(svg)
+
+    def renderXOYO(self, rt):
+        _df_ = self.df_xoyo_sector
+        xo_min, yo_min, xo_max, yo_max = _df_['xo'].min(), _df_['yo'].min(), _df_['xo'].max(), _df_['yo'].max()
+        dx, dy = xo_max - xo_min, yo_max - yo_min
+        svg = [f'<svg x="0" y="0" width="900" height="900" viewBox="{xo_min-1} {yo_min-1} {dx+3} {dy+3}" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="{xo_min-1}" y="{yo_min-1}" width="{dx+3}" height="{dy+3}" fill="#ffffff" />')
+        for i in range(len(_df_)):
+            xo, yo, sector, u, v, rsector, lsector = _df_['xo'][i], _df_['yo'][i], _df_['sector'][i], _df_['u'][i], _df_['v'][i], _df_['rsector'][i], _df_['lsector'][i]
+            if sector != -1: 
+                _color_ = rt.co_mgr.getColor(sector)
+                svg.append(f'<rect x="{xo}" y="{yo}" width="1" height="1" fill="{_color_}" stroke="none" />')
+            elif rsector is not None:
+                _color_ = '#a0a0a0'
+                svg.append(f'<rect x="{xo}" y="{yo}" width="1" height="1" fill="{_color_}" stroke="none" />')            
         svg.append('</svg>')
         return ''.join(svg)
 
