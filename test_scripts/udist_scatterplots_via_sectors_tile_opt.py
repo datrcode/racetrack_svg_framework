@@ -525,6 +525,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                     if (xo,yo) in offtiles_intersected_by_rays: continue
                     xm, ym   = xo, yo
                     _sector_ = int(16*(atan2(ym, xm)+pi)/(2*pi))
+                    if _sector_ < 0: raise Exception('This should not happen // _sector_ < 0')
                     xoyo_to_sector[(xo,yo)] = _sector_
                     sectors_seen.add(_sector_)
             # Transform into a dataframe
@@ -532,7 +533,6 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             # These are the tiles that intersect the rays ... and so have to be figured out on a per point basis
             for _xyo_ in offtiles_intersected_by_rays:
                 xo, yo = _xyo_
-                xoyo_to_sector[(xo,yo)] = -1
                 _lu_['xo'].append(xo), _lu_['yo'].append(yo), _lu_['sector'].append(-1)
                 # This shouldn't happen -- if there's an intersection, it should be at least two sectors (if not more)
                 if   _xyo_ in offtiles_to_sectors and len(offtiles_to_sectors[_xyo_]) == 1: 
