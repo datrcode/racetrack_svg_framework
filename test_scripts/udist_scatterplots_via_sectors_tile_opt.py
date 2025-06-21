@@ -519,6 +519,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                 xo_min, xo_max = min(xo, xo_min), max(xo, xo_max)
                 yo_min, yo_max = min(yo, yo_min), max(yo, yo_max)
             xoyo_to_sector, sectors_seen = {}, set()
+            # These tiles that are completely in a sector and do not touch the rays -- this determines the sector lookup
             for xo in range(xo_min, xo_max+1):
                 for yo in range(yo_min, yo_max+1):
                     if (xo,yo) in offtiles_intersected_by_rays: continue
@@ -526,14 +527,19 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                     _sector_ = int(16*(atan2(ym, xm)+pi)/(2*pi))
                     xoyo_to_sector[(xo,yo)] = _sector_
                     sectors_seen.add(_sector_)
+            # Transform into a dataframe
             _lu_ = {'xo':[], 'yo':[], 'sector':[], 'u':[], 'v':[], 'rsector':[], 'lsector':[]}
+            # These are the tiles that intersect the rays ... and so have to be figured out on a per point basis
             for _xyo_ in offtiles_intersected_by_rays:
                 xo, yo = _xyo_
                 xoyo_to_sector[(xo,yo)] = -1
                 _lu_['xo'].append(xo), _lu_['yo'].append(yo), _lu_['sector'].append(-1)
-                if   _xyo_ in offtiles_to_sectors and len(offtiles_to_sectors[_xyo_]) == 1: raise Exception('This should not happen // offtiles_to_sectors[_xyo_] == len(1)')
+                # This shouldn't happen -- if there's an intersection, it should be at least two sectors (if not more)
+                if   _xyo_ in offtiles_to_sectors and len(offtiles_to_sectors[_xyo_]) == 1: 
+                    raise Exception('This should not happen // offtiles_to_sectors[_xyo_] == len(1)')
+                # Two sectors intersected -- this can be used to determine the sector via the cross product
                 elif _xyo_ in offtiles_to_sectors and len(offtiles_to_sectors[_xyo_]) == 2:
-                    if len(offtiles_to_uvs[_xyo_]) != 1: 
+                    if len(offtiles_to_uvs[_xyo_]) != 1: # this shouldn't happen -- only one ray should have intersected if there are two sectors
                         print(_xyo_, offtiles_to_uvs[_xyo_])
                         raise Exception('This should not happen // len(offtiles_to_uvs[_xyo_]) != 1')
                     _unit_len_  = sqrt(xo*xo+yo*yo)
@@ -543,16 +549,18 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                     _sector0_   = int(16*(atan2(yo-_l_*_pv_, xo-_l_*_pu_)+pi)/(2*pi))
                     _sector1_   = int(16*(atan2(yo+_l_*_pv_, xo+_l_*_pu_)+pi)/(2*pi))
                     _lu_['u'].append(list(offtiles_to_uvs[_xyo_])[0][0]), _lu_['v'].append(list(offtiles_to_uvs[_xyo_])[0][1]), _lu_['rsector'].append(_sector0_), _lu_['lsector'].append(_sector1_)
+                # Otherwise, we'll need to use the arctangent
                 else:
                     _lu_['u'].append(None), _lu_['v'].append(None), _lu_['rsector'].append(None), _lu_['lsector'].append(None)
-
+            # These are the tiles that don't intersect the rays ... and therefore can be optimized to a single sector
             for _xyo_ in xoyo_to_sector:
                 xo, yo   = _xyo_
                 _sector_ = xoyo_to_sector[_xyo_]
                 _lu_['xo'].append(xo), _lu_['yo'].append(yo), _lu_['sector'].append(_sector_)
                 _lu_['u'].append(None), _lu_['v'].append(None), _lu_['rsector'].append(None), _lu_['lsector'].append(None)
+            # Create the dataframe and add it to the list of dataframes (each added one cover a specific num_of_tiles)
             df_xoyo_sector = pl.DataFrame(_lu_).with_columns(pl.lit(num_of_tiles).alias('num_of_tiles'))
             dfs.append(df_xoyo_sector)
-
+        # Concatenate the dataframes together & write out to a file for use when the class starts up
         df = pl.concat(dfs)
         df.write_parquet(self.xoyo_filename)
