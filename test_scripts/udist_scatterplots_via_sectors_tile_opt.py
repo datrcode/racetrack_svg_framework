@@ -27,25 +27,26 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                               'add_missing_sectors':0.0, 'prepare_sector_angles':0.0, 'join_sector_angles':0.0, 'ray_segment_intersections':0.0,
                               'area_calc':0.0, 'sector_uv_summation':0.0, 'point_update':0.0, 'determine_tile':0.0, 'tile_sums':0.0,
                               'cross_join_tile_offsets':0.0, 'join_sector_info':0.0, 'separate_easy_hard_way':0.0, 'hard_way_arctangents':0.0,
-                              'sector_sums':0.0,}
+                              'medium_way_crossproducts':0.0,'sector_sums':0.0,}
 
         # Create the debugging structures
-        self.df_at_iteration_start      = []
-        self.df_all_sectors             = []
-        self.df_tile_determinations     = []
-        self.df_tile_sums               = []
-        self.df_cross_join_tile_offsets = []
-        self.df_join_sector_info        = []
-        self.df_separate_easy_way       = []
-        self.df_separate_medium_way     = []
-        self.df_separate_hard_way       = []
-        self.df_hard_way_arctangents    = []
-        self.df_sector_sums             = []
-        self.df_sector_fill             = []
-        self.df_sector_angles           = []
-        self.df_sector_angles_joined    = []
-        self.df_fully_filled            = []
-        self.df_uv                      = []
+        self.df_at_iteration_start       = []
+        self.df_all_sectors              = []
+        self.df_tile_determinations      = []
+        self.df_tile_sums                = []
+        self.df_cross_join_tile_offsets  = []
+        self.df_join_sector_info         = []
+        self.df_separate_easy_way        = []
+        self.df_separate_medium_way      = []
+        self.df_separate_hard_way        = []
+        self.df_medium_way_crossproducts = []
+        self.df_hard_way_arctangents     = []
+        self.df_sector_sums              = []
+        self.df_sector_fill              = []
+        self.df_sector_angles            = []
+        self.df_sector_angles_joined     = []
+        self.df_fully_filled             = []
+        self.df_uv                       = []
 
         # Create weights if none were set
         if weights is None: weights = np.ones(len(x_vals))
@@ -159,6 +160,17 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             if debug: self.df_separate_medium_way.append(df_medium_way.clone())
             if debug: self.df_separate_hard_way  .append(df_hard_way.clone())
             self.time_lu['separate_easy_hard_way'] += (time.time() - t)
+
+            # Medium way calculation ... determine the sector based on crossproduct
+            t = time.time()
+            _x1_, _y1_ = pl.col('x') + pl.col('u'), pl.col('y') + pl.col('v')
+            df_medium_way = df_medium_way.with_columns(pl.when((pl.col('x') - pl.col('x_right')) * (_y1_ - pl.col('y_right')) - 
+                                                               (pl.col('y') - pl.col('y_right')) * (_x1_ - pl.col('x_right')) > 0.0)
+                                                         .then     (pl.col('rsector'))
+                                                         .otherwise(pl.col('lsector'))
+                                                         .alias    ('sector'))
+            if debug: self.df_medium_way_crossproducts.append(df_medium_way.clone())
+            self.time_lu['medium_way_crossproducts'] += (time.time() - t)
 
             # Hard way calculation ... determine the sector on a per point basis
             t = time.time()
