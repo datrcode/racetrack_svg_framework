@@ -463,6 +463,9 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                     if 0.0 <= u <  1.0-epsilon: return (x_r + t * dx_r, y_r + t * dy_r)
             return None
 
+        angles = []
+        for i in range(16): angles.append(i*2*pi/16)
+
         dfs = []
         for num_of_tiles in [16, 32, 64]: # , 128, 256, 512]:
             #
@@ -479,29 +482,36 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             # Determine which tiles (xo,yo) need to be checked for sector comparisons the hard way
             offtiles_intersected_by_rays = set()
             offtiles_to_sectors          = {}
+            offtiles_to_uvs              = {}
             for _tile_ in [(0,0), (0, num_of_tiles-1), (num_of_tiles-1, num_of_tiles-1), (num_of_tiles-1, 0)]:
                 xi,  yi  = _tile_
                 x0,  y0, x1, y1 = tile_to_rect[_tile_]
                 xm,  ym         = (x0+x1)/2.0, (y0+y1)/2.0
                 _positions_ = [(x0+_iota_, y0+_iota_),(xm, y0+_iota_),(x1-_iota_, y0+_iota_),
-                                (x0+_iota_, ym),       (xm, ym),       (x1-_iota_, ym),
-                                (x0+_iota_, y1-_iota_),(xm, y1-_iota_),(x1-_iota_, y1-_iota_)]
+                               (x0+_iota_, ym),       (xm, ym),       (x1-_iota_, ym),
+                               (x0+_iota_, y1-_iota_),(xm, y1-_iota_),(x1-_iota_, y1-_iota_)]
                 for _position_ in _positions_:
                     xpt, ypt = _position_
                     for _sector_ in range(16):
-                        a0, a1         = _sector_*2*pi/16, (_sector_+1)*2*pi/16
+                        a0, a1         = angles[_sector_], angles[(_sector_+1)%16]
                         u0, v0, u1, v1 = cos(a0), sin(a0), cos(a1), sin(a1)
                         for _tile_ in tile_to_rect:
                             x0, y0, x1, y1 = tile_to_rect[_tile_]
+                            _xo_, _yo_ = _tile_[0]-xi, _tile_[1]-yi
+                            k          = (_xo_, _yo_)
+
                             if rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x1, y0), (x1, y1)) or \
-                               rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y1), (x1, y1)) or \
-                               rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x1, y0), (x1, y1)) or \
-                               rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y1), (x1, y1)):
-                                _xo_, _yo_ = _tile_[0]-xi, _tile_[1]-yi
-                                k          = (_xo_, _yo_)
+                               rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y1), (x1, y1)):
                                 offtiles_intersected_by_rays.add(k)
-                                if k not in offtiles_to_sectors: offtiles_to_sectors[k] = set()
-                                offtiles_to_sectors[k].add(_sector_)
+                                if k not in offtiles_to_sectors: offtiles_to_sectors[k], offtiles_to_uvs[k] = set(), set()
+                                offtiles_to_sectors[k].add(_sector_), offtiles_to_uvs[k].add((u0, v0))
+
+                            if rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x1, y0), (x1, y1)) or \
+                               rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y1), (x1, y1)):
+                                offtiles_intersected_by_rays.add(k)
+                                if k not in offtiles_to_sectors: offtiles_to_sectors[k], offtiles_to_uvs[k] = set(), set()
+                                offtiles_to_sectors[k].add(_sector_), offtiles_to_uvs[k].add((u1, v1))
+
             # Determine the min and max x/y offsets
             xo_min, xo_max, yo_min, yo_max = 0, 0, 0, 0 # xi_min=-63 yi_min=-63 xi_max=63 yi_max=63 // for num_of_tiles = 64
             for _xyo_ in offtiles_intersected_by_rays:
@@ -523,13 +533,16 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                 _lu_['xo'].append(xo), _lu_['yo'].append(yo), _lu_['sector'].append(-1)
                 if   _xyo_ in offtiles_to_sectors and len(offtiles_to_sectors[_xyo_]) == 1: raise Exception('This should not happen // offtiles_to_sectors[_xyo_] == len(1)')
                 elif _xyo_ in offtiles_to_sectors and len(offtiles_to_sectors[_xyo_]) == 2:
+                    if len(offtiles_to_uvs[_xyo_]) != 1: 
+                        print(_xyo_, offtiles_to_uvs[_xyo_])
+                        raise Exception('This should not happen // len(offtiles_to_uvs[_xyo_]) != 1')
                     _unit_len_  = sqrt(xo*xo+yo*yo)
                     _u_,  _v_   = xo/_unit_len_, yo/_unit_len_
                     _pu_, _pv_  = _v_, -_u_
                     _l_         = sqrt(1.0 / num_of_tiles)
                     _sector0_   = int(16*(atan2(yo-_l_*_pv_, xo-_l_*_pu_)+pi)/(2*pi))
                     _sector1_   = int(16*(atan2(yo+_l_*_pv_, xo+_l_*_pu_)+pi)/(2*pi))
-                    _lu_['u'].append(None), _lu_['v'].append(None), _lu_['rsector'].append(_sector0_), _lu_['lsector'].append(_sector1_)
+                    _lu_['u'].append(list(offtiles_to_uvs[_xyo_])[0][0]), _lu_['v'].append(list(offtiles_to_uvs[_xyo_])[0][1]), _lu_['rsector'].append(_sector0_), _lu_['lsector'].append(_sector1_)
                 else:
                     _lu_['u'].append(None), _lu_['v'].append(None), _lu_['rsector'].append(None), _lu_['lsector'].append(None)
 
