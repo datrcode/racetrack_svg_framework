@@ -537,13 +537,21 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                                rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u0, v0), (x0, y1), (x1, y1)):
                                 offtiles_intersected_by_rays.add(k)
                                 if k not in offtiles_to_sectors: offtiles_to_sectors[k], offtiles_to_uvs[k] = set(), set()
-                                offtiles_to_sectors[k].add(_sector_), offtiles_to_uvs[k].add((u0, v0))
+                                offtiles_to_uvs[k].add((u0, v0))
+                                offtiles_to_sectors[k].add((int(16*(atan2(y0-ypt, x0-xpt)+pi)/(2*pi)) + 16)%16)
+                                offtiles_to_sectors[k].add((int(16*(atan2(y0-ypt, x1-xpt)+pi)/(2*pi)) + 16)%16)
+                                offtiles_to_sectors[k].add((int(16*(atan2(y1-ypt, x1-xpt)+pi)/(2*pi)) + 16)%16)
+                                offtiles_to_sectors[k].add((int(16*(atan2(y1-ypt, x0-xpt)+pi)/(2*pi)) + 16)%16)
 
                             if rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x0, y1)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x1, y0), (x1, y1)) or \
                                rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y0), (x1, y0)) or rayIntersectsSegment((xpt, ypt), (u1, v1), (x0, y1), (x1, y1)):
                                 offtiles_intersected_by_rays.add(k)
                                 if k not in offtiles_to_sectors: offtiles_to_sectors[k], offtiles_to_uvs[k] = set(), set()
-                                offtiles_to_sectors[k].add(_sector_), offtiles_to_uvs[k].add((u1, v1))
+                                offtiles_to_uvs[k].add((u1, v1))
+                                offtiles_to_sectors[k].add((int(16*(atan2(y0-ypt, x0-xpt)+pi)/(2*pi)) + 16)%16)
+                                offtiles_to_sectors[k].add((int(16*(atan2(y0-ypt, x1-xpt)+pi)/(2*pi)) + 16)%16)
+                                offtiles_to_sectors[k].add((int(16*(atan2(y1-ypt, x1-xpt)+pi)/(2*pi)) + 16)%16)
+                                offtiles_to_sectors[k].add((int(16*(atan2(y1-ypt, x0-xpt)+pi)/(2*pi)) + 16)%16)
 
             # Determine the min and max x/y offsets
             xo_min, xo_max, yo_min, yo_max = 0, 0, 0, 0 # xi_min=-63 yi_min=-63 xi_max=63 yi_max=63 // for num_of_tiles = 64
@@ -575,12 +583,9 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                     if len(offtiles_to_uvs[_xyo_]) != 1: # this shouldn't happen -- only one ray should have intersected if there are two sectors
                         print(_xyo_, offtiles_to_uvs[_xyo_])
                         raise Exception('This should not happen // len(offtiles_to_uvs[_xyo_]) != 1')
-                    _unit_len_  = sqrt(xo*xo+yo*yo)
-                    _u_,  _v_   = xo/_unit_len_, yo/_unit_len_
-                    _pu_, _pv_  = _v_, -_u_
-                    _l_         = sqrt(1.0 / num_of_tiles)
-                    _sector0_   = int(16*(atan2(yo-_l_*_pv_, xo-_l_*_pu_)+pi)/(2*pi))
-                    _sector1_   = int(16*(atan2(yo+_l_*_pv_, xo+_l_*_pu_)+pi)/(2*pi))
+                    _sectors_ = sorted(list(offtiles_to_sectors[_xyo_]))
+                    if _sectors_[0] == 0 and _sectors_[1] == 15: _sector0_, _sector1_ = 15,           0
+                    else:                                        _sector0_, _sector1_ = _sectors_[0], _sectors_[1]
                     _lu_['u'].append(list(offtiles_to_uvs[_xyo_])[0][0]), _lu_['v'].append(list(offtiles_to_uvs[_xyo_])[0][1]), _lu_['rsector'].append(_sector0_), _lu_['lsector'].append(_sector1_)
                 # Otherwise, we'll need to use the arctangent
                 else:
