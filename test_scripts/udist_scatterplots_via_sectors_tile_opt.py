@@ -602,3 +602,196 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         # Concatenate the dataframes together & write out to a file for use when the class starts up
         df = pl.concat(dfs)
         df.write_parquet(self.xoyo_filename)
+
+    #
+    # renderStages() -- rendered for debugging
+    #
+    def renderStages(self, rt, w_step=384, h_step=384, pt_i=0, iter=0):
+        _tiles_ = []
+
+        # Tile Determination
+        _df_ = self.df_tile_determinations[iter]
+        svg = [f'<svg x="0" y="0" width="{w_step}" height="{h_step}" viewBox="0.0 0.0 1.0 1.0" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+        _xiyis_ = set()
+        for i in range(len(_df_)):
+            xi, yi      = _df_['xi'][i], _df_['yi'][i]
+            _xiyis_.add((xi,yi))
+        for _xy_ in _xiyis_:
+            xi, yi = _xy_
+            x0,y0,x1,y1 = self.tileBounds(xi,yi)
+            svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="none" stroke="#000000" stroke-width="0.001"/>')
+        for i in range(len(_df_)):
+            x, y, w, c = _df_['x'][i], _df_['y'][i], _df_['w'][i], _df_['c'][i]
+            svg.append(f'<circle cx="{x}" cy="{y}" r="0.003" fill="{c}" />')
+        svg.append(f'<text x="1.0" y="0.06" text-anchor="end" font-size="0.05" fill="#000000">{len(_xiyis_)} Tiles</text>')
+        _df_ = _df_.filter(pl.col('__index__') == pt_i)
+        svg.append('</svg>')
+
+        _tiles_.append(''.join(svg))
+
+        # Tile Sums
+        _df_ = self.df_tile_sums[iter]
+        svg = [f'<svg x="0" y="0" width="{w_step}" height="{h_step}" viewBox="0.0 0.0 1.0 1.0" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+        _max_ = _df_['tile_sum'].max()
+        for i in range(len(_df_)):
+            xi, yi, tile_sum = _df_['xi'][i], _df_['yi'][i], _df_['tile_sum'][i]
+            x0,y0,x1,y1 = self.tileBounds(xi,yi)
+            _v_     = int(255 - 255 * tile_sum / _max_)
+            _color_ = f'#{_v_:02x}{_v_:02x}{_v_:02x}'
+            svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="{_color_}" stroke="none"/>')
+        svg.append(f'<text x="1.0" y="0.06" text-anchor="end" font-size="0.05" fill="#000000">{len(_df_)} Tiles</text>')
+        svg.append('</svg>')
+        _tiles_.append(''.join(svg))
+
+        # Cross Joint Tile Offsets
+        _df_ = self.df_cross_join_tile_offsets[iter].filter(pl.col('__index__') == pt_i)
+
+        svg = [f'<svg x="0" y="0" width="{w_step}" height="{h_step}" viewBox="0.0 0.0 1.0 1.0" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+        for i in range(len(_df_)):
+            xi, yi      = _df_['xi'][i] + _df_['xo'][i],  _df_['yi'][i] + _df_['yo'][i]
+            x0,y0,x1,y1 = self.tileBounds(xi,yi)
+            svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="none" stroke="#000000" stroke-width="0.002"/>')
+        svg.append(f'<text x="1.0" y="0.06" text-anchor="end" font-size="0.05" fill="#000000">{len(_df_)} Tiles</text>')
+        svg.append('</svg>')
+
+        _tiles_.append(''.join(svg))
+
+        # Sector Information
+        _df_ = self.df_join_sector_info[iter].filter(pl.col('__index__') == pt_i)
+
+        svg = [f'<svg x="0" y="0" width="{w_step}" height="{h_step}" viewBox="0.0 0.0 1.0 1.0" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+        for xi in range(self.num_of_tiles):
+            for yi in range(self.num_of_tiles):
+                x0,y0,x1,y1 = self.tileBounds(xi,yi)
+                svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="none" stroke="#000000" stroke-width="0.0002"/>')
+        seen_already = set()
+        for i in range(len(_df_)):
+            xi, yi, sector = _df_['xi_tile_sums'][i],  _df_['yi_tile_sums'][i], _df_['sector'][i]
+            x0,y0,x1,y1    = self.tileBounds(xi,yi)
+            _color_        = rt.co_mgr.getColor(sector)
+            if sector == -1: _color_ = '#a0a0a0'
+            if (xi,yi) in seen_already: _stroke_ = '#ff0000'
+            else:                       _stroke_ = 'none'
+            seen_already.add((xi,yi))
+            svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="{_color_}" stroke="{_stroke_}" stroke-width="0.005" />')
+        x, y = _df_['x'][0], _df_['y'][0]
+        svg.append(f'<circle cx="{x}" cy="{y}" r="0.01" fill="#000000" stroke="none"/>')
+        for i in range(len(self.df_sector_angles[iter])):
+            u, v = self.df_sector_angles[iter]['a0u'][i], self.df_sector_angles[iter]['a0v'][i]
+            svg.append(f'<line x1="{x}" y1="{y}" x2="{x+2*u}" y2="{y+2*v}" stroke="#000000" stroke-width="0.003"/>')
+
+        svg.append(f'<text x="1.0" y="0.06" text-anchor="end" font-size="0.05" fill="#000000">{len(_df_)} Tiles</text>')
+        svg.append('</svg>')
+
+        _tiles_.append(''.join(svg))
+
+        # Separate Easy Way
+        _df_ = self.df_separate_easy_way[iter].filter(pl.col('__index__') == pt_i)
+        svg = [f'<svg x="0" y="0" width="{w_step}" height="{h_step}" viewBox="0.0 0.0 1.0 1.0" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+        for xi in range(self.num_of_tiles):
+            for yi in range(self.num_of_tiles):
+                x0,y0,x1,y1 = self.tileBounds(xi,yi)
+                svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="none" stroke="#000000" stroke-width="0.0002"/>')
+        seen_already = set()
+        for i in range(len(_df_)):
+            xi, yi, sector = _df_['xi_tile_sums'][i],  _df_['yi_tile_sums'][i], _df_['sector'][i]
+            x0,y0,x1,y1    = self.tileBounds(xi,yi)
+            _color_        = rt.co_mgr.getColor(sector)
+            if sector == -1: _color_ = '#a0a0a0'
+            if (xi,yi) in seen_already: _stroke_ = '#ff0000'
+            else:                       _stroke_ = 'none'
+            seen_already.add((xi,yi))
+            svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="{_color_}" stroke="{_stroke_}" stroke-width="0.005" />')
+        x, y = _df_['x'][0], _df_['y'][0]
+        svg.append(f'<circle cx="{x}" cy="{y}" r="0.01" fill="#000000" stroke="none"/>')
+        for i in range(len(self.df_sector_angles[iter])):
+            u, v = self.df_sector_angles[iter]['a0u'][i], self.df_sector_angles[iter]['a0v'][i]
+            svg.append(f'<line x1="{x}" y1="{y}" x2="{x+2*u}" y2="{y+2*v}" stroke="#000000" stroke-width="0.003"/>')
+
+        svg.append(f'<text x="1.0" y="0.06" text-anchor="end" font-size="0.05" fill="#000000">{len(_df_)} Tiles / Easy</text>')
+        svg.append('</svg>')
+
+        _tiles_.append(''.join(svg))
+
+        # Medium Way Separation
+        _df_ = self.df_separate_medium_way[iter].filter(pl.col('__index__') == pt_i)
+        svg = [f'<svg x="0" y="0" width="{w_step}" height="{h_step}" viewBox="0.0 0.0 1.0 1.0" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+        for xi in range(self.num_of_tiles):
+            for yi in range(self.num_of_tiles):
+                x0,y0,x1,y1 = self.tileBounds(xi,yi)
+                svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="none" stroke="#000000" stroke-width="0.0002"/>')
+        for i in range(len(_df_)):
+            xi, yi, sector = _df_['xi_tile_sums'][i],  _df_['yi_tile_sums'][i], _df_['sector'][i]
+            x0,y0,x1,y1    = self.tileBounds(xi,yi)
+            _color_        = rt.co_mgr.getColor(sector)
+            if sector == -1: _color_ = '#a0a0a0'
+            svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="{_color_}" stroke="{_stroke_}" stroke-width="0.005" />')
+        x, y = _df_['x'][0], _df_['y'][0]
+        svg.append(f'<circle cx="{x}" cy="{y}" r="0.01" fill="#000000" stroke="none"/>')
+        for i in range(len(self.df_sector_angles[iter])):
+            u, v = self.df_sector_angles[iter]['a0u'][i], self.df_sector_angles[iter]['a0v'][i]
+            svg.append(f'<line x1="{x}" y1="{y}" x2="{x+2*u}" y2="{y+2*v}" stroke="#000000" stroke-width="0.002"/>')
+        _tile_count_ = 0
+        for k, k_df in _df_.group_by(['xi_tile_sums', 'yi_tile_sums']): _tile_count_ += 1
+        svg.append(f'<text x="1.0" y="0.06" text-anchor="end" font-size="0.05" fill="#000000">{len(_df_)} Points / Medium</text>')
+        svg.append(f'<text x="1.0" y="0.12" text-anchor="end" font-size="0.05" fill="#000000">{_tile_count_} Tiles / Medium</text>')
+        svg.append('</svg>')
+        _tiles_.append(''.join(svg))
+
+        # Hard Way Separation
+        _df_ = self.df_separate_hard_way[iter].filter(pl.col('__index__') == pt_i)
+        svg = [f'<svg x="0" y="0" width="{w_step}" height="{h_step}" viewBox="0.0 0.0 1.0 1.0" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+        for xi in range(self.num_of_tiles):
+            for yi in range(self.num_of_tiles):
+                x0,y0,x1,y1 = self.tileBounds(xi,yi)
+                svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="none" stroke="#000000" stroke-width="0.0002"/>')
+        for i in range(len(_df_)):
+            xi, yi, sector = _df_['xi_tile_sums'][i],  _df_['yi_tile_sums'][i], _df_['sector'][i]
+            x0,y0,x1,y1    = self.tileBounds(xi,yi)
+            _color_        = rt.co_mgr.getColor(sector)
+            if sector == -1: _color_ = '#a0a0a0'
+            svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="{_color_}" stroke="{_stroke_}" stroke-width="0.005" />')
+        x, y = _df_['x'][0], _df_['y'][0]
+        svg.append(f'<circle cx="{x}" cy="{y}" r="0.01" fill="#000000" stroke="none"/>')
+        for i in range(len(self.df_sector_angles[iter])):
+            u, v = self.df_sector_angles[iter]['a0u'][i], self.df_sector_angles[iter]['a0v'][i]
+            svg.append(f'<line x1="{x}" y1="{y}" x2="{x+2*u}" y2="{y+2*v}" stroke="#000000" stroke-width="0.002"/>')
+        _tile_count_ = 0
+        for k, k_df in _df_.group_by(['xi_tile_sums', 'yi_tile_sums']): _tile_count_ += 1
+        svg.append(f'<text x="1.0" y="0.06" text-anchor="end" font-size="0.05" fill="#000000">{len(_df_)} Points / Hard</text>')
+        svg.append(f'<text x="1.0" y="0.12" text-anchor="end" font-size="0.05" fill="#000000">{_tile_count_} Tiles / Hard</text>')
+        svg.append('</svg>')
+
+        _tiles_.append(''.join(svg))
+
+        # Medium Way Cross Products
+        _df_ = self.df_medium_way_crossproducts[0].filter(pl.col('__index__') == pt_i)
+        svg = [f'<svg x="0" y="0" width="{w_step}" height="{h_step}" viewBox="0.0 0.0 1.0 1.0" xmlns="http://www.w3.org/2000/svg">']
+        svg.append(f'<rect x="0" y="0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+        already_seen = set()
+        for i in range(len(_df_)):
+            xi, yi        = _df_['xi_tile_sums'][i],  _df_['yi_tile_sums'][i]
+            x0,y0,x1,y1   = self.tileBounds(xi,yi)
+            _color_       = rt.co_mgr.getColor(sector)
+            if (xi,yi) not in already_seen:
+                svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="none" stroke="#a0a0a0" stroke-width="0.001" />')
+                already_seen.add((xi,yi))
+        for i in range(len(self.df_sector_angles[iter])):
+            u, v = self.df_sector_angles[iter]['a0u'][i], self.df_sector_angles[iter]['a0v'][i]
+            svg.append(f'<line x1="{x}" y1="{y}" x2="{x+2*u}" y2="{y+2*v}" stroke="#000000" stroke-width="0.0003"/>')
+        for i in range(len(_df_)):
+            x, y, _sector_ = _df_['x_right'][i], _df_['y_right'][i], _df_['sector'][i]
+            c = rt.co_mgr.getColor(_sector_)
+            svg.append(f'<circle cx="{x}" cy="{y}" r="0.005" fill="{c}" />')
+        svg.append('</svg>')
+        _tiles_.append(''.join(svg))
+
+        return _tiles_
+
