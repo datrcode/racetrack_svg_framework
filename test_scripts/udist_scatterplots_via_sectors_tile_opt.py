@@ -471,7 +471,10 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         return (x0, y0, x1, y1)
 
     #
-    #
+    # createXoYoDataframeFile() -- create the offset tiles dataframe
+    # ... this is created ahead of time & saved off
+    # ... it can be used for any values of the data
+    # ... generation time is over 24m on 7900x 96gb
     #
     def createXoYoDataframeFile(self):
 
@@ -500,7 +503,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         for i in range(16): angles.append(i*2*pi/16)
 
         dfs = []
-        for num_of_tiles in [16, 32, 64]: # , 128, 256, 512]:
+        for num_of_tiles in [16, 32, 64, 128, 256, 512, 1024]:
             #
             # Prepare the xo/yo dataframe
             #
