@@ -166,8 +166,8 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             _x1_, _y1_ = pl.col('x') + pl.col('u'), pl.col('y') + pl.col('v')
             df_medium_way = df_medium_way.with_columns(pl.when((pl.col('x') - pl.col('x_right')) * (_y1_ - pl.col('y_right')) - 
                                                                (pl.col('y') - pl.col('y_right')) * (_x1_ - pl.col('x_right')) > 0.0)
-                                                         .then     (pl.col('rsector'))
-                                                         .otherwise(pl.col('lsector'))
+                                                         .then     (pl.col('lsector'))
+                                                         .otherwise(pl.col('rsector'))
                                                          .alias    ('sector'))
             if debug: self.df_medium_way_crossproducts.append(df_medium_way.clone())
             self.time_lu['medium_way_crossproducts'] += (time.time() - t)
@@ -758,12 +758,13 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             _color_        = rt.co_mgr.getColor(sector)
             if sector == -1: _color_ = '#a0a0a0'
             svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="{_color_}" stroke="{_stroke_}" stroke-width="0.005" />')
-        x, y = _df_['x'][0], _df_['y'][0]
-        svg.append(f'<circle cx="{x}" cy="{y}" r="0.01" fill="#000000" stroke="none"/>')
-        for i in range(len(self.df_sector_angles[iter])):
-            u, v = self.df_sector_angles[iter]['a0u'][i], self.df_sector_angles[iter]['a0v'][i]
-            svg.append(f'<line x1="{x}" y1="{y}" x2="{x+2*u}" y2="{y+2*v}" stroke="#000000" stroke-width="0.002"/>')
-        _tile_count_ = 0
+        if len(_df_) > 0:
+            x, y = _df_['x'][0], _df_['y'][0]
+            svg.append(f'<circle cx="{x}" cy="{y}" r="0.01" fill="#000000" stroke="none"/>')
+            for i in range(len(self.df_sector_angles[iter])):
+                u, v = self.df_sector_angles[iter]['a0u'][i], self.df_sector_angles[iter]['a0v'][i]
+                svg.append(f'<line x1="{x}" y1="{y}" x2="{x+2*u}" y2="{y+2*v}" stroke="#000000" stroke-width="0.002"/>')
+            _tile_count_ = 0
         for k, k_df in _df_.group_by(['xi_tile_sums', 'yi_tile_sums']): _tile_count_ += 1
         svg.append(f'<text x="1.0" y="0.06" text-anchor="end" font-size="0.05" fill="#000000">{len(_df_)} Points / Hard</text>')
         svg.append(f'<text x="1.0" y="0.12" text-anchor="end" font-size="0.05" fill="#000000">{_tile_count_} Tiles / Hard</text>')
@@ -791,6 +792,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             c = rt.co_mgr.getColor(_sector_)
             svg.append(f'<circle cx="{x}" cy="{y}" r="0.005" fill="{c}" />')
         svg.append('</svg>')
+        
         _tiles_.append(''.join(svg))
 
         return _tiles_
