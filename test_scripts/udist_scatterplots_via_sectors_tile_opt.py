@@ -181,10 +181,11 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
 
             # Sector Summation
             t = time.time()
-            df_easy_way = df_easy_way.group_by(['__index__','x','y','sector']).agg(pl.col('tile_sum').sum().alias('_w_sum_'))
-            df_hard_way = df_hard_way.group_by(['__index__','x','y','sector']).agg(pl.col('w_right').sum().alias('_w_sum_'))
-            df          = pl.concat([df_easy_way, df_hard_way])
-            df          = df.group_by(['__index__','x','y','sector']).agg(pl.col('_w_sum_').sum()).with_columns((pl.col('_w_sum_') / df_weight_sum).alias('_w_ratio_'))
+            df_easy_way   = df_easy_way  .group_by(['__index__','x','y','sector']).agg(pl.col('tile_sum').sum().alias('_w_sum_'))
+            df_medium_way = df_medium_way.group_by(['__index__','x','y','sector']).agg(pl.col('w')       .sum().alias('_w_sum_'))
+            df_hard_way   = df_hard_way  .group_by(['__index__','x','y','sector']).agg(pl.col('w_right') .sum().alias('_w_sum_'))
+            df            = pl.concat([df_easy_way, df_medium_way, df_hard_way])
+            df            = df.group_by(['__index__','x','y','sector']).agg(pl.col('_w_sum_').sum()).with_columns((pl.col('_w_sum_') / df_weight_sum).alias('_w_ratio_'))
             if debug: self.df_sector_sums.append(df.clone())
             self.time_lu['sector_sums'] += (time.time() - t)
 
@@ -794,6 +795,8 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             x, y, _sector_ = _df_['x_right'][i], _df_['y_right'][i], _df_['sector'][i]
             c = rt.co_mgr.getColor(_sector_)
             svg.append(f'<circle cx="{x}" cy="{y}" r="0.005" fill="{c}" />')
+        svg.append(f'<text x="1.0" y="0.06" text-anchor="end" font-size="0.05" fill="#000000">{len(_df_)} Points / Medium</text>')
+        svg.append(f'<text x="1.0" y="0.12" text-anchor="end" font-size="0.05" fill="#000000">{len(already_seen)} Tiles / Medium</text>')
         svg.append('</svg>')
         
         _tiles_.append(''.join(svg))
