@@ -172,6 +172,16 @@ class RTGeometryMixin(object):
         return (x0 - x2) * (y1 - y2) - (y0 - y2) * (x1 - x2) > 0.0
 
     #
+    # pointRightOfLinePolars() - same as above but operates within a polars frame
+    #
+    def pointRightOfLinePolars(self, df, xy0=('x0','y0'), xy1=('x1','y1'), xy=('x','y'), results='right'):
+        return df.with_columns(pl.when((pl.col(xy0[0]) - pl.col(xy[0])) * (pl.col(xy1[1]) - pl.col(xy[1])) - 
+                                       (pl.col(xy0[1]) - pl.col(xy[1])) * (pl.col(xy1[0]) - pl.col(xy[0])) > 0.0)
+                                 .then(1)
+                                 .otherwise(0)
+                                 .alias(results))
+    
+    #
     # rayIntersectsSegment() - does a ray intersect a line segment?
     # - ChatGPT Version
     # - Failure rate of about 22% for the xy1_segment side... no failure rate for the xy0_segment side
