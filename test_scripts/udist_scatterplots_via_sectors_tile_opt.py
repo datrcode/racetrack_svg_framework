@@ -26,8 +26,10 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         self.time_lu       = {'prepare_df':0.0, 'normalize':0.0, 'all_sectors':0.0, 'explode_points':0.0, 'arctangents':0.0, 'sector_sums':0.0, 
                               'add_missing_sectors':0.0, 'prepare_sector_angles':0.0, 'join_sector_angles':0.0, 'ray_segment_intersections':0.0,
                               'area_calc':0.0, 'sector_uv_summation':0.0, 'point_update':0.0, 'determine_tile':0.0, 'tile_sums':0.0,
-                              'cross_join_tile_offsets':0.0, 'join_sector_info':0.0, 'separate_easy_hard_way':0.0, 'hard_way_arctangents':0.0,
-                              'medium_way_crossproducts':0.0,'sector_sums':0.0,}
+                              'cross_join_tile_offsets':0.0, 'join_sector_info':0.0, 'hard_way_arctangents':0.0,
+                              'medium_way_crossproducts':0.0,'sector_sums':0.0, 'separate_easy_hard_way (easy way)':0.0,
+                              'separate_easy_hard_way (non-easy way)':0.0, 'separate_easy_hard_way (medium way)':0.0,
+                              'separate_easy_hard_way (hard way)':0.0,}
 
         # Create the debugging structures
         self.df_at_iteration_start       = []
@@ -151,15 +153,25 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             # Separate into "easy way" and "hard way"
             t = time.time()
             df_easy_way   = df.filter(pl.col('sector') != -1)
+            self.time_lu['separate_easy_hard_way (easy way)'] += (time.time() - t)
+
+            t = time.time()
             df_hard_way   = df.filter(pl.col('sector') == -1) \
                               .join(df_w_tile.drop(['c']), left_on=['xi_tile_sums','yi_tile_sums'], right_on=['xi','yi']) \
                               .filter(pl.col('__index__') != pl.col('__index___right'))
+            self.time_lu['separate_easy_hard_way (non-easy way)'] += (time.time() - t)
+            
+            t = time.time()
             df_medium_way = df_hard_way.filter(pl.col('u').is_not_null())
+            self.time_lu['separate_easy_hard_way (medium way)'] += (time.time() - t)
+
+            t = time.time()
             df_hard_way   = df_hard_way.filter(pl.col('u').is_null())
+            self.time_lu['separate_easy_hard_way (hard way)'] += (time.time() - t)
+
             if debug: self.df_separate_easy_way  .append(df_easy_way.clone())
             if debug: self.df_separate_medium_way.append(df_medium_way.clone())
             if debug: self.df_separate_hard_way  .append(df_hard_way.clone())
-            self.time_lu['separate_easy_hard_way'] += (time.time() - t)
 
             # Medium way calculation ... determine the sector based on crossproduct
             t = time.time()
