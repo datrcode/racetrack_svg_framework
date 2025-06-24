@@ -32,6 +32,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                               'separate_easy_hard_way (hard way)':0.0,}
 
         # Create the debugging structures
+        self.df_weight_sums              = []
         self.df_at_iteration_start       = []
         self.df_all_sectors              = []
         self.df_tile_determinations      = []
@@ -99,6 +100,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         for _iteration_ in range(iterations):
             # Determine the overall weight sums
             df_weight_sum = df['w'].sum()
+            if debug: self.df_weight_sums.append(df_weight_sum)
 
             #
             # Normalize the points to 0.02 to 0.98 (want to give it a little space around the edges to that there are sectors to move into)
