@@ -195,11 +195,12 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
 
             # Sector Summation
             t = time.time()
-            df_easy_way   = df_easy_way  .group_by(['__index__','x','y','sector']).agg(pl.col('tile_sum').sum().alias('_w_sum_'))
-            df_medium_way = df_medium_way.group_by(['__index__','x','y','sector']).agg(pl.col('w')       .sum().alias('_w_sum_'))
-            df_hard_way   = df_hard_way  .group_by(['__index__','x','y','sector']).agg(pl.col('w_right') .sum().alias('_w_sum_'))
+            df_easy_way   = df_easy_way  .drop(set(df_easy_way  .columns) - set(['__index__','sector','tile_sum'])).rename({'tile_sum':'_w_sum_'})
+            df_medium_way = df_medium_way.drop(set(df_medium_way.columns) - set(['__index__','sector','w'       ])).rename({'w':       '_w_sum_'})
+            df_hard_way   = df_hard_way  .drop(set(df_hard_way  .columns) - set(['__index__','sector','w_right' ])).rename({'w_right': '_w_sum_'})
+            df_hard_way = pl.DataFrame({'__index__': df_hard_way['__index__'], '_w_sum_': df_hard_way['_w_sum_'], 'sector': df_hard_way['sector']}) # Re-align the columns
             df            = pl.concat([df_easy_way, df_medium_way, df_hard_way])
-            df            = df.group_by(['__index__','x','y','sector']).agg(pl.col('_w_sum_').sum()).with_columns((pl.col('_w_sum_') / df_weight_sum).alias('_w_ratio_'))
+            df            = df.group_by(['__index__','sector']).agg(pl.col('_w_sum_').sum()).with_columns((pl.col('_w_sum_') / df_weight_sum).alias('_w_ratio_'))
             if debug: self.df_sector_sums.append(df.clone())
             self.time_lu['sector_sums'] += (time.time() - t)
 
@@ -211,7 +212,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             # Add the missing sectors back in...
             #
             t = time.time()
-            df = df_all_sectors.join(df, on=['__index__','x','y','sector'], how='left').with_columns(pl.col('_w_sum_').fill_null(0), pl.col('_w_ratio_').fill_null(0))
+            df = df_all_sectors.join(df, on=['__index__','sector'], how='left').with_columns(pl.col('_w_sum_').fill_null(0), pl.col('_w_ratio_').fill_null(0))
             if debug: self.df_sector_fill.append(df.clone())
             self.time_lu['add_missing_sectors'] += (time.time() - t)
 
