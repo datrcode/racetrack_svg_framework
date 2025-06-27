@@ -76,6 +76,8 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         df_orig = df.clone()
         self.time_lu['prepare_df'] += (time.time() - t)
 
+        self.df_anim = []
+
         #
         # Perform each iteration
         #
@@ -91,6 +93,8 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             df = df.with_columns((0.02 + 0.96 * (pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min())).alias('x'), 
                                  (0.02 + 0.96 * (pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min())).alias('y'))
             self.time_lu['normalize'] += (time.time() - t)
+
+            self.df_anim.append(df)
 
             #
             # All Sectors DataFrame
@@ -318,6 +322,13 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             df        = df_uv.join(df_orig, on=['__index__'], how='left') # add the weight back in
             self.time_lu['point_update'] += (time.time() - t)
 
+        # Normalize the frame so that they are all of the same for the animation sequence
+        df = df.drop(['_u_', '_v_', 'x_right', 'y_right'])
+        df = df.with_columns((0.02 + 0.96 * (pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min())).alias('x'), 
+                             (0.02 + 0.96 * (pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min())).alias('y'))
+        self.df_anim.append(df)
+
+        # Save the final frame as the results
         self.df_results = df.sort(['__index__'])
 
     #
@@ -339,6 +350,45 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             for i in range(len(self.df_results)): svg.append(f'<circle cx="{self.df_results["x"][i]}" cy="{self.df_results["y"][i]}" r="{0.005}" fill="{self.df_results["c"][i]}" />')
         else:
             for i in range(len(self.df_results)): svg.append(f'<circle cx="{self.df_results["x"][i]}" cy="{self.df_results["y"][i]}" r="{0.005}" fill="#404040" />')
+        svg.append('</svg>')
+        return ''.join(svg)
+
+
+    #
+    # svgAnimation() - produce an SVG animation of the iterations
+    #
+    def svgAnimation(self, duration='10s', w=256, h=256, r=0.005):
+        df = self.df_anim[0]
+        x_cols = [f'x{i}' for i in range(0, len(self.df_anim))]
+        y_cols = [f'y{i}' for i in range(0, len(self.df_anim))]
+        x_cols.extend(x_cols[::-1]), y_cols.extend(y_cols[::-1])
+        for i in range(1, len(self.df_anim)):
+            df = df.join(self.df_anim[i], on=['__index__']) \
+                   .drop(['w_right', 'c_right'])             \
+                   .rename({'x_right':f'x{i}', 'y_right':f'y{i}'})
+        df = df.rename({'x':'x0', 'y':'y0'})
+
+        df = df.with_columns(pl.concat_str(x_cols, separator=';').alias('x_values_str'), 
+                             pl.concat_str(y_cols, separator=';').alias('y_values_str'))
+
+        _str_ops_ = [pl.lit(f'<circle r="{r}" fill="'), 
+                     pl.col('c'), 
+                     pl.lit('">'),
+                     pl.lit('<animate attributeName="cx" values="'),
+                     pl.col('x_values_str'),
+                     pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
+                     pl.lit('<animate attributeName="cy" values="'),
+                     pl.col('y_values_str'),
+                     pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
+                     pl.lit('</circle>')]
+
+        svg = []
+        svg.append(f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">')
+        svg.append(f'<rect x="0.0" y="0.0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+
+        df = df.with_columns(pl.concat_str(*_str_ops_, separator='').alias('svg'))
+        svg.extend(df['svg'])
+
         svg.append('</svg>')
         return ''.join(svg)
 
