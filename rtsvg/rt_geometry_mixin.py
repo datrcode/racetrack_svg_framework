@@ -24,8 +24,9 @@ import uuid
 import copy
 import time
 import heapq
-from .laguerre_voronoi_2d import laguerre_voronoi_2d
-from .circle_packer import CirclePacker
+from .laguerre_voronoi_2d                     import laguerre_voronoi_2d
+from .circle_packer                           import CirclePacker
+from .udist_scatterplots_via_sectors_tile_opt import UDistScatterPlotsViaSectorsTileOpt
 
 __name__ = 'rt_geometry_mixin'
 
@@ -422,6 +423,20 @@ class RTGeometryMixin(object):
 
         s = ''.join(r)
         return s
+
+    #
+    # uniformSampleDistributionInScatterplotsViaSectorBasedTransformation() -- implementation of the following:
+    #
+    # H. Rave, V. Molchanov and L. Linsen, "Uniform Sample Distribution in Scatterplots via Sector-based Transformation," 
+    # 2024 IEEE Visualization and Visual Analytics (VIS), St. Pete Beach, FL, USA, 2024, pp. 156-160, 
+    # doi: 10.1109/VIS55277.2024.00039. 
+    # keywords: {Data analysis;Visual analytics;Clutter;Scatterplot de-cluttering;spatial transformation},
+    #
+    def uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(self, df, x_field, y_field, wgt_field=None, iterations=4, vector_scalar=0.01):
+        _weights_ = None
+        if wgt_field is not None: _weights_ = df[wgt_field]
+        udspvsto = UDistScatterPlotsViaSectorsTileOpt(df[x_field], df[y_field], _weights_, vector_scalar=vector_scalar, iterations=iterations)
+        return udspvsto.results()
 
     #
     # laguerreVoronoi2D()
