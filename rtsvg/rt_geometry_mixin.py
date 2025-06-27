@@ -13,6 +13,7 @@
 # limitations under the License.
 #
 import pandas as pd
+from param import Series
 import polars as pl
 import numpy as np
 import networkx as nx
@@ -432,11 +433,17 @@ class RTGeometryMixin(object):
     # doi: 10.1109/VIS55277.2024.00039. 
     # keywords: {Data analysis;Visual analytics;Clutter;Scatterplot de-cluttering;spatial transformation},
     #
-    def uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(self, df, x_field, y_field, wgt_field=None, iterations=4, vector_scalar=0.01):
+    def uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(self, df, x_field, y_field, wgt_field=None, iterations=32, vector_scalar=0.01):
         _weights_ = None
         if wgt_field is not None: _weights_ = df[wgt_field]
-        udspvsto = UDistScatterPlotsViaSectorsTileOpt(df[x_field], df[y_field], _weights_, vector_scalar=vector_scalar, iterations=iterations)
-        return udspvsto.results()
+        x0, y0, x1, y1     = df[x_field].min(), df[y_field].min(), df[x_field].max(), df[y_field].max()
+        udspvsto           = UDistScatterPlotsViaSectorsTileOpt(df[x_field], df[y_field], _weights_, vector_scalar=vector_scalar, iterations=iterations)
+        x_vals, y_vals     = udspvsto.results()
+        df                 = df.with_columns(pl.Series(x_field, x_vals), pl.Series(y_field, y_vals))
+        x0_, y0_, x1_, y1_ = df[x_field].min(), df[y_field].min(), df[x_field].max(), df[y_field].max()
+        df = df.with_columns( (pl.col(x_field) - x0_)/(x1_ - x0_) * (x1 - x0) + x0,
+                              (pl.col(y_field) - y0_)/(y1_ - y0_) * (y1 - y0) + y0, )
+        return df
 
     #
     # laguerreVoronoi2D()
