@@ -19,7 +19,7 @@ import time
 __name__ = 'udist_scatterplots_via_sectors_tile_opt'
 
 class UDistScatterPlotsViaSectorsTileOpt(object):
-    def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.01, iterations=4, num_of_tiles=128):
+    def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.05, iterations=4, num_of_tiles=128, decay_rate=None):
         self.vector_scalar = vector_scalar
         self.iterations    = iterations
         self.num_of_tiles  = num_of_tiles
@@ -314,6 +314,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             _diff_op_ = (pl.col('_w_ratio_') - pl.col('area')) # diff = sector_sum/weight_sum - sector_area/area_total # area_total == 1.0 since that was the normalization
             df_uv     = df.group_by(['__index__','x','y']).agg( (vector_scalar * _diff_op_ * pl.col('anchor_u')).sum().alias('_u_'),
                                                                 (vector_scalar * _diff_op_ * pl.col('anchor_v')).sum().alias('_v_'))
+            if decay_rate is not None and decay_rate < 1.0: vector_scalar *= decay_rate
             self.time_lu['sector_uv_summation'] += (time.time() - t)
 
             t = time.time()
