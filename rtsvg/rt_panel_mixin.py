@@ -71,6 +71,8 @@ class RTPanelMixin(object):
         use_linknode : bool
             Use LinkNode() (which implements more rendering features) instead of link()
 
+        Use print(_instance_) to show key shortcut commands
+
         Use saveLayout() and loadLayout() to store and retrieve layouts in parquet format
         '''
         return RTGraphInteractiveLayout(self, df, ln_params, w, h, use_linknode, **kwargs)
