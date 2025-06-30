@@ -1791,6 +1791,8 @@ class RTGeometryMixin(object):
     # https://gist.github.com/isedgar/d445248c9ff6c61cef44fc275cb2398f
     #
     def isedgarVoronoi(self, S, Box=None, pad=10, merge_threshold=0.1):
+        '''S is a list of points [(x0,y0), (x1,y1), ... ] -- this algorithm was for pixel-level representation -- so
+           the coordinates should be at that scale -- i.e., something between 0 and 1000 or so...'''
         # return bisector of points p0 and p1 -- bisector is ((x,y),(u,v)) where u,v is the vector of the bisector
         def bisector(p0, p1):
             x, y     = (p0[0] + p1[0])/2.0, (p0[1] + p1[1])/2.0
