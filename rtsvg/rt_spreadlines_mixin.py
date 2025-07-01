@@ -35,37 +35,39 @@ class RTSpreadLinesMixin(object):
         return columns_set
     
     def spreadLines(self,
-                df,
-                relationships,
-                node_focus,
-                only_render_nodes    = None,  # set of nodes to render... if None, just render normally
-                ts_field             = None,  # Will attempt to guess based on datatypes
-                every                = '1d',  # "the every field for the group_by_dynamic" ... 1d, 1h, 1m
-                color_by             = None,
-                count_by             = None,  # does nothing
-                count_by_set         = False, # does nothing
-                node_color           = None,  # none means default color, 'vary' by color_by, or 'node' to convert the node string into a color
-                                              # ... or a dictionary of the node string to either a string to color hash or a "#xxxxxx"
-                alter_inter_d        = 192,       # distance between the alters
-                max_bin_w            = 64,        # max width of the bin
-                max_bin_h            = 450*2,     # max height of the bin
-                min_channel_w        = 8,         # min width of the channel
-                max_channel_w        = 16,        # max width of the channel
-                channel_inter_d      = 4,         # distance between the channels
-                r_min                = 4.0, 
-                r_pref               = 7.0, 
-                circle_inter_d       = 2.0, 
-                circle_spacer        = 3,
-                alter_separation_h   = 48, 
-                h_collapsed_sections = 16,
-                
-                widget_id            = None,
-                draw_labels          = True,
-                w                    = 1024,
-                h                    = 960,
-                x_ins                = 32,
-                y_ins                = 8,
-                txt_h                = 12):
+                    df,
+                    relationships,
+                    node_focus,
+                    only_render_nodes    = None,  # set of nodes to render... if None, just render normally
+                    ts_field             = None,  # Will attempt to guess based on datatypes
+                    every                = '1d',  # "the every field for the group_by_dynamic" ... 1d, 1h, 1m
+                    color_by             = None,
+                    count_by             = None,  # does nothing
+                    count_by_set         = False, # does nothing
+                    node_color           = None,  # none means default color, 'vary' by color_by, or 'node' to convert the node string into a color
+                                                  # ... or a dictionary of the node string to either a string to color hash or a "#xxxxxx"
+                    alter_inter_d        = 192,   # distance between the alters
+                    max_bin_w            = 64,    # max width of the bin
+                    max_bin_h            = 450*2, # max height of the bin
+                    min_channel_w        = 8,     # min width of the channel
+                    max_channel_w        = 16,    # max width of the channel
+                    channel_inter_d      = 4,     # distance between the channels
+                    r_min                = 4.0, 
+                    r_pref               = 7.0, 
+                    circle_inter_d       = 2.0, 
+                    circle_spacer        = 3,
+                    alter_separation_h   = 48, 
+                    h_collapsed_sections = 16,
+                    
+                    widget_id            = None,
+                    draw_labels          = True,
+                    w                    = 1024,
+                    h                    = 960,
+                    x_view               = 0,
+                    y_view               = 0,
+                    x_ins                = 32,
+                    y_ins                = 8,
+                    txt_h                = 12):
         if self.isPolars(df) == False: raise Exception('spreadLines() - only supports polars dataframe')
         _params_ = locals().copy()
         _params_.pop('self')
@@ -179,6 +181,8 @@ class RTSpreadLinesMixin(object):
             self.draw_labels         = kwargs['draw_labels']
             self.w                   = kwargs['w']
             self.h                   = kwargs['h']
+            self.x_view              = kwargs['x_view']
+            self.y_view              = kwargs['y_view']
             self.x_ins               = kwargs['x_ins']
             self.y_ins               = kwargs['y_ins']
             self.txt_h               = kwargs['txt_h']
@@ -574,11 +578,11 @@ class RTSpreadLinesMixin(object):
         # renderBin()
         #
         def renderBin(self, 
-                    bin,                        # bin index
-                    x,                          # center of the bin 
-                    y,                          # center of the bin
-                    max_w,                      # max width of the bin (i.e., the max width of any of the alters)
-                    max_h):                     # max height of the bin (halfed in each direction from y)      
+                      bin,                        # bin index
+                      x,                          # center of the bin 
+                      y,                          # center of the bin
+                      max_w,                      # max width of the bin (i.e., the max width of any of the alters)
+                      max_h):                     # max height of the bin (halfed in each direction from y)      
             r_min                = self.r_min 
             r_pref               = self.r_pref
             circle_inter_d       = self.circle_inter_d
@@ -901,7 +905,8 @@ class RTSpreadLinesMixin(object):
                 vy1 = _channel_max_y_ + self.txt_h
 
             # Add the header and the footer
-            svg.insert(0, f'<svg x="0" y="0" width="{self.w}" height="{self.h}" viewBox="{vx0} {vy0} {vx1-vx0} {vy1-vy0}">')
+            if vx0 is None: vx0, vy0, vx1, vy1, xmin, xmax = 0.0, 0.0, 1.0, 1.0, 0.0, 1.0
+            svg.insert(0, f'<svg x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" viewBox="{vx0} {vy0} {vx1-vx0} {vy1-vy0}">')
             svg.insert(1, f'<rect x="{vx0}" y="{vy0}" width="{vx1-vx0}" height="{vy1-vy0}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
             svg.insert(2, f'<line x1="{alter_inter_d}" y1="{y}" x2="{x-alter_inter_d - (xmax-xmin)/2}" y2="{y}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="3.0" />')
 
