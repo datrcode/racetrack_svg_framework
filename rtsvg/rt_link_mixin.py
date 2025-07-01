@@ -1132,7 +1132,6 @@ class RTLinkMixin(object):
             _poly_ = Polygon([(xy[0]-5,xy[1]-5),(xy[0]-5,xy[1]+5),(xy[0]+5,xy[1]+5),(xy[0]+5,xy[1]-5)])
             return self.overlappingEntities(_poly_)
 
-
         #
         # nodeColor() - return the color of the final rendering of the node
         # - None if no color
