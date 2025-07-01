@@ -58,6 +58,24 @@ class RTComponent(object):
              return []
 
         #
+        # selectedEntities() - return the currently selected entities
+        # - two types of interaction *can* be supported -- entity-based or record (row)-based
+        # - this method is for the former -- i.e., entity-based selection via interaction
+        # - the determination for which is active depends on the Panel component used to encapsulate this RTComponent
+        #
+        def selectedEntities(self):
+             return []
+
+        #
+        # selectEntities() - set the currently selected entities
+        # - two types of interaction *can* be supported -- entity-based or record (row)-based
+        # - this method is for the former -- i.e., entity-based selection via interaction
+        # - the determination for which is active depends on the Panel component used to encapsulate this RTComponent
+        #
+        def selectEntities(self, selection):
+             pass
+
+        #
         # renderSVG() - create the SVG Rendering
         # - recommend that this method save the rendering into the last_render member variable.
         # - return value is an svg string
