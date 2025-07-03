@@ -22,22 +22,36 @@ import param
 
 from panel.reactive import ReactiveHTML
 
+from shapely import Polygon
+
+from .rt_stackable import RTStackable, RTSelectable
+
 __name__ = 'rt_spreadlines_interactive_panel'
 
 #
 # ReactiveHTML Class for Panel Implementation
 #
 class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
-    #
-    # Inner Modification for RT SVG Render
-    #
-    mod_inner       = param.String(default="""<circle cx="300" cy="200" r="10" fill="red" />""")
+      #
+      # Inner Modification for RT SVG Render
+      #
+      mod_inner       = param.String(default="""<circle cx="300" cy="200" r="10" fill="red" />""")
 
-    #
-    # Panel Template
-    # - rewritten in constructor with width and height filled in
-    #
-    _template = """
+      #
+      # All Entities Path
+      #
+      allentitiespath = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
+
+      #
+      # Selection Path
+      #
+      selectionpath   = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
+
+      #
+      # Panel Template
+      # - rewritten in constructor with width and height filled in
+      #
+      _template = """
 <svg id="svgparent" width="600" height="200" tabindex="0" 
      onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
     <svg id="mod" width="600" height="200"> ${mod_inner} </svg>
@@ -54,55 +68,280 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
 </svg>
 """
 
-    #
-    # Constructor
-    #
-    def __init__(self,
-                 rt_self,              # RACETrack instance
-                 df,                   # data frame
-                 sl_params,            # spreadline params
-                 w            = 600,   # width
-                 h            = 200,   # height
-                 **kwargs):
-        # Setup specific instance information
-        # - Copy the member variables
-        self.rt_self           = rt_self
-        self.sl_params         = sl_params
-        self.w                 = w
-        self.h                 = h
-        self.kwargs            = kwargs
+      #
+      # Constructor
+      #
+      def __init__(self,
+                   rt_self,              # RACETrack instance
+                   df,                   # data frame
+                   sl_params,            # spreadline params
+                   w            = 600,   # width
+                   h            = 200,   # height
+                   **kwargs):
+            # Setup specific instance information
+            # - Copy the member variables
+            self.rt_self           = rt_self
+            self.sl_params         = sl_params
+            self.w                 = w
+            self.h                 = h
+            self.kwargs            = kwargs
 
-        # - Setup the dataframe variables
-        self.df                = self.rt_self.copyDataFrame(df)
-        self.df_level          = 0
-        self.dfs               = [self.df]
-        self.dfs_layout        = [self.__renderView__(self.df)]
-        self.mod_inner         = self.dfs_layout[self.df_level]._repr_svg_()
+            # - Setup the dataframe variables
+            self.df                = self.rt_self.copyDataFrame(df)
+            self.df_level          = 0
+            self.dfs               = [self.df]
+            self.dfs_layout        = [self.__renderView__(self.df)]
+            self.mod_inner         = self.dfs_layout[self.df_level]._repr_svg_()
 
-        # - Setup the selected entities information
-        self.selected_entities = set()
+            # - Setup the selected entities information
+            self.selected_entities = set()
 
-        self.lock = threading.lock()
+            self.lock = threading.Lock()
 
-        # Rewrite the _template with width and height
-        self._template = '''<svg id="svgparent" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''" tabindex="0" ''' + \
-                         '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">  ''' + \
-                         '''<svg id="mod" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''"> ${mod_inner} </svg>  ''' + \
-                         '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />  ''' + \
-                         '''<rect id="screen" x="0" y="0" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''" opacity="0.05"  ''' + \
-                         '''     onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"  ''' + \
-                         '''     onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />  ''' + \
-                         '''<path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"  ''' + \
-                         '''     onmousedown="${script('downAllEntities')}" onmousemove="${script('moveEverything')}"   ''' + \
-                         '''     onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />  ''' + \
-                         '''<path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none"  ''' + \
-                         '''     onmousedown="${script('downMove')}"        onmousemove="${script('moveEverything')}"  ''' + \
-                         '''     onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />  ''' + \
-                         '''</svg>  '''
+            # Rewrite the _template with width and height
+            self._template = '''<svg id="svgparent" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''" tabindex="0" ''' + \
+                              '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">  ''' + \
+                              '''<svg id="mod" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''"> ${mod_inner} </svg>  ''' + \
+                              '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />  ''' + \
+                              '''<rect id="screen" x="0" y="0" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''" opacity="0.05"  ''' + \
+                              '''     onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"  ''' + \
+                              '''     onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />  ''' + \
+                              '''<path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"  ''' + \
+                              '''     onmousedown="${script('downAllEntities')}" onmousemove="${script('moveEverything')}"   ''' + \
+                              '''     onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />  ''' + \
+                              '''<path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none"  ''' + \
+                              '''     onmousedown="${script('downMove')}"        onmousemove="${script('moveEverything')}"  ''' + \
+                              '''     onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />  ''' + \
+                              '''</svg>  '''
 
-        super().__init__(**kwargs)
+            super().__init__(**kwargs)
 
-        self.param.watch(self.applyDragOp, 'drag_op_finished')
-        self.param.watch(self.applyKeyOp,  'key_op_finished')
+            self.param.watch(self.applyDragOp, 'drag_op_finished')
+            self.param.watch(self.applyKeyOp,  'key_op_finished')
 
-        self.companions = []
+            self.companions = []
+
+      #
+      # vvv -- These methods are for external callers
+      #
+
+      # register companion visualizations
+      def register_companion_viz(self, viz):
+            self.companions.append(viz)
+
+      # unregister companion visualizations
+      def unregister_companion_viz(self, viz):
+            if viz in self.companions: self.companions.remove(viz)
+
+      #
+      # ^^^ -- These methods are for external callers
+      #
+
+      #
+      # __renderView__() - render the view
+      #
+      def __renderView__(self, __df__):
+            _sp_ = self.rt_self.spreadLines(__df__, w=self.w, h=self.h, **self.sl_params)
+            return _sp_
+
+
+      #
+      # applyKeyOp() - apply specified key operation
+      #
+      async def applyKeyOp(self,event):
+            self.lock.acquire()
+            try:
+                  _sp_ = self.dfs_layout[self.df_level]
+            finally:
+                  self.key_op_finished = ''
+                  self.lock.release()
+            
+      #
+      # Drag operation state
+      #
+      drag_op_finished  = param.Boolean(default=False)
+      drag_x0           = param.Integer(default=0)
+      drag_y0           = param.Integer(default=0)
+      drag_x1           = param.Integer(default=10)
+      drag_y1           = param.Integer(default=10)
+
+      # Key States
+      shiftkey         = param.Boolean(default=False)
+      ctrlkey          = param.Boolean(default=False)
+      last_key         = param.String(default='')
+      key_op_finished  = param.String(default='')
+
+      # Mouse States
+      x_mouse          = param.Integer(default=0)
+      y_mouse          = param.Integer(default=0)
+
+      #
+      # applyDragOp() - select the nodes within the drag operations bounding box.
+      #
+      async def applyDragOp(self,event):
+            self.lock.acquire()
+            try:
+                  if self.drag_op_finished:
+                        _x0,_y0,_x1,_y1 = min(self.drag_x0, self.drag_x1), min(self.drag_y0, self.drag_y1), max(self.drag_x1, self.drag_x0), max(self.drag_y1, self.drag_y0)
+                        if _x0 == _x1: _x1 += 1
+                        if _y0 == _y1: _y1 += 1
+                        _rect_ = Polygon([(_x0,_y0), (_x0,_y1), (_x1,_y1), (_x1,_y0)])
+                        #_overlapping_entities_  = set(self.dfs_layout[self.df_level].overlappingEntities(_rect_))
+                        #if _overlapping_entities_ is None: _overlapping_entities_ = set()
+
+                        #if   self.shiftkey and self.ctrlkey: self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) & set(_overlapping_entities_))
+                        #elif self.shiftkey:                  self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) - set(_overlapping_entities_))
+                        #elif self.ctrlkey:                   self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) | set(_overlapping_entities_))
+                        #else:                                self.setSelectedEntitiesAndNotifyOthers(_overlapping_entities_)
+                        
+                        #self.__refreshView__(comp=False, all_ents=False)
+            finally:
+                  self.drag_op_finished = False
+                  self.lock.release()
+
+      #
+      # Panel Javascript Definitions
+      #
+      _scripts = {
+            'render':"""
+            mod.innerHTML            = data.mod_inner;
+            state.x0_drag            = state.y0_drag = -10;
+            state.x1_drag            = state.y1_drag =  -5;
+            data.shiftkey            = false;
+            data.ctrlkey             = false;
+            state.drag_op            = false;
+            svgparent.focus(); // else it loses focus on every render...
+            """,
+
+            'keyPress':"""
+            svgparent.focus(); // else it loses focus on every render...
+            """,
+
+            'keyDown':"""
+            data.ctrlkey  = event.ctrlKey;
+            data.shiftkey = event.shiftKey;
+            data.last_key = event.key;
+            svgparent.focus(); // else it loses focus on every render...
+            """,
+
+            'keyUp':"""
+            data.ctrlkey  = event.ctrlKey;
+            data.shiftkey = event.shiftKey;
+            svgparent.focus(); // else it loses focus on every render...
+            """,
+
+            'moveEverything':"""
+            data.ctrlkey   = event.ctrlKey;
+            data.shiftkey  = event.shiftKey;
+            data.x_mouse   = event.offsetX; 
+            data.y_mouse   = event.offsetY;
+            state.x1_drag  = event.offsetX; 
+            state.y1_drag  = event.offsetY; 
+            if (state.drag_op)               { self.myUpdateDragRect(); }
+            """,
+
+            'downAllEntities':"""
+            data.ctrlkey  = event.ctrlKey;
+            data.shiftkey = event.shiftKey;
+            if (event.button == 0) {
+                        data.allentities_x0      = event.offsetX; 
+                        data.allentities_y0      = event.offsetY; 
+                        state.x0_drag            = event.offsetX;                
+                        state.y0_drag            = event.offsetY;                
+                        state.x1_drag            = event.offsetX;                
+                        state.y1_drag            = event.offsetY;
+            }
+            """,
+            'downSelect':"""
+            if (event.button == 0) {
+                  state.x0_drag  = event.offsetX;
+                  state.y0_drag  = event.offsetY;
+                  state.x1_drag  = event.offsetX;
+                  state.y1_drag  = event.offsetY;
+                  state.drag_op  = true;             
+                  self.myUpdateDragRect(); }
+            }
+            """,
+
+            'downMove':"""
+            if (event.button == 0) {
+                  state.x0_drag  = state.x1_drag  = event.offsetX;
+                  state.y0_drag  = state.y1_drag  = event.offsetY;
+                  state.move_op  = true;
+            } else if (event.button == 1) {
+                  data.x0_middle = data.x1_middle = event.offsetX; 
+                  data.y0_middle = data.y1_middle = event.offsetY;
+            }
+            """,
+
+            'upEverything':"""
+            if (event.button == 0) {
+                  state.x1_drag         = event.offsetX; 
+                  state.y1_drag         = event.offsetY;
+                  if (state.drag_op) {
+                        state.shiftkey        = event.shiftKey;
+                        state.drag_op         = false;
+                        self.myUpdateDragRect();
+                        data.drag_x0          = state.x0_drag; 
+                        data.drag_y0          = state.y0_drag; 
+                        data.drag_x1          = state.x1_drag; 
+                        data.drag_y1          = state.y1_drag;
+                        data.drag_op_finished = true;
+                  } else if (state.move_op) {
+                        state.move_op         = false;
+                        data.drag_x0          = state.x0_drag; 
+                        data.drag_y0          = state.y0_drag; 
+                        data.drag_x1          = state.x1_drag; 
+                        data.drag_y1          = state.y1_drag;
+                        data.move_op_finished = true;                    
+                  } else if (state.layout_op_shape != "") {
+                        data.drag_x0          = state.x0_drag; 
+                        data.drag_y0          = state.y0_drag; 
+                        data.drag_x1          = state.x1_drag; 
+                        data.drag_y1          = state.y1_drag;
+                        data.layout_shape     = state.layout_op_shape;
+                        state.layout_op_shape = "";
+                        self.myUpdateLayoutOp();
+                  }
+            }
+            """,
+
+            'mouseWheel':"""
+            event.preventDefault();
+            data.wheel_x = event.offsetX; data.wheel_y = event.offsetY; data.wheel_rots  = Math.round(10*event.deltaY);
+            data.wheel_op_finished = true;
+            """,
+
+            'mod_inner':"""
+            mod.innerHTML     = data.mod_inner;
+            infostr.innerHTML = data.info_str;
+            svgparent.focus(); // else it loses focus on every render...
+            """,
+
+            'selectionpath':"""
+            selectionlayer.setAttribute("d", data.selectionpath);
+            svgparent.focus(); // else it loses focus on every render...
+            """,
+            
+            'myUpdateDragRect':"""
+            if (state.drag_op) {
+                  x = Math.min(state.x0_drag, state.x1_drag); 
+                  y = Math.min(state.y0_drag, state.y1_drag);
+                  w = Math.abs(state.x1_drag - state.x0_drag)
+                  h = Math.abs(state.y1_drag - state.y0_drag)
+                  drag.setAttribute('x',x);     drag.setAttribute('y',y);
+                  drag.setAttribute('width',w); drag.setAttribute('height',h);
+                  if      (data.shftkey && data.ctrlkey)  drag.setAttribute('stroke','#0000ff');
+                  else if (data.shftkey)                  drag.setAttribute('stroke','#ff0000');
+                  else if (                data.ctrlkey)  drag.setAttribute('stroke','#00ff00');
+                  else                                    drag.setAttribute('stroke','#000000');
+            } else {
+                  drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
+                  drag.setAttribute('width',5); drag.setAttribute('height',5);
+            }
+            """
+      }
+
+
+
+
