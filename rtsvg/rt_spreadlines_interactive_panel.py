@@ -144,7 +144,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             _sp_ = self.rt_self.spreadLines(__df__, w=self.w, h=self.h, **self.sl_params)
             return _sp_
 
-
       #
       # applyKeyOp() - apply specified key operation
       #
@@ -174,6 +173,14 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       # Mouse States
       x_mouse          = param.Integer(default=0)
       y_mouse          = param.Integer(default=0)
+
+      #
+      # Wheel operation state & method
+      #
+      wheel_x           = param.Integer(default=0)
+      wheel_y           = param.Integer(default=0)
+      wheel_rots        = param.Integer(default=0) # Mult by 10 and rounded...
+      wheel_op_finished = param.Boolean(default=False)
 
       #
       # applyDragOp() - select the nodes within the drag operations bounding box.
@@ -244,8 +251,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
             if (event.button == 0) {
-                        data.allentities_x0      = event.offsetX; 
-                        data.allentities_y0      = event.offsetY; 
                         state.x0_drag            = event.offsetX;                
                         state.y0_drag            = event.offsetY;                
                         state.x1_drag            = event.offsetX;                
@@ -268,9 +273,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   state.x0_drag  = state.x1_drag  = event.offsetX;
                   state.y0_drag  = state.y1_drag  = event.offsetY;
                   state.move_op  = true;
-            } else if (event.button == 1) {
-                  data.x0_middle = data.x1_middle = event.offsetX; 
-                  data.y0_middle = data.y1_middle = event.offsetY;
             }
             """,
 
@@ -287,21 +289,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                         data.drag_x1          = state.x1_drag; 
                         data.drag_y1          = state.y1_drag;
                         data.drag_op_finished = true;
-                  } else if (state.move_op) {
-                        state.move_op         = false;
-                        data.drag_x0          = state.x0_drag; 
-                        data.drag_y0          = state.y0_drag; 
-                        data.drag_x1          = state.x1_drag; 
-                        data.drag_y1          = state.y1_drag;
-                        data.move_op_finished = true;                    
-                  } else if (state.layout_op_shape != "") {
-                        data.drag_x0          = state.x0_drag; 
-                        data.drag_y0          = state.y0_drag; 
-                        data.drag_x1          = state.x1_drag; 
-                        data.drag_y1          = state.y1_drag;
-                        data.layout_shape     = state.layout_op_shape;
-                        state.layout_op_shape = "";
-                        self.myUpdateLayoutOp();
                   }
             }
             """,
@@ -313,8 +300,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             """,
 
             'mod_inner':"""
-            mod.innerHTML     = data.mod_inner;
-            infostr.innerHTML = data.info_str;
+            mod.innerHTML = data.mod_inner;
             svgparent.focus(); // else it loses focus on every render...
             """,
 
