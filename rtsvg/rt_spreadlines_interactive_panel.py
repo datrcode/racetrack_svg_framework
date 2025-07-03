@@ -116,8 +116,9 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
 
             super().__init__(**kwargs)
 
-            self.param.watch(self.applyDragOp, 'drag_op_finished')
-            self.param.watch(self.applyKeyOp,  'key_op_finished')
+            self.param.watch(self.applyDragOp,  'drag_op_finished')
+            self.param.watch(self.applyKeyOp,   'key_op_finished')
+            self.param.watch(self.applyWheelOp, 'wheel_op_finished')
 
             self.companions = []
 
@@ -185,7 +186,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       #
       # applyDragOp() - select the nodes within the drag operations bounding box.
       #
-      async def applyDragOp(self,event):
+      async def applyDragOp(self, event):
             self.lock.acquire()
             try:
                   if self.drag_op_finished:
@@ -201,10 +202,31 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                         #elif self.ctrlkey:                   self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) | set(_overlapping_entities_))
                         #else:                                self.setSelectedEntitiesAndNotifyOthers(_overlapping_entities_)
                         
-                        #self.__refreshView__(comp=False, all_ents=False)
+                        self.__refreshView__()
             finally:
                   self.drag_op_finished = False
                   self.lock.release()
+
+      #
+      # applyWheelOp() - apply mouse wheel operation (zoom in & out)
+      #
+      async def applyWheelOp(self, event):
+            self.lock.acquire()
+            try:
+                  if self.wheel_op_finished:
+                        self.__refreshView__()
+            finally:
+                  self.wheel_op_finished = False
+                  self.wheel_rots        = 0            
+                  self.lock.release()
+
+      #
+      # __refreshView__() - refresh the view
+      #
+      def __refreshView__(self):
+            self.mod_inner = self.dfs_layout[self.df_level].renderSVG()
+            #if (all_ents): self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+            #if (sel_ents): self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
 
       #
       # Panel Javascript Definitions
@@ -264,7 +286,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   state.x1_drag  = event.offsetX;
                   state.y1_drag  = event.offsetY;
                   state.drag_op  = true;             
-                  self.myUpdateDragRect(); }
+                  self.myUpdateDragRect();
             }
             """,
 
