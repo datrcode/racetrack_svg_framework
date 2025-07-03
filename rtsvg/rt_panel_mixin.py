@@ -29,7 +29,7 @@ import copy
 from shapely import Polygon
 
 from .rt_stackable                import RTStackable
-from .rt_graph_interactive_layout import RTGraphInteractiveLayout
+from .rt_graph_interactive_panel  import RTGraphInteractivePanel
 from .rt_coordinated_views        import RTCoordinatedViews
 
 __name__ = 'rt_panel_mixin'
@@ -52,9 +52,9 @@ class RTPanelMixin(object):
         return LayoutPanel()
 
     #
-    # interactiveGraphLayout()
+    # interactiveGraphPanel()
     #
-    def interactiveGraphLayout(self, df, ln_params, w=600, h=400, use_linknode=False, **kwargs):
+    def interactiveGraphPanel(self, df, ln_params, w=600, h=400, use_linknode=False, **kwargs):
         ''' Interactive Graph Layout using Panel Architecture
 
         Parameters
@@ -75,7 +75,7 @@ class RTPanelMixin(object):
 
         Use saveLayout() and loadLayout() to store and retrieve layouts in parquet format
         '''
-        return RTGraphInteractiveLayout(self, df, ln_params, w, h, use_linknode, **kwargs)
+        return RTGraphInteractivePanel(self, df, ln_params, w, h, use_linknode, **kwargs)
 
     #
     # interactivePanel() - coordinated views with configurable components.

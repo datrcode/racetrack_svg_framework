@@ -83,12 +83,12 @@ from shapely import Polygon
 
 from .rt_stackable import RTStackable, RTSelectable
 
-__name__ = 'rt_graph_interactive_layout'
+__name__ = 'rt_graph_interactive_panel'
 
 #
 # ReactiveHTML Class for Panel Implementation
 #
-class RTGraphInteractiveLayout(ReactiveHTML, RTStackable, RTSelectable):
+class RTGraphInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
     #
     # Print Representation
     #
