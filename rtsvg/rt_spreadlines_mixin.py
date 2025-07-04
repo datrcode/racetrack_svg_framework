@@ -922,6 +922,33 @@ class RTSpreadLinesMixin(object):
             return timestamp.strftime(_format_)
 
         #
+        # __createPathDescriptionOfSelectedEntities__()
+        #
+        def __createPathDescriptionOfSelectedEntities__(self, my_selection=None):
+            '''
+            if my_selection is None: my_selection = self.selected_entities
+            _df_ = self.df_node.explode('__nm__').filter(pl.col('__nm__').is_in(my_selection))
+            if len(_df_) == 0: return ''
+            _str_ops_ = [pl.lit('M '), pl.col('__sx__')-5, 
+                         pl.lit(' '),  pl.col('__sy__')-5,
+                         pl.lit(' l 10 0 l 0 10 l -10 0 z')]
+            _df_ = _df_.unique(['__sx__','__sy__']).with_columns(pl.concat_str(*_str_ops_).alias('__svg__'))
+            return ' '.join(_df_['__svg__'])'''
+            return ''
+
+        #
+        # __createPathDescriptionForAllEntities__()
+        #
+        def __createPathDescriptionForAllEntities__(self):
+            '''
+            _str_ops_ = [pl.lit('M '), pl.col('__sx__')-5, 
+                         pl.lit(' '),  pl.col('__sy__')-5,
+                         pl.lit(' l 10 0 l 0 10 l -10 0 z')]
+            _df_ = self.df_node.with_columns(pl.concat_str(*_str_ops_).alias('__svg__'))
+            return ' '.join(_df_['__svg__'])'''
+            return ''
+
+        #
         # SVG Representation Renderer
         #
         def _repr_svg_(self):
