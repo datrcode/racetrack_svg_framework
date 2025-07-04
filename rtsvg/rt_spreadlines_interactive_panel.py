@@ -233,6 +233,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       #
       _scripts = {
             'render':"""
+            console.log('render_0');
             mod.innerHTML            = data.mod_inner;
             state.x0_drag            = state.y0_drag = -10;
             state.x1_drag            = state.y1_drag =  -5;
@@ -240,26 +241,34 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             data.ctrlkey             = false;
             state.drag_op            = false;
             svgparent.focus(); // else it loses focus on every render...
+            console.log('render_1');
             """,
 
             'keyPress':"""
+            console.log('keyPress_0')
             svgparent.focus(); // else it loses focus on every render...
+            console.log('keyPress_1')
             """,
 
             'keyDown':"""
+            console.log('keyDown_0')
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
             data.last_key = event.key;
             svgparent.focus(); // else it loses focus on every render...
+            console.log('keyDown_1')
             """,
 
             'keyUp':"""
+            console.log('keyUp_0')
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
             svgparent.focus(); // else it loses focus on every render...
+            console.log('keyUp_1')
             """,
 
             'moveEverything':"""
+            console.log('moveEverything_0')
             data.ctrlkey   = event.ctrlKey;
             data.shiftkey  = event.shiftKey;
             data.x_mouse   = event.offsetX; 
@@ -267,9 +276,11 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             state.x1_drag  = event.offsetX; 
             state.y1_drag  = event.offsetY; 
             if (state.drag_op)               { self.myUpdateDragRect(); }
+            console.log('moveEverything_1')
             """,
 
             'downAllEntities':"""
+            console.log('downAllEntities_0')
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
             if (event.button == 0) {
@@ -278,8 +289,10 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                         state.x1_drag            = event.offsetX;                
                         state.y1_drag            = event.offsetY;
             }
+            console.log('downAllEntities_1')
             """,
             'downSelect':"""
+            console.log('downSelect_0')
             if (event.button == 0) {
                   state.x0_drag  = event.offsetX;
                   state.y0_drag  = event.offsetY;
@@ -288,17 +301,21 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   state.drag_op  = true;             
                   self.myUpdateDragRect();
             }
+            console.log('downSelect_1')
             """,
 
             'downMove':"""
+            console.log('downMove_0')
             if (event.button == 0) {
                   state.x0_drag  = state.x1_drag  = event.offsetX;
                   state.y0_drag  = state.y1_drag  = event.offsetY;
                   state.move_op  = true;
             }
+            console.log('downMove_1')
             """,
 
             'upEverything':"""
+            console.log('upEverything_0')
             if (event.button == 0) {
                   state.x1_drag         = event.offsetX; 
                   state.y1_drag         = event.offsetY;
@@ -313,25 +330,33 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                         data.drag_op_finished = true;
                   }
             }
+            console.log('upEverything_1')
             """,
 
             'mouseWheel':"""
+            console.log('mouseWheel_0')
             event.preventDefault();
             data.wheel_x = event.offsetX; data.wheel_y = event.offsetY; data.wheel_rots  = Math.round(10*event.deltaY);
             data.wheel_op_finished = true;
+            console.log('mouseWheel_1')
             """,
 
             'mod_inner':"""
+            console.log('mod_inner_0')
             mod.innerHTML = data.mod_inner;
             svgparent.focus(); // else it loses focus on every render...
+            console.log('mod_inner_1')
             """,
 
             'selectionpath':"""
+            console.log('selectionpath_0')
             selectionlayer.setAttribute("d", data.selectionpath);
             svgparent.focus(); // else it loses focus on every render...
+            console.log('selectionpath_1')
             """,
             
             'myUpdateDragRect':"""
+            console.log('myUpdateDragRect_0')
             if (state.drag_op) {
                   x = Math.min(state.x0_drag, state.x1_drag); 
                   y = Math.min(state.y0_drag, state.y1_drag);
@@ -347,6 +372,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
                   drag.setAttribute('width',5); drag.setAttribute('height',5);
             }
+            console.log('myUpdateDragRect_1')
             """
       }
 
