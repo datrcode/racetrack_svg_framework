@@ -91,7 +91,12 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             self.df_level          = 0
             self.dfs               = [self.df]
             self.dfs_layout        = [self.__renderView__(self.df)]
-            self.mod_inner         = self.dfs_layout[self.df_level]._repr_svg_()
+            # 
+            # So... the following has to not happen here... if it does (and the view gets the initial svg), then
+            # the svg won't get updated later on when it's re-set to the same value...  because if the value
+            # doesn't change, then the svg won't get updated.
+            #
+            # self.mod_inner         = self.dfs_layout[self.df_level]._repr_svg_()
 
             # - Setup the selected entities information
             self.selected_entities = set()
@@ -213,8 +218,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       async def applyWheelOp(self, event):
             self.lock.acquire()
             try:
-                  if self.wheel_op_finished:
-                        self.__refreshView__()
+                  self.__refreshView__() # used to force a re-render the first time ... which cause the actual visualization to be displayed
             finally:
                   self.wheel_op_finished = False
                   self.wheel_rots        = 0            
@@ -245,30 +249,23 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             """,
 
             'keyPress':"""
-            console.log('keyPress_0')
             svgparent.focus(); // else it loses focus on every render...
-            console.log('keyPress_1')
             """,
 
             'keyDown':"""
-            console.log('keyDown_0')
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
             data.last_key = event.key;
             svgparent.focus(); // else it loses focus on every render...
-            console.log('keyDown_1')
             """,
 
             'keyUp':"""
-            console.log('keyUp_0')
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
             svgparent.focus(); // else it loses focus on every render...
-            console.log('keyUp_1')
             """,
 
             'moveEverything':"""
-            console.log('moveEverything_0')
             data.ctrlkey   = event.ctrlKey;
             data.shiftkey  = event.shiftKey;
             data.x_mouse   = event.offsetX; 
@@ -276,11 +273,9 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             state.x1_drag  = event.offsetX; 
             state.y1_drag  = event.offsetY; 
             if (state.drag_op)               { self.myUpdateDragRect(); }
-            console.log('moveEverything_1')
             """,
 
             'downAllEntities':"""
-            console.log('downAllEntities_0')
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
             if (event.button == 0) {
@@ -289,10 +284,8 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                         state.x1_drag            = event.offsetX;                
                         state.y1_drag            = event.offsetY;
             }
-            console.log('downAllEntities_1')
             """,
             'downSelect':"""
-            console.log('downSelect_0')
             if (event.button == 0) {
                   state.x0_drag  = event.offsetX;
                   state.y0_drag  = event.offsetY;
@@ -301,21 +294,17 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   state.drag_op  = true;             
                   self.myUpdateDragRect();
             }
-            console.log('downSelect_1')
             """,
 
             'downMove':"""
-            console.log('downMove_0')
             if (event.button == 0) {
                   state.x0_drag  = state.x1_drag  = event.offsetX;
                   state.y0_drag  = state.y1_drag  = event.offsetY;
                   state.move_op  = true;
             }
-            console.log('downMove_1')
             """,
 
             'upEverything':"""
-            console.log('upEverything_0')
             if (event.button == 0) {
                   state.x1_drag         = event.offsetX; 
                   state.y1_drag         = event.offsetY;
@@ -330,15 +319,12 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                         data.drag_op_finished = true;
                   }
             }
-            console.log('upEverything_1')
             """,
 
             'mouseWheel':"""
-            console.log('mouseWheel_0')
             event.preventDefault();
             data.wheel_x = event.offsetX; data.wheel_y = event.offsetY; data.wheel_rots  = Math.round(10*event.deltaY);
             data.wheel_op_finished = true;
-            console.log('mouseWheel_1')
             """,
 
             'mod_inner':"""
@@ -349,14 +335,11 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             """,
 
             'selectionpath':"""
-            console.log('selectionpath_0')
             selectionlayer.setAttribute("d", data.selectionpath);
             svgparent.focus(); // else it loses focus on every render...
-            console.log('selectionpath_1')
             """,
             
             'myUpdateDragRect':"""
-            console.log('myUpdateDragRect_0')
             if (state.drag_op) {
                   x = Math.min(state.x0_drag, state.x1_drag); 
                   y = Math.min(state.y0_drag, state.y1_drag);
@@ -372,7 +355,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
                   drag.setAttribute('width',5); drag.setAttribute('height',5);
             }
-            console.log('myUpdateDragRect_1')
             """
       }
 
