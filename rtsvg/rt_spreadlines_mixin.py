@@ -252,6 +252,7 @@ class RTSpreadLinesMixin(object):
             self.time_lu['deduplicate_alters'] = time.time() - t0
 
             # Create other variables (to be used later ... but make sure they exist now)
+            self.vx0, self.vy0, self.vx1, self.vy1 = None, None, None, None # view bounds
             self.selected_entities        = set()
             self.bin_to_bounds            = {}
             self.bin_to_node_to_xyrepstat = {}
@@ -723,8 +724,7 @@ class RTSpreadLinesMixin(object):
         #
         # renderSVG()
         #
-        def renderSVG(self):
-            vx0, vy0, vx1, vy1 = None, None, None, None # view bounds
+        def renderSVG(self):            
             svg = []
 
             alter_inter_d   = self.alter_inter_d        # distance between the bins
@@ -746,8 +746,8 @@ class RTSpreadLinesMixin(object):
                 svg.append(_svg_)
                 xmin, ymin, xmax, ymax = _bounds_
                 x = xmax + alter_inter_d
-                if vx0 is None: vx0, vy0, vx1, vy1 = _bounds_[0], _bounds_[1], _bounds_[2], _bounds_[3]
-                vx0, vy0, vx1, vy1 = min(vx0, _bounds_[0]-alter_inter_d/3.0), min(vy0, _bounds_[1] - 3*channel_inter_d), max(vx1, _bounds_[2]+alter_inter_d/3.0), max(vy1, _bounds_[3]+3*channel_inter_d)
+                if self.vx0 is None: self.vx0, self.vy0, self.vx1, self.vy1 = _bounds_[0], _bounds_[1], _bounds_[2], _bounds_[3]
+                self.vx0, self.vy0, self.vx1, self.vy1 = min(self.vx0, _bounds_[0]-alter_inter_d/3.0), min(self.vy0, _bounds_[1] - 3*channel_inter_d), max(self.vx1, _bounds_[2]+alter_inter_d/3.0), max(self.vy1, _bounds_[3]+3*channel_inter_d)
 
             # Determine if two bounds overlap - used to separate channels (prevent overlap between channels)
             def boundsOverlap(a,b): return a[0] < b[0]+b[2] and a[0]+a[2] > b[0] and a[1] < b[1]+b[3] and a[1]+a[3] > b[1]
@@ -819,8 +819,8 @@ class RTSpreadLinesMixin(object):
                         if _fm_to_ == 'fm':  _y_ -= channel_inter_d
                         else:                _y_ += channel_inter_d
                 
-                vy0 = min(vy0, _y_       - 3*channel_inter_d)
-                vy1 = max(vy1, _y_ + _h_ + 3*channel_inter_d)
+                self.vy0 = min(self.vy0, _y_       - 3*channel_inter_d)
+                self.vy1 = max(self.vy1, _y_ + _h_ + 3*channel_inter_d)
 
                 tuple_to_channel_geometry[channel_tuples[i]] = (_x_, _y_, _w_, _h_)
                 svg.append(self.bubbleNumberOnLine(_x_, _x_ + _w_, _y_ + _h_/2.0, str(_n_), txt_h=12, color=self.rt_self.co_mgr.getTVColor('axis','major'), width=2.0))
@@ -882,10 +882,10 @@ class RTSpreadLinesMixin(object):
                 if _bin_ not in self.bin_to_bounds: continue
                 _bounds_         = self.bin_to_bounds[_bin_]
                 _x_              = _bounds_[0] - self.alter_inter_d/2.0
-                _y_              = vy0
+                _y_              = self.vy0
                 _d_              = [f'M {_x_-_hrun_} {_y_}']
                 _y_             += _vrun_
-                _turns_          = int(1+(vy1-vy0)/_vrun_)
+                _turns_          = int(1+(self.vy1-self.vy0)/_vrun_)
                 for i in range(_turns_):
                     if i%2 == 0: _d_.append(f'L {_x_+_hrun_} {_y_}')
                     else:        _d_.append(f'L {_x_-_hrun_} {_y_}')
@@ -903,12 +903,12 @@ class RTSpreadLinesMixin(object):
                         _bounds_    = self.bin_to_bounds[_bin_]
                         _x_         = (_bounds_[0] + _bounds_[2])/2.0
                         svg.insert(0, self.rt_self.svgText(self.formatTimestamp(_timestamp_), _x_, _channel_max_y_, txt_h=self.txt_h, anchor='middle'))
-                vy1 = _channel_max_y_ + self.txt_h
+                self.vy1 = _channel_max_y_ + self.txt_h
 
             # Add the header and the footer
-            if vx0 is None: vx0, vy0, vx1, vy1, xmin, xmax = 0.0, 0.0, 1.0, 1.0, 0.0, 1.0
-            svg.insert(0, f'<svg x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" viewBox="{vx0} {vy0} {vx1-vx0} {vy1-vy0}">')
-            svg.insert(1, f'<rect x="{vx0}" y="{vy0}" width="{vx1-vx0}" height="{vy1-vy0}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
+            if self.vx0 is None: self.vx0, self.vy0, self.vx1, self.vy1, xmin, xmax = 0.0, 0.0, 1.0, 1.0, 0.0, 1.0
+            svg.insert(0, f'<svg x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" viewBox="{self.vx0} {self.vy0} {self.vx1-self.vx0} {self.vy1-self.vy0}">')
+            svg.insert(1, f'<rect x="{self.vx0}" y="{self.vy0}" width="{self.vx1-self.vx0}" height="{self.vy1-self.vy0}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
             svg.insert(2, f'<line x1="{alter_inter_d}" y1="{y}" x2="{x-alter_inter_d - (xmax-xmin)/2}" y2="{y}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="3.0" />')
 
             # Conclude the SVG
