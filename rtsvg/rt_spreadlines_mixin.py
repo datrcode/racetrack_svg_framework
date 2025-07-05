@@ -58,7 +58,8 @@ class RTSpreadLinesMixin(object):
                     circle_spacer        = 3,
                     alter_separation_h   = 48, 
                     h_collapsed_sections = 16,
-                    
+
+                    include_svg_viewbox  = True,
                     widget_id            = None,
                     draw_labels          = True,
                     w                    = 1024,
@@ -177,6 +178,7 @@ class RTSpreadLinesMixin(object):
             self.alter_separation_h   = kwargs['alter_separation_h']
             self.h_collapsed_sections = kwargs['h_collapsed_sections']
 
+            self.include_svg_viewbox = kwargs['include_svg_viewbox']
             self.widget_id           = f'spreadlines_{random.randint(0,65535)}' if kwargs['widget_id'] is None else kwargs['widget_id']
             self.draw_labels         = kwargs['draw_labels']
             self.w                   = kwargs['w']
@@ -907,7 +909,8 @@ class RTSpreadLinesMixin(object):
 
             # Add the header and the footer
             if self.vx0 is None: self.vx0, self.vy0, self.vx1, self.vy1, xmin, xmax = 0.0, 0.0, 1.0, 1.0, 0.0, 1.0
-            svg.insert(0, f'<svg x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" viewBox="{self.vx0} {self.vy0} {self.vx1-self.vx0} {self.vy1-self.vy0}">')
+            if self.include_svg_viewbox: svg.insert(0, f'<svg x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" viewBox="{self.viewBox()}">')
+            else:                        svg.insert(0, f'<svg x="0" y="0" width="{self.vx1+self.vx0}" height="{self.vy1+self.vy0}" >')
             svg.insert(1, f'<rect x="{self.vx0}" y="{self.vy0}" width="{self.vx1-self.vx0}" height="{self.vy1-self.vy0}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
             svg.insert(2, f'<line x1="{alter_inter_d}" y1="{y}" x2="{x-alter_inter_d - (xmax-xmin)/2}" y2="{y}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="3.0" />')
 
@@ -915,6 +918,13 @@ class RTSpreadLinesMixin(object):
             svg.append('</svg>')
             self.last_render = ''.join(svg)
             return self.last_render
+
+        #
+        # viewBox()
+        #
+        def viewBox      (self): return f'{self.vx0} {self.vy0} {self.vx1-self.vx0} {self.vy1-self.vy0}'
+        def viewBoxRect  (self): return self.vx0, self.vy0, self.vx1-self.vx0, self.vy1-self.vy0
+        def viewBoxBounds(self): return self.vx0, self.vy0, self.vx1, self.vy1
 
         def formatTimestamp(self, timestamp):
             if   'h' in self.every: _format_ = "%Y-%m-%d %H"
