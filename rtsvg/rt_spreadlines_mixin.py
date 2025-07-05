@@ -252,6 +252,7 @@ class RTSpreadLinesMixin(object):
             self.time_lu['deduplicate_alters'] = time.time() - t0
 
             # Create other variables (to be used later ... but make sure they exist now)
+            self.selected_entities        = set()
             self.bin_to_bounds            = {}
             self.bin_to_node_to_xyrepstat = {}
             self.last_render              = None
@@ -925,28 +926,31 @@ class RTSpreadLinesMixin(object):
         # __createPathDescriptionOfSelectedEntities__()
         #
         def __createPathDescriptionOfSelectedEntities__(self, my_selection=None):
-            '''
             if my_selection is None: my_selection = self.selected_entities
-            _df_ = self.df_node.explode('__nm__').filter(pl.col('__nm__').is_in(my_selection))
-            if len(_df_) == 0: return ''
-            _str_ops_ = [pl.lit('M '), pl.col('__sx__')-5, 
-                         pl.lit(' '),  pl.col('__sy__')-5,
-                         pl.lit(' l 10 0 l 0 10 l -10 0 z')]
-            _df_ = _df_.unique(['__sx__','__sy__']).with_columns(pl.concat_str(*_str_ops_).alias('__svg__'))
-            return ' '.join(_df_['__svg__'])'''
-            return ''
+            _xys_ = set()
+            for _bin_ in self.bin_to_node_to_xyrepstat:
+                for _entity_ in my_selection:
+                    if _entity_ in self.bin_to_node_to_xyrepstat[_bin_]:
+                        _xyrepstat_ = self.bin_to_node_to_xyrepstat[_bin_][_entity_]
+                        _xy_        = (_xyrepstat_[0], _xyrepstat_[1])
+                        _xys_.add(_xy_)
+            _strs_ = []
+            for _xy_ in _xys_: _strs_.append(f'M {_xy_[0]-5} {_xy_[1]-5} l 10 0 l 0 10 l -10 0 z')
+            return ' '.join(_strs_)
 
         #
         # __createPathDescriptionForAllEntities__()
         #
         def __createPathDescriptionForAllEntities__(self):
-            '''
-            _str_ops_ = [pl.lit('M '), pl.col('__sx__')-5, 
-                         pl.lit(' '),  pl.col('__sy__')-5,
-                         pl.lit(' l 10 0 l 0 10 l -10 0 z')]
-            _df_ = self.df_node.with_columns(pl.concat_str(*_str_ops_).alias('__svg__'))
-            return ' '.join(_df_['__svg__'])'''
-            return ''
+            _xys_ = set()
+            for _bin_ in self.bin_to_node_to_xyrepstat:
+                for _entity_ in self.bin_to_node_to_xyrepstat[_bin_]:
+                    _xyrepstat_ = self.bin_to_node_to_xyrepstat[_bin_][_entity_]
+                    _xy_        = (_xyrepstat_[0], _xyrepstat_[1])
+                    _xys_.add(_xy_)
+            _strs_ = []
+            for _xy_ in _xys_: _strs_.append(f'M {_xy_[0]-5} {_xy_[1]-5} l 10 0 l 0 10 l -10 0 z')
+            return ' '.join(_strs_)
 
         #
         # SVG Representation Renderer
@@ -955,6 +959,10 @@ class RTSpreadLinesMixin(object):
             if self.last_render is None: self.renderSVG()
             return self.last_render
 
+        #
+        # entityPosition() - return the position(s) of an entity
+        # - an entity may exist in more than one bin necessitating a list
+        #
         def entityPosition(self, entity):
             _results_ = []
             if entity == self.node_focus:
