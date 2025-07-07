@@ -48,11 +48,16 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       selectionpath   = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
 
       #
+      # viewBox
+      #
+      viewBox         = param.String(default="0 0 600 200")
+
+      #
       # Panel Template
       # - rewritten in constructor with width and height filled in
       #
       _template = """
-<svg id="svgparent" width="600" height="200" tabindex="0" 
+<svg id="svgparent" width="600" height="200" viewBox="${viewBox}" tabindex="0" 
      onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
     <svg id="mod" width="600" height="200"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
@@ -104,7 +109,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             self.lock = threading.Lock()
 
             # Rewrite the _template with width and height
-            self._template = '''<svg id="svgparent" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''" tabindex="0" ''' + \
+            self._template = '''<svg id="svgparent" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''" viewBox="'''+self.viewBox+'''" tabindex="0" ''' + \
                               '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">  ''' + \
                               '''<svg id="mod" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''"> ${mod_inner} </svg>  ''' + \
                               '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />  ''' + \
@@ -147,7 +152,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       # __renderView__() - render the view
       #
       def __renderView__(self, __df__):
-            _sp_ = self.rt_self.spreadLines(__df__, w=self.w, h=self.h, **self.sl_params)
+            _sp_ = self.rt_self.spreadLines(__df__, w=self.w, h=self.h, include_svg_viewbox=False, **self.sl_params)
             return _sp_
 
       #
