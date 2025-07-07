@@ -109,7 +109,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             self.lock = threading.Lock()
 
             # Rewrite the _template with width and height
-            self._template = '''<svg id="svgparent" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''" viewBox="'''+self.viewBox+'''" tabindex="0" ''' + \
+            self._template = '''<svg id="svgparent" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''" viewBox="${viewBox}" tabindex="0" ''' + \
                               '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">  ''' + \
                               '''<svg id="mod" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''"> ${mod_inner} </svg>  ''' + \
                               '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />  ''' + \
@@ -254,7 +254,9 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       #    sel_ents    - refresh selected entities path
       #
       def __refreshView__(self, comp=True, all_ents=True, sel_ents=True):
-            if (comp):     self.mod_inner        = self.dfs_layout[self.df_level].renderSVG()
+            if (comp):     
+                  self.viewBox          = self.dfs_layout[self.df_level].viewBox()
+                  self.mod_inner        = self.dfs_layout[self.df_level].renderSVG()
             if (all_ents): self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
             if (sel_ents): self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
 
