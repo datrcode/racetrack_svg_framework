@@ -151,6 +151,24 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             return _sp_
 
       #
+      # setSelectedEntitiesAndNotifyOthers() - set the selected entities & notify any companion views
+      #
+      def setSelectedEntitiesAndNotifyOthers(self, _set_, callers=None):
+            if callers is not None and self in callers: return
+            if callers is None: 
+                  callers  = set([self])
+                  im_first = True
+            else:               
+                  callers.add(self)
+                  im_first = False
+
+            self.selected_entities = set(_set_)
+            if im_first == False: self.__refreshView__(comp=False, all_ents=False)
+
+            for c in self.companions:
+                  if isinstance(c, RTSelectable): c.setSelectedEntitiesAndNotifyOthers(_set_, callers=callers)
+
+      #
       # applyKeyOp() - apply specified key operation
       #
       async def applyKeyOp(self,event):
@@ -226,11 +244,14 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
 
       #
       # __refreshView__() - refresh the view
+      #    comp        - refresh the visualization
+      #    all_ents    - refresh all entities path
+      #    sel_ents    - refresh selected entities path
       #
-      def __refreshView__(self):
-            self.mod_inner = self.dfs_layout[self.df_level].renderSVG()
-            #if (all_ents): self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
-            #if (sel_ents): self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
+      def __refreshView__(self, comp=True, all_ents=True, sel_ents=True):
+            if (comp):     self.mod_inner        = self.dfs_layout[self.df_level].renderSVG()
+            if (all_ents): self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
+            if (sel_ents): self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
 
       #
       # Panel Javascript Definitions
