@@ -922,9 +922,15 @@ class RTSpreadLinesMixin(object):
         #
         # viewBox()
         #
-        def viewBox      (self): return f'{self.vx0} {self.vy0} {self.vx1-self.vx0} {self.vy1-self.vy0}'
-        def viewBoxRect  (self): return self.vx0, self.vy0, self.vx1-self.vx0, self.vy1-self.vy0
-        def viewBoxBounds(self): return self.vx0, self.vy0, self.vx1, self.vy1
+        def viewBox      (self): 
+            if self.vx0 is None: self._repr_svg_() # force a render
+            return f'{self.vx0} {self.vy0} {self.vx1-self.vx0} {self.vy1-self.vy0}'
+        def viewBoxRect  (self): 
+            if self.vx0 is None: self._repr_svg_() # force a render
+            return self.vx0, self.vy0, self.vx1-self.vx0, self.vy1-self.vy0
+        def viewBoxBounds(self): 
+            if self.vx0 is None: self._repr_svg_() # force a render
+            return self.vx0, self.vy0, self.vx1, self.vy1
 
         def formatTimestamp(self, timestamp):
             if   'h' in self.every: _format_ = "%Y-%m-%d %H"
