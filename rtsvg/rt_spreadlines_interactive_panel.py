@@ -55,10 +55,10 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       #
       # viewBox parameters
       #
-      vx0               = param.Number(default=0.0)
-      vy0               = param.Number(default=0.0)
-      vx1               = param.Number(default=600.0)
-      vy1               = param.Number(default=200.0)
+      vx                = param.Number(default=0.0)
+      vy                = param.Number(default=0.0)
+      vw                = param.Number(default=600.0)
+      vh                = param.Number(default=200.0)
 
       #
       # Panel Template
@@ -69,6 +69,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
      onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
     <svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
+    <circle id="cursor" cx="-10" cy="-10" r="3" fill="#ff0000" /> 
     <rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"
           onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"
           onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />
@@ -121,6 +122,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                               '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">  ''' + \
                               '''<svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>  ''' + \
                               '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />  ''' + \
+                              '''<circle id="cursor" cx="-10" cy="-10" r="3" fill="#ff0000" /> ''' + \
                               '''<rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"  ''' + \
                               '''     onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"  ''' + \
                               '''     onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />  ''' + \
@@ -263,9 +265,9 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       #
       def __refreshView__(self, comp=True, all_ents=True, sel_ents=True):
             if (comp):     
-                  self.viewBox                           = self.dfs_layout[self.df_level].viewBox()
-                  self.vx0, self.vy0, self.vx1, self.vy1 = self.dfs_layout[self.df_level].viewBoxBounds()
-                  self.mod_inner                         = self.dfs_layout[self.df_level]._repr_svg_()
+                  self.viewBox                         = self.dfs_layout[self.df_level].viewBox()
+                  self.vx, self.vy, self.vw, self.vh   = self.dfs_layout[self.df_level].viewBoxRect()
+                  self.mod_inner                       = self.dfs_layout[self.df_level]._repr_svg_()
             if (all_ents): self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
             if (sel_ents): self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
 
@@ -310,6 +312,13 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             state.x1_drag  = event.offsetX; 
             state.y1_drag  = event.offsetY; 
             if (state.drag_op)               { self.myUpdateDragRect(); }
+            sw        = svgparent.getAttribute("width"); sh        = svgparent.getAttribute("height");
+            mx_offset = event.offsetX - sw/2;            my_offset = event.offsetY - sh/2;
+            cx_view   = data.vx + data.vw/2;             cy_view   = data.vy + data.vh/2;
+            x_ratio   = data.vw/sw;                      y_ratio   = data.vh/sh;
+
+            cursor.setAttribute("cx", cx_view + mx_offset*x_ratio);
+            cursor.setAttribute("cy", cy_view + my_offset*x_ratio);
             """,
 
             'downAllEntities':"""
