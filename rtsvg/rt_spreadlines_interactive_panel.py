@@ -316,9 +316,11 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             mx_offset = event.offsetX - sw/2;            my_offset = event.offsetY - sh/2;
             cx_view   = data.vx + data.vw/2;             cy_view   = data.vy + data.vh/2;
             x_ratio   = data.vw/sw;                      y_ratio   = data.vh/sh;
-
-            cursor.setAttribute("cx", cx_view + mx_offset*x_ratio);
-            cursor.setAttribute("cy", cy_view + my_offset*x_ratio);
+            viz_ratio = data.vw/data.vh;                 svg_ratio = sw/sh;
+            _ratio_   = x_ratio;
+            if (viz_ratio > svg_ratio) { _ratio_ = x_ratio; } else { _ratio_ = y_ratio;}
+            cursor.setAttribute("cx", cx_view + mx_offset*_ratio_);
+            cursor.setAttribute("cy", cy_view + my_offset*_ratio_);
             """,
 
             'downAllEntities':"""
