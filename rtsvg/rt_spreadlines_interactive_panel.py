@@ -276,34 +276,34 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       #
       _scripts = {
             'render':"""
-            console.log('render_0');
-            mod.innerHTML            = data.mod_inner;
-            state.x0_drag            = state.y0_drag = -10;
-            state.x1_drag            = state.y1_drag =  -5;
-            state.x_raw              = state.y_raw   = -10;
-            state.x_trans            = state.y_trans = -10;
-            data.shiftkey            = false;
-            data.ctrlkey             = false;
-            state.drag_op            = false;
-            svgparent.focus(); // else it loses focus on every render...
-            console.log('render_1');
+                  console.log('render_0');
+                  mod.innerHTML            = data.mod_inner;
+                  state.x0_drag            = state.y0_drag = -10;
+                  state.x1_drag            = state.y1_drag =  -5;
+                  state.x_raw              = state.y_raw   = -10;
+                  state.x_trans            = state.y_trans = -10;
+                  data.shiftkey            = false;
+                  data.ctrlkey             = false;
+                  state.drag_op            = false;
+                  svgparent.focus(); // else it loses focus on every render...
+                  console.log('render_1');
             """,
 
             'keyPress':"""
-            svgparent.focus(); // else it loses focus on every render...
+                  svgparent.focus(); // else it loses focus on every render...
             """,
 
             'keyDown':"""
-            data.ctrlkey  = event.ctrlKey;
-            data.shiftkey = event.shiftKey;
-            data.last_key = event.key;
-            svgparent.focus(); // else it loses focus on every render...
+                  data.ctrlkey  = event.ctrlKey;
+                  data.shiftkey = event.shiftKey;
+                  data.last_key = event.key;
+                  svgparent.focus(); // else it loses focus on every render...
             """,
 
             'keyUp':"""
-            data.ctrlkey  = event.ctrlKey;
-            data.shiftkey = event.shiftKey;
-            svgparent.focus(); // else it loses focus on every render...
+                  data.ctrlkey  = event.ctrlKey;
+                  data.shiftkey = event.shiftKey;
+                  svgparent.focus(); // else it loses focus on every render...
             """,
 
             'transCoords':"""
@@ -314,120 +314,102 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             """,
 
             'moveEverything':"""
-            data.ctrlkey   = event.ctrlKey;
-            data.shiftkey  = event.shiftKey;
+                  data.ctrlkey   = event.ctrlKey;
+                  data.shiftkey  = event.shiftKey;
 
-            state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
+                  state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
 
-            data.x_mouse   = state.x_trans;
-            data.y_mouse   = state.y_trans;
-            state.x1_drag  = state.x_trans;
-            state.y1_drag  = state.y_trans;
+                  data.x_mouse   = state.x_trans; data.y_mouse   = state.y_trans;
+                  state.x1_drag  = state.x_trans; state.y1_drag  = state.y_trans;
 
-            if (state.drag_op)               { self.myUpdateDragRect(); }
+                  if (state.drag_op)               { self.myUpdateDragRect(); }
 
-            // Debug
-            cursor.setAttribute("cx", state.x_trans); // Debug
-            cursor.setAttribute("cy", state.y_trans); // Debug
+                  cursor.setAttribute("cx", state.x_trans); cursor.setAttribute("cy", state.y_trans); // Debug
             """,
 
             'downAllEntities':"""
-            data.ctrlkey  = event.ctrlKey;
-            data.shiftkey = event.shiftKey;
+                  data.ctrlkey  = event.ctrlKey;
+                  data.shiftkey = event.shiftKey;
 
-            state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
+                  state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
 
-            if (event.button == 0) {
-                        state.x0_drag            = state.x_trans;
-                        state.y0_drag            = state.y_trans;
-                        state.x1_drag            = state.x_trans;
-                        state.y1_drag            = state.y_trans;
-            }
+                  if (event.button == 0) {
+                              state.x0_drag            = state.x_trans; state.y0_drag            = state.y_trans;
+                              state.x1_drag            = state.x_trans; state.y1_drag            = state.y_trans;
+                  }
             """,
             'downSelect':"""
-
-            state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
-            
-            if (event.button == 0) {
-                  state.x0_drag  = state.x_trans;
-                  state.y0_drag  = state.y_trans;
-                  state.x1_drag  = state.x_trans;
-                  state.y1_drag  = state.y_trans;
-                  state.drag_op  = true;             
-                  self.myUpdateDragRect();
-            }
+                  state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
+                  
+                  if (event.button == 0) {
+                        state.x0_drag  = state.x_trans; state.y0_drag  = state.y_trans;
+                        state.x1_drag  = state.x_trans; state.y1_drag  = state.y_trans;
+                        state.drag_op  = true;             
+                        self.myUpdateDragRect();
+                  }
             """,
 
             'downMove':"""
-            if (event.button == 0) {
+                  if (event.button == 0) {
+                        state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
 
-                  state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
-
-                  state.x0_drag  = state.x1_drag  = state.x_trans;
-                  state.y0_drag  = state.y1_drag  = state.y_trans;
-                  state.move_op  = true;
-            }
+                        state.x0_drag  = state.x1_drag  = state.x_trans;
+                        state.y0_drag  = state.y1_drag  = state.y_trans;
+                        state.move_op  = true;
+                  }
             """,
 
             'upEverything':"""
-            if (event.button == 0) {
-
-                  state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
-
-                  state.x1_drag         = state.x_trans;
-                  state.y1_drag         = state.y_trans;
-                  if (state.drag_op) {
-                        state.shiftkey        = event.shiftKey;
-                        state.drag_op         = false;
-                        self.myUpdateDragRect();
-                        data.drag_x0          = state.x0_drag; 
-                        data.drag_y0          = state.y0_drag; 
-                        data.drag_x1          = state.x1_drag; 
-                        data.drag_y1          = state.y1_drag;
-                        data.drag_op_finished = true;
+                  if (event.button == 0) {
+                        state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
+                        state.x1_drag         = state.x_trans; state.y1_drag         = state.y_trans;
+                        if (state.drag_op) {
+                              state.shiftkey        = event.shiftKey;
+                              state.drag_op         = false;
+                              self.myUpdateDragRect();
+                              data.drag_x0          = state.x0_drag; data.drag_y0          = state.y0_drag; 
+                              data.drag_x1          = state.x1_drag;  data.drag_y1          = state.y1_drag;
+                              data.drag_op_finished = true;
+                        }
                   }
-            }
             """,
 
             'mouseWheel':"""
-            event.preventDefault();
-
-            state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
-
-            data.wheel_x = state.x_trans;
-            data.wheel_y = state.y_trans;
-            data.wheel_rots  = Math.round(10*event.deltaY);
-            data.wheel_op_finished = true;
+                  event.preventDefault();
+                  state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
+                  data.wheel_x = state.x_trans; data.wheel_y = state.y_trans;
+                  data.wheel_rots  = Math.round(10*event.deltaY);
+                  data.wheel_op_finished = true;
             """,
 
             'mod_inner':"""
-            console.log('mod_inner_0')
-            mod.innerHTML = data.mod_inner;
-            svgparent.focus(); // else it loses focus on every render...
-            console.log('mod_inner_1')
+                  console.log('mod_inner_0')
+                  mod.innerHTML = data.mod_inner;
+                  svgparent.focus(); // else it loses focus on every render...
+                  console.log('mod_inner_1')
             """,
 
             'selectionpath':"""
-            selectionlayer.setAttribute("d", data.selectionpath);
-            svgparent.focus(); // else it loses focus on every render...
+                  selectionlayer.setAttribute("d", data.selectionpath);
+                  svgparent.focus(); // else it loses focus on every render...
             """,
             
             'myUpdateDragRect':"""
-            if (state.drag_op) {
-                  x = Math.min(state.x0_drag, state.x1_drag); 
-                  y = Math.min(state.y0_drag, state.y1_drag);
-                  w = Math.abs(state.x1_drag - state.x0_drag)
-                  h = Math.abs(state.y1_drag - state.y0_drag)
-                  drag.setAttribute('x',x);     drag.setAttribute('y',y);
-                  drag.setAttribute('width',w); drag.setAttribute('height',h);
-                  if      (data.shftkey && data.ctrlkey)  drag.setAttribute('stroke','#0000ff');
-                  else if (data.shftkey)                  drag.setAttribute('stroke','#ff0000');
-                  else if (                data.ctrlkey)  drag.setAttribute('stroke','#00ff00');
-                  else                                    drag.setAttribute('stroke','#000000');
-            } else {
-                  drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
-                  drag.setAttribute('width',5); drag.setAttribute('height',5);
-            }
+                  if (state.drag_op) {
+                        x = Math.min(state.x0_drag, state.x1_drag); 
+                        y = Math.min(state.y0_drag, state.y1_drag);
+                        w = Math.abs(state.x1_drag - state.x0_drag)
+                        h = Math.abs(state.y1_drag - state.y0_drag)
+                        drag.setAttribute('x',x);     drag.setAttribute('y',y);
+                        drag.setAttribute('width',w); drag.setAttribute('height',h);
+                        if      (data.shftkey && data.ctrlkey)  drag.setAttribute('stroke','#0000ff');
+                        else if (data.shftkey)                  drag.setAttribute('stroke','#ff0000');
+                        else if (                data.ctrlkey)  drag.setAttribute('stroke','#00ff00');
+                        else                                    drag.setAttribute('stroke','#000000');
+                  } else {
+                        drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
+                        drag.setAttribute('width',5); drag.setAttribute('height',5);
+                  }
             """
       }
 
