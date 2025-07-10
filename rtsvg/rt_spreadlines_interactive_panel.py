@@ -280,6 +280,8 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             mod.innerHTML            = data.mod_inner;
             state.x0_drag            = state.y0_drag = -10;
             state.x1_drag            = state.y1_drag =  -5;
+            state.x_raw              = state.y_raw   = -10;
+            state.x_trans            = state.y_trans = -10;
             data.shiftkey            = false;
             data.ctrlkey             = false;
             state.drag_op            = false;
@@ -304,55 +306,53 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             svgparent.focus(); // else it loses focus on every render...
             """,
 
+            'transCoords':"""
+                  // Converts mouse position into transformed coordinates
+                  sw        = svgparent.getAttribute("width"); sh        = svgparent.getAttribute("height"); _ratio_   = data.vw/sw;
+                  if ((data.vw/data.vh) > (sw/sh)) { _ratio_ = data.vw/sw; } else { _ratio_ = data.vh/sh;}
+                  state.x_trans = (data.vx + data.vw/2) + (state.x_raw - sw/2)*_ratio_; state.y_trans = (data.vy + data.vh/2) + (state.y_raw - sh/2)*_ratio_;
+            """,
+
             'moveEverything':"""
             data.ctrlkey   = event.ctrlKey;
             data.shiftkey  = event.shiftKey;
 
-            // Converts mouse position into transformed coordinates (FIRST COPY)
-            sw        = svgparent.getAttribute("width"); sh        = svgparent.getAttribute("height"); _ratio_   = data.vw/sw;
-            if ((data.vw/data.vh) > (sw/sh)) { _ratio_ = data.vw/sw; } else { _ratio_ = data.vh/sh;}
-            x_trans = (data.vx + data.vw/2) + (event.offsetX - sw/2)*_ratio_; y_trans = (data.vy + data.vh/2) + (event.offsetY - sh/2)*_ratio_;
+            state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
 
-            data.x_mouse   = x_trans;
-            data.y_mouse   = y_trans;
-            state.x1_drag  = x_trans;
-            state.y1_drag  = y_trans;
+            data.x_mouse   = state.x_trans;
+            data.y_mouse   = state.y_trans;
+            state.x1_drag  = state.x_trans;
+            state.y1_drag  = state.y_trans;
 
             if (state.drag_op)               { self.myUpdateDragRect(); }
 
             // Debug
-            cursor.setAttribute("cx", x_trans); // Debug
-            cursor.setAttribute("cy", y_trans); // Debug
+            cursor.setAttribute("cx", state.x_trans); // Debug
+            cursor.setAttribute("cy", state.y_trans); // Debug
             """,
 
             'downAllEntities':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
 
-            // Converts mouse position into transformed coordinates
-            sw        = svgparent.getAttribute("width"); sh        = svgparent.getAttribute("height"); _ratio_   = data.vw/sw;
-            if ((data.vw/data.vh) > (sw/sh)) { _ratio_ = data.vw/sw; } else { _ratio_ = data.vh/sh;}
-            x_trans = (data.vx + data.vw/2) + (event.offsetX - sw/2)*_ratio_; y_trans = (data.vy + data.vh/2) + (event.offsetY - sh/2)*_ratio_;
+            state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
 
             if (event.button == 0) {
-                        state.x0_drag            = x_trans;
-                        state.y0_drag            = y_trans;
-                        state.x1_drag            = x_trans;
-                        state.y1_drag            = y_trans;
+                        state.x0_drag            = state.x_trans;
+                        state.y0_drag            = state.y_trans;
+                        state.x1_drag            = state.x_trans;
+                        state.y1_drag            = state.y_trans;
             }
             """,
             'downSelect':"""
 
-            // Converts mouse position into transformed coordinates
-            sw        = svgparent.getAttribute("width"); sh        = svgparent.getAttribute("height"); _ratio_   = data.vw/sw;
-            if ((data.vw/data.vh) > (sw/sh)) { _ratio_ = data.vw/sw; } else { _ratio_ = data.vh/sh;}
-            x_trans = (data.vx + data.vw/2) + (event.offsetX - sw/2)*_ratio_; y_trans = (data.vy + data.vh/2) + (event.offsetY - sh/2)*_ratio_;
+            state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
             
             if (event.button == 0) {
-                  state.x0_drag  = x_trans;
-                  state.y0_drag  = y_trans;
-                  state.x1_drag  = x_trans;
-                  state.y1_drag  = y_trans;
+                  state.x0_drag  = state.x_trans;
+                  state.y0_drag  = state.y_trans;
+                  state.x1_drag  = state.x_trans;
+                  state.y1_drag  = state.y_trans;
                   state.drag_op  = true;             
                   self.myUpdateDragRect();
             }
@@ -361,13 +361,10 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             'downMove':"""
             if (event.button == 0) {
 
-                  // Converts mouse position into transformed coordinates
-                  sw        = svgparent.getAttribute("width"); sh        = svgparent.getAttribute("height"); _ratio_   = data.vw/sw;
-                  if ((data.vw/data.vh) > (sw/sh)) { _ratio_ = data.vw/sw; } else { _ratio_ = data.vh/sh;}
-                  x_trans = (data.vx + data.vw/2) + (event.offsetX - sw/2)*_ratio_; y_trans = (data.vy + data.vh/2) + (event.offsetY - sh/2)*_ratio_;
+                  state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
 
-                  state.x0_drag  = state.x1_drag  = x_trans;
-                  state.y0_drag  = state.y1_drag  = y_trans;
+                  state.x0_drag  = state.x1_drag  = state.x_trans;
+                  state.y0_drag  = state.y1_drag  = state.y_trans;
                   state.move_op  = true;
             }
             """,
@@ -375,13 +372,10 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             'upEverything':"""
             if (event.button == 0) {
 
-                  // Converts mouse position into transformed coordinates
-                  sw        = svgparent.getAttribute("width"); sh        = svgparent.getAttribute("height"); _ratio_   = data.vw/sw;
-                  if ((data.vw/data.vh) > (sw/sh)) { _ratio_ = data.vw/sw; } else { _ratio_ = data.vh/sh;}
-                  x_trans = (data.vx + data.vw/2) + (event.offsetX - sw/2)*_ratio_; y_trans = (data.vy + data.vh/2) + (event.offsetY - sh/2)*_ratio_;
+                  state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
 
-                  state.x1_drag         = x_trans;
-                  state.y1_drag         = y_trans;
+                  state.x1_drag         = state.x_trans;
+                  state.y1_drag         = state.y_trans;
                   if (state.drag_op) {
                         state.shiftkey        = event.shiftKey;
                         state.drag_op         = false;
@@ -398,13 +392,10 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             'mouseWheel':"""
             event.preventDefault();
 
-            // Converts mouse position into transformed coordinates
-            sw        = svgparent.getAttribute("width"); sh        = svgparent.getAttribute("height"); _ratio_   = data.vw/sw;
-            if ((data.vw/data.vh) > (sw/sh)) { _ratio_ = data.vw/sw; } else { _ratio_ = data.vh/sh;}
-            x_trans = (data.vx + data.vw/2) + (event.offsetX - sw/2)*_ratio_; y_trans = (data.vy + data.vh/2) + (event.offsetY - sh/2)*_ratio_;
+            state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
 
-            data.wheel_x = x_trans;
-            data.wheel_y = y_trans;
+            data.wheel_x = state.x_trans;
+            data.wheel_y = state.y_trans;
             data.wheel_rots  = Math.round(10*event.deltaY);
             data.wheel_op_finished = true;
             """,
