@@ -230,13 +230,13 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                         if _x0 == _x1: _x1 += 1
                         if _y0 == _y1: _y1 += 1
                         _rect_ = Polygon([(_x0,_y0), (_x0,_y1), (_x1,_y1), (_x1,_y0)])
-                        #_overlapping_entities_  = set(self.dfs_layout[self.df_level].overlappingEntities(_rect_))
-                        #if _overlapping_entities_ is None: _overlapping_entities_ = set()
+                        _overlapping_entities_  = set(self.dfs_layout[self.df_level].overlappingEntities(_rect_))
+                        if _overlapping_entities_ is None: _overlapping_entities_ = set()
 
-                        #if   self.shiftkey and self.ctrlkey: self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) & set(_overlapping_entities_))
-                        #elif self.shiftkey:                  self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) - set(_overlapping_entities_))
-                        #elif self.ctrlkey:                   self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) | set(_overlapping_entities_))
-                        #else:                                self.setSelectedEntitiesAndNotifyOthers(_overlapping_entities_)
+                        if   self.shiftkey and self.ctrlkey: self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) & set(_overlapping_entities_))
+                        elif self.shiftkey:                  self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) - set(_overlapping_entities_))
+                        elif self.ctrlkey:                   self.setSelectedEntitiesAndNotifyOthers(set(self.selected_entities) | set(_overlapping_entities_))
+                        else:                                self.setSelectedEntitiesAndNotifyOthers(_overlapping_entities_)
                         
                         self.__refreshView__()
             finally:
