@@ -69,7 +69,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
      onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
     <svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
-    <circle id="cursor" cx="-10" cy="-10" r="3" fill="#ff0000" /> 
     <rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"
           onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"
           onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />
@@ -122,7 +121,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                               '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">  ''' + \
                               '''<svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>  ''' + \
                               '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />  ''' + \
-                              '''<circle id="cursor" cx="-10" cy="-10" r="3" fill="#ff0000" /> ''' + \
                               '''<rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"  ''' + \
                               '''     onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"  ''' + \
                               '''     onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />  ''' + \
@@ -323,8 +321,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   state.x1_drag  = state.x_trans; state.y1_drag  = state.y_trans;
 
                   if (state.drag_op)               { self.myUpdateDragRect(); }
-
-                  cursor.setAttribute("cx", state.x_trans); cursor.setAttribute("cy", state.y_trans); // Debug
             """,
 
             'downAllEntities':"""
