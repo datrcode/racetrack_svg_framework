@@ -105,7 +105,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             self.dfs               = [self.df]
             self.dfs_layout        = [self.__renderView__(self.df)]
             # 
-            # So... the following has to not happen here... if it does (and the view gets the initial svg), then
+            # So... the following has to *NOT* happen here... if it does (and the view gets the initial svg), then
             # the svg won't get updated later on when it's re-set to the same value...  because if the value
             # doesn't change, then the svg won't get updated.
             #
