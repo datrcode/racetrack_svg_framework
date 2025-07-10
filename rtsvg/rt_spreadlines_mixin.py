@@ -19,6 +19,8 @@ import polars as pl
 import random
 import time
 
+from shapely.geometry import Point,Polygon,LineString
+
 from .rt_component import RTComponent
 from .rt_entity_position import RTEntityPosition
 
@@ -937,6 +939,32 @@ class RTSpreadLinesMixin(object):
             elif 'd' in self.every: _format_ = "%Y-%m-%d"
             else                  : _format_ = "%Y-%m-%d %H:%M:%S"
             return timestamp.strftime(_format_)
+
+        #
+        # overlappingEntities() - Determine which entity geometrics overlap with a specific region
+        # - to_intersect should be a shapely shape
+        # - return value is a list of entities (possibly an empty list) or None
+        # - copied from rt_link_mixin
+        #
+        def overlappingEntities(self, to_intersect):
+            _set_ = set()
+            # Determine which bins overlap with the to_intersect region
+            for _bin_ in self.bin_to_bounds:
+                _bounds_ = self.bin_to_bounds[_bin_]
+                # If the bin overlaps, go through the nodes in the bin
+                if to_intersect.intersects(Polygon([(_bounds_[0],_bounds_[1]),(_bounds_[2],_bounds_[1]),(_bounds_[2],_bounds_[3]),(_bounds_[0],_bounds_[3])])):
+                    for _node_ in self.bin_to_node_to_xyrepstat[_bin_]:
+                        _xyrepstat_ = self.bin_to_node_to_xyrepstat[_bin_][_node_]
+                        _xy_        = (_xyrepstat_[0], _xyrepstat_[1])
+                        if to_intersect.contains(Point(_xy_)): _set_.add(_node_)
+            return list(_set_)
+
+        #
+        # entitiesAtPoint() - Determine all the entities under a specific point
+        #
+        def entitiesAtPoint(self, xy):
+            _poly_ = Polygon([(xy[0]-5,xy[1]-5),(xy[0]-5,xy[1]+5),(xy[0]+5,xy[1]+5),(xy[0]+5,xy[1]-5)])            
+            return self.overlappingEntities(_poly_)
 
         #
         # __createPathDescriptionOfSelectedEntities__()
