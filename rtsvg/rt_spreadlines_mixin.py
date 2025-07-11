@@ -39,7 +39,7 @@ class RTSpreadLinesMixin(object):
     def spreadLines(self,
                     df,
                     relationships,
-                    node_focus,
+                    node_focus,                   # node or set of nodes
                     only_render_nodes    = None,  # set of nodes to render... if None, just render normally
                     ts_field             = None,  # Will attempt to guess based on datatypes
                     every                = '1d',  # "the every field for the group_by_dynamic" ... 1d, 1h, 1m
@@ -158,7 +158,11 @@ class RTSpreadLinesMixin(object):
             self.rt_self              = rt_self
             self.df                   = rt_self.copyDataFrame(kwargs['df'])
             self.relationships        = kwargs['relationships']
+
             self.node_focus           = kwargs['node_focus']
+            if   type(self.node_focus) is     list: self.node_focus = set(self.node_focus)
+            elif type(self.node_focus) is not set:  self.node_focus = set([self.node_focus])
+
             self.only_render_nodes    = kwargs['only_render_nodes']
             self.ts_field             = self.rt_self.guessTimestampField(self.df) if kwargs['ts_field'] is None else kwargs['ts_field']
             self.every                = kwargs['every']
@@ -226,37 +230,46 @@ class RTSpreadLinesMixin(object):
             self.bin_to_alter1s                = {} # [_bin_]['fm'] and [_bin_]['to']
             self.bin_to_alter2s                = {} # [_bin_]['fm'] and [_bin_]['to']
             self.discontinuity_count_after_bin = {} # counts the missing bins (because the focal node wasn't present)
+            self.bin_to_focal_nodes_present    = {}
             t0 = time.time()
             for i in range(len(self.relationships)):
                 _bin_            = 0
                 _fm_, _to_       = self.relationships[i]
                 _df_             = self.df.group_by_dynamic(self.ts_field, every=self.every, group_by=[_fm_,_to_]).agg()
-                _one_degree_     = _df_.filter((pl.col(_fm_) == self.node_focus) | (pl.col(_to_) == self.node_focus))
+                _one_degree_     = _df_.filter((pl.col(_fm_).is_in(self.node_focus)) | (pl.col(_to_).is_in(self.node_focus)))
                 _one_degree_set_ = set(_one_degree_[_fm_]) | set(_one_degree_[_to_])
                 _df_             = _df_.filter((pl.col(_fm_).is_in(_one_degree_set_)) | (pl.col(_to_).is_in(_one_degree_set_)))
                 _df_             = _df_.sort(self.ts_field)
                 for k, k_df in _df_.group_by_dynamic(self.ts_field, every=self.every):
                     _timestamp_   = k[0]
-                    _fm_is_focus_ = k_df.filter(pl.col(_fm_) == self.node_focus)
-                    _to_is_focus_ = k_df.filter(pl.col(_to_) == self.node_focus)
+                    _fm_is_focus_    = k_df.filter((pl.col(_fm_).is_in(self.node_focus)) & (~pl.col(_to_).is_in(self.node_focus)))
+                    _to_is_focus_    = k_df.filter((pl.col(_to_).is_in(self.node_focus)) & (~pl.col(_fm_).is_in(self.node_focus)))
+                    # if no focal nodes present, then this is a discontinuity
                     if len(_fm_is_focus_) == 0 and len(_to_is_focus_) == 0:
                         if _bin_ not in self.discontinuity_count_after_bin: self.discontinuity_count_after_bin[_bin_] = 0
                         self.discontinuity_count_after_bin[_bin_] += 1
                         continue
+                    # Record the timestamp information and set up the lookup sets
                     if _bin_ not in self.bin_to_timestamps:
-                        self.bin_to_alter1s   [_bin_] = {'fm': set(), 'to': set()}
-                        self.bin_to_alter2s   [_bin_] = {'fm': set(), 'to': set()}
-                        self.bin_to_timestamps[_bin_] = _timestamp_
+                        self.bin_to_alter1s   [_bin_]          = {'fm': set(), 'to': set()}
+                        self.bin_to_alter2s   [_bin_]          = {'fm': set(), 'to': set()}
+                        self.bin_to_timestamps[_bin_]          = _timestamp_
+                        self.bin_to_focal_nodes_present[_bin_] = set()
+                    # Record the 'to' bins
                     if len(_fm_is_focus_) > 0: 
                         _set_ = set(_fm_is_focus_[_to_])
                         self.bin_to_alter1s[_bin_]['to'] |= _set_
                         _alter2s_ = k_df.filter(pl.col(_to_).is_in(_set_) | (pl.col(_fm_).is_in(_set_)))
                         self.bin_to_alter2s[_bin_]['to'] |= set(_alter2s_[_fm_]) | set(_alter2s_[_to_])
+                    # Record the 'fm' bins
                     if len(_to_is_focus_) > 0: 
                         _set_ = set(_to_is_focus_[_fm_])
                         self.bin_to_alter1s[_bin_]['fm'] |= _set_
                         _alter2s_ = k_df.filter(pl.col(_fm_).is_in(_set_) | (pl.col(_to_).is_in(_set_)))
                         self.bin_to_alter2s[_bin_]['fm'] |= set(_alter2s_[_fm_]) | set(_alter2s_[_to_])
+                    # Record the focal nodes present
+                    self.bin_to_focal_nodes_present[_bin_] |= set(_fm_is_focus_[_fm_]) | set(_to_is_focus_[_to_])
+                    # Increment to the next bin
                     _bin_ += 1
             self.time_lu['alter_binning_step'] = time.time() - t0
 
@@ -266,11 +279,10 @@ class RTSpreadLinesMixin(object):
                 self.bin_to_alter1s[_bin_]['to'] -= self.bin_to_alter1s[_bin_]['fm']                                                                         # 'fm' side has the bidirectional nodes
                 self.bin_to_alter2s[_bin_]['fm'] -= (self.bin_to_alter1s[_bin_]['fm'] | self.bin_to_alter1s[_bin_]['to'])                                    # 'fm' side has the bidirectional nodes
                 self.bin_to_alter2s[_bin_]['to'] -= (self.bin_to_alter1s[_bin_]['fm'] | self.bin_to_alter1s[_bin_]['to'] | self.bin_to_alter2s[_bin_]['fm']) # 'to' side has the bidirectional nodes
-                _focal_set_ = set([self.node_focus])
-                self.bin_to_alter1s[_bin_]['fm'] -= _focal_set_
-                self.bin_to_alter1s[_bin_]['to'] -= _focal_set_
-                self.bin_to_alter2s[_bin_]['fm'] -= _focal_set_
-                self.bin_to_alter2s[_bin_]['to'] -= _focal_set_
+                self.bin_to_alter1s[_bin_]['fm'] -= self.node_focus
+                self.bin_to_alter1s[_bin_]['to'] -= self.node_focus
+                self.bin_to_alter2s[_bin_]['fm'] -= self.node_focus
+                self.bin_to_alter2s[_bin_]['to'] -= self.node_focus
             self.time_lu['deduplicate_alters'] = time.time() - t0
 
             # Create other variables (to be used later ... but make sure they exist now)
@@ -1033,7 +1045,8 @@ class RTSpreadLinesMixin(object):
         #
         def entityPosition(self, entity):
             _results_ = []
-            if entity == self.node_focus:
+            if entity in self.node_focus: # not correct anymore if this is a set... because a bin may be missing one or more within the set...
+                print('RTSpreadLines() - entityPosition() - may be incorrect for focal nodes')
                 for _bin_ in self.bin_to_node_to_xyrepstat:
                     _bounds_     = self.bin_to_bounds[_bin_]
                     _xy_         = ((_bounds_[0] + _bounds_[2])/2.0, 0.0)
