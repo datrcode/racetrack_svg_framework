@@ -79,7 +79,7 @@ class RTSpreadLinesMixin(object):
 
     class RTSpreadLines(RTComponent):
         #
-        # transform all fields (if they area t-field)
+        # transform all fields (if they are t-field)
         # - replace those fields w/ the new versions (i actually don't think the names change...)
         #
         def __transformFields__(self):
