@@ -310,47 +310,6 @@ class RTSpreadLinesMixin(object):
                 all_other_bins |= self.nodesInBin( _bin_)
             return nodes_in_this_bin & all_other_bins
 
-        #
-        # svgSketch() - produce a basic sketch of how many nodes would occur where in the final rendering...
-        #
-        def svgSketch(self):
-            w_usable, h_usable = self.w - 2*self.x_ins, self.h - 2*self.y_ins
-            y_mid              = self.y_ins + h_usable/2
-            bin_to_x           = {}
-            bin_inter_dist     = w_usable/(len(self.bin_to_alter1s) - 1)
-            for _bin_ in self.bin_to_alter1s: bin_to_x[_bin_] = self.x_ins + _bin_*bin_inter_dist
-            _y_diff_alter1s_, _y_diff_alter2s_ = h_usable/8, 2*h_usable/8
-
-            svg = [f'<svg x="0" y="0" width="{self.w}" height="{self.h}">']
-            svg.append(f'<rect x="0" y="0" width="{self.w}" height="{self.h}" fill="{self.rt_self.co_mgr.getTVColor("background","default")}" />')
-
-            svg.append(f'<line x1="{self.x_ins}" y1="{y_mid}" x2="{self.x_ins+w_usable}" y2="{y_mid}" stroke="{self.rt_self.co_mgr.getTVColor("axis","major")}" stroke-width="4" />')        
-            for _bin_ in bin_to_x:
-                _x_ = bin_to_x[_bin_]
-                svg.append(f'<line x1="{_x_}" y1="{self.y_ins}" x2="{_x_}" y2="{self.y_ins + h_usable}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="1.0" />')
-                svg.append(f'<circle cx="{_x_}" cy="{y_mid}" r="5" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="1.0" fill="{self.rt_self.co_mgr.getTVColor("data","default")}" />')
-                _date_str_ = self.bin_to_timestamps[_bin_].strftime(self.__dateFormat__())
-                svg.append(self.rt_self.svgText(_date_str_, _x_-2, self.y_ins + h_usable + 4, self.rt_self.co_mgr.getTVColor('axis','minor'), anchor='begin', rotation=270))
-                if _bin_ in self.bin_to_alter1s and 'fm' in self.bin_to_alter1s[_bin_]: # top of the image
-                    _y_         = y_mid - _y_diff_alter1s_
-                    _num_nodes_ = len(self.bin_to_alter1s[_bin_]['fm'])
-                    svg.append(self.rt_self.svgText(str(_num_nodes_), _x_+2, _y_ + 4, 'black', anchor='begin', rotation=90))
-                    if _bin_ in self.bin_to_alter2s and 'fm' in self.bin_to_alter2s[_bin_]:
-                        _y_         = y_mid - _y_diff_alter2s_
-                        _num_nodes_ = len(self.bin_to_alter2s[_bin_]['fm'])
-                        svg.append(self.rt_self.svgText(str(_num_nodes_), _x_+2, _y_ + 4, 'black', anchor='begin', rotation=90))
-                if _bin_ in self.bin_to_alter1s and 'to' in self.bin_to_alter1s[_bin_]: # bottom of the image
-                    _y_         = y_mid + _y_diff_alter1s_
-                    _num_nodes_ = len(self.bin_to_alter1s[_bin_]['to'])
-                    svg.append(self.rt_self.svgText(str(_num_nodes_), _x_+2, _y_ + 4, 'black', anchor='begin', rotation=90))
-                    if _bin_ in self.bin_to_alter2s and 'to' in self.bin_to_alter2s[_bin_]:
-                        _y_         = y_mid + _y_diff_alter2s_
-                        _num_nodes_ = len(self.bin_to_alter2s[_bin_]['to'])
-                        svg.append(self.rt_self.svgText(str(_num_nodes_), _x_+2, _y_ + 4, 'black', anchor='begin', rotation=90))
-
-            svg.append('</svg>')
-            return ''.join(svg)
-
         # __dateFormat__() - various date formats based on the value of self.every
         def __dateFormat__(self):
             if   'd' in self.every: return '%Y-%m-%d'
