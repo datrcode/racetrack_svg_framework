@@ -274,7 +274,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       #
       _scripts = {
             'render':"""
-                  console.log('render_0');
                   mod.innerHTML            = data.mod_inner;
                   state.x0_drag            = state.y0_drag = -10;
                   state.x1_drag            = state.y1_drag =  -5;
@@ -284,7 +283,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   data.ctrlkey             = false;
                   state.drag_op            = false;
                   svgparent.focus(); // else it loses focus on every render...
-                  console.log('render_1');
             """,
 
             'myOnKeyPress':"""
@@ -379,10 +377,8 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             """,
 
             'mod_inner':"""
-                  console.log('mod_inner_0')
                   mod.innerHTML = data.mod_inner;
                   svgparent.focus(); // else it loses focus on every render...
-                  console.log('mod_inner_1')
             """,
 
             'selectionpath':"""
