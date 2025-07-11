@@ -203,6 +203,9 @@ class RTSpreadLinesMixin(object):
             self.time_lu['consolidate_relationships'] = time.time() - t0
 
             # Remap the node_focus field (if it's a set)
+            # ... this won't work if we want any level of fidelity with which focus nodes were in a specific bin
+            # ... so... for example, this won't work if we want the node selection highlights to be accurate
+            '''
             if type(self.node_focus) is set:
                 for i in range(len(self.relationships)):
                     for j in range(2):
@@ -215,6 +218,7 @@ class RTSpreadLinesMixin(object):
                 self.node_focus     = '__focus__'
             else:
                 self.node_focus_set = set([self.node_focus])
+            '''
 
             # Binning Stage
             self.df = self.df.sort(self.ts_field)
@@ -618,6 +622,9 @@ class RTSpreadLinesMixin(object):
             for i in range(bin):                                       _befores_ |= self.nodesInBin(i)
             for i in range(bin+1, len(self.bin_to_timestamps.keys())): _afters_  |= self.nodesInBin(i)
             svg         = [f'<circle cx="{x}" cy="{y}" r="{r_pref}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="0.4" fill="{self.rt_self.co_mgr.getTVColor("data","default")}" />']
+            _xyrepstat_ = (x, y, 'focus', 'continuous', bin, None, None, (r_pref)) # middlenotation
+
+
             max_alter_h = max_h/5.0
 
             node_2_xyrs = dict()
@@ -948,6 +955,9 @@ class RTSpreadLinesMixin(object):
             if self.vx0 is None: self._repr_svg_() # force a render
             return self.vx0, self.vy0, self.vx1, self.vy1
 
+        #
+        # formatTimestamp()
+        #
         def formatTimestamp(self, timestamp):
             if   'h' in self.every: _format_ = "%Y-%m-%d %H"
             elif 'd' in self.every: _format_ = "%Y-%m-%d"
