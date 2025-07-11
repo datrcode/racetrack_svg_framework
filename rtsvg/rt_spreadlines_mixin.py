@@ -592,9 +592,17 @@ class RTSpreadLinesMixin(object):
             _befores_, _afters_    = set(), set()
             for i in range(bin):                                       _befores_ |= self.nodesInBin(i)
             for i in range(bin+1, len(self.bin_to_timestamps.keys())): _afters_  |= self.nodesInBin(i)
-            svg         = [f'<circle cx="{x}" cy="{y}" r="{r_pref}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="0.4" fill="{self.rt_self.co_mgr.getTVColor("data","default")}" />']
-            _xyrepstat_ = (x, y, 'focus', 'continuous', bin, None, None, (r_pref)) # middlenotation
-
+            
+            # Render the focal node(s) first
+            if len(self.bin_to_focal_nodes_present[bin]) == 1: 
+                _svg_rep_ = 'single'
+                svg = [f'<circle cx="{x}" cy="{y}" r="{r_pref}" stroke="{self.rt_self.co_mgr.getTVColor("axis","minor")}" stroke-width="0.4" fill="{self.rt_self.co_mgr.getTVColor("data","default")}" />']
+            else:                                              
+                _svg_rep_ = 'cloud'
+                svg =[self.rt_self.iconCloud(x,y, fg='#e0e0e0', bg='#e0e0e0')]
+                svg.append(self.rt_self.svgText(str(len(self.bin_to_focal_nodes_present[bin])), x, y + 4, 'black', anchor='middle'))
+            _xyrepstat_ = (x, y, _svg_rep_, 'continuous', bin, None, None, (r_pref)) # middlenotation
+            for _node_ in self.bin_to_focal_nodes_present[bin]: self.bin_to_node_to_xyrepstat[bin][_node_] = _xyrepstat_
 
             max_alter_h = max_h/5.0
 
@@ -1004,23 +1012,13 @@ class RTSpreadLinesMixin(object):
         #
         def entityPosition(self, entity):
             _results_ = []
-            if entity in self.node_focus: # not correct anymore if this is a set... because a bin may be missing one or more within the set...
-                print('RTSpreadLines() - entityPosition() - may be incorrect for focal nodes')
-                for _bin_ in self.bin_to_node_to_xyrepstat:
-                    _bounds_     = self.bin_to_bounds[_bin_]
-                    _xy_         = ((_bounds_[0] + _bounds_[2])/2.0, 0.0)
-                    _svg_markup_ = f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{self.r_pref}" stroke="#000000" stroke-width="1.25" fill="none"/>'
+            for _bin_ in self.bin_to_node_to_xyrepstat:
+                if entity in self.bin_to_node_to_xyrepstat[_bin_]:
+                    _xyrepstat_ = self.bin_to_node_to_xyrepstat[_bin_][entity]
+                    _xy_        = (_xyrepstat_[0], _xyrepstat_[1])
+                    if _xyrepstat_[2] == 'single': _svg_markup_ = f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{_xyrepstat_[7]}" stroke="#000000" stroke-width="1.25" fill="none"/>'
+                    else:                          _svg_markup_ = self.rt_self.iconCloud(_xy_[0], _xy_[1], fg='#e0e0e0', bg='#e0e0e0')
                     rtep = RTEntityPosition(entity, self.rt_self, self, _xy_, (_xy_[0], _xy_[1], 0.0, 1.0), 
                                             None, _svg_markup_, self.widget_id)
                     _results_.append(rtep)
-            else:
-                for _bin_ in self.bin_to_node_to_xyrepstat:
-                    if entity in self.bin_to_node_to_xyrepstat[_bin_]:
-                        _xyrepstat_ = self.bin_to_node_to_xyrepstat[_bin_][entity]
-                        _xy_        = (_xyrepstat_[0], _xyrepstat_[1])
-                        if _xyrepstat_[2] == 'single': _svg_markup_ = f'<circle cx="{_xy_[0]}" cy="{_xy_[1]}" r="{_xyrepstat_[7]}" stroke="#000000" stroke-width="1.25" fill="none"/>'
-                        else:                          _svg_markup_ = self.rt_self.iconCloud(_xy_[0], _xy_[1], fg='#e0e0e0', bg='#e0e0e0')
-                        rtep = RTEntityPosition(entity, self.rt_self, self, _xy_, (_xy_[0], _xy_[1], 0.0, 1.0), 
-                                                None, _svg_markup_, self.widget_id)
-                        _results_.append(rtep)
             return _results_
