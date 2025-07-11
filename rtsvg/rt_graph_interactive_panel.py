@@ -1219,11 +1219,11 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         """,
         'selectionpath':"""
             selectionlayer.setAttribute("d", data.selectionpath);
-            svgparent.focus(); // else it loses focus on every render...
+            // svgparent.focus(); // else it loses focus on every render...
         """,
         'info_str': """
             infostr.innerHTML = data.info_str;
-            svgparent.focus(); // else it loses focus on every render...
+            // svgparent.focus(); // else it loses focus on every render...
         """,
         'myUpdateDragRect':"""
             if (state.drag_op) {

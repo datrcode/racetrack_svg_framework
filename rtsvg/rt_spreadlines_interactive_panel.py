@@ -387,7 +387,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
 
             'selectionpath':"""
                   selectionlayer.setAttribute("d", data.selectionpath);
-                  svgparent.focus(); // else it loses focus on every render...
+                  // svgparent.focus(); // else it loses focus on every render...
             """,
             
             'myUpdateDragRect':"""
