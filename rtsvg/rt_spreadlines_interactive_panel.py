@@ -70,14 +70,14 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
     <svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
     <rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"
-          onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"
-          onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />
+          onmousedown="${script('myOnMouseDown')}"      onmousemove="${script('myOnMouseMove')}"
+          onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />
     <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"
-          onmousedown="${script('downAllEntities')}" onmousemove="${script('moveEverything')}" 
-          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />
+          onmousedown="${script('downAllEntities')}" onmousemove="${script('myOnMouseMove')}" 
+          onmouseup="${script('myOnMouseUp')}"      onmousewheel="${script('myOnMouseWheel')}" />
     <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none"
-          onmousedown="${script('downMove')}"        onmousemove="${script('moveEverything')}"
-          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />
+          onmousedown="${script('downMove')}"        onmousemove="${script('myOnMouseMove')}"
+          onmouseup="${script('myOnMouseUp')}"      onmousewheel="${script('myOnMouseWheel')}" />
 </svg>
 """
 
@@ -122,14 +122,14 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                               '''<svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>  ''' + \
                               '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />  ''' + \
                               '''<rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"  ''' + \
-                              '''     onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"  ''' + \
-                              '''     onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />  ''' + \
+                              '''     onmousedown="${script('myOnMouseDown')}"       onmousemove="${script('myOnMouseMove')}"  ''' + \
+                              '''     onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />  ''' + \
                               '''<path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"  ''' + \
-                              '''     onmousedown="${script('downAllEntities')}" onmousemove="${script('moveEverything')}"   ''' + \
-                              '''     onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />  ''' + \
+                              '''     onmousedown="${script('downAllEntities')}" onmousemove="${script('myOnMouseMove')}"   ''' + \
+                              '''     onmouseup="${script('myOnMouseUp')}"      onmousewheel="${script('myOnMouseWheel')}" />  ''' + \
                               '''<path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none"  ''' + \
-                              '''     onmousedown="${script('downMove')}"        onmousemove="${script('moveEverything')}"  ''' + \
-                              '''     onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />  ''' + \
+                              '''     onmousedown="${script('downMove')}"        onmousemove="${script('myOnMouseMove')}"  ''' + \
+                              '''     onmouseup="${script('myOnMouseUp')}"      onmousewheel="${script('myOnMouseWheel')}" />  ''' + \
                               '''</svg>  '''
 
             super().__init__(**kwargs)
@@ -311,7 +311,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   state.x_trans = (data.vx + data.vw/2) + (state.x_raw - sw/2)*_ratio_; state.y_trans = (data.vy + data.vh/2) + (state.y_raw - sh/2)*_ratio_;
             """,
 
-            'moveEverything':"""
+            'myOnMouseMove':"""
                   data.ctrlkey   = event.ctrlKey;
                   data.shiftkey  = event.shiftKey;
 
@@ -334,7 +334,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                               state.x1_drag            = state.x_trans; state.y1_drag            = state.y_trans;
                   }
             """,
-            'downSelect':"""
+            'myOnMouseDown':"""
                   state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
                   
                   if (event.button == 0) {
@@ -355,7 +355,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   }
             """,
 
-            'upEverything':"""
+            'myOnMouseUp':"""
                   if (event.button == 0) {
                         state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
                         state.x1_drag         = state.x_trans; state.y1_drag         = state.y_trans;
@@ -370,7 +370,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   }
             """,
 
-            'mouseWheel':"""
+            'myOnMouseWheel':"""
                   event.preventDefault();
                   state.x_raw = event.offsetX; state.y_raw = event.offsetY; self.transCoords();
                   data.wheel_x = state.x_trans; data.wheel_y = state.y_trans;
