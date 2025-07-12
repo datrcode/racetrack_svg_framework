@@ -244,6 +244,7 @@ class RTSpreadLinesMixin(object):
                     _timestamp_   = k[0]
                     _fm_is_focus_    = k_df.filter((pl.col(_fm_).is_in(self.node_focus)) & (~pl.col(_to_).is_in(self.node_focus)))
                     _to_is_focus_    = k_df.filter((pl.col(_to_).is_in(self.node_focus)) & (~pl.col(_fm_).is_in(self.node_focus)))
+                    _fm_to_conn_     = k_df.filter((pl.col(_to_).is_in(self.node_focus)) & ( pl.col(_fm_).is_in(self.node_focus)))
                     # if no focal nodes present, then this is a discontinuity
                     if len(_fm_is_focus_) == 0 and len(_to_is_focus_) == 0:
                         if _bin_ not in self.discontinuity_count_after_bin: self.discontinuity_count_after_bin[_bin_] = 0
@@ -268,7 +269,7 @@ class RTSpreadLinesMixin(object):
                         _alter2s_ = k_df.filter(pl.col(_fm_).is_in(_set_) | (pl.col(_to_).is_in(_set_)))
                         self.bin_to_alter2s[_bin_]['fm'] |= set(_alter2s_[_fm_]) | set(_alter2s_[_to_])
                     # Record the focal nodes present
-                    self.bin_to_focal_nodes_present[_bin_] |= set(_fm_is_focus_[_fm_]) | set(_to_is_focus_[_to_])
+                    self.bin_to_focal_nodes_present[_bin_] |= set(_fm_is_focus_[_fm_]) | set(_to_is_focus_[_to_]) | set(_fm_to_conn_[_fm_]) | set(_fm_to_conn_[_to_])
                     # Increment to the next bin
                     _bin_ += 1
             self.time_lu['alter_binning_step'] = time.time() - t0
