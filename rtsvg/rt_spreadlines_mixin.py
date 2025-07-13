@@ -1008,10 +1008,10 @@ class RTSpreadLinesMixin(object):
             return self.last_render
 
         #
-        # entityPosition() - return the position(s) of an entity
+        # entityPositions() - return the position(s) of an entity
         # - an entity may exist in more than one bin necessitating a list
         #
-        def entityPosition(self, entity):
+        def entityPositions(self, entity):
             _results_ = []
             for _bin_ in self.bin_to_node_to_xyrepstat:
                 if entity in self.bin_to_node_to_xyrepstat[_bin_]:
