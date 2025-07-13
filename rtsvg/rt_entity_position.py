@@ -34,6 +34,13 @@ class RTEntityPosition(object):
         self.xy_offset             = xy_offset # for multi component layouts
 
     #
+    # __str__() - string representation
+    #
+    def __str__(self):
+        return f'"{self.entity}" @ {self.point_to_xy} | {self.svg_id}'
+    def __repr__(self): return self.__str__()
+
+    #
     # xy() - entity position
     #
     def xy(self):
