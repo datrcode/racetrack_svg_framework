@@ -1713,6 +1713,7 @@ class RTLinkNodeMixin(object):
 
                             # iterate over the nodes
                             for k,k_df in gb:
+                                k_unwrapped = k[0] if type(k) is tuple and len(k) == 1 else k
                                 node_str = self.rt_self.nodeStringAndFillPos(k, self.pos)
 
                                 # Prevents duplicate renderings
@@ -1821,16 +1822,16 @@ class RTLinkNodeMixin(object):
                                         svg_markup = self.rt_self.__overwriteSVGOriginPosition__(_shape, (x,y), _svg_w, _svg_h)
                                         svg_markup = self.rt_self.__overwriteSVGID__(_shape, self.nodeSVGID(k))
                                         svg.append(svg_markup)
-                                        self.node_to_svg_markup[str(k)] = svg_markup
+                                        self.node_to_svg_markup[str(k_unwrapped)] = svg_markup
                                         _sz = _svg_h/2 # probably for the label?
 
                                     # Otherwise, call the super class shape renderer...
                                     else:
                                         svg_markup = self.rt_self.renderShape(_shape, x, y, _sz, _co, _co_border, self.node_opacity, self.nodeSVGID(k))
                                         svg.append(svg_markup)
-                                        self.node_to_svg_markup[str(k)] = self.rt_self.renderShape(_shape, x, y, _sz) # unadorned
+                                        self.node_to_svg_markup[str(k_unwrapped)] = self.rt_self.renderShape(_shape, x, y, _sz) # unadorned
                                         if self.selected_entities is not None and node_str in self.selected_entities:
-                                            selected_svg.append(self.node_to_svg_markup[str(k)])
+                                            selected_svg.append(self.node_to_svg_markup[str(k_unwrapped)])
                                         
                                     # Track state
                                     if self.track_state:
