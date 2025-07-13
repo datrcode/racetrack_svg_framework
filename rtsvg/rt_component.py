@@ -55,7 +55,7 @@ class RTComponent(object):
         #
         # - return the positions of the entity ... rendering had to have happened first
         def entityPositions(self, entity):
-             return []
+             raise NotImplementedError('RTComponent.entityPositions() not implemented')
 
         #
         # selectedEntities() - return the currently selected entities
