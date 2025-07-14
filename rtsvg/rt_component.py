@@ -58,6 +58,15 @@ class RTComponent(object):
              raise NotImplementedError('RTComponent.entityPositions() not implemented')
 
         #
+        # worldXYToScreenXY() - convert from widget coordinates to SVG coordinates
+        # - "world xy to screen xy coordinates"
+        # - developed for the RTSpreadLines component -- that's the only one that currently uses a viewBox transform
+        # - by default, returns the input -- i.e., the world coordinates are equivalent to the screen [SVG] coordinates
+        #
+        def worldXYToScreenXY(self, wxy):
+             return wxy
+
+        #
         # selectedEntities() - return the currently selected entities
         # - two types of interaction *can* be supported -- entity-based or record (row)-based
         # - this method is for the former -- i.e., entity-based selection via interaction
