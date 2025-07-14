@@ -935,6 +935,31 @@ class RTSpreadLinesMixin(object):
             if self.vx0 is None: self._repr_svg_() # force a render
             return self.vx0, self.vy0, self.vx1, self.vy1
 
+
+        #
+        # worldXYToScreenXY() - convert from widget coordinates to SVG coordinates
+        # 
+        # wx = (vx + vx/2.0) + (sx - self.w/2.0)*_ratio_
+        # wx - (vx + vx/2.0) = (sx - self.w/2.0)*_ratio_
+        # self.w/2.0 + (wx - (vx + vx/2.0))/_ratio_ = sx
+        #
+        def worldXYToScreenXY(self, wxy):
+            vx, vy, vw, vh = self.viewBoxRect()
+            if ((vw/vh) > (self.w/self.h)): _ratio_ = vw/self.w
+            else:                           _ratio_ = vh/self.h
+            return self.w/2.0 + (wxy[0] - (vx + vx/2.0))/_ratio_, self.h/2.0 + (wxy[1] - (vy + vy/2.0))/_ratio_
+
+        #
+        # screenXYToWorldXY() - convert from SVG coordinates to widget coordinates
+        # - adapted from the rt_spreadlines_interactive_panel transform
+        # - inverse of the above function
+        #
+        def screenXYToWorldXY(self, sxy):
+            vx, vy, vw, vh = self.viewBoxRect()
+            if ((vw/vh) > (self.w/self.h)): _ratio_ = vw/self.w
+            else:                           _ratio_ = vh/self.h
+            return (vx + vx/2.0) + (sxy[0] - self.w/2.0)*_ratio_, (vy + vy/2.0) + (sxy[1] - self.h/2.0)*_ratio_ 
+
         #
         # formatTimestamp()
         #

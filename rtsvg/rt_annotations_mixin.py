@@ -977,10 +977,8 @@ class RTAnnotationsMixin(object):
                     svg.append(f'<rect x="{x-8}" y="{y-txt_h}" width="{max_line_w+16}" height="{6+y_sub-y}" fill="none" stroke="{_color_}" stroke-width="0.4" rx="15" />')
 
                 # Determine the attachment point
-                if x < _instance_x_:
-                    x_attach = x + max_line_w + 8
-                else:
-                    x_attach = x - 8
+                if x < _instance_x_: x_attach = x + max_line_w + 8
+                else:                x_attach = x - 8
                 y_attach = y - txt_h + (y_sub - y)/2
 
                 # For all positions draw a line
@@ -988,7 +986,10 @@ class RTAnnotationsMixin(object):
                     _color_  = self.co_mgr.getTVColor("label","defaultfg")
                     _xy_     = _position_.xy()
                     _xy_off_ = _position_.xyOffset()
-                    svg.append(f'<line x1="{x_attach}" y1="{y_attach}" x2="{_xy_[0]+_xy_off_[0]+_instance_x_}" y2="{_xy_[1]+_xy_off_[1]+y_ins}" stroke="{_color_}" stroke-width="1.5" />')
+
+                    _sxy_    = vis_instance.worldXYToScreenXY((_xy_[0]+_xy_off_[0], _xy_[1]+_xy_off_[1]))
+
+                    svg.append(f'<line x1="{x_attach}" y1="{y_attach}" x2="{_sxy_[0]+_instance_x_}" y2="{_sxy_[1]+y_ins}" stroke="{_color_}" stroke-width="1.5" />')
 
                     if shape_outline_size is not None:
                         _unadorned_ = _position_.svg()
