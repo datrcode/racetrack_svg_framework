@@ -272,6 +272,49 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             if (all_ents): self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
             if (sel_ents): self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
 
+
+      #
+      # popStack() - as long as there are items on the stack, go up the stack
+      #
+      def popStack(self, callers=None):
+            if self.df_level == 0: return
+            if callers is not None and self in callers: return
+            if callers is None: callers = set([self])
+            else:               callers.add(self)
+            self.df_level -= 1
+            self.__refreshView__()
+            for c in self.companions:
+                  if isinstance(c, RTStackable): c.popStack(callers=callers)
+
+      #
+      # setStackPosition() - set to a specific position
+      #
+      def setStackPostion(self, i_found, callers=None):
+            if i_found < 0 or i_found >= len(self.dfs_layout): return
+            if callers is not None and self in callers: return
+            if callers is None: callers = set([self])
+            else:               callers.add(self)
+            if i_found < 0 or i_found >= len(self.dfs_layout): return
+            self.df_level = i_found
+            self.__refreshView__()
+            for c in self.companions:
+                  if isinstance(c, RTStackable): c.setStackPosition(i_found, callers=callers)
+
+      #
+      # pushStack() - push a dataframe onto the stack
+      #
+      def pushStack(self, df, g=None, callers=None):
+            if callers is not None and self in callers: return
+            if callers is None: callers = set([self])
+            else:               callers.add(self)
+            _sl_ = self.__renderView__(df)
+            self.dfs        .append(df)
+            self.dfs_layout .append(_sl_)
+            self.df_level += 1
+            self.__refreshView__()
+            for c in self.companions:
+                  if isinstance(c, RTStackable): c.pushStack(df, callers=callers)
+
       #
       # Panel Javascript Definitions
       #
