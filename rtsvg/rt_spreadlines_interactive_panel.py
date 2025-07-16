@@ -188,6 +188,9 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             self.lock.acquire()
             try:
                   _sp_ = self.dfs_layout[self.df_level]
+                  if self.key_op_finished == 'f' or self.key_op_finished == 'F':
+                        if len(self.selected_entities) > 0:
+                              pass
             finally:
                   self.key_op_finished = ''
                   self.lock.release()
@@ -293,6 +296,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   data.ctrlkey  = event.ctrlKey;
                   data.shiftkey = event.shiftKey;
                   data.last_key = event.key;
+                  if (event.key == "f") { data.key_op_finished = 'f';  } // set the focus to the selected entities
                   svgparent.focus(); // else it loses focus on every render...
             """,
 
