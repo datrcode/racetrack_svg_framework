@@ -939,15 +939,22 @@ class RTSpreadLinesMixin(object):
         #
         # worldXYToScreenXY() - convert from widget coordinates to SVG coordinates
         # 
-        # wx = (vx + vx/2.0) + (sx - self.w/2.0)*_ratio_
-        # wx - (vx + vx/2.0) = (sx - self.w/2.0)*_ratio_
-        # self.w/2.0 + (wx - (vx + vx/2.0))/_ratio_ = sx
+        # wx = (vx + vw/2.0) + (sx - self.w/2.0)*_ratio_
+        # wx - (vx + vw/2.0) = (sx - self.w/2.0)*_ratio_
+        # self.w/2.0 + (wx - (vx + vw/2.0))/_ratio_ = sx
         #
         def worldXYToScreenXY(self, wxy):
             vx, vy, vw, vh = self.viewBoxRect()
             if ((vw/vh) > (self.w/self.h)): _ratio_ = vw/self.w
             else:                           _ratio_ = vh/self.h
-            return self.w/2.0 + (wxy[0] - (vx + vx/2.0))/_ratio_, self.h/2.0 + (wxy[1] - (vy + vy/2.0))/_ratio_
+            return self.w/2.0 + (wxy[0] - (vx + vw/2.0))/_ratio_, self.h/2.0 + (wxy[1] - (vy + vh/2.0))/_ratio_
+
+        #
+        # from the javascript code 
+        #
+        #sw        = svgparent.getAttribute("width"); sh        = svgparent.getAttribute("height"); _ratio_   = data.vw/sw;
+        #if ((data.vw/data.vh) > (sw/sh)) { _ratio_ = data.vw/sw; } else { _ratio_ = data.vh/sh;}
+        #state.x_trans = (data.vx + data.vw/2) + (state.x_raw - sw/2)*_ratio_; state.y_trans = (data.vy + data.vh/2) + (state.y_raw - sh/2)*_ratio_;
 
         #
         # screenXYToWorldXY() - convert from SVG coordinates to widget coordinates
@@ -958,7 +965,7 @@ class RTSpreadLinesMixin(object):
             vx, vy, vw, vh = self.viewBoxRect()
             if ((vw/vh) > (self.w/self.h)): _ratio_ = vw/self.w
             else:                           _ratio_ = vh/self.h
-            return (vx + vx/2.0) + (sxy[0] - self.w/2.0)*_ratio_, (vy + vy/2.0) + (sxy[1] - self.h/2.0)*_ratio_ 
+            return (vx + vw/2.0) + (sxy[0] - self.w/2.0)*_ratio_, (vy + vh/2.0) + (sxy[1] - self.h/2.0)*_ratio_ 
 
         #
         # formatTimestamp()
