@@ -134,8 +134,8 @@ t   | consolidate all nodes at the mouse location
     | shift-t       | horizontally
     | ctrl-t        | vertically
 u   | undo last layout action (limited undo's)
-x   | remove selected nodes (push stack)
-    | shift-x       | pop stack
+x|p | remove selected nodes (push stack)
+    | shift-x|p     | pop stack
 y   | line layout
     | shift-y       | horizontally
     | ctrl-y        | vertically
@@ -841,8 +841,8 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             # 'x' - remove selected nodes from the dataset (push the stack)
             # ... 'X' restore removed nodes (pop the stack)
             #
-            elif self.key_op_finished == 'x' or self.key_op_finished == 'X':
-                if self.key_op_finished == 'X' and self.df_level > 0: # pop the stack
+            elif self.key_op_finished == 'x' or self.key_op_finished == 'X' or self.key_op_finished == 'p' or self.key_op_finished == 'P':
+                if (self.key_op_finished == 'X' or self.key_op_finished == 'P') and self.df_level > 0: # pop the stack
                     self.popStack()
 
                 elif len(self.selected_entities) > 0: # push the stack
@@ -1033,6 +1033,8 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             else if (event.key == "g") { state.layout_op        = true; // Mouse press is layout shape
                                          state.layout_line_flag = false; } 
             else if (event.key == "G") { data.key_op_finished = 'G';  } // Iterate through layout shapes
+            else if (event.key == "p") { data.key_op_finished = 'p';  } // Push to stack
+            else if (event.key == "P") { data.key_op_finished = 'P';  } // Pop from stack
             else if (event.key == "q") { data.key_op_finished = 'q';  } // Invert selection
             else if (event.key == "Q") { data.key_op_finished = 'Q';  } // Select common neighbors to selected nodes
             else if (event.key == "s") { data.key_op_finished = 's';  } // Set sticky labels
