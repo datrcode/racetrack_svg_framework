@@ -651,15 +651,21 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
 
         _ln_ = self.__renderView__(df)
         _ln_.applyViewConfiguration(self.dfs_layout[self.df_level])
+
+        # This is necessary to shrink the stack
         if len(self.dfs_layout) > (self.df_level+1):
             new_dfs, new_dfs_layout, new_graphs = [], [], []
             for i in range(self.df_level+1):
                 new_dfs.append(self.dfs[i]), new_dfs_layout.append(self.dfs_layout[i]), new_graphs.append(self.graphs[i])
             self.dfs, self.dfs_layout, self.graphs = new_dfs, new_dfs_layout, new_graphs
+
+        # Render the new view and update all of the stack variables
         self.dfs        .append(df)
         self.dfs_layout .append(_ln_)
         self.graphs     .append(g)
         self.df_level += 1
+
+        # Update selected entities based on what's available
         self.setSelectedEntitiesAndNotifyOthers(self.selected_entities & g.nodes())
         self.__refreshView__()
 
@@ -838,8 +844,8 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                     for i in range(len(self.dfs_layout)):
                         if i != self.df_level: self.dfs_layout[i].applyViewConfiguration(_ln_)
             #
-            # 'x' - remove selected nodes from the dataset (push the stack)
-            # ... 'X' restore removed nodes (pop the stack)
+            # 'x'|'p' - remove selected nodes from the dataset (push the stack)
+            # ... 'X'|'P' restore removed nodes (pop the stack)
             #
             elif self.key_op_finished == 'x' or self.key_op_finished == 'X' or self.key_op_finished == 'p' or self.key_op_finished == 'P':
                 if (self.key_op_finished == 'X' or self.key_op_finished == 'P') and self.df_level > 0: # pop the stack

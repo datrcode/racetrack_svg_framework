@@ -16,6 +16,7 @@
 import polars as pl
 
 import threading
+import copy
 
 import panel as pn
 import param
@@ -104,6 +105,8 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             self.df_level          = 0
             self.dfs               = [self.df]
             self.dfs_layout        = [self.__renderView__(self.df)]
+            self.graphs            = [self.rt_self.createNetworkXGraph(self.df, sl_params['relationships'])]
+
             # 
             # So... the following has to *NOT* happen here... if it does (and the view gets the initial svg), then
             # the svg won't get updated later on when it's re-set to the same value...  because if the value
@@ -188,9 +191,27 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             self.lock.acquire()
             try:
                   _sp_ = self.dfs_layout[self.df_level]
-                  if self.key_op_finished == 'f' or self.key_op_finished == 'F':
+                  #
+                  # 
+                  #
+                  if self.key_op_finished == 'f':
                         if len(self.selected_entities) > 0:
                               pass
+
+                  #
+                  # 'x'|'p' - remove selected nodes from the dataset (push the stack)
+                  # ... 'X'|'P' restore removed nodes (pop the stack)
+                  #                  
+                  elif self.key_op_finished == 'x' or self.key_op_finished == 'X' or self.key_op_finished == 'p' or self.key_op_finished == 'P':
+                        if (self.key_op_finished == 'X' or self.key_op_finished == 'P') and self.df_level > 0: # pop the stack
+                              self.popStack()
+
+                        elif len(self.selected_entities) > 0: # push the stack
+                              _g_ = copy.deepcopy(self.graphs[self.df_level])
+                              for _entity_ in self.selected_entities: _g_.remove_node(_entity_)
+                              _df_ = self.rt_self.filterDataFrameByGraph(self.dfs[self.df_level], self.sl_params['relationships'], _g_)
+                              if len(_df_) > 0: self.pushStack(_df_, _g_)
+
             finally:
                   self.key_op_finished = ''
                   self.lock.release()
@@ -307,11 +328,28 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
             if callers is not None and self in callers: return
             if callers is None: callers = set([self])
             else:               callers.add(self)
+
+            if g is None: g = self.rt_self.createNetworkXGraph(df, self.sl_params['relationships'])
+
+            # This is necessary to shrink the stack
+            if len(self.dfs_layout) > (self.df_level+1):
+                  new_dfs, new_dfs_layout, new_graphs = [], [], []
+                  for i in range(self.df_level+1):
+                        new_dfs.append(self.dfs[i]), new_dfs_layout.append(self.dfs_layout[i]), new_graphs.append(self.graphs[i])
+                  self.dfs, self.dfs_layout, self.graphs = new_dfs, new_dfs_layout, new_graphs
+
+            # Render the new view and update all of the stack variables
             _sl_ = self.__renderView__(df)
             self.dfs        .append(df)
             self.dfs_layout .append(_sl_)
+            self.graphs     .append(g)
             self.df_level += 1
+
+            # Refresh the view
+            self.setSelectedEntitiesAndNotifyOthers(self.selected_entities & g.nodes())
             self.__refreshView__()
+
+            # Let companion vizualizations know
             for c in self.companions:
                   if isinstance(c, RTStackable): c.pushStack(df, callers=callers)
 
@@ -339,7 +377,11 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   data.ctrlkey  = event.ctrlKey;
                   data.shiftkey = event.shiftKey;
                   data.last_key = event.key;
-                  if (event.key == "f") { data.key_op_finished = 'f';  } // set the focus to the selected entities
+                  if      (event.key == "f") { data.key_op_finished = "f"; } // set the focus to the selected entities
+                  else if (event.key == "p") { data.key_op_finished = "p"; }
+                  else if (event.key == "P") { data.key_op_finished = "P"; }
+                  else if (event.key == "x") { data.key_op_finished = "x"; }
+                  else if (event.key == "X") { data.key_op_finished = "X"; }
                   svgparent.focus(); // else it loses focus on every render...
             """,
 
