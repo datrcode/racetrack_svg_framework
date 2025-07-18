@@ -176,8 +176,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     # - rewritten in constructor with width and height filled in
     #
     _template = """
-<svg id="svgparent" width="600" height="400" tabindex="0" 
-     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
+<svg id="svgparent" width="600" height="400" tabindex="0" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
     <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
     <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
@@ -244,7 +243,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
 
         # Recast the template with the width's and height's
         self._template = '''<svg id="svgparent" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" tabindex="0" ''' + \
-                         '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}"> ''' + \
+                         '''     onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}"> ''' + \
                          '''    <svg id="mod" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''"> ${mod_inner} </svg> ''' + \
                          '''    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" /> ''' + \
                          '''    <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" /> ''' + \
@@ -1042,8 +1041,6 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 data.has_focus = false;
         """,
         
-        'keyPress':"""        
-        """,
         'keyDown':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
