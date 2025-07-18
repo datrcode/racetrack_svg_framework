@@ -67,7 +67,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       #
       _template = """
 <svg id="svgparent" width="600" height="200" viewBox="${viewBox}" tabindex="0" 
-     onkeypress="${script('myOnKeyPress')}" onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">
+     onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">
     <svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
     <rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"
@@ -121,7 +121,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
 
             # Rewrite the _template with width and height
             self._template = '''<svg id="svgparent" width="'''+str(self.w)+'''" height="'''+str(self.h)+'''" viewBox="${viewBox}" tabindex="0" ''' + \
-                              '''     onkeypress="${script('myOnKeyPress')}" onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">  ''' + \
+                              '''    onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">  ''' + \
                               '''<svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>  ''' + \
                               '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />  ''' + \
                               '''<rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"  ''' + \
@@ -366,10 +366,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   data.shiftkey            = false;
                   data.ctrlkey             = false;
                   state.drag_op            = false;
-                  // svgparent.focus(); // else it loses focus on every render...
-            """,
-
-            'myOnKeyPress':"""
                   // svgparent.focus(); // else it loses focus on every render...
             """,
 
