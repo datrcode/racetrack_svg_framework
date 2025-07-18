@@ -366,11 +366,11 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   data.shiftkey            = false;
                   data.ctrlkey             = false;
                   state.drag_op            = false;
-                  svgparent.focus(); // else it loses focus on every render...
+                  // svgparent.focus(); // else it loses focus on every render...
             """,
 
             'myOnKeyPress':"""
-                  svgparent.focus(); // else it loses focus on every render...
+                  // svgparent.focus(); // else it loses focus on every render...
             """,
 
             'myOnKeyDown':"""
@@ -382,13 +382,13 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   else if (event.key == "P") { data.key_op_finished = "P"; }
                   else if (event.key == "x") { data.key_op_finished = "x"; }
                   else if (event.key == "X") { data.key_op_finished = "X"; }
-                  svgparent.focus(); // else it loses focus on every render...
+                  // svgparent.focus(); // else it loses focus on every render...
             """,
 
             'myOnKeyUp':"""
                   data.ctrlkey  = event.ctrlKey;
                   data.shiftkey = event.shiftKey;
-                  svgparent.focus(); // else it loses focus on every render...
+                  // svgparent.focus(); // else it loses focus on every render...
             """,
 
             'transCoords':"""
@@ -467,7 +467,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
 
             'mod_inner':"""
                   mod.innerHTML = data.mod_inner;
-                  svgparent.focus(); // else it loses focus on every render...
+                  // svgparent.focus(); // else it loses focus on every render...
             """,
 
             'selectionpath':"""

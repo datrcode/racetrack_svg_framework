@@ -1023,10 +1023,10 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             state.layout_op_shape    = "";    // trigger field for python to peform the layout operation
             data.middle_op_finished  = false;
             data.move_op_finished    = false;
-            svgparent.focus(); // else it loses focus on every render...
+            // svgparent.focus(); // else it loses focus on every render...
         """,
         'keyPress':"""
-            svgparent.focus(); // else it loses focus on every render...
+            // svgparent.focus(); // else it loses focus on every render...
         """,
         'keyDown':"""
             data.ctrlkey  = event.ctrlKey;
@@ -1068,13 +1068,13 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             else if (event.key == "0" || event.key == ")") { data.key_op_finished = '0';  }
 
             data.last_key = event.key;
-            svgparent.focus(); // else it loses focus on every render...
+            // svgparent.focus(); // else it loses focus on every render...
         """,
         'keyUp':"""
             data.ctrlkey  = event.ctrlKey;
             data.shiftkey = event.shiftKey;
             if (event.key == "g" || event.key == "y" || event.key == "Y") { state.layout_op = state.layout_line_flag = false; }
-            svgparent.focus(); // else it loses focus on every render...
+            // svgparent.focus(); // else it loses focus on every render...
         """,
         'moveEverything':"""
             data.ctrlkey   = event.ctrlKey;
@@ -1223,7 +1223,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         'mod_inner':"""
             mod.innerHTML     = data.mod_inner;
             infostr.innerHTML = data.info_str;
-            svgparent.focus(); // else it loses focus on every render...
+            // svgparent.focus(); // else it loses focus on every render...
         """,
         'selectionpath':"""
             selectionlayer.setAttribute("d", data.selectionpath);
