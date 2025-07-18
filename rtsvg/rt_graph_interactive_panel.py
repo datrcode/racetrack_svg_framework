@@ -179,21 +179,29 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
 <svg id="svgparent" width="600" height="400" tabindex="0" 
      onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}">
     <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
+    <rect id="myfocuswidget" x="200" y="30" width="10" height="10" stroke="none" fill="#000000"/>
+    <rect id="mymousewidget" x="210" y="30" width="10" height="10" stroke="none" fill="#000000"/>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
     <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
     <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />
     <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />
     <circle id="layoutsunflower" cx="-10" cy="-10" r="5"                   stroke="#000000" stroke-width="2" />
     <rect id="screen" x="0" y="0" width="600" height="400" opacity="0.05"
-          onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}"
-          onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" />
+          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"
+          onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"
+          onmousedown="${script('downSelect')}"         onmousemove="${script('moveEverything')}"
+          onmouseup="${script('upEverything')}"         onmousewheel="${script('mouseWheel')}" />
     <text id="infostr" x="5"   y="398" fill="#000000" font-size="10px"> ${info_str} </text>
     <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"
-          onmousedown="${script('downAllEntities')}" onmousemove="${script('moveEverything')}" 
-          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />
+          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"
+          onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"
+          onmousedown="${script('downAllEntities')}"    onmousemove="${script('moveEverything')}" 
+          onmouseup="${script('upEverything')}"         onmousewheel="${script('mouseWheel')}" />
     <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none"
-          onmousedown="${script('downMove')}"        onmousemove="${script('moveEverything')}"
-          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" />
+          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"
+          onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"
+          onmousedown="${script('downMove')}"           onmousemove="${script('moveEverything')}"
+          onmouseup="${script('upEverything')}"         onmousewheel="${script('mouseWheel')}" />
 </svg>
 """
 
@@ -243,21 +251,29 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self._template = '''<svg id="svgparent" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" tabindex="0" ''' + \
                          '''     onkeypress="${script('keyPress')}" onkeydown="${script('keyDown')}" onkeyup="${script('keyUp')}"> ''' + \
                          '''    <svg id="mod" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''"> ${mod_inner} </svg> ''' + \
+                         '''    <rect id="myfocuswidget" x="200" y="30" width="10" height="10" stroke="none" fill="#000000"/> ''' + \
+                         '''    <rect id="mymousewidget" x="210" y="30" width="10" height="10" stroke="none" fill="#000000"/> ''' + \
                          '''    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" /> ''' + \
                          '''    <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" /> ''' + \
                          '''    <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" /> ''' + \
                          '''    <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" /> ''' + \
                          '''    <circle id="layoutsunflower" cx="-10" cy="-10" r="5"                   stroke="#000000" stroke-width="2" /> ''' + \
                          '''    <rect id="screen" x="0" y="0" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" opacity="0.05" ''' + \
-                         '''          onmousedown="${script('downSelect')}"          onmousemove="${script('moveEverything')}" ''' + \
-                         '''          onmouseup="${script('upEverything')}"          onmousewheel="${script('mouseWheel')}" /> ''' + \
+                         '''          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"  ''' + \
+                         '''          onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"  ''' + \
+                         '''          onmousedown="${script('downSelect')}"         onmousemove="${script('moveEverything')}" ''' + \
+                         '''          onmouseup="${script('upEverything')}"         onmousewheel="${script('mouseWheel')}" /> ''' + \
                          '''    <text id="infostr" x="5"   y="''' + str(self.h-4) + '''" fill="#000000" font-size="10px"> ${info_str} </text> ''' + \
                          '''    <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none" ''' + \
-                         '''          onmousedown="${script('downAllEntities')}" onmousemove="${script('moveEverything')}"  ''' + \
-                         '''          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" /> ''' + \
+                         '''          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"  ''' + \
+                         '''          onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"  ''' + \
+                         '''          onmousedown="${script('downAllEntities')}"    onmousemove="${script('moveEverything')}"  ''' + \
+                         '''          onmouseup="${script('upEverything')}"         onmousewheel="${script('mouseWheel')}" /> ''' + \
                          '''    <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none" ''' + \
-                         '''          onmousedown="${script('downMove')}"        onmousemove="${script('moveEverything')}" ''' + \
-                         '''          onmouseup="${script('upEverything')}"      onmousewheel="${script('mouseWheel')}" /> ''' + \
+                         '''          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"  ''' + \
+                         '''          onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"  ''' + \
+                         '''          onmousedown="${script('downMove')}"           onmousemove="${script('moveEverything')}" ''' + \
+                         '''          onmouseup="${script('upEverything')}"         onmousewheel="${script('mouseWheel')}" /> ''' + \
                          '''</svg>'''
 
         # Previous layouts (for undo operations)
@@ -1025,6 +1041,23 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             data.move_op_finished    = false;
             // svgparent.focus(); // else it loses focus on every render...
         """,
+
+        'myOnMouseOver':"""
+                mymousewidget.setAttribute('fill', '#ff0000');
+        """,
+
+        'myOnMouseOut':"""
+                mymousewidget.setAttribute('fill', '#0000ff');
+        """,
+
+        'myOnFocus':"""
+                myfocuswidget.setAttribute('fill', '#ff0000');
+        """,
+
+        'myOnBlur':"""
+                myfocuswidget.setAttribute('fill', '#0000ff');
+        """,
+        
         'keyPress':"""
             // svgparent.focus(); // else it loses focus on every render...
         """,
