@@ -70,7 +70,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
      onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">
     <svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
-    <rect id="mymousewidget" x="10" y="0" width="10" height="10" stroke="none" fill="#000000"/>
     <rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"
           onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"
           onmousedown="${script('myOnMouseDown')}"      onmousemove="${script('myOnMouseMove')}"
@@ -128,7 +127,6 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                               '''    onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">  ''' + \
                               '''<svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>  ''' + \
                               '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />  ''' + \
-                              '''<rect id="mymousewidget" x="210" y="30" width="10" height="10" stroke="none" fill="#000000"/> ''' + \
                               '''<rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"  ''' + \
                               '''     onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"  ''' + \
                               '''     onmousedown="${script('myOnMouseDown')}"      onmousemove="${script('myOnMouseMove')}"  ''' + \
@@ -242,6 +240,7 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
       # Mouse States
       x_mouse          = param.Number(default=0)
       y_mouse          = param.Number(default=0)
+      has_focus        = param.Boolean(default=False)
 
       #
       # Wheel operation state & method
@@ -371,18 +370,21 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   state.x1_drag            = state.y1_drag =  -5;
                   state.x_raw              = state.y_raw   = -10;
                   state.x_trans            = state.y_trans = -10;
+                  data.has_focus           = false;
                   data.shiftkey            = false;
                   data.ctrlkey             = false;
                   state.drag_op            = false;
-                  // svgparent.focus(); // else it loses focus on every render...
             """,
 
             'myOnMouseOver':"""
-                  mymousewidget.setAttribute('fill', '#ff0000');
+                  data.has_focus = true;
+                  svgparent.focus();
+                  // screen.setAttribute("opacity", "0.05");
             """,
 
             'myOnMouseOut':"""
-                  mymousewidget.setAttribute('fill', '#0000ff');
+                  data.has_focus = false;
+                  // screen.setAttribute("opacity", "0.10");
             """,
 
             'myOnKeyDown':"""
@@ -394,13 +396,11 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   else if (event.key == "P") { data.key_op_finished = "P"; }
                   else if (event.key == "x") { data.key_op_finished = "x"; }
                   else if (event.key == "X") { data.key_op_finished = "X"; }
-                  // svgparent.focus(); // else it loses focus on every render...
             """,
 
             'myOnKeyUp':"""
                   data.ctrlkey  = event.ctrlKey;
                   data.shiftkey = event.shiftKey;
-                  // svgparent.focus(); // else it loses focus on every render...
             """,
 
             'transCoords':"""
@@ -479,12 +479,10 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
 
             'mod_inner':"""
                   mod.innerHTML = data.mod_inner;
-                  // svgparent.focus(); // else it loses focus on every render...
             """,
 
             'selectionpath':"""
                   selectionlayer.setAttribute("d", data.selectionpath);
-                  // svgparent.focus(); // else it loses focus on every render...
             """,
             
             'myUpdateDragRect':"""
