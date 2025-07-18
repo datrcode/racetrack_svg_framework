@@ -78,9 +78,13 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
           onmousedown="${script('myOnMouseDown')}"      onmousemove="${script('myOnMouseMove')}"
           onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />
     <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"
+          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"
+          onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"
           onmousedown="${script('downAllEntities')}" onmousemove="${script('myOnMouseMove')}" 
           onmouseup="${script('myOnMouseUp')}"      onmousewheel="${script('myOnMouseWheel')}" />
     <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none"
+          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"
+          onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"
           onmousedown="${script('downMove')}"        onmousemove="${script('myOnMouseMove')}"
           onmouseup="${script('myOnMouseUp')}"      onmousewheel="${script('myOnMouseWheel')}" />
 </svg>
@@ -136,11 +140,15 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                               '''     onmousedown="${script('myOnMouseDown')}"      onmousemove="${script('myOnMouseMove')}"  ''' + \
                               '''     onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />  ''' + \
                               '''<path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"  ''' + \
-                              '''     onmousedown="${script('downAllEntities')}" onmousemove="${script('myOnMouseMove')}"   ''' + \
-                              '''     onmouseup="${script('myOnMouseUp')}"      onmousewheel="${script('myOnMouseWheel')}" />  ''' + \
+                              '''     onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"  ''' + \
+                              '''     onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"  ''' + \
+                              '''     onmousedown="${script('downAllEntities')}"    onmousemove="${script('myOnMouseMove')}"   ''' + \
+                              '''     onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />  ''' + \
                               '''<path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none"  ''' + \
-                              '''     onmousedown="${script('downMove')}"        onmousemove="${script('myOnMouseMove')}"  ''' + \
-                              '''     onmouseup="${script('myOnMouseUp')}"      onmousewheel="${script('myOnMouseWheel')}" />  ''' + \
+                              '''     onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"  ''' + \
+                              '''     onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"  ''' + \
+                              '''     onmousedown="${script('downMove')}"           onmousemove="${script('myOnMouseMove')}"  ''' + \
+                              '''     onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />  ''' + \
                               '''</svg>  '''
 
             super().__init__(**kwargs)
