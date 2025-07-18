@@ -70,7 +70,11 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
      onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">
     <svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
+    <rect id="myfocuswidget" x="0" y="0"  width="10" height="10" stroke="none" fill="#000000"/>
+    <rect id="mymousewidget" x="10" y="0" width="10" height="10" stroke="none" fill="#000000"/>
     <rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"
+          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"
+          onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"
           onmousedown="${script('myOnMouseDown')}"      onmousemove="${script('myOnMouseMove')}"
           onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />
     <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"
@@ -124,8 +128,12 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                               '''    onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">  ''' + \
                               '''<svg id="mod" width="10000000" height="10000000"> ${mod_inner} </svg>  ''' + \
                               '''<rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />  ''' + \
+                              '''<rect id="myfocuswidget" x="200" y="30" width="10" height="10" stroke="none" fill="#000000"/> ''' + \
+                              '''<rect id="mymousewidget" x="210" y="30" width="10" height="10" stroke="none" fill="#000000"/> ''' + \
                               '''<rect id="screen" x="0" y="0" width="10000000" height="10000000" opacity="0.05"  ''' + \
-                              '''     onmousedown="${script('myOnMouseDown')}"       onmousemove="${script('myOnMouseMove')}"  ''' + \
+                              '''     onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"  ''' + \
+                              '''     onfocus="${script('myOnFocus')}"              onblur="${script('myOnBlur')}"  ''' + \
+                              '''     onmousedown="${script('myOnMouseDown')}"      onmousemove="${script('myOnMouseMove')}"  ''' + \
                               '''     onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />  ''' + \
                               '''<path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"  ''' + \
                               '''     onmousedown="${script('downAllEntities')}" onmousemove="${script('myOnMouseMove')}"   ''' + \
@@ -367,6 +375,22 @@ class RTSpreadLinesInteractivePanel(ReactiveHTML, RTStackable, RTSelectable):
                   data.ctrlkey             = false;
                   state.drag_op            = false;
                   // svgparent.focus(); // else it loses focus on every render...
+            """,
+
+            'myOnMouseOver':"""
+                  mymousewidget.setAttribute('fill', '#ff0000');
+            """,
+
+            'myOnMouseOut':"""
+                  mymousewidget.setAttribute('fill', '#0000ff');
+            """,
+
+            'myOnFocus':"""
+                  myfocuswidget.setAttribute('fill', '#ff0000');
+            """,
+
+            'myOnBlur':"""
+                  myfocuswidget.setAttribute('fill', '#0000ff');
             """,
 
             'myOnKeyDown':"""
