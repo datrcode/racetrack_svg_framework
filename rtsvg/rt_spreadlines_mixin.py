@@ -208,6 +208,18 @@ class RTSpreadLinesMixin(object):
 
             # Binning Stage
             self.df = self.df.sort(self.ts_field)
+        
+            # Create other variables (to be used later ... but make sure they exist now)
+            self.vx0, self.vy0, self.vx1, self.vy1 = None, None, None, None # view bounds
+            self.selected_entities        = set()
+            self.bin_to_bounds            = {}
+            self.bin_to_node_to_xyrepstat = {}
+            self.last_render              = None
+
+        #
+        # __binNeighboringNodes__() - place nodes into timeslices & alters based on the focal node(s)
+        #
+        def __binNeighboringNodes__(self):
             self.bin_to_timestamps             = {}
             self.bin_to_alter1s                = {} # [_bin_]['fm'] and [_bin_]['to']
             self.bin_to_alter2s                = {} # [_bin_]['fm'] and [_bin_]['to']
@@ -268,12 +280,6 @@ class RTSpreadLinesMixin(object):
                 self.bin_to_alter2s[_bin_]['to'] -= self.node_focus
             self.time_lu['deduplicate_alters'] = time.time() - t0
 
-            # Create other variables (to be used later ... but make sure they exist now)
-            self.vx0, self.vy0, self.vx1, self.vy1 = None, None, None, None # view bounds
-            self.selected_entities        = set()
-            self.bin_to_bounds            = {}
-            self.bin_to_node_to_xyrepstat = {}
-            self.last_render              = None
 
         # nodesInBin() - return the set of nodes that exist in this bin
         def nodesInBin(self, bin):
@@ -713,6 +719,9 @@ class RTSpreadLinesMixin(object):
         #
         def renderSVG(self):            
             svg = []
+
+            # Assign nodes to bins
+            self.__binNeighboringNodes__()
 
             alter_inter_d   = self.alter_inter_d        # distance between the bins
             max_bin_w       = self.max_bin_w            # maximum width of a bin
