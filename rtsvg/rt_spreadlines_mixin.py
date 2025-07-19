@@ -206,24 +206,6 @@ class RTSpreadLinesMixin(object):
             self.__consolidateRelationships__()
             self.time_lu['consolidate_relationships'] = time.time() - t0
 
-            # Remap the node_focus field (if it's a set)
-            # ... this won't work if we want any level of fidelity with which focus nodes were in a specific bin
-            # ... so... for example, this won't work if we want the node selection highlights to be accurate
-            '''
-            if type(self.node_focus) is set:
-                for i in range(len(self.relationships)):
-                    for j in range(2):
-                        if j == 0: _field_ = self.relationships[i][j]
-                        else:      _field_ = self.relationships[i][j]
-                        self.df = self.df.with_columns(pl.when(pl.col(_field_).is_in(self.node_focus))
-                                                         .then(pl.lit('__focus__'))
-                                                         .otherwise(pl.col(_field_)).alias(_field_))
-                self.node_focus_set = self.node_focus
-                self.node_focus     = '__focus__'
-            else:
-                self.node_focus_set = set([self.node_focus])
-            '''
-
             # Binning Stage
             self.df = self.df.sort(self.ts_field)
             self.bin_to_timestamps             = {}
