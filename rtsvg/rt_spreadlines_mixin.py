@@ -720,6 +720,11 @@ class RTSpreadLinesMixin(object):
         def renderSVG(self):            
             svg = []
 
+            # Reset the following before the rendering starts (these were init'd in the __init__() method too)
+            self.vx0, self.vy0, self.vx1, self.vy1 = None, None, None, None # view bounds
+            self.bin_to_bounds            = {}
+            self.bin_to_node_to_xyrepstat = {}
+
             # Assign nodes to bins
             self.__binNeighboringNodes__()
 
@@ -1046,3 +1051,9 @@ class RTSpreadLinesMixin(object):
                                             None, _svg_markup_, self.widget_id)
                     _results_.append(rtep)
             return _results_
+
+        def setNodeFocus(self, node_focus):
+            self.node_focus = node_focus
+            if   type(self.node_focus) is list: self.node_focus = set(self.node_focus)
+            elif type(self.node_focus) is not set: self.node_focus = set([self.node_focus])
+            self.invalidateRender()
