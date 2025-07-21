@@ -153,6 +153,11 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     mod_inner       = param.String(default="""<circle cx="300" cy="200" r="10" fill="red" />""")
 
     #
+    # Animation Icon
+    #
+    animation_icon  = param.String(default='<rect x="0" y="0" width="100" height="100" fill="red" />')
+
+    #
     # All Entities Path
     #
     allentitiespath = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
@@ -179,6 +184,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     _template = """
 <svg id="svgparent" width="600" height="400" tabindex="0" onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">
     <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
+    <g id="opanimation"> ${animation_icon} </g>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
     <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
     <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />
@@ -246,6 +252,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self._template = '''<svg id="svgparent" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" tabindex="0" ''' + \
                          '''     onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}"> ''' + \
                          '''    <svg id="mod" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''"> ${mod_inner} </svg> ''' + \
+                         '''    <g id="opanimation"> ${animation_icon} </g> ''' + \
                          '''    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" /> ''' + \
                          '''    <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" /> ''' + \
                          '''    <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" /> ''' + \
@@ -1018,6 +1025,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         'render':"""
             mod.innerHTML            = data.mod_inner;
             infostr.innerHTML        = data.info_str;
+            opanimation.innerHTML    = data.animation_icon;
             state.x0_drag            = state.y0_drag = -10;
             state.x1_drag            = state.y1_drag =  -5;
             data.has_focus           = false;
@@ -1081,6 +1089,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             else if (event.key == "9" || event.key == "(") { data.key_op_finished = '9';  }
             else if (event.key == "0" || event.key == ")") { data.key_op_finished = '0';  }
 
+            data.animation_icon = ""; // prevents animation from occurring again
             data.last_key = event.key;
         """,
         'myOnKeyUp':"""
@@ -1231,16 +1240,23 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             event.preventDefault();
             data.wheel_x = event.offsetX; data.wheel_y = event.offsetY; data.wheel_rots  = Math.round(10*event.deltaY);
             data.wheel_op_finished = true;
+            data.animation_icon = ""; // prevents animation from occurring again
         """,
         'mod_inner':"""
-            mod.innerHTML     = data.mod_inner;
-            infostr.innerHTML = data.info_str;
+            mod.innerHTML       = data.mod_inner;
+            infostr.innerHTML   = data.info_str;
+            data.animation_icon = ""; // prevents animation from occurring again
+        """,
+        'animation_icon':"""
+            opanimation.innerHTML = data.animation_icon;
         """,
         'selectionpath':"""
             selectionlayer.setAttribute("d", data.selectionpath);
+            data.animation_icon = ""; // prevents animation from occurring again
         """,
         'info_str': """
             infostr.innerHTML = data.info_str;
+            data.animation_icon = ""; // prevents animation from occurring again
         """,
         'myUpdateDragRect':"""
             if (state.drag_op) {
@@ -1258,6 +1274,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
                 drag.setAttribute('width',5); drag.setAttribute('height',5);
             }
+            data.animation_icon = ""; // prevents animation from occurring again
         """
     }
 
