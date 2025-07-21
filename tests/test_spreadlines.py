@@ -2,7 +2,7 @@ import polars as pl
 import unittest
 import rtsvg
 
-class TestSCUEditorPanel(unittest.TestCase):
+class TestSpreadLines(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.rt_self = rtsvg.RACETrack()
@@ -30,16 +30,16 @@ class TestSCUEditorPanel(unittest.TestCase):
 
         self.df = pl.DataFrame(_lu_)
         self.df = self.rt_self.columnsAreTimestamps(self.df, 'timestamp')
-        self.params = {'rt_self':self.rt_self, 'df':self.df, 'relationships':[('sip','dip')], 'node_color':'node', 'every':'1d', 'h':256}
+        self.params = {'df':self.df, 'relationships':[('sip','dip')], 'node_color':'node', 'every':'1d', 'h':256}
 
     def test_1(self):
-        sl = rtsvg.spreadLines(node_focus='a',                                           **self.params)
+        sl = self.rt_self.spreadLines(node_focus='a',                                           **self.params)
         sl._repr_svg_()
 
     def test_2(self):
-        sl = rtsvg.spreadLines(node_focus='a', only_render_nodes=set(['t0s0', 'f0s0',]), **self.params)
+        sl = self.rt_self.spreadLines(node_focus='a', only_render_nodes=set(['t0s0', 'f0s0',]), **self.params)
         sl._repr_svg_()
 
     def test_3(self):
-        sl = rtsvg.spreadLines(node_focus='a', only_render_nodes=set(),                  **self.params)
+        sl = self.rt_self.spreadLines(node_focus='a', only_render_nodes=set(),                  **self.params)
         sl._repr_svg_()
