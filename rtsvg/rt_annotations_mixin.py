@@ -211,7 +211,7 @@ class RTAnnotationsMixin(object):
             annotations = self.annotations_ls
 
         # If just single, make it into a single element list
-        elif type(annotations) == RTAnnotation:
+        elif isinstance(annotations, RTAnnotation):
             annotations = [annotations]
         
         # Wrap entity_fields into a list
@@ -816,14 +816,14 @@ class RTAnnotationsMixin(object):
                     _possibles.append(self.entityAnnotation(_annotation))
                 elif type(_annotation) == int:
                     _possibles.append(self.entityAnnotation(str(_annotation)))
-                elif type(_annotation) == RTAnnotation:                      
+                elif isinstance(_annotation, RTAnnotation):
                     _possibles.append(_annotation)
                 else:
                     raise Exception(f'annotateTimelineInstances() - annotations type not understood -- "{type(_annotation)}"')
         elif type(annotations) == dict:
              for _k,_v in annotations.items():
                  _possibles.append(self.entityAnnotation(str(_k),str(_v)))
-        elif type(annotations) == RTAnnotation:
+        elif isinstance(annotations, RTAnnotation):
              _possibles.append(annotations)
         elif type(annotations) == str or type(annotations) == int:
              _possibles.append(self.entityAnnotation(str(annotations)))

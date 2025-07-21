@@ -861,16 +861,16 @@ class RTXYMixin(object):
                                       bg_shape_stroke, 
                                       txt_h):
         # Transform to a path description if necessary ... Polygons & MultiPolygons can be handled in the same way
-        if type(shape_desc) == Polygon or type(shape_desc) == MultiPolygon:
+        if isinstance(shape_desc, Polygon) or isinstance(shape_desc, MultiPolygon):
             shape_desc = self.shapelyPolygonToSVGPathDescription(shape_desc)
 
         # Multiline Strings should have have their fill type set to 'none'
-        if type(shape_desc) == MultiLineString or type(shape_desc) == LineString:
+        if isinstance(shape_desc, MultiLineString) or isinstance(shape_desc, LineString):
             shape_desc = self.shapelyPolygonToSVGPathDescription(shape_desc)
             bg_shape_fill = 'none'
 
         # Geometry Collections are usually empty... maybe the results of clipping?
-        if type(shape_desc) == GeometryCollection:
+        if isinstance(shape_desc, GeometryCollection):
             if len(shape_desc.geoms) > 0: # Haven't seen this... so unsure of how to process
                 raise Exception('RTXYMixin.__transformBackgroundShapes__() - geometrycollection not empty')    
             return '', ''

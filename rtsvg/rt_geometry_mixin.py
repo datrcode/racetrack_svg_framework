@@ -1552,8 +1552,8 @@ class RTGeometryMixin(object):
                 if naming is not None:  # if naming function, call it with gpd series
                     _name_ = naming(_series_, i)
                 bg_shape_lu[_name_] = d
-                if type(_poly_) is LineString or type(_poly_) is MultiLineString: bg_fill_lu[_name_] = None
-                else:                                                             bg_fill_lu[_name_] = fill
+                if isinstance(_poly_, LineString) or isinstance(_poly_, MultiLineString): bg_fill_lu[_name_] = None
+                else:                                                                     bg_fill_lu[_name_] = fill
         return bg_shape_lu, bg_fill_lu
 
     #
@@ -1569,7 +1569,7 @@ class RTGeometryMixin(object):
         #
         # MultiPolygon -- just break into individual polygons...
         #
-        if type(_poly) is MultiPolygon:
+        if isinstance(_poly, MultiPolygon):
             path_str = ''
             for _subpoly in _poly.geoms:
                 if len(path_str) > 0: path_str += ' '
@@ -1578,7 +1578,7 @@ class RTGeometryMixin(object):
         #
         # LineString -- segments
         #
-        elif type(_poly) is LineString:
+        elif isinstance(_poly, LineString):
             coords = _poly.coords
             path_str = f'M {coords[0][0]} {coords[0][1]} '
             for i in range(1, len(coords)): path_str += f'L {coords[i][0]} {coords[i][1]} '
@@ -1586,7 +1586,7 @@ class RTGeometryMixin(object):
         #
         # Multiple LineStrings -- break into individual line strings
         #
-        elif type(_poly) is MultiLineString:
+        elif isinstance(_poly, MultiLineString):
             path_str = ''
             for _subline in _poly.geoms:
                 if len(path_str) > 0: path_str += ' '
@@ -1595,7 +1595,7 @@ class RTGeometryMixin(object):
         #
         # Polygon -- base polygon processing
         #
-        elif type(_poly) is Polygon:
+        elif isinstance(_poly, Polygon):
             # Draw the exterior shape first
             xx, yy = _poly.exterior.coords.xy
             path_str = f'M {xx[0]} {yy[0]} '
@@ -1611,7 +1611,7 @@ class RTGeometryMixin(object):
         #
         # GeometryCollection -- unsure of what this actual is...
         #
-        elif type(_poly) is GeometryCollection:
+        elif isinstance(_poly, GeometryCollection):
             if len(_poly.geoms) > 0:  # Haven't seen this... so unsure of how to process
                 raise Exception('shapelyPolygonToSVGPathDescription() - geometrycollection not empty')
             return None
