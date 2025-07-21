@@ -29,6 +29,7 @@
 #   (I only care about this data... nothing else... get rid of everything else) // seems like this could be "don't do this by accident"
 # - Remove the current from the top stack and then show whatever is left over... stack == |2|
 #   (This is the stuff I definitely don't want)
+# - I think all of these require some graphical indication of the stack operation that's going on...
 #
 #
 # - MOSTLY DONE - Treemap based layout on node colors (if selected nodes, only treemap those & fit them in the selection bounds)
