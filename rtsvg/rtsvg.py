@@ -170,6 +170,8 @@ class RACETrack(RTAnnotationsMixin,
     # Render the SVG as an Image and display it within a notebook
     # - Uses an in memory image buffer
     # - Image form should save processing power for complicated SVGs
+    # - Note that the renderer doesn't necessarily support all SVG features
+    # - ... furthermore, browsers (or VSCode) may implement the features differently
     #
     def displaySVGAsImage(self, _svg):
         if type(_svg) is not str: _svg = _svg._repr_svg_()
@@ -180,25 +182,20 @@ class RACETrack(RTAnnotationsMixin,
     #
     # isPandas() - is this a pandas dataframe?
     #
-    def isPandas(self, df):
-        return type(df) is pd.core.frame.DataFrame
+    def isPandas(self, df): return isinstance(df, pd.core.frame.DataFrame)
 
     #
     # isPolars() - is this a polars dataframe?
     #
-    def isPolars(self, df):
-        return type(df) is pl.dataframe.frame.DataFrame
+    def isPolars(self, df): return isinstance(df, pl.dataframe.frame.DataFrame)
 
     #
     # copyDataFrame() - copy/clone a dataframe
     #
     def copyDataFrame(self, df):
-        if   self.isPandas(df):
-            return df.copy()
-        elif self.isPolars(df):
-            return df.clone()
-        else:
-            raise Exception('copyDataFrame() - accepts only pandas or polars dataframes')
+        if   self.isPandas(df): return df.copy()
+        elif self.isPolars(df): return df.clone()
+        else:                   raise Exception('copyDataFrame() - accepts only pandas or polars dataframes')
 
     #
     # flattenTuple() - flatten a tuple
@@ -209,10 +206,8 @@ class RACETrack(RTAnnotationsMixin,
     def flattenTuple(self, _tuple_):
         _ls_ = []
         for x in _tuple_:
-            if type(x) is tuple:
-                _ls_.extend(self.flattenTuple(x))
-            else:
-                _ls_.append(x)
+            if type(x) is tuple: _ls_.extend(self.flattenTuple(x))
+            else:                _ls_.append(x)
         return tuple(_ls_)
 
     #
