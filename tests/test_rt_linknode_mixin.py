@@ -284,6 +284,7 @@ class Testrt_liknode_mixin(unittest.TestCase):
                               color_by='src', node_color={'a':'#00ff00', 2:'#ff0000'}, node_size=15).renderSVG() # Not Correct 2023-09-24
         self.rt_self.linkNode(self.df1_pl_b4,         self.multi_relates_b4, self.pos_b4, count_by='count', 
                               color_by='src', node_color={'a':'#00ff00', 2:'#ff0000'}, node_size=15).renderSVG() # Not Correct 2023-09-24
+        # Polars doesn't support mixed types in columns
         #self.rt_self.link    (self.df1_pl_b4,         self.multi_relates_b4, self.pos_b4, count_by='count', 
         #                      color_by='src', node_color={'a':'#00ff00', 2:'#ff0000'}, node_size=15).renderSVG() # Not Correct 2023-09-24, link doesn't support (2025-05-17)
 
