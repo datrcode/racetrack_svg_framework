@@ -145,7 +145,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
 7   | select degree 10 -> 20
 8   | select degree 20 -> 50
 9   | select degree 50 -> 100
-0   | select degree 100 -> inf    
+0   | select degree 100 -> 10_000
     """
     #
     # Inner Modification for RT SVG Render
@@ -155,7 +155,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     #
     # Animation Inner
     #
-    animation_inner  = param.String(default='<rect x="0" y="0" width="100" height="100" fill="red" />')
+    animation_inner  = param.String(default='<rect x="0" y="0" width="10" height="10" fill="none" stroke="none"/>')
 
     #
     # Animation String
@@ -885,12 +885,12 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 max_degree = 20 if c == '7' else 50 if c == '8' else 100 if c == '9' else 10_000 if c == '0' else None
 
                 if min_degree is not None:
-                    self.animation_inner = f'<text x="5" + y="15" font-size="12px" fill="#ff0000">{min_degree} to {max_degree} Degrees {self.svg_animation_str}</text>'
+                    #self.animation_inner = f'<text x="5" + y="15" font-size="12px" fill="#ff0000">{min_degree} to {max_degree} Degrees {self.svg_animation_str}</text>'
                     for _node_ in self.graphs[self.df_level]:
                         if self.graphs[self.df_level].degree(_node_) >= min_degree and self.graphs[self.df_level].degree(_node_) < max_degree: _match_.add(_node_)
                 else:
                     _degree_ = int(self.key_op_finished)
-                    self.animation_inner = f'<text x="5" + y="15" font-size="12px" fill="#ff0000">{_degree_} Degree(s) {self.svg_animation_str}</text>'
+                    #self.animation_inner = f'<text x="5" + y="15" font-size="12px" fill="#ff0000">{_degree_} Degree(s) {self.svg_animation_str}</text>'
                     for _node_ in self.graphs[self.df_level]:
                         if self.graphs[self.df_level].degree(_node_) == _degree_: _match_.add(_node_)
 
@@ -1096,7 +1096,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             else if (event.key == "9" || event.key == "(") { data.key_op_finished = '9';  }
             else if (event.key == "0" || event.key == ")") { data.key_op_finished = '0';  }
 
-            data.animation_inner = ""; // prevents animation from occurring again
+            // data.animation_inner = ""; // prevents animation from occurring again
             data.last_key = event.key;
         """,
         'myOnKeyUp':"""
@@ -1247,23 +1247,23 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             event.preventDefault();
             data.wheel_x = event.offsetX; data.wheel_y = event.offsetY; data.wheel_rots  = Math.round(10*event.deltaY);
             data.wheel_op_finished = true;
-            data.animation_inner = ""; // prevents animation from occurring again
+            // data.animation_inner = ""; // prevents animation from occurring again
         """,
         'mod_inner':"""
             mod.innerHTML       = data.mod_inner;
             infostr.innerHTML   = data.info_str;
-            data.animation_inner = ""; // prevents animation from occurring again
+            // data.animation_inner = ""; // prevents animation from occurring again
         """,
         'animation_inner':"""
             opanimation.innerHTML = data.animation_inner;
         """,
         'selectionpath':"""
             selectionlayer.setAttribute("d", data.selectionpath);
-            data.animation_inner = ""; // prevents animation from occurring again
+            // data.animation_inner = ""; // prevents animation from occurring again
         """,
         'info_str': """
             infostr.innerHTML = data.info_str;
-            data.animation_inner = ""; // prevents animation from occurring again
+            // data.animation_inner = ""; // prevents animation from occurring again
         """,
         'myUpdateDragRect':"""
             if (state.drag_op) {
@@ -1281,7 +1281,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 drag.setAttribute('x',-10);   drag.setAttribute('y',-10);
                 drag.setAttribute('width',5); drag.setAttribute('height',5);
             }
-            data.animation_inner = ""; // prevents animation from occurring again
+            // data.animation_inner = ""; // prevents animation from occurring again
         """
     }
 
