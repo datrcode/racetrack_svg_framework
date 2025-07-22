@@ -881,14 +881,16 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             elif len(self.key_op_finished) == 1 and self.key_op_finished in '0123456789':
                 _match_ = set()
                 c       = self.key_op_finished
-                min_degree = 10 if c == '7' else 20 if c == '8' else 50  if c == '9' else 100 if c == '0' else None
-                max_degree = 20 if c == '7' else 50 if c == '8' else 100 if c == '9' else 1e9 if c == '0' else None
+                min_degree = 10 if c == '7' else 20 if c == '8' else 50  if c == '9' else 100    if c == '0' else None
+                max_degree = 20 if c == '7' else 50 if c == '8' else 100 if c == '9' else 10_000 if c == '0' else None
 
                 if min_degree is not None:
+                    self.animation_inner = f'<text x="5" + y="15" font-size="12px" fill="#ff0000">{min_degree} to {max_degree} Degrees {self.svg_animation_str}</text>'
                     for _node_ in self.graphs[self.df_level]:
                         if self.graphs[self.df_level].degree(_node_) >= min_degree and self.graphs[self.df_level].degree(_node_) < max_degree: _match_.add(_node_)
                 else:
                     _degree_ = int(self.key_op_finished)
+                    self.animation_inner = f'<text x="5" + y="15" font-size="12px" fill="#ff0000">{_degree_} Degree(s) {self.svg_animation_str}</text>'
                     for _node_ in self.graphs[self.df_level]:
                         if self.graphs[self.df_level].degree(_node_) == _degree_: _match_.add(_node_)
 
