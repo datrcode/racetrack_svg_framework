@@ -1098,6 +1098,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
 
             // data.animation_inner = ""; // prevents animation from occurring again
             data.last_key = event.key;
+            // if (data.has_focus) { svgparent.focus(); }
         """,
         'myOnKeyUp':"""
             data.ctrlkey  = event.ctrlKey;
@@ -1260,10 +1261,12 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         'selectionpath':"""
             selectionlayer.setAttribute("d", data.selectionpath);
             // data.animation_inner = ""; // prevents animation from occurring again
+            // if (data.has_focus) { svgparent.focus(); }
         """,
         'info_str': """
             infostr.innerHTML = data.info_str;
             // data.animation_inner = ""; // prevents animation from occurring again
+            // if (data.has_focus) { svgparent.focus(); }
         """,
         'myUpdateDragRect':"""
             if (state.drag_op) {
