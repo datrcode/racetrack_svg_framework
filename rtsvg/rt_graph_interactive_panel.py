@@ -894,9 +894,10 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                     for _node_ in self.graphs[self.df_level]:
                         if self.graphs[self.df_level].degree(_node_) == _degree_: _match_.add(_node_)
 
-                if   self.shiftkey:               self.setSelectedEntitiesAndNotifyOthers(self.selected_entities - _match_)
-                elif len(self.selected_entities): self.setSelectedEntitiesAndNotifyOthers(self.selected_entities & _match_)
-                else:                             self.setSelectedEntitiesAndNotifyOthers(_match_)
+                if   self.shiftkey and self.ctrlkey: self.setSelectedEntitiesAndNotifyOthers(self.selected_entities & _match_)
+                elif self.shiftkey:                  self.setSelectedEntitiesAndNotifyOthers(self.selected_entities - _match_)
+                elif self.ctrlkey:                   self.setSelectedEntitiesAndNotifyOthers(self.selected_entities | _match_)  
+                else:                                self.setSelectedEntitiesAndNotifyOthers(_match_)
 
                 self.__refreshView__(comp=False, all_ents=False)
 
