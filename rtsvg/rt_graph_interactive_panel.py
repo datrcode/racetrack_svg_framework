@@ -189,7 +189,10 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     _template = """
 <svg id="svgparent" width="600" height="400" tabindex="0" onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">
     <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
-    <g id="opanimation"> ${animation_inner} </g>
+    <g fill-opacity="0.5">
+      <g id="opanimation"> ${animation_inner} </g>
+      <animate attributeName="fill-opacity" values="1.0;0.0" dur="2s" repeatCount="1"/>
+    </g>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
     <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
     <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />
@@ -257,7 +260,10 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self._template = '''<svg id="svgparent" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" tabindex="0" ''' + \
                          '''     onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}"> ''' + \
                          '''    <svg id="mod" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''"> ${mod_inner} </svg> ''' + \
-                         '''    <g id="opanimation"> ${animation_inner} </g> ''' + \
+                         '''    <g fill-opacity="0.5"> ''' + \
+                         '''      <g id="opanimation"> ${animation_inner} </g> ''' + \
+                         '''      <animate attributeName="fill-opacity" values="1.0;0.0" dur="2s" repeatCount="1"/> ''' + \
+                         '''    </g> ''' + \
                          '''    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" /> ''' + \
                          '''    <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" /> ''' + \
                          '''    <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" /> ''' + \
