@@ -158,11 +158,6 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     animation_inner  = param.String(default='<rect x="0" y="0" width="10" height="10" fill="none" stroke="none"/>')
 
     #
-    # Animation String
-    #
-    svg_animation_str = '<animate attributeName="opacity" values="1.0;0.0" dur="2s" repeatCount="1"/>'
-
-    #
     # All Entities Path
     #
     allentitiespath = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
@@ -641,6 +636,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         else:               callers.add(self)
 
         self.df_level -= 1
+        self.animation_inner = '<text x="{10}" y="{20}" font-size="{12}" fill="black"> popStack </text>'
 
         self.__refreshView__()
         for c in self.companions:
