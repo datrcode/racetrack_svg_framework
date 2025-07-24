@@ -191,7 +191,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
     <g fill-opacity="0.5">
       <g id="opanimation"> ${animation_inner} </g>
-      <animate id="myanimate" attributeName="fill-opacity" values="1.0;0.0" dur="2s" repeatCount="1" onend="${script('myOnAnimationEnd')}" />
+      <animate id="myanimate" attributeName="fill-opacity" values="1.0;0.0" dur="2s" repeatCount="1" />
     </g>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
     <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
@@ -262,7 +262,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                          '''    <svg id="mod" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''"> ${mod_inner} </svg> ''' + \
                          '''    <g fill-opacity="0.5"> ''' + \
                          '''      <g id="opanimation"> ${animation_inner} </g> ''' + \
-                         '''      <animate id="myanimate" attributeName="fill-opacity" values="1.0;0.0" dur="2s" repeatCount="1" onend="${script('myOnAnimationEnd')}" /> ''' + \
+                         '''      <animate id="myanimate" attributeName="fill-opacity" values="1.0;0.0" dur="2s" repeatCount="1" /> ''' + \
                          '''    </g> ''' + \
                          '''    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" /> ''' + \
                          '''    <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" /> ''' + \
@@ -1053,11 +1053,8 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             state.layout_op_shape    = "";    // trigger field for python to peform the layout operation
             data.middle_op_finished  = false;
             data.move_op_finished    = false;
-        """,
 
-        'myOnAnimationEnd':"""
-            data.animation_inner  = "";
-            opanimation.innerHTML = data.animation_inner;
+            myanimate.addEventListener("endEvent", () => { data.animation_inner = ""; opanimation.innerHTML = data.animation_inner; });
         """,
 
         'myOnMouseOver':"""
