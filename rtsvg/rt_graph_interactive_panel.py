@@ -184,9 +184,9 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     _template = """
 <svg id="svgparent" width="600" height="400" tabindex="0" onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">
     <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
-    <g fill-opacity="0.5">
+    <g fill-opacity="1.0">
       <g id="opanimation"> ${animation_inner} </g>
-      <animate id="myanimate" attributeName="fill-opacity" values="1.0;0.0" dur="2s" repeatCount="1" />
+      <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;1.0;1.0;1.0;0.0" dur="2s" repeatCount="1" />
     </g>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
     <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
@@ -255,9 +255,9 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self._template = '''<svg id="svgparent" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" tabindex="0" ''' + \
                          '''     onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}"> ''' + \
                          '''    <svg id="mod" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''"> ${mod_inner} </svg> ''' + \
-                         '''    <g fill-opacity="0.5"> ''' + \
+                         '''    <g fill-opacity="1.0"> ''' + \
                          '''      <g id="opanimation"> ${animation_inner} </g> ''' + \
-                         '''      <animate id="myanimate" attributeName="fill-opacity" values="1.0;0.0" dur="2s" repeatCount="1" /> ''' + \
+                         '''      <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;1.0;1.0;1.0;0.0" dur="2s" repeatCount="1" /> ''' + \
                          '''    </g> ''' + \
                          '''    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" /> ''' + \
                          '''    <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" /> ''' + \
@@ -636,7 +636,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         else:               callers.add(self)
 
         self.df_level -= 1
-        self.animation_inner = '<text x="{10}" y="{20}" font-size="{12}" fill="black"> popStack </text>'
+        self.animation_inner = '<rect x="10" y="10" width="20" height="20" fill="blue"/>'
 
         self.__refreshView__()
         for c in self.companions:
@@ -1050,7 +1050,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             data.middle_op_finished  = false;
             data.move_op_finished    = false;
 
-            myanimate.addEventListener("endEvent", () => { data.animation_inner = ""; opanimation.innerHTML = data.animation_inner; });
+            myanimate.addEventListener("endEvent", () => { /* data.animation_inner = ""; opanimation.innerHTML = data.animation_inner; */ });
         """,
 
         'myOnMouseOver':"""
