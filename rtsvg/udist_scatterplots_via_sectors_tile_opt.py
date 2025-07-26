@@ -19,7 +19,31 @@ import time
 __name__ = 'udist_scatterplots_via_sectors_tile_opt'
 
 class UDistScatterPlotsViaSectorsTileOpt(object):
-    def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, vector_scalar=0.05, iterations=4, num_of_tiles=128, decay_rate=None):
+    #
+    # __init__()
+    #
+    # Parameters
+    # ----------
+    # x_vals : list[float]
+    #     List of x values
+    # y_vals : list[float]
+    #     List of y values
+    # weights : list[float] | None
+    #     List of weights
+    # colors : list[str] | None
+    #     List of colors
+    # static_points : list[0,1] | None
+    #     List of static points -- these points will not move but will be considered in the sector density calculations
+    # vector_scalar : float, optional
+    #     Vector scalar, by default 0.05 -- how much to adjust each point by per iteration
+    # iterations : int, optional
+    #     Number of iterations, by default 4 -- number of iterations of the algorithm to run
+    # num_of_tiles : int, optional
+    #     Number of tiles, by default 128 -- number of tiles to use for the tile optimization
+    # decay_rate : float, optional
+    #     Decay rate, by default None -- how the vector scalar decays with each iteration
+    #
+    def __init__(self, x_vals=[], y_vals=[], weights=None, colors=None, static_points=None, vector_scalar=0.05, iterations=4, num_of_tiles=128, decay_rate=None):
         self.vector_scalar = vector_scalar
         self.iterations    = iterations
         self.num_of_tiles  = num_of_tiles
@@ -32,8 +56,9 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
                               'separate_easy_hard_way (hard way)':0.0,}
 
 
-        # Create weights if none were set
-        if weights is None: weights = np.ones(len(x_vals))
+        # Create weights and static points if none were set
+        if weights       is None: weights       = np.ones(len(x_vals))
+        if static_points is None: static_points = np.zeros(len(x_vals)) # by default, all points will move
 
         def rayIntersectsSegment(xy_ray, uv_ray, xy0_segment, xy1_segment, include_xy1_endpoint=False, epsilon=1e-9):
             x_r,  y_r  = xy_ray
@@ -71,8 +96,8 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         # Prepare the initial dataframe
         #
         t = time.time()
-        if colors is None: df = pl.DataFrame({'x':x_vals, 'y':y_vals, 'w':weights})            .with_row_index('__index__').with_columns(pl.lit('#000000').alias('c'))
-        else:              df = pl.DataFrame({'x':x_vals, 'y':y_vals, 'w':weights, 'c':colors}).with_row_index('__index__')
+        if colors is None: df = pl.DataFrame({'x':x_vals, 'y':y_vals, 'w':weights, 's':static_points})            .with_row_index('__index__').with_columns(pl.lit('#000000').alias('c'))
+        else:              df = pl.DataFrame({'x':x_vals, 'y':y_vals, 'w':weights, 's':static_points, 'c':colors}).with_row_index('__index__')
         df_orig = df.clone()
         self.time_lu['prepare_df'] += (time.time() - t)
 
