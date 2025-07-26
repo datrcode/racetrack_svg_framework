@@ -182,11 +182,11 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     # Panel Template
     # - rewritten in constructor with width and height filled in
     #
-    _template = """
-<svg id="svgparent" width="600" height="400" tabindex="0" onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}">
-    <svg id="mod" width="600" height="400"> ${mod_inner} </svg>
+    _template = f"""
+<svg id="svgparent" width="600" height="400" tabindex="0" onkeydown="${{script('myOnKeyDown')}}" onkeyup="${{script('myOnKeyUp')}}">
+    <svg id="mod" width="600" height="400"> ${{mod_inner}} </svg>
     <g fill-opacity="1.0">
-      <g id="opanimation"> ${animation_inner} </g>
+      <g id="opanimation"> ${{animation_inner}} </g>
       <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;0.0" dur="2s" repeatCount="1" />
     </g>
     <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
@@ -195,18 +195,18 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />
     <circle id="layoutsunflower" cx="-10" cy="-10" r="5"                   stroke="#000000" stroke-width="2" />
     <rect id="screen" x="0" y="0" width="600" height="400" opacity="0.05"
-          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"
-          onmousedown="${script('downSelect')}"         onmousemove="${script('myOnMouseMove')}"
-          onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />
-    <text id="infostr" x="5"   y="398" fill="#000000" font-size="10px"> ${info_str} </text>
-    <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none"
-          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"
-          onmousedown="${script('downAllEntities')}"    onmousemove="${script('myOnMouseMove')}" 
-          onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />
-    <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none"
-          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"
-          onmousedown="${script('downMove')}"           onmousemove="${script('myOnMouseMove')}"
-          onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" />
+          onmouseover="${{script('myOnMouseOver')}}"      onmouseout="${{script('myOnMouseOut')}}"
+          onmousedown="${{script('downSelect')}}"         onmousemove="${{script('myOnMouseMove')}}"
+          onmouseup="${{script('myOnMouseUp')}}"          onmousewheel="${{script('myOnMouseWheel')}}" />
+    <text id="infostr" x="5"   y="398" fill="#000000" font-size="10px"> ${{info_str}} </text>
+    <path id="allentitieslayer" d="${{allentitiespath}}" fill="#000000" fill-opacity="0.01" stroke="none"
+          onmouseover="${{script('myOnMouseOver')}}"      onmouseout="${{script('myOnMouseOut')}}"
+          onmousedown="${{script('downAllEntities')}}"    onmousemove="${{script('myOnMouseMove')}}" 
+          onmouseup="${{script('myOnMouseUp')}}"          onmousewheel="${{script('myOnMouseWheel')}}" />
+    <path id="selectionlayer" d="${{selectionpath}}" fill="#ff0000" transform="" stroke="none"
+          onmouseover="${{script('myOnMouseOver')}}"      onmouseout="${{script('myOnMouseOut')}}"
+          onmousedown="${{script('downMove')}}"           onmousemove="${{script('myOnMouseMove')}}"
+          onmouseup="${{script('myOnMouseUp')}}"          onmousewheel="${{script('myOnMouseWheel')}}" />
 </svg>
 """
 
@@ -252,33 +252,35 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self.GRID_BY_COLOR_CLOUDS = 'grid (color, clouds)'
         self.layout_modes         = [self.GRID, self.CIRCLE, self.SUNFLOWER, self.GRID_BY_COLOR, self.GRID_BY_COLOR_CLOUDS]
 
+
         # Recast the template with the width's and height's
-        self._template = '''<svg id="svgparent" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" tabindex="0" ''' + \
-                         '''     onkeydown="${script('myOnKeyDown')}" onkeyup="${script('myOnKeyUp')}"> ''' + \
-                         '''    <svg id="mod" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''"> ${mod_inner} </svg> ''' + \
-                         '''    <g fill-opacity="1.0"> ''' + \
-                         '''      <g id="opanimation"> ${animation_inner} </g> ''' + \
-                         '''      <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;0.0" dur="2s" repeatCount="1" /> ''' + \
-                         '''    </g> ''' + \
-                         '''    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" /> ''' + \
-                         '''    <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" /> ''' + \
-                         '''    <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" /> ''' + \
-                         '''    <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" /> ''' + \
-                         '''    <circle id="layoutsunflower" cx="-10" cy="-10" r="5"                   stroke="#000000" stroke-width="2" /> ''' + \
-                         '''    <rect id="screen" x="0" y="0" width="''' + str(self.w) + '''" height="''' + str(self.h) + '''" opacity="0.05" ''' + \
-                         '''          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"  ''' + \
-                         '''          onmousedown="${script('downSelect')}"         onmousemove="${script('myOnMouseMove')}" ''' + \
-                         '''          onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" /> ''' + \
-                         '''    <text id="infostr" x="5"   y="''' + str(self.h-4) + '''" fill="#000000" font-size="10px"> ${info_str} </text> ''' + \
-                         '''    <path id="allentitieslayer" d="${allentitiespath}" fill="#000000" fill-opacity="0.01" stroke="none" ''' + \
-                         '''          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"  ''' + \
-                         '''          onmousedown="${script('downAllEntities')}"    onmousemove="${script('myOnMouseMove')}"  ''' + \
-                         '''          onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" /> ''' + \
-                         '''    <path id="selectionlayer" d="${selectionpath}" fill="#ff0000" transform="" stroke="none" ''' + \
-                         '''          onmouseover="${script('myOnMouseOver')}"      onmouseout="${script('myOnMouseOut')}"  ''' + \
-                         '''          onmousedown="${script('downMove')}"           onmousemove="${script('myOnMouseMove')}" ''' + \
-                         '''          onmouseup="${script('myOnMouseUp')}"          onmousewheel="${script('myOnMouseWheel')}" /> ''' + \
-                         '''</svg>'''
+        self._template = f"""
+<svg id="svgparent" width="{self.w}" height="{self.h}" tabindex="0" onkeydown="${{script('myOnKeyDown')}}" onkeyup="${{script('myOnKeyUp')}}">
+    <svg id="mod" width="{self.w}" height="{self.h}"> ${{mod_inner}} </svg>
+    <g fill-opacity="1.0">
+      <g id="opanimation"> ${{animation_inner}} </g>
+      <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;0.0" dur="2s" repeatCount="1" />
+    </g>
+    <rect id="drag" x="-10" y="-10" width="5" height="5" stroke="#000000" stroke-width="2" fill="none" />
+    <line   id="layoutline"      x1="-10" y1="-10" x2="-10"    y2="-10"    stroke="#000000" stroke-width="2" />
+    <rect   id="layoutrect"      x="-10"  y="-10"  width="10"  height="10" stroke="#000000" stroke-width="2" />
+    <circle id="layoutcircle"    cx="-10" cy="-10" r="5"       fill="none" stroke="#000000" stroke-width="6" />
+    <circle id="layoutsunflower" cx="-10" cy="-10" r="5"                   stroke="#000000" stroke-width="2" />
+    <rect id="screen" x="0" y="0" width="{self.w}" height="{self.h}" opacity="0.05"
+          onmouseover="${{script('myOnMouseOver')}}"      onmouseout="${{script('myOnMouseOut')}}"
+          onmousedown="${{script('downSelect')}}"         onmousemove="${{script('myOnMouseMove')}}"
+          onmouseup="${{script('myOnMouseUp')}}"          onmousewheel="${{script('myOnMouseWheel')}}" />
+    <text id="infostr" x="5"   y="{self.h-4}" fill="#000000" font-size="10px"> ${{info_str}} </text>
+    <path id="allentitieslayer" d="${{allentitiespath}}" fill="#000000" fill-opacity="0.01" stroke="none"
+          onmouseover="${{script('myOnMouseOver')}}"      onmouseout="${{script('myOnMouseOut')}}"
+          onmousedown="${{script('downAllEntities')}}"    onmousemove="${{script('myOnMouseMove')}}" 
+          onmouseup="${{script('myOnMouseUp')}}"          onmousewheel="${{script('myOnMouseWheel')}}" />
+    <path id="selectionlayer" d="${{selectionpath}}" fill="#ff0000" transform="" stroke="none"
+          onmouseover="${{script('myOnMouseOver')}}"      onmouseout="${{script('myOnMouseOut')}}"
+          onmousedown="${{script('downMove')}}"           onmousemove="${{script('myOnMouseMove')}}"
+          onmouseup="${{script('myOnMouseUp')}}"          onmousewheel="${{script('myOnMouseWheel')}}" />
+</svg>
+"""
 
         # Previous layouts (for undo operations)
         self.previous_layouts = []
