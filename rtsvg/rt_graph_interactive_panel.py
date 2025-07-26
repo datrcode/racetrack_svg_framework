@@ -123,6 +123,7 @@ c   | reset view or focus view on selected
     | shift-c focus view on selected + neighbors
 e   | expand selection
     | shift-e       | expand selection (directed graph)
+    | ctrl-e        | even out distribution of selected nodes
 g   | layout upon next mouse drag
     | shift-g       | cycle through layout modes (rectangular, circular, or sunflower)
 q   | invert selection
@@ -703,22 +704,32 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             # "E" - Expand / Expand w/ Directed
             #
             if self.key_op_finished == 'e' or self.key_op_finished == 'E':
-                if self.key_op_finished == 'E':
+                if   self.ctrlkey and len(self.selected_entities) > 0:
+                    _entities_, _xs_, _ys_, _weights_ = [], [], [], []
+                    for _entity_ in self.selected_entities:
+                        _xy_ = self.pos[_entity_]
+                        _entities_.append(_entity_), _xs_.append(_xy_[0]), _ys_.append(_xy_[1]), _weights_.append(self.graphs[self.df_level].degree(_entity_))
+                    _df_      = pl.DataFrame({'e':_entities_, 'x':_xs_, 'y':_ys_, 'w':_weights_})
+                    _results_ = self.rt_self.uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(_df_, 'x', 'y', 'w')
+                    for i in range(len(_results_)):
+                        _entity_, _x_, _y_ = _results_['e'][i], _results_['x'][i], _results_['y'][i]
+                        self.pos[_entity_] = (_x_, _y_)
+                    self.__refreshView__()
+                elif self.key_op_finished == 'E':
                     _digraph_ = self.rt_self.createNetworkXGraph(self.dfs[self.df_level], self.ln_params['relationships'], use_digraph=True)
                     _new_set_ = set(self.selected_entities)
                     for _node_ in self.selected_entities:
                         for _nbor_ in _digraph_.neighbors(_node_):
                             _new_set_.add(_nbor_)
-
                     self.setSelectedEntitiesAndNotifyOthers(_new_set_)
+                    self.__refreshView__(comp=False, all_ents=False)
                 else:
                     _new_set_ = set(self.selected_entities)
                     for _node_ in self.selected_entities:
                         for _nbor_ in self.graphs[self.df_level].neighbors(_node_):
                             _new_set_.add(_nbor_)
                     self.setSelectedEntitiesAndNotifyOthers(_new_set_)
-
-                self.__refreshView__(comp=False, all_ents=False)
+                    self.__refreshView__(comp=False, all_ents=False)
 
             #
             # "Q" - Invert Selection / Common Neighbors
