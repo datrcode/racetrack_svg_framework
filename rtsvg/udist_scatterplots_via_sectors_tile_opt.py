@@ -58,7 +58,8 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
 
         # Create weights and static points if none were set
         if weights       is None: weights       = np.ones(len(x_vals))
-        if static_points is None: static_points = np.zeros(len(x_vals)) # by default, all points will move
+        if static_points is None: static_points_exist, static_points = False, np.zeros(len(x_vals)) # by default, all points will move
+        else:                     static_points_exist                = True
 
         def rayIntersectsSegment(xy_ray, uv_ray, xy0_segment, xy1_segment, include_xy1_endpoint=False, epsilon=1e-9):
             x_r,  y_r  = xy_ray
@@ -115,6 +116,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             #
             t = time.time()
             if set(['_u_', '_v_', 'x_right', 'y_right']) & set(df.columns) == set(['_u_', '_v_', 'x_right', 'y_right']): df = df.drop(['_u_', '_v_', 'x_right', 'y_right'])
+            if 's_right' in df.columns: df = df.drop(['s_right'])
             df = df.with_columns((0.02 + 0.96 * (pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min())).alias('x'), 
                                  (0.02 + 0.96 * (pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min())).alias('y'))
             self.time_lu['normalize'] += (time.time() - t)
@@ -125,7 +127,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             # All Sectors DataFrame
             #
             t = time.time()
-            df_all_sectors = df.join(pl.DataFrame({'sector': [i for i in range(16)]}), how='cross').drop(['w','c'])
+            df_all_sectors = df.join(pl.DataFrame({'sector': [i for i in range(16)]}), how='cross').drop(['w','c','s'])
             self.time_lu['all_sectors'] += (time.time() - t)
             
             #
@@ -343,8 +345,15 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
             self.time_lu['sector_uv_summation'] += (time.time() - t)
 
             t = time.time()
-            df_uv     = df_uv.with_columns((pl.col('x') + pl.col('_u_')).alias('x'), 
-                                           (pl.col('y') + pl.col('_v_')).alias('y'))
+            if static_points_exist:
+                df_uv     = df_uv.join(df_orig.drop(['x', 'y', 'w', 'c']), on=['__index__'], how='left') # add the static info back in
+                df_uv     = df_uv.with_columns(
+                    pl.when(pl.col('s') == 0).then(pl.col('x') + pl.col('_u_')).otherwise(pl.col('x')).alias('x'), 
+                    pl.when(pl.col('s') == 0).then(pl.col('y') + pl.col('_v_')).otherwise(pl.col('y')).alias('y')
+                )
+            else:
+                df_uv     = df_uv.with_columns((pl.col('x') + pl.col('_u_')).alias('x'), 
+                                               (pl.col('y') + pl.col('_v_')).alias('y'))
             df        = df_uv.join(df_orig, on=['__index__'], how='left') # add the weight back in
             self.time_lu['point_update'] += (time.time() - t)
 
@@ -389,8 +398,7 @@ class UDistScatterPlotsViaSectorsTileOpt(object):
         y_cols = [f'y{i}' for i in range(0, len(self.df_anim))]
         x_cols.extend(x_cols[::-1]), y_cols.extend(y_cols[::-1])
         for i in range(1, len(self.df_anim)):
-            df = df.join(self.df_anim[i], on=['__index__']) \
-                   .drop(['w_right', 'c_right'])             \
+            df = df.join(self.df_anim[i].drop(['s','w','c']), on=['__index__']) \
                    .rename({'x_right':f'x{i}', 'y_right':f'y{i}'})
         df = df.rename({'x':'x0', 'y':'y0'})
 
