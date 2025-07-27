@@ -433,11 +433,12 @@ class RTGeometryMixin(object):
     # doi: 10.1109/VIS55277.2024.00039. 
     # keywords: {Data analysis;Visual analytics;Clutter;Scatterplot de-cluttering;spatial transformation},
     #
-    def uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(self, df, x_field, y_field, wgt_field=None, iterations=32, vector_scalar=0.01):
-        _weights_ = None
-        if wgt_field is not None: _weights_ = df[wgt_field]
+    def uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(self, df, x_field, y_field, weight_field=None, static_field=None,iterations=32, vector_scalar=0.01):
+        _weights_, _statics_ = None, None
+        if weight_field is not None: _weights_ = df[weight_field]
+        if static_field is not None: _statics_ = df[static_field]
         x0, y0, x1, y1     = df[x_field].min(), df[y_field].min(), df[x_field].max(), df[y_field].max()
-        udspvsto           = UDistScatterPlotsViaSectorsTileOpt(df[x_field], df[y_field], _weights_, vector_scalar=vector_scalar, iterations=iterations)
+        udspvsto           = UDistScatterPlotsViaSectorsTileOpt(df[x_field], df[y_field], weights=_weights_, static_points=_statics_, vector_scalar=vector_scalar, iterations=iterations)
         x_vals, y_vals     = udspvsto.results()
         df                 = df.with_columns(pl.Series(x_field, x_vals), pl.Series(y_field, y_vals))
         x0_, y0_, x1_, y1_ = df[x_field].min(), df[y_field].min(), df[x_field].max(), df[y_field].max()
