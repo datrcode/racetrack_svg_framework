@@ -185,7 +185,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     _template = f"""
 <svg id="svgparent" width="600" height="400" tabindex="0" onkeydown="${{script('myOnKeyDown')}}" onkeyup="${{script('myOnKeyUp')}}">
     <svg id="mod" width="600" height="400"> ${{mod_inner}} </svg>
-    <g fill-opacity="1.0">
+    <g fill-opacity="0.0">
       <g id="opanimation"> ${{animation_inner}} </g>
       <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;0.0" dur="2s" repeatCount="1" />
     </g>
@@ -257,7 +257,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self._template = f"""
 <svg id="svgparent" width="{self.w}" height="{self.h}" tabindex="0" onkeydown="${{script('myOnKeyDown')}}" onkeyup="${{script('myOnKeyUp')}}">
     <svg id="mod" width="{self.w}" height="{self.h}"> ${{mod_inner}} </svg>
-    <g fill-opacity="1.0">
+    <g fill-opacity="0.0">
       <g id="opanimation"> ${{animation_inner}} </g>
       <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;0.0" dur="2s" repeatCount="1" />
     </g>
@@ -639,11 +639,13 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         else:               callers.add(self)
 
         self.df_level -= 1
-        self.animation_inner = '<rect x="10" y="10" width="20" height="20" fill="blue"/>'
 
         self.__refreshView__()
         for c in self.companions:
             if isinstance(c, RTStackable): c.popStack(callers=callers)
+
+        self.animation_inner = ''
+        self.animation_inner = f'<text x="5" y="15" fill="black"> popStack [{len(self.dfs)} @ {self.df_level}]</text>'
 
     #
     # setStackPosition() - set to a specific position
@@ -661,6 +663,10 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self.__refreshView__()
         for c in self.companions:
             if isinstance(c, RTStackable): c.setStackPosition(i_found, callers=callers)
+
+        self.animation_inner = ''
+        self.animation_inner = f'<text x="5" y="15" fill="black"> setStackPosition({i_found}) </text>'
+
 
     #
     # pushStack() - push a dataframe onto the stack
@@ -694,6 +700,10 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
 
         for c in self.companions:
             if isinstance(c, RTStackable): c.pushStack(df, callers=callers)
+    
+        self.animation_inner = ''
+        self.animation_inner = f'<text x="5" y="15" fill="black"> pushStack [{len(self.dfs)}]</text>'
+
 
     #
     # applyKeyOp() - apply specified key operation
