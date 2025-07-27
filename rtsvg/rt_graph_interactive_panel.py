@@ -71,6 +71,7 @@ import pandas as pd
 import polars as pl
 
 import threading
+import time
 
 import panel as pn
 import param
@@ -619,6 +620,14 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             self.wheel_rots        = 0            
             self.lock.release()
 
+    #
+    # setAnimation() - set the animation string (and thus the SVG view)
+    #
+    def setAnimation(self, animation):
+        time.sleep(0.001) 
+        self.animation_inner = ''
+        time.sleep(0.001) 
+        self.animation_inner = animation
 
     #
     # __refreshView__() - refresh the view
@@ -633,7 +642,10 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     # popStack() - as long as there are items on the stack, go up the stack
     #
     def popStack(self, callers=None):
-        if self.df_level == 0: return
+        if self.df_level == 0:
+            at_top = 'TOP' if self.df_level == 0 else ''
+            self.setAnimation(f'<text x="5" y="15" fill="black"> popStack [{len(self.dfs)} @ {self.df_level}] {at_top} </text>')
+            return
         if callers is not None and self in callers: return
         if callers is None: callers = set([self])
         else:               callers.add(self)
@@ -644,8 +656,8 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         for c in self.companions:
             if isinstance(c, RTStackable): c.popStack(callers=callers)
 
-        self.animation_inner = ''
-        self.animation_inner = f'<text x="5" y="15" fill="black"> popStack [{len(self.dfs)} @ {self.df_level}]</text>'
+        at_top = 'TOP' if self.df_level == 0 else ''
+        self.setAnimation(f'<text x="5" y="15" fill="black"> popStack [{len(self.dfs)} @ {self.df_level}] {at_top} </text>')
 
     #
     # setStackPosition() - set to a specific position
@@ -664,9 +676,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         for c in self.companions:
             if isinstance(c, RTStackable): c.setStackPosition(i_found, callers=callers)
 
-        self.animation_inner = ''
-        self.animation_inner = f'<text x="5" y="15" fill="black"> setStackPosition({i_found}) </text>'
-
+        self.setAnimation(f'<text x="5" y="15" fill="black"> setStackPosition [{len(self.dfs)} @ {self.df_level}] </text>')
 
     #
     # pushStack() - push a dataframe onto the stack
@@ -701,9 +711,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         for c in self.companions:
             if isinstance(c, RTStackable): c.pushStack(df, callers=callers)
     
-        self.animation_inner = ''
-        self.animation_inner = f'<text x="5" y="15" fill="black"> pushStack [{len(self.dfs)}]</text>'
-
+        self.setAnimation(f'<text x="5" y="15" fill="black"> pushStack [{len(self.dfs)}]</text>')
 
     #
     # applyKeyOp() - apply specified key operation
