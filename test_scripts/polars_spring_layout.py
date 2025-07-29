@@ -5,7 +5,7 @@ from math import sqrt
 __name__ = 'polars_spring_layout'
 
 class PolarsSpringLayout(object):
-    def __init__(self, g, pos, static_nodes=None, spring_exp=0.1):
+    def __init__(self, g, pos, static_nodes=None, spring_exp=0.1, iterations=None):
         self.g            = g
         self.pos          = pos
         self.static_nodes = static_nodes
@@ -24,9 +24,14 @@ class PolarsSpringLayout(object):
                                  (pl.col('y') - _df_['y'].min())/(pl.col('y').max() - _df_['y'].min()))
         self.pos = dict(zip(_df_['node'], zip(_df_['x'], _df_['y']))) # overwrite pos w/ normalized positions
 
+        self.df_anim = {}
+
         # For each subgraph
-        S = [g.subgraph(c).copy() for c in nx.connected_components(g)]
+        S   = [g.subgraph(c).copy() for c in nx.connected_components(g)]
+        S_i = 0
         for g_s in S:
+            if len(g_s.nodes()) == 1: continue # skip if there's only one node
+            self.df_anim[S_i] = []
             # Create a distance dataframe
             _lu_  = {'fm':[],'to':[], 'w':[]}
             dists = dict(nx.all_pairs_shortest_path_length(g_s))
@@ -43,21 +48,31 @@ class PolarsSpringLayout(object):
             for _node_ in g_s.nodes:
                 _xy_ = self.pos[_node_]
                 _lu_['node'].append(_node_), _lu_['x'].append(_xy_[0]), _lu_['y'].append(_xy_[1])
-            df_pos = pl.DataFrame(_lu_)
-
-            # Calculate distance between all nodes
-            df_pos = df_pos.join(df_pos, how='cross') \
-                           .filter(pl.col('node') != pl.col('node_right')) \
-                           .with_columns(((pl.col('x') - pl.col('x_right'))**2 + 
-                                          (pl.col('y') - pl.col('y_right'))**2).sqrt().alias('d')) \
-                           .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
-                           .with_columns(pl.col('w').pow(self.spring_exp).alias('e'))
+            df_pos         = pl.DataFrame(_lu_)
+            x0, y0, x1, y1 = df_pos['x'].min(), df_pos['y'].min(), df_pos['x'].max(), df_pos['y'].max()
+            if x0 == x1 and y0 == y1: continue # skip if there's no positional differentiation
             
-            self.df_pos  = df_pos
-            self.df_dist = df_dist
-
-
-
-
-
-
+            # Calculate distance between all nodes
+            if iterations is None: iterations = len(g_s.nodes())
+            _mu_ = 1.0/len(g_s.nodes())
+            for _iteration_ in range(iterations):
+                df_pos = df_pos.with_columns((pl.col('x') - _df_['x'].min())/(pl.col('x').max() - _df_['x'].min()), 
+                                             (pl.col('y') - _df_['y'].min())/(pl.col('y').max() - _df_['y'].min())) \
+                               .join(df_pos, how='cross') \
+                               .filter(pl.col('node') != pl.col('node_right')) \
+                               .with_columns((pl.col('x') - pl.col('x_right')).alias('dx'),
+                                             (pl.col('y') - pl.col('y_right')).alias('dy')) \
+                               .with_columns((pl.col('dx')**2 + pl.col('dy')**2).sqrt().alias('d')) \
+                               .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
+                               .with_columns(pl.col('w').pow(self.spring_exp).alias('e')) \
+                               .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
+                                             pl.when(pl.col('w') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('w')).alias('w')) \
+                               .with_columns(pl.col('dx')/pl.col('d').alias('dx'), pl.col('dy')/pl.col('d').alias('dy')) \
+                               .with_columns(((2.0*pl.col('dx')*(1.0 - pl.col('w')/pl.col('d')))/pl.col('e')).alias('xadd'),
+                                             ((2.0*pl.col('dx')*(1.0 - pl.col('w')/pl.col('d')))/pl.col('e')).alias('yadd')) \
+                               .group_by(['node','x','y']).agg(pl.col('xadd').sum(), pl.col('yadd').sum()) \
+                               .with_columns(pl.col('x') - _mu_*pl.col('xadd').alias('x'), 
+                                             pl.col('y') - _mu_*pl.col('yadd').alias('y')) \
+                               .drop(['xadd','yadd'])
+                self.df_anim[S_i].append(df_pos)
+            S_i += 1
