@@ -5,7 +5,7 @@ from math import sqrt
 __name__ = 'polars_spring_layout'
 
 class PolarsSpringLayout(object):
-    def __init__(self, g, pos, static_nodes=None, spring_exp=0.1, mu=None, iterations=None):
+    def __init__(self, g, pos, static_nodes=None, spring_exp=1.0, mu=None, iterations=None):
         self.g            = g
         self.pos          = pos
         self.static_nodes = static_nodes
@@ -24,8 +24,9 @@ class PolarsSpringLayout(object):
                                  (pl.col('y') - _df_['y'].min())/(pl.col('y').max() - _df_['y'].min()))
         self.pos = dict(zip(_df_['node'], zip(_df_['x'], _df_['y']))) # overwrite pos w/ normalized positions
 
-        self.df_anim = {}
-        self.g_s     = {}
+        self.df_anim    = {}
+        self.g_s        = {}
+        self.df_results = []
 
         # For each subgraph
         S   = [g.subgraph(c).copy() for c in nx.connected_components(g)]
@@ -69,7 +70,6 @@ class PolarsSpringLayout(object):
                                .with_columns(pl.col('w').pow(self.spring_exp).alias('e')) \
                                .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
                                              pl.when(pl.col('w') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('w')).alias('w')) \
-                               .with_columns(pl.col('dx')/pl.col('d').alias('dx'), pl.col('dy')/pl.col('d').alias('dy')) \
                                .with_columns(((2.0*pl.col('dx')*(1.0 - pl.col('w')/pl.col('d')))/pl.col('e')).alias('xadd'),
                                              ((2.0*pl.col('dy')*(1.0 - pl.col('w')/pl.col('d')))/pl.col('e')).alias('yadd')) \
                                .group_by(['node','x','y']).agg(pl.col('xadd').sum(), pl.col('yadd').sum()) \
@@ -77,7 +77,21 @@ class PolarsSpringLayout(object):
                                              pl.col('y') - mu*pl.col('yadd').alias('y')) \
                                .drop(['xadd','yadd'])
                 self.df_anim[S_i].append(df_pos)
+            self.df_results.append(df_pos.with_columns((pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min()), 
+                                                      ((pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min()))) \
+                                         .with_columns((x0 + pl.col('x') * (x1 - x0)).alias('x'), 
+                                                       (y0 + pl.col('y') * (y1 - y0)).alias('y')))
             S_i += 1
+
+    #
+    # results() - return the results as a dictionary of nodes to xy coordinate tuples
+    #
+    def results(self):
+        _pos_ = {}
+        for i in range(0, len(self.df_results)): 
+            _this_pos_  =  dict(zip(self.df_results[i]['node'], zip(self.df_results[i]['x'], self.df_results[i]['y'])))
+            _pos_      |=  _this_pos_
+        return _pos_
 
     #
     # svgAnimation() - produce the animation svg for the spring layout
