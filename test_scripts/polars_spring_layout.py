@@ -5,7 +5,7 @@ from math import sqrt
 __name__ = 'polars_spring_layout'
 
 class PolarsSpringLayout(object):
-    def __init__(self, g, pos, static_nodes=None, spring_exp=0.1, iterations=None):
+    def __init__(self, g, pos, static_nodes=None, spring_exp=0.1, mu=None, iterations=None):
         self.g            = g
         self.pos          = pos
         self.static_nodes = static_nodes
@@ -54,7 +54,7 @@ class PolarsSpringLayout(object):
             
             # Calculate distance between all nodes
             if iterations is None: iterations = len(g_s.nodes())
-            _mu_ = 1.0/len(g_s.nodes())
+            if mu is None: mu = 1.0/len(g_s.nodes())
             for _iteration_ in range(iterations):
                 df_pos = df_pos.with_columns((pl.col('x') - _df_['x'].min())/(pl.col('x').max() - _df_['x'].min()), 
                                              (pl.col('y') - _df_['y'].min())/(pl.col('y').max() - _df_['y'].min())) \
@@ -69,10 +69,10 @@ class PolarsSpringLayout(object):
                                              pl.when(pl.col('w') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('w')).alias('w')) \
                                .with_columns(pl.col('dx')/pl.col('d').alias('dx'), pl.col('dy')/pl.col('d').alias('dy')) \
                                .with_columns(((2.0*pl.col('dx')*(1.0 - pl.col('w')/pl.col('d')))/pl.col('e')).alias('xadd'),
-                                             ((2.0*pl.col('dx')*(1.0 - pl.col('w')/pl.col('d')))/pl.col('e')).alias('yadd')) \
+                                             ((2.0*pl.col('dy')*(1.0 - pl.col('w')/pl.col('d')))/pl.col('e')).alias('yadd')) \
                                .group_by(['node','x','y']).agg(pl.col('xadd').sum(), pl.col('yadd').sum()) \
-                               .with_columns(pl.col('x') - _mu_*pl.col('xadd').alias('x'), 
-                                             pl.col('y') - _mu_*pl.col('yadd').alias('y')) \
+                               .with_columns(pl.col('x') - mu*pl.col('xadd').alias('x'), 
+                                             pl.col('y') - mu*pl.col('yadd').alias('y')) \
                                .drop(['xadd','yadd'])
                 self.df_anim[S_i].append(df_pos)
             S_i += 1
@@ -81,7 +81,7 @@ class PolarsSpringLayout(object):
     # svgAnimation() - produce the animation svg for the spring layout
     # - copied from the udist_scatterplots_via_sectors_tile_opt.py method
     #
-    def svgAnimation(self, duration='10s', w=256, h=256, r=0.005, anim_i=0):
+    def svgAnimation(self, duration='10s', w=256, h=256, r=0.01, anim_i=0):
         df = self.df_anim[anim_i][0]
         x_cols = [f'x{i}' for i in range(0, len(self.df_anim[anim_i]))]
         y_cols = [f'y{i}' for i in range(0, len(self.df_anim[anim_i]))]
@@ -101,9 +101,13 @@ class PolarsSpringLayout(object):
                      pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
                      pl.lit('</circle>')]
 
+        x0, y0, x1, y1 = df['x0'].min(), df['y0'].min(), df['x0'].max(), df['y0'].max()
+        for i in range(1, len(self.df_anim[anim_i])):
+            x0, y0, x1, y1 = min(x0, df[f'x{i}'].min()), min(y0, df[f'y{i}'].min()), max(x1, df[f'x{i}'].max()), max(y1, df[f'y{i}'].max())
+
         svg = []
-        svg.append(f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">')
-        svg.append(f'<rect x="0.0" y="0.0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+        svg.append(f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="{x0} {y0} {x1-x0} {y1-y0}" xmlns="http://www.w3.org/2000/svg">')
+        svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="#ffffff" />')
 
         df = df.with_columns(pl.concat_str(*_str_ops_, separator='').alias('svg'))
         svg.extend(df['svg'])
