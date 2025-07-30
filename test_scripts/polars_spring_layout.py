@@ -76,3 +76,38 @@ class PolarsSpringLayout(object):
                                .drop(['xadd','yadd'])
                 self.df_anim[S_i].append(df_pos)
             S_i += 1
+
+    #
+    # svgAnimation() - produce the animation svg for the spring layout
+    # - copied from the udist_scatterplots_via_sectors_tile_opt.py method
+    #
+    def svgAnimation(self, duration='10s', w=256, h=256, r=0.005, anim_i=0):
+        df = self.df_anim[anim_i][0]
+        x_cols = [f'x{i}' for i in range(0, len(self.df_anim[anim_i]))]
+        y_cols = [f'y{i}' for i in range(0, len(self.df_anim[anim_i]))]
+        x_cols.extend(x_cols[::-1]), y_cols.extend(y_cols[::-1])
+        for i in range(1, len(self.df_anim[anim_i])):
+            df = df.join(self.df_anim[anim_i][i], on=['node']).rename({'x_right':f'x{i}', 'y_right':f'y{i}'})
+        df = df.rename({'x':'x0', 'y':'y0'})
+
+        df = df.with_columns(pl.concat_str(x_cols, separator=';').alias('x_values_str'), 
+                             pl.concat_str(y_cols, separator=';').alias('y_values_str'))
+
+        _str_ops_ = [pl.lit(f'<circle r="{r}" fill="#000000"> <animate attributeName="cx" values="'),
+                     pl.col('x_values_str'),
+                     pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
+                     pl.lit('<animate attributeName="cy" values="'),
+                     pl.col('y_values_str'),
+                     pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
+                     pl.lit('</circle>')]
+
+        svg = []
+        svg.append(f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">')
+        svg.append(f'<rect x="0.0" y="0.0" width="1.0" height="1.0" x="0" y="0" fill="#ffffff" />')
+
+        df = df.with_columns(pl.concat_str(*_str_ops_, separator='').alias('svg'))
+        svg.extend(df['svg'])
+
+        svg.append('</svg>')
+        return ''.join(svg)
+
