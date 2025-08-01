@@ -1,6 +1,7 @@
 import polars as pl
 import networkx as nx
 from math import sqrt
+import random
 
 __name__ = 'polars_spring_layout'
 
@@ -8,11 +9,15 @@ __name__ = 'polars_spring_layout'
 # PolarsSpringLayout() - modeled after the rt_graph_layouts_mixin.py springLayout() method
 #
 class PolarsSpringLayout(object):
-    def __init__(self, g, pos, static_nodes=None, spring_exp=1.0, iterations=None):
+    def __init__(self, g, pos=None, static_nodes=None, spring_exp=1.0, iterations=None):
         self.g            = g
         self.pos          = pos
         self.static_nodes = static_nodes
         self.spring_exp   = spring_exp
+
+        if self.pos is None:
+            self.pos = {}
+            for _node_ in self.g.nodes: self.pos[_node_] = (random.random(), random.random())
 
         self.df_anim      = {}
         self.g_s          = {}
