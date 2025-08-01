@@ -19,5 +19,17 @@ class LinkNodeGraphPatterns(object):
         return g
 
     def __pattern_mesh__(self, xtiles=10, ytiles=10, **kwargs):
-        g = nx.grid_2d_graph(xtiles,ytiles)
+        g       = nx.Graph()
+        _nodes_ = set()
+        for _y_ in range(ytiles+1):
+            for _x_ in range(xtiles+1):
+                _node_ = f'node_{_y_}_{_x_}'
+                _nodes_.add(_node_)
+        for _node_ in _nodes_:
+            _y_, _x_ = int(_node_.split('_')[1]), int(_node_.split('_')[2])
+            for dy in [-1, 0, 1]:
+                for dx in [-1, 0, 1]:
+                    if (dx == 0 and dy == 0) or (abs(dx) == 1 and abs(dy) == 1): continue
+                    _nbor_ = f'node_{_y_+dy}_{_x_+dx}'
+                    if _nbor_ in _nodes_: g.add_edge(_node_, _nbor_)
         return g
