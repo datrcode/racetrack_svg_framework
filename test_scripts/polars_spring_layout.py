@@ -15,9 +15,10 @@ class PolarsSpringLayout(object):
         self.static_nodes = static_nodes
         self.spring_exp   = spring_exp
 
-        if self.pos is None:
-            self.pos = {}
-            for _node_ in self.g.nodes: self.pos[_node_] = (random.random(), random.random())
+        if self.pos is None: self.pos = {}
+        for _node_ in self.g.nodes: 
+            if _node_ not in self.pos: 
+                self.pos[_node_] = (random.random(), random.random())
 
         self.df_anim      = {}
         self.g_s          = {}
