@@ -15,6 +15,8 @@ class PolarsSpringLayout(object):
         self.static_nodes = static_nodes
         self.spring_exp   = spring_exp
 
+        if self.static_nodes is None: self.static_nodes = set()
+
         if self.pos is None: self.pos = {}
         for _node_ in self.g.nodes: 
             if _node_ not in self.pos: 
@@ -42,10 +44,12 @@ class PolarsSpringLayout(object):
             df_dist = df_dist.with_columns(pl.col('t').cast(pl.Float64))
 
             # Create a node position dataframe
-            _lu_ = {'node':[], 'x':[], 'y':[]}
+            _lu_ = {'node':[], 'x':[], 'y':[], 's':[]}
             for _node_ in g_s.nodes:
                 _xy_ = self.pos[_node_]
                 _lu_['node'].append(_node_), _lu_['x'].append(_xy_[0]), _lu_['y'].append(_xy_[1])
+                if _node_ in self.static_nodes: _lu_['s'].append(True)
+                else:                           _lu_['s'].append(False)
             df_pos         = pl.DataFrame(_lu_).with_columns(pl.col('x').cast(pl.Float64), pl.col('y').cast(pl.Float64))
             x0, y0, x1, y1 = df_pos['x'].min(), df_pos['y'].min(), df_pos['x'].max(), df_pos['y'].max()
             if x0 == x1 and y0 == y1: continue # skip if there's no positional differentiation
@@ -55,20 +59,19 @@ class PolarsSpringLayout(object):
             mu = 1.0/len(g_s.nodes())
             for _iteration_ in range(iterations):
                 if _iteration_ == 0: self.df_anim[S_i].append(df_pos)
+                __dx__, __dy__ = (pl.col('x') - pl.col('x_right')), (pl.col('y') - pl.col('y_right'))
                 df_pos = df_pos.join(df_pos, how='cross') \
                                .filter(pl.col('node') != pl.col('node_right')) \
-                               .with_columns((pl.col('x') - pl.col('x_right')).alias('dx'),
-                                             (pl.col('y') - pl.col('y_right')).alias('dy')) \
-                               .with_columns((pl.col('dx')**2 + pl.col('dy')**2).sqrt().alias('d')) \
+                               .with_columns((__dx__**2 + __dy__**2).sqrt().alias('d')) \
                                .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
                                .with_columns(pl.col('t').pow(self.spring_exp).alias('e')) \
                                .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
                                              pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('w')) \
-                               .with_columns(((2.0*pl.col('dx')*(1.0 - pl.col('t')/pl.col('d')))/pl.col('e')).alias('xadd'),
-                                             ((2.0*pl.col('dy')*(1.0 - pl.col('t')/pl.col('d')))/pl.col('e')).alias('yadd')) \
-                               .group_by(['node','x','y']).agg(pl.col('xadd').sum(), pl.col('yadd').sum()) \
-                               .with_columns((pl.col('x') - mu * pl.col('xadd')).alias('x'),
-                                             (pl.col('y') - mu * pl.col('yadd')).alias('y')) \
+                               .with_columns(((2.0*__dx__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('e')).alias('xadd'),
+                                             ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('e')).alias('yadd')) \
+                               .group_by(['node','x','y','s']).agg(pl.col('xadd').sum(), pl.col('yadd').sum()) \
+                               .with_columns(pl.when(pl.col('s')).then(pl.col('x')).otherwise(pl.col('x') - mu * pl.col('xadd')).alias('x'),
+                                             pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') - mu * pl.col('yadd')).alias('y')) \
                                .drop(['xadd','yadd'])
                 self.df_anim[S_i].append(df_pos)
             
