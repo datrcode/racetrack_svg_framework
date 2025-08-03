@@ -100,7 +100,7 @@ class PolarsSpringLayout(object):
         x_cols = [f'x{i}' for i in range(0, len(self.df_anim[anim_i]))]
         y_cols = [f'y{i}' for i in range(0, len(self.df_anim[anim_i]))]
         x_cols.extend(x_cols[::-1]), y_cols.extend(y_cols[::-1])
-        for i in range(1, len(self.df_anim[anim_i])): df = df.join(self.df_anim[anim_i][i], on=['node']).rename({'x_right':f'x{i}', 'y_right':f'y{i}'})
+        for i in range(1, len(self.df_anim[anim_i])): df = df.join(self.df_anim[anim_i][i].drop(['s']), on=['node']).rename({'x_right':f'x{i}', 'y_right':f'y{i}'})
         df = df.rename({'x':'x0', 'y':'y0'})
         # Determine the bounds
         x0, y0, x1, y1 = df['x0'].min(), df['y0'].min(), df['x0'].max(), df['y0'].max()
