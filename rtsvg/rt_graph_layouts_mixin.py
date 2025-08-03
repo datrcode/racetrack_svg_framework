@@ -65,6 +65,54 @@ class RTGraphLayoutsMixin(object):
         self.pos_templates = {} # [_node_] = (x, y)
         for i in range(len(df)): self.pos_templates[df['node'][i]] = [df['x'][i], df['y'][i]]
 
+
+    #
+    # identifyLandmarksInConnectedComponent()
+    #
+    def identifyLandmarksInConnectedComponent(self, _g_, num_landmarks=8):
+        mins, sums = {}, {}
+        for node in _g_.nodes(): mins[node], sums[node] = 1e10, 0.0
+        # Pick a random seed, calculate the single source dijkstra, and find the largest distance node -- that's the first landmark
+        _seed_  = random.choice(list(_g_.nodes()))
+        _ssd_   = nx.single_source_dijkstra(_g_, _seed_)
+        _max_   = None
+        for _node_, _dist_ in _ssd_[0].items():
+            if _node_ == _seed_: continue
+            if _max_ is None or _dist_ > _max_[1]: _max_ = (_node_, _dist_)
+        # Construct the data structures to find the landmarks
+        next_node  = _max_[0]
+        found      = set([_max_[0]])
+        shortests  = {}
+        if num_landmarks == 1: return found
+
+        while len(found) < num_landmarks and len(found) < len(_g_.nodes()):
+            shortest = nx.single_source_dijkstra(_g_, next_node)
+            shortests[next_node] = shortest
+            max_sum, max_sum_node, max_sum_min = -1e10, None, 1e10
+            # Iterate over the nodes updating the sums/mins
+            for node in _g_.nodes():
+                d = shortest[0][node]
+                # Update mins and sums
+                if mins[node] > d: mins[node] = d
+                sums[node] = sums[node] + d
+                if sums[node] > max_sum and node not in found: 
+                    max_sums, max_sum_node, max_sum_min = sums[node], node, mins[node]
+            # Find all the nodes that have that sum
+            max_sum_set = set([max_sum_node])
+            for node in _g_.nodes():
+                if sums[node] >= max_sum: max_sum_set.add(node)
+            # If only one, then that's the next node... otherwise, choose the one with the highest min
+            if len(max_sum_set) == 1:
+                next_node = max_sum_set.pop()
+            else:
+                for node in max_sum_set:
+                    if mins[node] > max_sum_min:
+                        max_sum_node = node
+                        max_sum_min  = mins[node]
+                next_node = max_sum_node
+            found.add(next_node)
+        return found, shortests
+
     #
     # collapseDataFrameGraphByClusters()
     # - only works with polars at the moment
