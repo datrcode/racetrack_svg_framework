@@ -67,6 +67,19 @@ class RTGraphLayoutsMixin(object):
 
 
     #
+    # identifyLandmarks()
+    #
+    def identifyLandmarks(self, _g_, num_landmarks=8):
+        S   = [_g_.subgraph(c).copy() for c in nx.connected_components(_g_)]
+        found     = set()
+        shortests = {}
+        for g_s in S:
+            _founds_, _shortests_ = self.identifyLandmarksInConnectedComponent(g_s, num_landmarks)
+            found     |= _founds_
+            shortests |= _shortests_
+        return found, shortests
+    
+    #
     # identifyLandmarksInConnectedComponent()
     #
     def identifyLandmarksInConnectedComponent(self, _g_, num_landmarks=8):
