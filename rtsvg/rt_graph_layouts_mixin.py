@@ -903,10 +903,11 @@ class RTGraphLayoutsMixin(object):
             
             # Touch up center w/ spring layout
             if touch_up_with_springs:
-                dists   = dict(nx.all_pairs_shortest_path_length(G))
-                leaves  = self.dagLeavesOnly(G)
-                centers = set(G.nodes()) - leaves
-                pos = self.springLayout(G, pos, centers, iterations=20, spring_exp=0.1, only_sel_adj=True, dists=dists)
+                raise Exception('hyperTreeLayout() - touch_up_with_springs Not Implemented')
+                #dists   = dict(nx.all_pairs_shortest_path_length(G))
+                #leaves  = self.dagLeavesOnly(G)
+                #centers = set(G.nodes()) - leaves
+                # pos = self.springLayout(G, pos, centers, iterations=20, spring_exp=0.1, only_sel_adj=True, dists=dists)
                 # pos = self.springLayout(G, pos, leaves,  iterations=200, spring_exp=0.1, only_sel_adj=True, dists=dists)
 
         # Separate the connected components
