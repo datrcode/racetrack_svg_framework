@@ -49,7 +49,8 @@ class PolarsSpringLayout(object):
             self.g_s    [S_i] = g_s
             # Create a distance dataframe
             _lu_  = {'fm':[],'to':[], 't':[]}
-            dists = dict(nx.all_pairs_shortest_path_length(g_s))
+            #dists = dict(nx.all_pairs_shortest_path_length(g_s)) # doesn't consider weighted edges...
+            dists = dict(nx.all_pairs_dijkstra_path_length(g_s))
             for _node_ in dists.keys():
                 for _nbor_ in dists[_node_].keys():
                     if _node_ == _nbor_: continue
@@ -69,7 +70,9 @@ class PolarsSpringLayout(object):
             if x0 == x1 and y0 == y1: continue # skip if there's no positional differentiation
             
             # Calculate distance between all nodes
-            if iterations is None: iterations = len(g_s.nodes())
+            if iterations is None: 
+                iterations = len(g_s.nodes())
+                if iterations < 64: iterations = 64
             mu = 1.0/len(g_s.nodes())
             for _iteration_ in range(iterations):
                 if _iteration_ == 0: self.df_anim[S_i].append(df_pos)

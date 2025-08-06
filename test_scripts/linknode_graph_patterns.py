@@ -23,7 +23,7 @@ class LinkNodeGraphPatterns(object):
         for i in range(spokes): g.add_edge(prefix+str(i), prefix+str((i+1)%spokes))
         return g
 
-    def __pattern_mesh__(self, xtiles=10, ytiles=10, prefix='', **kwargs):
+    def __pattern_mesh__(self, xtiles=8, ytiles=8, prefix='', **kwargs):
         g       = nx.Graph()
         _nodes_ = set()
         for _y_ in range(ytiles+1):
