@@ -3,7 +3,6 @@ from .circle_packer                           import CirclePacker
 from .polars_spring_layout                    import PolarsSpringLayout
 from .rt_entity_position                      import RTEntityPosition
 from .rt_graph_interactive_panel              import RTGraphInteractivePanel
-from .rt_graph_layouts_mixin                  import MTSpring
 from .rt_layouts_mixin                        import RTComponentsLayout
 from .rt_ontologies_mixin                     import jsonAbsolutePath,        fillJSONPathElements
 from .rt_coordinated_views                    import RTCoordinatedViews
