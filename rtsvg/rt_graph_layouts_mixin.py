@@ -32,8 +32,6 @@ from collections.abc import Iterable
 from math import sqrt, pi, cos, sin, ceil, floor, inf, atan2
 from dataclasses import dataclass
 
-from multiprocessing import Pool
-
 __name__ = 'rt_graph_layouts_mixin'
 
 #
