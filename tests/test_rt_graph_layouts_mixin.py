@@ -91,9 +91,5 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
     def test_barycentricLayout(self):
         self.rt_self.barycentricLayout(self.g, self.pos, selection=self.node_subset)
 
-    def test_springLayoutThreaded(self):
-        pass # something broken in the package for any classes outside of the mixins...
-        # self.rt_self.springLayoutThreaded(self.g)
-
 if __name__ == '__main__':
     unittest.main()
