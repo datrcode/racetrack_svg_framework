@@ -69,11 +69,13 @@ class PolarsSpringLayout(object):
             x0, y0, x1, y1 = df_pos['x'].min(), df_pos['y'].min(), df_pos['x'].max(), df_pos['y'].max()
             if x0 == x1 and y0 == y1: continue # skip if there's no positional differentiation
             
-            # Calculate distance between all nodes
+            # Determine the number of iterations
             if iterations is None: 
                 iterations = len(g_s.nodes())
                 if iterations < 64: iterations = 64
             mu = 1.0/len(g_s.nodes())
+
+            # Perform the iterations by shifting the nodes per the spring force
             for _iteration_ in range(iterations):
                 if _iteration_ == 0: self.df_anim[S_i].append(df_pos)
                 __dx__, __dy__ = (pl.col('x') - pl.col('x_right')), (pl.col('y') - pl.col('y_right'))
@@ -90,8 +92,10 @@ class PolarsSpringLayout(object):
                                .with_columns(pl.when(pl.col('s')).then(pl.col('x')).otherwise(pl.col('x') - mu * pl.col('xadd')).alias('x'),
                                              pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') - mu * pl.col('yadd')).alias('y')) \
                                .drop(['xadd','yadd'])
+                # Keep track of the animation sequence
                 self.df_anim[S_i].append(df_pos)
             
+            # Store the results -- re-scale the coordinates to their original bounds
             self.df_results.append(df_pos.with_columns((pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min()), 
                                                       ((pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min()))) \
                                          .with_columns((x0 + pl.col('x') * (x1 - x0)).alias('x'), 
