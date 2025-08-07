@@ -68,6 +68,7 @@ class LinkNodeGraphPatterns(object):
 
 
     def __pattern_uscities__(self, **kwargs):
+
         pos = {
             'new_york': (40.7128, -74.0059),
             'los_angeles': (34.0522, -118.2437),
@@ -79,7 +80,6 @@ class LinkNodeGraphPatterns(object):
             'san_antonio': (29.4241, -98.4936),
             'dallas': (32.7767, -96.7970),
             'houston': (29.7604, -95.3698),
-            'austin': (30.2672, -97.7431),
             'kansas_city': (39.0997, -94.5786),
             'denver': (39.7392, -104.9903),
             'minneapolis': (44.9778, -93.2650),
@@ -91,7 +91,6 @@ class LinkNodeGraphPatterns(object):
             'tampa': (27.9506, -82.4572),
             'tallahassee': (30.4383, -84.2807),
             'salt_lake_city': (40.7608, -111.8910),
-            'tempe': (33.4220, -111.9406),
             'reno': (39.5296, -119.8135),
             'las_vegas': (36.1699, -115.1398),
             'sacramento': (38.5816, -121.4944),
@@ -102,25 +101,33 @@ class LinkNodeGraphPatterns(object):
             'baltimore': (39.2904, -76.6122),
             'richmond': (37.54, -77.46),
             'providence': (41.8244, -71.4128),
+            'bangor': (44.8378, -68.7798),
+            'jacksonville': (30.3322, -81.6557),
         }
         def d(a, b): return 1.0 / (((pos[a][0]-pos[b][0])**2 + (pos[a][1]-pos[b][1])**2)**0.5)
 
         _connects_ = {
             'new_york': ['boston','philadelphia', 'providence'],
+            'boston': ['providence', 'new_york', 'bangor'],
             'philadelphia': ['pittsburgh', 'baltimore'],
-            'pittsburgh': ['chicago'],
+            'pittsburgh': ['chicago', 'new_york', 'bangor'],
             'baltimore': ['washington_dc', 'pittsburgh'],
             'washington_dc': ['richmond', 'atlanta', 'chicago'],
-            'chicago': ['minneapolis', 'denver', 'boise'],
-            'atlanta': ['tallahassee', 'orlando', 'kansas_city', 'minneapolis'],
-            'orlando': ['tampa', 'miami', 'tallahassee'],
-            'denver': ['salt_lake_city', 'phoenix', 'kansas_city', 'boise', 'tempe', 'reno', 'las_vegas'],
-            'dallas': ['houston', 'austin', 'san_antonio', 'denver', 'tallahassee', 'kansas_city'],
+            'chicago': ['minneapolis', 'denver', 'boise', 'kansas_city'],
+            'atlanta': ['tallahassee', 'orlando', 'kansas_city', 'richmond', 'jacksonville'],
+            'orlando': ['tampa', 'miami', 'tallahassee', 'jacksonville'],
+            'tampa': ['miami', 'tallahassee'],
+            'denver': ['salt_lake_city', 'phoenix', 'kansas_city', 'boise', 'reno', 'las_vegas'],
+            'dallas': ['houston', 'san_antonio', 'denver', 'tallahassee', 'kansas_city'],
             'seattle': ['spokane', 'san_francisco'],
-            'spokane': ['boise'],
+            'spokane': ['boise', 'minneapolis'],
             'san_francisco': ['sacramento', 'los_angeles'],
-            'los_angeles': ['sacramento', 'san_diego', 'las_vegas'],
-            'reno': ['salt_lake_city', 'las_vegas', 'spokane'],
+            'los_angeles': ['sacramento', 'san_diego', 'las_vegas', 'phoenix'],
+            'reno': ['salt_lake_city', 'las_vegas', 'spokane', 'sacramento'],
+            'phoenix':['dallas', 'san_antonio'],
+            'houston': ['san_antonio'],
+            'boise': ['salt_lake_city', 'reno'],
+            'miami': ['jacksonville'],
         }
 
         _seen_ = set()
