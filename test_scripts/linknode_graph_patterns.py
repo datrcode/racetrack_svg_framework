@@ -66,7 +66,6 @@ class LinkNodeGraphPatterns(object):
 
         return g
 
-
     def __pattern_uscities__(self, **kwargs):
 
         pos = {
@@ -142,3 +141,13 @@ class LinkNodeGraphPatterns(object):
             print('Missing nodes:', set(pos.keys()) - _seen_)
             raise Exception('Graph is not fully connected')
         return g
+
+    def __pattern_trianglestars__(self, **kwargs):
+        g = nx.Graph()
+        g.add_edge('a', 'b'), g.add_edge('a', 'c'), g.add_edge('b', 'c')
+        for i in range(40):
+            g.add_edge('a', 'a'+str(i))
+            g.add_edge('b', 'b'+str(i))
+            g.add_edge('c', 'c'+str(i))
+        return g
+
