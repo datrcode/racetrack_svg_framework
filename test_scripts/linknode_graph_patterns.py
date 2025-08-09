@@ -131,11 +131,18 @@ class LinkNodeGraphPatterns(object):
 
         _seen_ = set()
         g = nx.Graph()
+        for _node_ in pos.keys():
+            for _nbor_ in pos.keys():
+                if _node_ == _nbor_: continue
+                _seen_.add(_node_), _seen_.add(_nbor_)
+                g.add_edge(_node_, _nbor_, weight=d(_node_, _nbor_))
+        '''
         for _node_ in _connects_.keys():
             for _nbor_ in _connects_[_node_]:
                 if _node_ == _nbor_: continue
                 _seen_.add(_node_), _seen_.add(_nbor_)
                 g.add_edge(_node_, _nbor_, weight=d(_node_, _nbor_))
+        '''
 
         if _seen_ != set(pos.keys()): 
             print('Missing nodes:', set(pos.keys()) - _seen_)
