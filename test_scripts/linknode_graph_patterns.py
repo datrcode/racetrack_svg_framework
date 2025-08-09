@@ -46,7 +46,7 @@ class LinkNodeGraphPatterns(object):
                'inner_ul': (0.1, 0.1),             'inner_ur': (0.9, 0.1),
                'inner_ll': (0.1, 0.9),             'inner_lr': (0.9, 0.9)}
 
-        def d(a, b): return 1.0 / (((pos[a][0]-pos[b][0])**2 + (pos[a][1]-pos[b][1])**2)**0.5)
+        def d(a, b): return (((pos[a][0]-pos[b][0])**2 + (pos[a][1]-pos[b][1])**2)**0.5)
 
         g   = nx.Graph()
         g.add_edge('ul', 'um', weight=d('ul', 'um')), g.add_edge('um', 'ur', weight=d('um', 'ur'))
@@ -103,7 +103,7 @@ class LinkNodeGraphPatterns(object):
             'bangor': (44.8378, -68.7798),
             'jacksonville': (30.3322, -81.6557),
         }
-        def d(a, b): return 1.0 / (((pos[a][0]-pos[b][0])**2 + (pos[a][1]-pos[b][1])**2)**0.5)
+        def d(a, b): return (((pos[a][0]-pos[b][0])**2 + (pos[a][1]-pos[b][1])**2)**0.5)
 
         _connects_ = {
             'new_york': ['boston','philadelphia', 'providence'],
