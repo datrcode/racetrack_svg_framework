@@ -87,8 +87,9 @@ class PolarsSpringLayout(object):
                                .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
                                              pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('w')) \
                                .with_columns(((2.0*__dx__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('e')).alias('xadd'),
-                                             ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('e')).alias('yadd')) \
-                               .group_by(['node','x','y','s']).agg(pl.col('xadd').sum(), pl.col('yadd').sum()) \
+                                             ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('e')).alias('yadd'),
+                                             ((pl.col('t') - pl.col('d'))**2).alias('stress')) \
+                               .group_by(['node','x','y','s']).agg(pl.col('xadd').sum(), pl.col('yadd').sum(), pl.col('stress').sum()/len(g_s.nodes())) \
                                .with_columns(pl.when(pl.col('s')).then(pl.col('x')).otherwise(pl.col('x') - mu * pl.col('xadd')).alias('x'),
                                              pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') - mu * pl.col('yadd')).alias('y')) \
                                .drop(['xadd','yadd'])
@@ -113,6 +114,16 @@ class PolarsSpringLayout(object):
         return _pos_
 
     #
+    # stressSums() -- produce an array of stress summations for the specific subgraph
+    #
+    def stressSums(self, anim_i=0):
+        _sums_ = []
+        for i in range(1, len(self.df_anim[0])):
+            _stress_sum_ = (self.df_anim[0][i]['stress']).sum()
+            _sums_.append(_stress_sum_)
+        return _sums_
+
+    #
     # svgAnimation() - produce the animation svg for the spring layout
     # - copied from the udist_scatterplots_via_sectors_tile_opt.py method
     #
@@ -121,7 +132,7 @@ class PolarsSpringLayout(object):
         x_cols = [f'x{i}' for i in range(0, len(self.df_anim[anim_i]))]
         y_cols = [f'y{i}' for i in range(0, len(self.df_anim[anim_i]))]
         x_cols.extend(x_cols[::-1]), y_cols.extend(y_cols[::-1])
-        for i in range(1, len(self.df_anim[anim_i])): df = df.join(self.df_anim[anim_i][i].drop(['s']), on=['node']).rename({'x_right':f'x{i}', 'y_right':f'y{i}'})
+        for i in range(1, len(self.df_anim[anim_i])): df = df.join(self.df_anim[anim_i][i].drop(['s', 'stress']), on=['node']).rename({'x_right':f'x{i}', 'y_right':f'y{i}'})
         df = df.rename({'x':'x0', 'y':'y0'})
         # Determine the bounds
         x0, y0, x1, y1 = df['x0'].min(), df['y0'].min(), df['x0'].max(), df['y0'].max()
