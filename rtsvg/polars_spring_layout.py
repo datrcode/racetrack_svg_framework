@@ -23,7 +23,7 @@ __name__ = 'polars_spring_layout'
 # PolarsSpringLayout() - modeled after the rt_graph_layouts_mixin.py springLayout() method
 #
 class PolarsSpringLayout(object):
-    def __init__(self, g, pos=None, static_nodes=None, spring_exp=1.0, iterations=None):
+    def __init__(self, g, pos=None, static_nodes=None, spring_exp=1.0, iterations=None, stress_threshold=1e-2):
         self.g            = g
         self.pos          = pos
         self.static_nodes = static_nodes
@@ -76,6 +76,7 @@ class PolarsSpringLayout(object):
             mu = 1.0/len(g_s.nodes())
 
             # Perform the iterations by shifting the nodes per the spring force
+            _stress_last_ = 1e9
             for _iteration_ in range(iterations):
                 if _iteration_ == 0: self.df_anim[S_i].append(df_pos)
                 __dx__, __dy__ = (pl.col('x') - pl.col('x_right')), (pl.col('y') - pl.col('y_right'))
@@ -95,6 +96,9 @@ class PolarsSpringLayout(object):
                                .drop(['xadd','yadd'])
                 # Keep track of the animation sequence
                 self.df_anim[S_i].append(df_pos)
+                _stress_      = df_pos['stress'][0]
+                if stress_threshold is not None and _iteration_ > 32 and abs(_stress_ - _stress_last_) < stress_threshold: break
+                _stress_last_ = _stress_
             
             # Store the results -- re-scale the coordinates to their original bounds
             self.df_results.append(df_pos.with_columns((pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min()), 
