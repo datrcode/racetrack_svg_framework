@@ -96,7 +96,7 @@ class PolarsSpringLayout(object):
                                .drop(['xadd','yadd'])
                 # Keep track of the animation sequence
                 self.df_anim[S_i].append(df_pos)
-                _stress_      = df_pos['stress'][0]
+                _stress_      = df_pos['stress'].sum()
                 if stress_threshold is not None and _iteration_ > 32 and abs(_stress_ - _stress_last_) < stress_threshold: break
                 _stress_last_ = _stress_
             
