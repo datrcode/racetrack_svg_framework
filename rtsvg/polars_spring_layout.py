@@ -76,7 +76,7 @@ class PolarsSpringLayout(object):
             mu = 1.0/len(g_s.nodes())
 
             # Perform the iterations by shifting the nodes per the spring force
-            _stress_last_ = 1e9
+            _stress_last_, stress_ok_times = 1e9, 0
             for _iteration_ in range(iterations):
                 if _iteration_ == 0: self.df_anim[S_i].append(df_pos)
                 __dx__, __dy__ = (pl.col('x') - pl.col('x_right')), (pl.col('y') - pl.col('y_right'))
@@ -97,7 +97,11 @@ class PolarsSpringLayout(object):
                 # Keep track of the animation sequence
                 self.df_anim[S_i].append(df_pos)
                 _stress_      = df_pos['stress'].sum()
-                if stress_threshold is not None and _iteration_ > 32 and abs(_stress_ - _stress_last_) < stress_threshold: break
+                if stress_threshold is not None and _iteration_ > 32 and abs(_stress_ - _stress_last_) < stress_threshold: 
+                    stress_ok_times += 1
+                    if stress_ok_times >= 5: break
+                else:
+                    stress_ok_times  = 0
                 _stress_last_ = _stress_
             
             # Store the results -- re-scale the coordinates to their original bounds
