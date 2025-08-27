@@ -1388,6 +1388,134 @@ class RTGraphLayoutsMixin(object):
         # Return the new positions
         return new_pos
 
+    #
+    # exp_uniformDistributionWVoronoiSVG() - Experimental rendering using uniform distribution and a Voronoi edge bundling
+    #
+    def exp_uniformDistributionWVoronoiSVG(self, 
+                                              g, 
+                                              pos                = None,
+                                              uniform_iterations = 128,
+                                              w                  = 1024,
+                                              h                  = 1024):
+        # Provide a layout if none provided
+        if pos is None: pos = nx.spring_layout(g)
+
+        # Distribute the nodes per the uniform distribution algorithm
+        # - Expands nodes using Uniformm Sample Distribution algorithm / better filling the space on the screen
+        _nodes_                   = list(pos.keys())
+        _xs_, _ys_, _ws_, _ns_ = [], [], [], []
+        for i in range(len(_nodes_)):
+            _xs_   .append(pos[_nodes_[i]][0])
+            _ys_   .append(pos[_nodes_[i]][1])
+            _ws_   .append(g.degree(_nodes_[i])*2) # multiplying does help to give more space around higher degree nodes
+            _ns_   .append(_nodes_[i])
+        _df_         = pl.DataFrame({'x':_xs_, 'y':_ys_, 'w':_ws_, 'node':_ns_})
+        _df_results_ = self.uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(_df_, 'x', 'y', weight_field='w', iterations=uniform_iterations)
+        _df_results_ =_df_results_.with_columns((100.0*(pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min())).alias('x'), 
+                                                (100.0*(pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min())).alias('y'))
+        _pos_ = {}
+        for i in range(len(_df_results_)): _pos_[_df_results_['node'][i]] = (_df_results_['x'][i], _df_results_['y'][i])
+
+        # Provides colors based on community
+        _node_colors_ = {}
+        community_i   = 0
+        for _community_ in nx.community.louvain_communities(g):
+            community_i += 1
+            for _node_ in _community_: _node_colors_[_node_] = self.co_mgr.getColor(community_i)
+
+        #
+        # Voronoi Breakdown
+        #
+        _nodes_  = list(_pos_.keys())
+        _coords_ = list(_pos_.values())
+        _polys_  = self.isedgarVoronoi(_coords_, pad=2)
+
+        # Normalize an edge for counting and lookup purposes
+        def normalizeEdge(_edge_):
+            _u_, _v_ = _edge_[0], _edge_[1]
+            if   _u_[0] < _v_[0]: return _u_, _v_
+            elif _u_[0] > _v_[0]: return _v_, _u_
+            elif _u_[1] < _v_[1]: return _u_, _v_
+            elif _u_[1] > _v_[1]: return _v_, _u_
+            else:                 return _u_, _v_
+
+        # Gather all the edges in the voronoi diagram and create lookups
+        node_to_edges       = {}
+        edge_to_nodes       = {}
+        voronoi_edge_counts = {}
+        x0, y0, x1, y1 = _polys_[0][0][0], _polys_[0][0][1], _polys_[0][0][0], _polys_[0][0][1]
+        for i in range(0,len(_polys_)):
+            node_to_edges[_nodes_[i]] = set()
+            for j in range(0,len(_polys_[i])):
+                x0, y0, x1, y1 = min(_polys_[i][j][0], x0), min(_polys_[i][j][1], y0), max(_polys_[i][j][0], x1), max(_polys_[i][j][1], y1)
+                _edge_ = normalizeEdge((_polys_[i][j], _polys_[i][(j+1)%len(_polys_[i])]))
+                node_to_edges[_nodes_[i]].add(_edge_)
+                if _edge_ not in edge_to_nodes: edge_to_nodes[_edge_] = set()
+                edge_to_nodes[_edge_].add(_nodes_[i])
+                if _edge_ in voronoi_edge_counts:  voronoi_edge_counts[_edge_] += 1
+                else:                              voronoi_edge_counts[_edge_]  = 1
+
+        # Create a networkx representation of the voronoi graph
+        g_voronoi          = nx.Graph()
+        voronoi_pos        = {}
+        edge_already_added = set()
+        for _edge_ in edge_to_nodes:
+            _u_, _v_         = _edge_[0], _edge_[1]
+            _u_str_, _v_str_ = str(_u_), str(_v_)
+            g_voronoi.add_edge(_u_str_, _v_str_, weight=self.segmentLength(_edge_))
+            voronoi_pos[_u_str_], voronoi_pos[_v_str_] = _u_, _v_
+            for _node_ in edge_to_nodes[_edge_]:
+                voronoi_pos[str(_node_)] = _pos_[_node_]
+                if (str(_node_), _u_str_) not in edge_already_added:
+                    g_voronoi.add_edge(str(_node_), _u_str_, weight=10.0+self.segmentLength((_pos_[_node_], _u_)))
+                    edge_already_added.add((str(_node_), _u_str_))
+                if (str(_node_), _v_str_) not in edge_already_added:
+                    g_voronoi.add_edge(str(_node_), _v_str_, weight=10.0+self.segmentLength((_pos_[_node_], _v_)))
+                    edge_already_added.add((str(_node_), _v_str_))
+
+        # Setup the inverse function for y -- so that it matches how link and linkNode display graphs
+        def invY(y): return y1 - (y-y0)
+
+        #
+        # Use the Voronoi Points w/ the Chord Diagram Piecewise Spline Algorithm
+        # ... unfortunately, a lot of the paths go through the vertices -- we really only want the
+        #     vertices to be used if the verticies are the begin or end of the path
+        #
+        _all_pairs_ = nx.all_pairs_dijkstra_path(g_voronoi, weight='weight')
+        _all_pairs_dict_ = {}
+        for _pair_ in _all_pairs_:
+            _source_ = _pair_[0]
+            _all_pairs_dict_[_source_] = _pair_[1]
+
+        svg = []
+        for _node_ in g.nodes():
+            for _nbor_ in g.neighbors(_node_):
+                if _node_ == _nbor_: continue
+                _node_str_, _nbor_str_ = str(_node_), str(_nbor_)
+                if _nbor_str_ < _node_str_: continue # if it's an undirected graph, this makes sense to prevent duplicates
+                _path_           = _all_pairs_dict_[_node_str_][_nbor_str_]
+                _path_as_coords_ = []
+                for _str_ in _path_: _path_as_coords_.append(voronoi_pos[_str_])
+                _to_plot_ = self.piecewiseCubicBSpline(_path_as_coords_)
+                _path_str_ = [f'M {_to_plot_[0][0]} {invY(_to_plot_[0][1])}']
+                for i in range(1, len(_to_plot_)): _path_str_.append(f'L {_to_plot_[i][0]} {invY(_to_plot_[i][1])}')
+                svg.append(f'<path d="{"".join(_path_str_)}" fill="none" stroke="{self.co_mgr.getColor(_node_str_)}" stroke-width="0.1"/>')
+
+        for _node_ in g.nodes():
+            _node_str_ = str(_node_)
+            _degree_   = g.degree(_node_)
+            svg.append(f'<circle cx="{voronoi_pos[_node_str_][0]}" cy="{invY(voronoi_pos[_node_str_][1])}" r="0.5" fill="{self.co_mgr.getColor(_node_str_)}" stroke="#000000" stroke-width="0.1"/>')
+            svg.append(self.svgText(str(_degree_), voronoi_pos[_node_str_][0], invY(voronoi_pos[_node_str_][1])+1.5, 1.5, anchor='middle'))
+
+        _svg_hdr_ = f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="{x0} {y0} {x1-x0} {y1-y0}" xmlns="http://www.w3.org/2000/svg">'
+        _svg_bg_  = f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="#ffffff" />'
+        svg.insert(0, _svg_hdr_)
+        svg.insert(1, _svg_bg_)
+        _svg_end_ = '</svg>'
+        svg.append(_svg_end_)
+
+        return "".join(svg)
+
 #
 # HyperTree state holder/struct
 #
