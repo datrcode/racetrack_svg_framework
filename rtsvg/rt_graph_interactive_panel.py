@@ -122,40 +122,40 @@ Interactivity Key Commands
 ----+--------------------------------------------""" + self._keyboard_commands_
 
     _keyboard_commands_ = """
-c   | reset view or focus view on selected
-    | shift-c focus view on selected + neighbors
-e   | expand selection
-    | shift-e       | expand selection (directed graph)
-    | ctrl-e        | even out distribution of selected nodes
-g   | layout upon next mouse drag
-    | shift-g       | cycle through layout modes (rectangular, circular, or sunflower)
-q   | invert selection
-    | shift-q       | common neighbors
-s   | set sticky labels
-    | shift-s       | remove sticky labels from selected
-    | ctrl-s        | add selected to sticky labels
-    | ctrl-shift-s  | cycle label visibility (all | sticky | none) 
-t   | consolidate all nodes at the mouse location
-    | shift-t       | horizontally
-    | ctrl-t        | vertically
-u   | undo last layout action (limited undo's)
+c . | reset view or focus view on selected
+ .. | shift-c focus view on selected + neighbors
+e . | expand selection
+ .. | shift-e ...... | expand selection (directed graph)
+ .. | ctrl-e ....... | even out distribution of selected nodes
+g . | layout upon next mouse drag
+ .. | shift-g ...... | cycle through layout modes (rectangular, circular, or sunflower)
+q . | invert selection
+ .. | shift-q ...... | common neighbors
+s . | set sticky labels
+ .. | shift-s ...... | remove sticky labels from selected
+ .. | ctrl-s ....... | add selected to sticky labels
+ .. | ctrl-shift-s . | cycle label visibility (all | sticky | none) 
+t . | consolidate all nodes at the mouse location
+ .. | shift-t ...... | horizontally
+ .. | ctrl-t ....... | vertically
+u . | undo last layout action (limited undo's)
 x|p | remove selected nodes (push stack)
-    | shift-x|p     | pop stack
-y   | line layout
-    | shift-y       | horizontally
-    | ctrl-y        | vertically
-z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
+ .. | shift-x|p .... | pop stack
+y . | line layout
+ .. | shift-y ...... | horizontally
+ .. | ctrl-y ....... | vertically
+z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
 1-6 | select numbered degree
-7   | select degree 10 -> 20
-8   | select degree 20 -> 50
-9   | select degree 50 -> 100
-0   | select degree 100 -> 10_000
-    """
+7 . | select degree 10 -> 20
+8 . | select degree 20 -> 50
+9 . | select degree 50 -> 100
+0 . | select degree 100 -> 10_000
+"""
 
     # multiLineTSpans() - for rendering the above as help text
     def multiLineTSpans(self, _str_, x=5, y=12, font_size=10):
         _lines_ = _str_.split('\n')
-        _svg_   = [f'''<text x="{x}" y="{y}" style="font-family: 'Courier New'" font-size="{font_size}px">''']
+        _svg_   = [f'''<text id="keyboardhelp" x="{x}" y="{y}" style="font-family: 'Courier New'" font-size="{font_size}px">''']
 
         def _nbsp_(s): return s # return s.replace(' ','&nbsp;')
         _svg_.append(f'<tspan dy="0em">{_nbsp_(_lines_[0])}</tspan>')
@@ -203,7 +203,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     _template = f"""
 <svg id="svgparent" width="600" height="400" tabindex="0" onkeydown="${{script('myOnKeyDown')}}" onkeyup="${{script('myOnKeyUp')}}">
     <svg id="mod" width="600" height="400"> ${{mod_inner}} </svg>
-    <g id="keyboardhelp" fill-opacity="1.0"> <text x="5" y="15" fill="black"> Sample Text </text> </g>
+    <text id="keyboardhelp" x="5" y="15" fill="black"> Sample Text </text>
     <g fill-opacity="0.0">
       <g id="opanimation"> ${{animation_inner}} </g>
       <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;0.0" dur="2s" repeatCount="1" />
@@ -276,7 +276,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self._template = f"""
 <svg id="svgparent" width="{self.w}" height="{self.h}" tabindex="0" onkeydown="${{script('myOnKeyDown')}}" onkeyup="${{script('myOnKeyUp')}}">
     <svg id="mod" width="{self.w}" height="{self.h}"> ${{mod_inner}} </svg>
-    <g id="keyboardhelp" fill-opacity="1.0"> {self.multiLineTSpans(self._keyboard_commands_)} </g>
+    {self.multiLineTSpans(self._keyboard_commands_)}
     <g fill-opacity="0.0">
       <g id="opanimation"> ${{animation_inner}} </g>
       <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;0.0" dur="2s" repeatCount="1" />
@@ -1123,6 +1123,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             else if (event.key == "g") { state.layout_op        = true; // Mouse press is layout shape
                                          state.layout_line_flag = false; } 
             else if (event.key == "G") { data.key_op_finished = 'G';  } // Iterate through layout shapes
+            else if (event.key == "h") { if (keyboardhelp.getAttribute("x") == -1000) { keyboardhelp.setAttribute("x", 5); } else { keyboardhelp.setAttribute("x", -1000); } }
             else if (event.key == "p") { data.key_op_finished = 'p';  } // Push to stack
             else if (event.key == "P") { data.key_op_finished = 'P';  } // Pop from stack
             else if (event.key == "q") { data.key_op_finished = 'q';  } // Invert selection
