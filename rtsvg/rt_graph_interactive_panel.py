@@ -157,7 +157,7 @@ z   | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         _lines_ = _str_.split('\n')
         _svg_   = [f'''<text x="{x}" y="{y}" style="font-family: 'Courier New'" font-size="{font_size}px">''']
 
-        def _nbsp_(s): return s.replace(' ','&nbsp;')
+        def _nbsp_(s): return s # return s.replace(' ','&nbsp;')
         _svg_.append(f'<tspan dy="0em">{_nbsp_(_lines_[0])}</tspan>')
         for i in range(1, len(_lines_)):
             _line_ = _lines_[i]
