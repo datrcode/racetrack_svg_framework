@@ -155,7 +155,7 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     # multiLineTSpans() - for rendering the above as help text
     def multiLineTSpans(self, _str_, x=5, y=12, font_size=10):
         _lines_ = _str_.split('\n')
-        _svg_   = [f'''<text id="keyboardhelp" x="{x}" y="{y}" style="font-family: 'Courier New'" font-size="{font_size}px">''']
+        _svg_   = [f'''<text x="{5}" y="{y}" style="font-family: 'Courier New'" font-size="{font_size}px">''']
 
         def _nbsp_(s): return s # return s.replace(' ','&nbsp;')
         _svg_.append(f'<tspan dy="0em">{_nbsp_(_lines_[0])}</tspan>')
@@ -197,13 +197,18 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     layout_mode     = param.String(default="grid")
 
     #
+    # Keyboard Help X Value
+    #
+    keyboardhelp_x  = param.Integer(default=5)
+
+    #
     # Panel Template
     # - rewritten in constructor with width and height filled in
     #
     _template = f"""
 <svg id="svgparent" width="600" height="400" tabindex="0" onkeydown="${{script('myOnKeyDown')}}" onkeyup="${{script('myOnKeyUp')}}">
     <svg id="mod" width="600" height="400"> ${{mod_inner}} </svg>
-    <text id="keyboardhelp" x="5" y="15" fill="black"> Sample Text </text>
+    <g id="keyboardhelp" transform="translate(${{keyboardhelp_x}} 0)"> <text x="5" y="15" fill="black"> Sample Text </text> </g>
     <g fill-opacity="0.0">
       <g id="opanimation"> ${{animation_inner}} </g>
       <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;0.0" dur="2s" repeatCount="1" />
@@ -276,7 +281,7 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self._template = f"""
 <svg id="svgparent" width="{self.w}" height="{self.h}" tabindex="0" onkeydown="${{script('myOnKeyDown')}}" onkeyup="${{script('myOnKeyUp')}}">
     <svg id="mod" width="{self.w}" height="{self.h}"> ${{mod_inner}} </svg>
-    {self.multiLineTSpans(self._keyboard_commands_)}
+    <g id="keyboardhelp" transform="translate(${{keyboardhelp_x}} 0)">  {self.multiLineTSpans(self._keyboard_commands_)} </g>    
     <g fill-opacity="0.0">
       <g id="opanimation"> ${{animation_inner}} </g>
       <animate id="myanimate" attributeName="fill-opacity" values="0.0;1.0;1.0;0.0" dur="2s" repeatCount="1" />
@@ -1123,7 +1128,10 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             else if (event.key == "g") { state.layout_op        = true; // Mouse press is layout shape
                                          state.layout_line_flag = false; } 
             else if (event.key == "G") { data.key_op_finished = 'G';  } // Iterate through layout shapes
-            else if (event.key == "h") { if (keyboardhelp.getAttribute("x") == -1000) { keyboardhelp.setAttribute("x", 5); } else { keyboardhelp.setAttribute("x", -1000); } }
+            else if (event.key == "h") {
+                if (data.keyboardhelp_x == -1000) { data.keyboardhelp_x =     5; }
+                else                              { data.keyboardhelp_x = -1000; }
+            }
             else if (event.key == "p") { data.key_op_finished = 'p';  } // Push to stack
             else if (event.key == "P") { data.key_op_finished = 'P';  } // Pop from stack
             else if (event.key == "q") { data.key_op_finished = 'q';  } // Invert selection
