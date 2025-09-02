@@ -1739,6 +1739,8 @@ class RTLinkNodeMixin(object):
                                             # Otherwise, see if there's a direct key lookup...
                                             if k in self.node_shape.keys():
                                                 _shape = self.node_shape[k]
+                                            elif k_unwrapped in self.node_shape.keys():
+                                                _shape = self.node_shape[k_unwrapped]
                                             else:
                                                 _shape = 'ellipse'
                                                 _sz    = 5
