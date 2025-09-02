@@ -1726,7 +1726,7 @@ class RTLinkNodeMixin(object):
                                     
                                     # Determine the node shape
                                     # ... by dictionary... into either a shape string... or into an SVG string
-                                    if type(self.node_shape) == dict:
+                                    if isinstance(self.node_shape, dict):
                                         # Create the Node Shape Key ... complicated by tuples... // field (column) version
                                         _node_shape_key = flds
                                         if type(_node_shape_key) == list and len(_node_shape_key) == 1: _node_shape_key = _node_shape_key[0]
