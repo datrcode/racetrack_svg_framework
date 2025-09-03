@@ -82,16 +82,16 @@ class RTShapesMixin(object):
 
         if fill is not None:
              if type(fill) is str:        _op_.append(pl.lit(f' fill="{fill}"'))
-             else:                        _op_.extend(pl.lit(f' fill="'), fill, pl.lit('"'))
+             else:                        _op_.extend([pl.lit(f' fill="'), fill, pl.lit('"')])
         if stroke is not None:
              if type(stroke) is str: _op_.append(pl.lit(f' stroke="{stroke}"'))
-             else:                      _op_.extend(pl.lit(f' stroke="'), stroke, pl.lit('"'))
+             else:                      _op_.extend([pl.lit(f' stroke="'), stroke, pl.lit('"')])
         if stroke_width is not None:
              if type(stroke_width) is float: _op_.append(pl.lit(f' stroke-width="{stroke_width}"'))
-             else:                           _op_.extend(pl.lit(f' stroke-width="'), stroke_width, pl.lit('"'))
+             else:                           _op_.extend([pl.lit(f' stroke-width="'), stroke_width, pl.lit('"')])
         if opacity is not None:
              if type(opacity) is float: _op_.append(pl.lit(f' opacity="{opacity}"'))
-             else:                      _op_.extend(pl.lit(f' opacity="'), opacity, pl.lit('"'))
+             else:                      _op_.extend([pl.lit(f' opacity="'), opacity, pl.lit('"')])
         
         _op_.append(pl.lit('/>'))
 
