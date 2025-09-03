@@ -1012,11 +1012,7 @@ class RTLinkMixin(object):
                     for x in _missing_: _copy_[x] = 'circle'
                     self.df_node = self.df_node.with_columns(pl.col('__first__').replace(_copy_).alias('__shape__'))
                     for _shape_ in set(self.df_node.filter(pl.col('__nodes__')==1)['__shape__']):
-                        if _shape_ == 'square':
-                            _str_op_   = [pl.lit('<rect x="'), pl.col('__sx__') - _sz_, pl.lit('" y="'), pl.col('__sy__') - _sz_, pl.lit(f'" width="{_sz_*2}" height="{_sz_*2}" fill="'),  pl.col('__color_nodes_final__'), pl.lit('" stroke="#000000" stroke-width="{stroke_width}" />')]
-                        else:
-                            _str_op_   = [pl.lit('<circle cx="'), pl.col('__sx__'), pl.lit('" cy="'), pl.col('__sy__'), pl.lit(f'" r="{_sz_}" fill="'),  pl.col('__color_nodes_final__'), pl.lit('" stroke="#000000" stroke-width="{stroke_width}" />')]
-
+                        _str_op_ = self.rt_self.renderShapePolars(_shape_, pl.col('__sx__'), pl.col('__sy__'), sz=_sz_, fill=pl.col('__color_nodes_final__'), stroke="#000000", stroke_width=stroke_width)
                         df_node_singles = self.df_node.filter((pl.col('__nodes__')==1) & (pl.col('__shape__')==_shape_)).with_columns(pl.concat_str(_str_op_).alias('__node_svg__'))                
                         _svg_strs_.extend(set(df_node_singles.drop_nulls(subset=['__node_svg__'])['__node_svg__'].unique()))
                 else:
