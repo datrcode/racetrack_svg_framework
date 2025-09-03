@@ -77,6 +77,9 @@ class RTShapesMixin(object):
         if stroke is not None:
              if type(stroke) is str: _op_.append(pl.lit(f' stroke="{stroke}"'))
              else:                      _op_.extend(pl.lit(f' stroke="'), stroke, pl.lit('"'))
+        if stroke_width is not None:
+             if type(stroke_width) is float: _op_.append(pl.lit(f' stroke-width="{stroke_width}"'))
+             else:                           _op_.extend(pl.lit(f' stroke-width="'), stroke_width, pl.lit('"'))
         if opacity is not None:
              if type(opacity) is float: _op_.append(pl.lit(f' opacity="{opacity}"'))
              else:                      _op_.extend(pl.lit(f' opacity="'), opacity, pl.lit('"'))
