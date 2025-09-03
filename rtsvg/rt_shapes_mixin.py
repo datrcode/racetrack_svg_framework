@@ -50,15 +50,39 @@ class RTShapesMixin(object):
         elif shape == 'x':         return f'<path {id_str} d="M {x-sz} {y-sz} l {2*sz} {2*sz} M {x-sz} {y+sz} l {2*sz} {-2*sz}" {_append_} />'
         else:                      return f'<circle {id_str} cx="{x}" cy="{y}" r="{sz}" {_append_} />'
 
+    #
+    # renderShapePolars() - same as renderShape() but using polars expressions
+    #
     def renderShapePolars(self,
-                          shape, # "ellipse", "square", "triangle", "utriangle", "diamond", "plus", "x"
-                          x,
-                          y,
-                          sz        = 5,
-                          co        = None,
-                          co_border = None,
-                          opacity   = None):
-        pass
+                          shape,             # "ellipse", "square", "triangle", "utriangle", "diamond", "plus", "x"
+                          x,                 # pl.col()
+                          y,                 # pl.col()
+                          sz,                # pl.col()
+                          co        = None,  # none, string, or pl.col()
+                          co_border = None,  # none, string, or pl.col()
+                          opacity   = None): # none, float, or pl.col()
+
+        if   shape == 'square':    _op_ = [pl.lit('<rect x="'),    x-sz, pl.lit('" y="'),  y-sz, pl.lit('" width="'), 2*sz, pl.lit('" height="'), 2*sz, pl.lit('"')]
+        elif shape == 'triangle':  _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(' l '),         sz, pl.lit(' '),          2*sz, pl.lit(' l '), -2*sz, pl.lit(' 0 z"')]
+        elif shape == 'utriangle': _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y+sz, pl.lit(' l '),        -sz, pl.lit(' '),         -2*sz, pl.lit(' l '),  2*sz, pl.lit(' 0 z"')]
+        elif shape == 'diamond':   _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(' l '),         sz, pl.lit(' '),            sz, pl.lit(' l '),   -sz, pl.lit(' '),     sz, pl.lit(' l '),  -sz, pl.lit(' '),   -sz, pl.lit(' z"')]
+        elif shape == 'plus':      _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(' v '),       2*sz, pl.lit(' M '),        x-sz, pl.lit(' '),       y, pl.lit(' h '), 2*sz, pl.lit('"')]
+        elif shape == 'x':         _op_ = [pl.lit('<path d="M '),  x-sz, pl.lit(' '),      y-sz, pl.lit(' l '),       2*sz, pl.lit(' '),          2*sz, pl.lit(' M '),  x-sz, pl.lit(' '),   y+sz, pl.lit(' l '), 2*sz, pl.lit(' '), -2*sz, pl.lit('"')]
+        else:                      _op_ = [pl.lit('<circle cx="'), x,    pl.lit('" cy="'),    y, pl.lit('" r="'),       sz, pl.lit('"')]
+
+        if co is not None:
+             if type(co) is str:        _op_.append(pl.lit(f' fill="{co}"'))
+             else:                      _op_.extend(pl.lit(f' fill="'), co, pl.lit('"'))
+        if co_border is not None:
+             if type(co_border) is str: _op_.append(pl.lit(f' stroke="{co_border}"'))
+             else:                      _op_.extend(pl.lit(f' stroke="'), co_border, pl.lit('"'))
+        if opacity is not None:
+             if type(opacity) is float: _op_.append(pl.lit(f' opacity="{opacity}"'))
+             else:                      _op_.extend(pl.lit(f' opacity="'), opacity, pl.lit('"'))
+        
+        _op_.append(pl.lit('>'))
+
+        return _op_
 
     #
     # shapeAttachmentPoint() - determine the attachment point for a shape
