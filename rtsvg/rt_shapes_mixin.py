@@ -54,13 +54,14 @@ class RTShapesMixin(object):
     # renderShapePolars() - same as renderShape() but using polars expressions
     #
     def renderShapePolars(self,
-                          shape,             # "ellipse", "square", "triangle", "utriangle", "diamond", "plus", "x"
-                          x,                 # pl.col()
-                          y,                 # pl.col()
-                          sz,                # pl.col()
-                          co        = None,  # none, string, or pl.col()
-                          co_border = None,  # none, string, or pl.col()
-                          opacity   = None): # none, float, or pl.col()
+                          shape,                # "ellipse", "square", "triangle", "utriangle", "diamond", "plus", "x"
+                          x,                    # pl.col()
+                          y,                    # pl.col()
+                          sz,                   # pl.col()
+                          fill         = None,  # none, string, or pl.col()
+                          stroke       = None,  # none, string, or pl.col()
+                          stroke_width = None,  # none, float, or pl.col()
+                          opacity      = None): # none, float, or pl.col()
 
         if   shape == 'square':    _op_ = [pl.lit('<rect x="'),    x-sz, pl.lit('" y="'),  y-sz, pl.lit('" width="'), 2*sz, pl.lit('" height="'), 2*sz, pl.lit('"')]
         elif shape == 'triangle':  _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(' l '),         sz, pl.lit(' '),          2*sz, pl.lit(' l '), -2*sz, pl.lit(' 0 z"')]
@@ -70,17 +71,17 @@ class RTShapesMixin(object):
         elif shape == 'x':         _op_ = [pl.lit('<path d="M '),  x-sz, pl.lit(' '),      y-sz, pl.lit(' l '),       2*sz, pl.lit(' '),          2*sz, pl.lit(' M '),  x-sz, pl.lit(' '),   y+sz, pl.lit(' l '), 2*sz, pl.lit(' '), -2*sz, pl.lit('"')]
         else:                      _op_ = [pl.lit('<circle cx="'), x,    pl.lit('" cy="'),    y, pl.lit('" r="'),       sz, pl.lit('"')]
 
-        if co is not None:
-             if type(co) is str:        _op_.append(pl.lit(f' fill="{co}"'))
-             else:                      _op_.extend(pl.lit(f' fill="'), co, pl.lit('"'))
-        if co_border is not None:
-             if type(co_border) is str: _op_.append(pl.lit(f' stroke="{co_border}"'))
-             else:                      _op_.extend(pl.lit(f' stroke="'), co_border, pl.lit('"'))
+        if fill is not None:
+             if type(fill) is str:        _op_.append(pl.lit(f' fill="{fill}"'))
+             else:                        _op_.extend(pl.lit(f' fill="'), fill, pl.lit('"'))
+        if stroke is not None:
+             if type(stroke) is str: _op_.append(pl.lit(f' stroke="{stroke}"'))
+             else:                      _op_.extend(pl.lit(f' stroke="'), stroke, pl.lit('"'))
         if opacity is not None:
              if type(opacity) is float: _op_.append(pl.lit(f' opacity="{opacity}"'))
              else:                      _op_.extend(pl.lit(f' opacity="'), opacity, pl.lit('"'))
         
-        _op_.append(pl.lit('>'))
+        _op_.append(pl.lit('/>'))
 
         return _op_
 
