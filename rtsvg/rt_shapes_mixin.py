@@ -1,4 +1,4 @@
-# Copyright 2023 David Trimm
+# Copyright 2025 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 #
 
+import polars as pl
 from math import sqrt
 
 __name__ = 'rt_shapes_mixin'
@@ -38,22 +39,26 @@ class RTShapesMixin(object):
         append_ls.append('' if opacity   is None else f'fill-opacity="{opacity}" stroke-opacity="{opacity}"')
         _append_ = ' '.join(append_ls)
 
-        if   shape is None or shape == 'ellipse' or shape == 'circle':
-            return f'<circle {id_str} cx="{x}" cy="{y}" r="{sz}" {_append_} />'
-        elif shape == 'square':
-            return f'<rect {id_str} x="{x-sz}" y="{y-sz}" width="{2*sz}" height="{2*sz}" {_append_} />'
-        elif shape == 'triangle':
-            return f'<path {id_str} d="M {x} {y-sz} l {sz} {2*sz} l {-2*sz} 0 z" {_append_} />'
-        elif shape == 'utriangle':
-            return f'<path {id_str} d="M {x} {y+sz} l {-sz} {-2*sz} l {2*sz} 0 z" {_append_} />'
-        elif shape == 'diamond':
-            return f'<path {id_str} d="M {x} {y-sz} l {sz} {sz} l {-sz} {sz} l {-sz} {-sz} z" {_append_} />'
-        elif shape == 'plus':
-            return f'<path {id_str} d="M {x} {y-sz} v {2*sz} M {x-sz} {y} h {2*sz}" {_append_} />'
-        elif shape == 'x':
-            return f'<path {id_str} d="M {x-sz} {y-sz} l {2*sz} {2*sz} M {x-sz} {y+sz} l {2*sz} {-2*sz}" {_append_} />'
-        else:
-            return f'<circle {id_str} cx="{x}" cy="{y}" r="{sz}" {_append_} />'
+        if   shape is None      or \
+             shape == 'ellipse' or \
+             shape == 'circle':    return f'<circle {id_str} cx="{x}" cy="{y}" r="{sz}" {_append_} />'
+        elif shape == 'square':    return f'<rect {id_str} x="{x-sz}" y="{y-sz}" width="{2*sz}" height="{2*sz}" {_append_} />'
+        elif shape == 'triangle':  return f'<path {id_str} d="M {x} {y-sz} l {sz} {2*sz} l {-2*sz} 0 z" {_append_} />'
+        elif shape == 'utriangle': return f'<path {id_str} d="M {x} {y+sz} l {-sz} {-2*sz} l {2*sz} 0 z" {_append_} />'
+        elif shape == 'diamond':   return f'<path {id_str} d="M {x} {y-sz} l {sz} {sz} l {-sz} {sz} l {-sz} {-sz} z" {_append_} />'
+        elif shape == 'plus':      return f'<path {id_str} d="M {x} {y-sz} v {2*sz} M {x-sz} {y} h {2*sz}" {_append_} />'
+        elif shape == 'x':         return f'<path {id_str} d="M {x-sz} {y-sz} l {2*sz} {2*sz} M {x-sz} {y+sz} l {2*sz} {-2*sz}" {_append_} />'
+        else:                      return f'<circle {id_str} cx="{x}" cy="{y}" r="{sz}" {_append_} />'
+
+    def renderShapePolars(self,
+                          shape, # "ellipse", "square", "triangle", "utriangle", "diamond", "plus", "x"
+                          x,
+                          y,
+                          sz        = 5,
+                          co        = None,
+                          co_border = None,
+                          opacity   = None):
+        pass
 
     #
     # shapeAttachmentPoint() - determine the attachment point for a shape
