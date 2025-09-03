@@ -57,19 +57,28 @@ class RTShapesMixin(object):
                           shape,                # "ellipse", "square", "triangle", "utriangle", "diamond", "plus", "x"
                           x,                    # pl.col()
                           y,                    # pl.col()
-                          sz,                   # pl.col()
+                          sz,                   # float or pl.col()
                           fill         = None,  # none, string, or pl.col()
                           stroke       = None,  # none, string, or pl.col()
                           stroke_width = None,  # none, float, or pl.col()
                           opacity      = None): # none, float, or pl.col()
 
-        if   shape == 'square':    _op_ = [pl.lit('<rect x="'),    x-sz, pl.lit('" y="'),  y-sz, pl.lit('" width="'), 2*sz, pl.lit('" height="'), 2*sz, pl.lit('"')]
-        elif shape == 'triangle':  _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(' l '),         sz, pl.lit(' '),          2*sz, pl.lit(' l '), -2*sz, pl.lit(' 0 z"')]
-        elif shape == 'utriangle': _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y+sz, pl.lit(' l '),        -sz, pl.lit(' '),         -2*sz, pl.lit(' l '),  2*sz, pl.lit(' 0 z"')]
-        elif shape == 'diamond':   _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(' l '),         sz, pl.lit(' '),            sz, pl.lit(' l '),   -sz, pl.lit(' '),     sz, pl.lit(' l '),  -sz, pl.lit(' '),   -sz, pl.lit(' z"')]
-        elif shape == 'plus':      _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(' v '),       2*sz, pl.lit(' M '),        x-sz, pl.lit(' '),       y, pl.lit(' h '), 2*sz, pl.lit('"')]
-        elif shape == 'x':         _op_ = [pl.lit('<path d="M '),  x-sz, pl.lit(' '),      y-sz, pl.lit(' l '),       2*sz, pl.lit(' '),          2*sz, pl.lit(' M '),  x-sz, pl.lit(' '),   y+sz, pl.lit(' l '), 2*sz, pl.lit(' '), -2*sz, pl.lit('"')]
-        else:                      _op_ = [pl.lit('<circle cx="'), x,    pl.lit('" cy="'),    y, pl.lit('" r="'),       sz, pl.lit('"')]
+        if type(sz) is float:
+            if   shape == 'square':    _op_ = [pl.lit('<rect x="'),    x-sz, pl.lit('" y="'),  y-sz, pl.lit(f'" width="{2*sz}" height="{2*sz}"')]
+            elif shape == 'triangle':  _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(f' l {sz} {2*sz} l {-2*sz} 0 z"')]
+            elif shape == 'utriangle': _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y+sz, pl.lit(f' l {-sz} {-2*sz} l {2*sz} 0 z"')]
+            elif shape == 'diamond':   _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(f' l {sz} {sz} l {-sz} {sz} l {-sz} {-sz} z"')]
+            elif shape == 'plus':      _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(f' v {2*sz} M {x-sz} {y} h {2*sz}"')]
+            elif shape == 'x':         _op_ = [pl.lit('<path d="M '),  x-sz, pl.lit(' '),      y-sz, pl.lit(f' l {2*sz} {2*sz} M {x-sz} {y+sz} l {2*sz} {-2*sz}"')]
+            else:                      _op_ = [pl.lit('<circle cx="'), x,    pl.lit('" cy="'),    y, pl.lit(f'" r="{sz}"')]
+        else:
+            if   shape == 'square':    _op_ = [pl.lit('<rect x="'),    x-sz, pl.lit('" y="'),  y-sz, pl.lit('" width="'), 2*sz, pl.lit('" height="'), 2*sz, pl.lit('"')]
+            elif shape == 'triangle':  _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(' l '),         sz, pl.lit(' '),          2*sz, pl.lit(' l '), -2*sz, pl.lit(' 0 z"')]
+            elif shape == 'utriangle': _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y+sz, pl.lit(' l '),        -sz, pl.lit(' '),         -2*sz, pl.lit(' l '),  2*sz, pl.lit(' 0 z"')]
+            elif shape == 'diamond':   _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(' l '),         sz, pl.lit(' '),            sz, pl.lit(' l '),   -sz, pl.lit(' '),     sz, pl.lit(' l '),  -sz, pl.lit(' '),   -sz, pl.lit(' z"')]
+            elif shape == 'plus':      _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(' v '),       2*sz, pl.lit(' M '),        x-sz, pl.lit(' '),       y, pl.lit(' h '), 2*sz, pl.lit('"')]
+            elif shape == 'x':         _op_ = [pl.lit('<path d="M '),  x-sz, pl.lit(' '),      y-sz, pl.lit(' l '),       2*sz, pl.lit(' '),          2*sz, pl.lit(' M '),  x-sz, pl.lit(' '),   y+sz, pl.lit(' l '), 2*sz, pl.lit(' '), -2*sz, pl.lit('"')]
+            else:                      _op_ = [pl.lit('<circle cx="'), x,    pl.lit('" cy="'),    y, pl.lit('" r="'),       sz, pl.lit('"')]
 
         if fill is not None:
              if type(fill) is str:        _op_.append(pl.lit(f' fill="{fill}"'))
