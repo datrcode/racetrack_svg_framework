@@ -58,7 +58,6 @@
 #
 # Other Changes:
 #
-# (Selected nodes copied into system clipboard -- is that possible in javascript? or on the python side?)
 # (Optimize the circular layout to minimize connection lengths / edge crossings) // common theme of "optimizing node selection in a structure"
 # (Dynamic labels? ... maybe make a dummy label i the template & then dynamically reposition it? ... needs to all be done in Javascript...)
 # (Edge labels? ... linkNode supports.... but not link)
