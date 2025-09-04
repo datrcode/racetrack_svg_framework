@@ -2039,6 +2039,26 @@ class RTLinkNodeMixin(object):
             return set([k for k,v in self.color_nodes_final.items() if v == color])
 
         #
+        # nodeShape() - return the shape of the final rendering of the node
+        # - "circle" if no shape (default shape)
+        # (copied from rt_link_mixin.py)
+        #
+        def nodeShape(self, node):
+            if self.node_shape is not None and node in self.node_shape: return self.node_shape[node]
+            return 'circle'
+
+        #
+        # nodesWithShape() - return a set of nodes with a specific shape
+        # (copied from rt_link_mixin.py)
+        #
+        def nodesWithShape(self, shape):
+            _set_ = set()
+            if self.node_shape is not None:
+                for k, v in self.node_shape.items():
+                    if v == shape: _set_.add(k)
+            return _set_
+
+        #
         # overlappingEntities() - Determine which entity geometrics overlap with a specific region
         # - to_intersect should be a shapely shape
         # - return value is a list of entities (possibly an empty list) or None

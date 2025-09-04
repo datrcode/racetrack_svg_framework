@@ -1163,13 +1163,19 @@ class RTLinkMixin(object):
         # - "circle" if no shape (default shape)
         #
         def nodeShape(self, node):
+            if self.node_shape is not None and node in self.node_shape: return self.node_shape[node]
             return 'circle'
 
         #
         # nodesWithShape() - return a set of nodes with a specific shape
+        # - precomputing would run faster but I doubt this gets called that often (or with that many items)
         #
         def nodesWithShape(self, shape):
-            return set()
+            _set_ = set()
+            if self.node_shape is not None:
+                for k, v in self.node_shape.items():
+                    if v == shape: _set_.add(k)
+            return _set_
 
         #
         # __createPathDescriptionOfSelectedEntities__() - create an svg path description of the selected entities
