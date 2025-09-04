@@ -76,6 +76,8 @@ import time
 import panel as pn
 import param
 
+import pyperclip
+
 from panel.reactive import ReactiveHTML
 
 from math import pi, sqrt, sin, cos
@@ -123,7 +125,8 @@ Interactivity Key Commands
 
     _keyboard_commands_ = """
 c . | reset view or focus view on selected
- .. | shift-c focus view on selected + neighbors
+ .. | shift-c ...... | focus view on selected + neighbors
+ .. | ctrl-c ....... | copy selected nodes to clipboard (ctrl-shift-c uses node labels)
 e . | expand selection
  .. | shift-e ...... | expand selection (directed graph)
  .. | ctrl-e ....... | even out distribution of selected nodes
@@ -911,7 +914,17 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             #
             elif self.key_op_finished == 'c' or self.key_op_finished == 'C':
                 _rerender_ = False
-                if self.key_op_finished == 'C':
+                if   self.ctrlkey: # copy to the clipboard
+                    if len(self.selected_entities) > 0:
+                        if self.shiftkey: # copy the label lookups (if they exist)
+                            _list_ = []
+                            for x in self.selected_entities:
+                                if 'node_labels' in self.ln_params and x in self.ln_params['node_labels']: _list_.append(self.ln_params['node_labels'][x])
+                                else:                                                                      _list_.append(x)
+                            pyperclip.copy('\n'.join(list(_list_)))
+                        else: # copy the nodes as they are named within the dataframe
+                            pyperclip.copy('\n'.join(list(self.selected_entities)))
+                elif self.key_op_finished == 'C': # recenter on the selected entities & neighbors
                     if len(self.selected_entities) > 0:
                         _new_set_ = set(self.selected_entities)
                         for _node_ in self.selected_entities:
