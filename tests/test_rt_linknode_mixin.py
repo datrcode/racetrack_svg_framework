@@ -427,5 +427,33 @@ class Testrt_liknode_mixin(unittest.TestCase):
         self.rt_self.linkNode(df, relates, pos, bounds_percent=0.2, node_size='small', convex_hull_lu=convex_hull_lu, convex_hull_labels=True).renderSVG()
         self.rt_self.link    (df, relates, pos, bounds_percent=0.2, node_size='small', convex_hull_lu=convex_hull_lu, convex_hull_labels=True).renderSVG()
 
+    def test_nodeShapeMethods(self):
+        df     = pl.DataFrame({'fm':'a b c d e f'.split(), 'to':'b c d e f a'.split()})
+        pos    = {'d': (0.27, 0.66), 'e': (0.41, 0.51), 'c': (0.41, 0.82),
+                'f': (0.59, 0.51), 'a': (0.74, 0.66), 'b': (0.59, 0.82)}
+        colors = {'a': 'red',    'b': 'red',    'c': 'green',  'd': 'green',   'e': 'green',   'f': 'blue'}
+        shapes = {'a': 'circle', 'b': 'square', 'c': 'square', 'd': 'diamond', 'e': 'diamond', 'f': 'circle'}
+        params = {'relationships':[('fm','to')], 'pos':pos, 'node_shape':shapes, 'node_color':colors, 'draw_labels':True}
+        _link_, _linknode_ = self.rt_self.link(df, **params), self.rt_self.linkNode(df, **params)
+        _link_._repr_svg_(), _linknode_._repr_svg_() # force a render
+        assert _link_    .nodeShape('c') == 'square'
+        assert _linknode_.nodeShape('c') == 'square'
+        assert _link_    .nodeShape('b') == 'square'
+        assert _linknode_.nodeShape('b') == 'square'
+        assert _link_    .nodeShape('d') == 'diamond'
+        assert _linknode_.nodeShape('d') == 'diamond'
+        assert _link_    .nodeShape('e') == 'diamond'
+        assert _linknode_.nodeShape('e') == 'diamond'
+        assert _link_    .nodeShape('a') == 'circle'
+        assert _linknode_.nodeShape('a') == 'circle'
+        assert _link_    .nodeShape('f') == 'circle'
+        assert _linknode_.nodeShape('f') == 'circle'
+        assert _link_    .nodesWithShape('circle')  == {'a', 'f'}
+        assert _linknode_.nodesWithShape('circle')  == {'a', 'f'}
+        assert _link_    .nodesWithShape('diamond') == {'d', 'e'}
+        assert _linknode_.nodesWithShape('diamond') == {'d', 'e'}
+        assert _link_    .nodesWithShape('square')  == {'c', 'b'}
+        assert _linknode_.nodesWithShape('square')  == {'c', 'b'}
+
 if __name__ == '__main__':
     unittest.main()
