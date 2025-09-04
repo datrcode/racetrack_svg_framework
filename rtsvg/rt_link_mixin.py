@@ -1159,6 +1159,19 @@ class RTLinkMixin(object):
             return set([k for k,v in self.color_nodes_final.items() if v == color])
 
         #
+        # nodeShape() - return the shape of the final rendering of the node
+        # - "circle" if no shape (default shape)
+        #
+        def nodeShape(self, node):
+            return 'circle'
+
+        #
+        # nodesWithShape() - return a set of nodes with a specific shape
+        #
+        def nodesWithShape(self, shape):
+            return set()
+
+        #
         # __createPathDescriptionOfSelectedEntities__() - create an svg path description of the selected entities
         # - for prototyping the graph interact panel application
         #

@@ -129,6 +129,8 @@ e . | expand selection
  .. | ctrl-e ....... | even out distribution of selected nodes
 g . | layout upon next mouse drag
  .. | shift-g ...... | cycle through layout modes (rectangular, circular, or sunflower)
+h . | toggle help display
+n . | select node under mouse by shape (shift, ctrl, and ctrl-shift apply)
 q . | invert selection
  .. | shift-q ...... | common neighbors
 s . | set sticky labels
@@ -881,10 +883,27 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 for _entity_ in _entities_: _colors_.add(self.dfs_layout[self.df_level].nodeColor(_entity_))
                 _entities_  = set()
                 for _color_ in _colors_: _entities_ = _entities_ | set(self.dfs_layout[self.df_level].nodesWithColor(_color_))
-                if self.shiftkey and self.ctrlkey: _set_op_ = 'intersect'
-                elif self.shiftkey:                _set_op_ = 'subtract'
-                elif self.ctrlkey:                 _set_op_ = 'add'
-                else:                              _set_op_ = 'replace'
+                if   self.shiftkey and self.ctrlkey: _set_op_ = 'intersect'
+                elif self.shiftkey:                  _set_op_ = 'subtract'
+                elif self.ctrlkey:                   _set_op_ = 'add'
+                else:                                _set_op_ = 'replace'
+                self.selectEntities(_entities_, _set_op_, 'exact')
+
+            #
+            # "N" - Select nodes with the same shape as the one that the mouse is over
+            # (same pattern as the "Z" key -- directly above)
+            #
+            elif self.key_op_finished == 'n' or self.key_op_finished == 'N':
+                _entities_  = self.dfs_layout[self.df_level].entitiesAtPoint((self.x_mouse,self.y_mouse))
+                if _entities_ is None: _entities_ = set()
+                _shapes_    = set()
+                for _entity_ in _entities_: _shapes_.add(self.dfs_layout[self.df_level].nodeShape(_entity_))
+                _entities_  = set()
+                for _shape_ in _shapes_: _entities_ = _entities_ | set(self.dfs_layout[self.df_level].nodesWithShape(_shape_))
+                if   self.shiftkey and self.ctrlkey: _set_op_ = 'intersect'
+                elif self.shiftkey:                  _set_op_ = 'subtract'
+                elif self.ctrlkey:                   _set_op_ = 'add'
+                else:                                _set_op_ = 'replace'
                 self.selectEntities(_entities_, _set_op_, 'exact')
 
             #
@@ -1132,6 +1151,8 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 if (data.keyboardhelp_x == -1000) { data.keyboardhelp_x =     5; }
                 else                              { data.keyboardhelp_x = -1000; }
             }
+            else if (event.key == "n" ||                                // Select nodes with the same shape as the one under the mouse
+                     event.key == "N") { data.key_op_finished = 'n';  }
             else if (event.key == "p") { data.key_op_finished = 'p';  } // Push to stack
             else if (event.key == "P") { data.key_op_finished = 'P';  } // Pop from stack
             else if (event.key == "q") { data.key_op_finished = 'q';  } // Invert selection
