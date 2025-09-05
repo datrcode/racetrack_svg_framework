@@ -130,7 +130,7 @@ e . | expand selection
  .. | shift-e ...... | expand selection (directed graph)
  .. | ctrl-e ....... | even out distribution of selected nodes
 g . | layout upon next mouse drag
- .. | shift-g ...... | cycle through layout modes (rectangular, circular, or sunflower)
+ .. | shift-g ...... | cycle through layout modes
 h . | toggle help display
 n . | select node under mouse by shape (shift, ctrl, and ctrl-shift apply)
 q . | invert selection
@@ -143,6 +143,8 @@ t . | consolidate all nodes at the mouse location
  .. | shift-t ...... | horizontally
  .. | ctrl-t ....... | vertically
 u . | undo last layout action (limited undo's)
+w . | apply layout operation to [selected] nodes
+ .. | shift-w ...... | cycle through layout operations
 x|p | remove selected nodes (push stack)
  .. | shift-x|p .... | pop stack
 y . | line layout
@@ -173,37 +175,42 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     #
     # Inner Modification for RT SVG Render
     #
-    mod_inner       = param.String(default="""<circle cx="300" cy="200" r="10" fill="red" />""")
+    mod_inner         = param.String(default="""<circle cx="300" cy="200" r="10" fill="red" />""")
 
     #
     # Animation Inner
     #
-    animation_inner  = param.String(default='<rect x="0" y="0" width="10" height="10" fill="none" stroke="none"/>')
+    animation_inner   = param.String(default='<rect x="0" y="0" width="10" height="10" fill="none" stroke="none"/>')
 
     #
     # All Entities Path
     #
-    allentitiespath = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
+    allentitiespath   = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
 
     #
     # Selection Path
     #
-    selectionpath   = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
+    selectionpath     = param.String(default="M -100 -100 l 10 0 l 0 10 l -10 0 l 0 -10 Z")
 
     #
     # Information String
     #
-    info_str        = param.String(default=" | | grid")
+    info_str          = param.String(default=" | | grid")
 
     #
     # Layout Mode String
     #
-    layout_mode     = param.String(default="grid")
+    layout_mode       = param.String(default="grid")
+
+    #
+    # Layout Operation String
+    #
+    layout_operation  = param.String(default="spring")
 
     #
     # Keyboard Help X Value
     #
-    keyboardhelp_x  = param.Integer(default=5)
+    keyboardhelp_x    = param.Integer(default=5)
 
     #
     # Panel Template
@@ -280,6 +287,9 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self.GRID_BY_COLOR_CLOUDS = 'grid (color, clouds)'
         self.layout_modes         = [self.GRID, self.CIRCLE, self.SUNFLOWER, self.GRID_BY_COLOR, self.GRID_BY_COLOR_CLOUDS]
 
+        self.SPRING               = 'spring'
+        self.HYPERTREE            = 'hyper tree'
+        self.layout_operations    = [self.SPRING, self.HYPERTREE]
 
         # Recast the template with the width's and height's
         self._template = f"""
@@ -662,7 +672,7 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     #
     def __refreshView__(self, comp=True, info=True, all_ents=True, sel_ents=True):
         if (comp):     self.mod_inner        = self.dfs_layout[self.df_level].renderSVG()
-        if (info):     self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode}'
+        if (info):     self.info_str         = f'{len(self.selected_entities)} Selected | {self.label_mode} | {self.layout_mode} | {self.layout_operation}'
         if (all_ents): self.allentitiespath  = self.dfs_layout[self.df_level].__createPathDescriptionForAllEntities__()
         if (sel_ents): self.selectionpath    = self.dfs_layout[self.df_level].__createPathDescriptionOfSelectedEntities__(my_selection=self.selected_entities)
 
@@ -997,6 +1007,15 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 self.layout_mode = self.layout_modes[(_index_+1) % len(self.layout_modes)]
             
                 self.__refreshView__(comp=False, all_ents=False, sel_ents=False)
+            
+            #
+            # Next Layout Operation
+            #
+            elif self.key_op_finished == 'W':
+                _index_ = self.layout_operations.index(self.layout_operation)
+                self.layout_operation = self.layout_operations[(_index_+1) % len(self.layout_operations)]
+
+                self.__refreshView__(comp=False, all_ents=False, sel_ents=False)
 
         finally:
             self.key_op_finished = ''
@@ -1174,6 +1193,8 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             else if (event.key == "t") { data.key_op_finished = 't';  } // Collapse selected to a single point
             else if (event.key == "T") { data.key_op_finished = 'T';  } // Horizontally collapse selected
             else if (event.key == "u") { data.key_op_finished = 'u';  } // Undo last layout
+            else if (event.key == "w") { data.key_op_finished = 'w';  } // Apply layout operation
+            else if (event.key == "W") { data.key_op_finished = 'W';  } // Iterate through layout operations
             else if (event.key == "x") { data.key_op_finished = 'x';  } // push the stack (remove the selected from the current graph)
             else if (event.key == "X") { data.key_op_finished = 'X';  } // pop the stack (add removed nodes back in)
             else if (event.key == "y") { state.layout_op        = true; // Mouse press is layout line
