@@ -86,6 +86,8 @@ import copy
 
 from shapely import Polygon
 
+from rtsvg.polars_spring_layout import PolarsSpringLayout
+
 from .rt_stackable import RTStackable, RTSelectable
 
 __name__ = 'rt_graph_interactive_panel'
@@ -289,9 +291,10 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self.GRID_BY_COLOR_CLOUDS = 'grid (color, clouds)'
         self.layout_modes         = [self.GRID, self.CIRCLE, self.SUNFLOWER, self.GRID_BY_COLOR, self.GRID_BY_COLOR_CLOUDS]
 
+        self.SPRING_NX            = 'spring nx'
         self.SPRING               = 'spring'
         self.HYPERTREE            = 'hyper tree'
-        self.layout_operations    = [self.SPRING, self.HYPERTREE]
+        self.layout_operations    = [self.SPRING_NX, self.SPRING, self.HYPERTREE]
 
         # Recast the template with the width's and height's
         self._template = f"""
@@ -533,17 +536,20 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     # __layoutOperation__() - apply a layout operation
     #
     def __layoutOperation__(self, _layout_op_, _ln_, _g_, _sel_):
-        if    _layout_op_ == self.SPRING:
-            if len(_sel_) == 0:
-                _pos_ = nx.spring_layout(_g_)
-                for _node_ in _pos_: _ln_.pos[_node_] = (float(_pos_[_node_][0]),float(_pos_[_node_][1]))
-            else:
-                pass
-        else:
-            pass
+        _pos_ = None
+        if   _layout_op_ == self.SPRING_NX and len(_sel_) == 0: _pos_ = nx.spring_layout(_g_)
+        elif _layout_op_ == self.SPRING:
+            if len(_sel_) == 0:                                 _pos_ = PolarsSpringLayout(_g_).results()
+            else:                                               pass
+        elif _layout_op_ == self.HYPERTREE and len(_sel_) == 0: _pos_ = self.hyperTreeLayout(_g_)
+        else: pass
+
+        if _pos_ is not None:
+            for _node_ in _pos_: _ln_.pos[_node_] = (float(_pos_[_node_][0]),float(_pos_[_node_][1]))
+            return True
+        return False
 
 
-        
 
     #
     # applyLayoutInteraction() - apply layout interaction to the selected entities.
@@ -1042,16 +1048,16 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 self.__cacheNodePositions__()
 
                 # Write new positions to _ln_.pos[_node_] = (x, y)
-                self.__layoutOperation__(self.layout_operation, _ln_, self.graphs[self.df_level], self.selected_entities)
+                _pos_modified_ = self.__layoutOperation__(self.layout_operation, _ln_, self.graphs[self.df_level], self.selected_entities)
+                if _pos_modified_: # If positions were modified, invalidate the stack, recenter (if necessary) and re-render
+                    # Recenter the view
+                    if len(self.selected_entities) > 0: _view_ = _ln_.__calculateGeometry__(for_entities=self.selected_entities)
+                    else:                               _view_ = _ln_.__calculateGeometry__()
+                    _ln_.setViewWindow(_view_)
 
-                # Recenter the view
-                if len(self.selected_entities) > 0: _view_ = _ln_.__calculateGeometry__(for_entities=self.selected_entities)
-                else:                               _view_ = _ln_.__calculateGeometry__()
-                _ln_.setViewWindow(_view_)
-
-                # Invalidate the stack of views & re-render
-                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
-                self.__refreshView__(info=False)
+                    # Invalidate the stack of views & re-render
+                    for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
+                    self.__refreshView__(info=False)
 
         finally:
             self.key_op_finished = ''
