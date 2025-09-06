@@ -69,6 +69,8 @@
 import pandas as pd
 import polars as pl
 
+import networkx as nx
+
 import threading
 import time
 
@@ -530,8 +532,18 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     #
     # __layoutOperation__() - apply a layout operation
     #
-    def __layoutOperation__(self, _layout_op_, _ln_, _sel_):
-        pass
+    def __layoutOperation__(self, _layout_op_, _ln_, _g_, _sel_):
+        if    _layout_op_ == self.SPRING:
+            if len(_sel_) == 0:
+                _pos_ = nx.spring_layout(_g_)
+                for _node_ in _pos_: _ln_.pos[_node_] = (float(_pos_[_node_][0]),float(_pos_[_node_][1]))
+            else:
+                pass
+        else:
+            pass
+
+
+        
 
     #
     # applyLayoutInteraction() - apply layout interaction to the selected entities.
@@ -1030,7 +1042,7 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 self.__cacheNodePositions__()
 
                 # Write new positions to _ln_.pos[_node_] = (x, y)
-                self.__layoutOperation__(self.layout_operation, _ln_, self.selected_entities)
+                self.__layoutOperation__(self.layout_operation, _ln_, self.graphs[self.df_level], self.selected_entities)
 
                 for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
                 self.__refreshView__(info=False)
