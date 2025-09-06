@@ -396,6 +396,7 @@ class RTLinkMixin(object):
             self.geom_to_df        = {}
             self.last_render       = None
             self.node_coords       = {}
+            self.time_lu           = {}   # granular timing information
 
         #
         # labelOnly() - set the label only set
@@ -1071,9 +1072,11 @@ class RTLinkMixin(object):
             t_svg_0 = time.time()
 
             # Determine geometry and fill in the word coordinates into the dataframe
+            t0 = time.time()
             self.__calculateGeometry__()
             if self.view_window is None: self.view_window = self.view_window_orig = (self.wx0, self.wy0, self.wx1, self.wy1)
             else:                        self.wx0, self.wy0, self.wx1, self.wy1 = self.view_window
+            self.time_lu['calc_geom'] = time.time() - t0
                 
             # Coordinate transform lambdas (and inverse lambdas)
             self.xT     = lambda __wx__:          self.x_ins + (self.w - 2*self.x_ins) * (__wx__ - self.wx0)/(self.wx1-self.wx0)
@@ -1083,7 +1086,9 @@ class RTLinkMixin(object):
             self.yT_inv = lambda __sy__: self.wy0 + (self.h - self.y_ins - __sy__) * (self.wy1 - self.wy0) / (self.h - 2 * self.y_ins) 
 
             # Add columns for the screen coordinates
+            t1 = time.time()
             self.__calculateScreenCoordinates__()
+            self.time_lu['calc_screen_coords'] = time.time() - t1
 
             # Start the SVG Frame
             svg = [f'<svg id="{self.widget_id}" x="{self.x_view}" y="{self.y_view}" width="{self.w}" height="{self.h}" xmlns="http://www.w3.org/2000/svg">']
@@ -1093,12 +1098,20 @@ class RTLinkMixin(object):
             self.defer_render = [] # Any deferred rendering (compatibility with linkNode)
 
             # Add background shapes & convex hulls
+            t2 = time.time()
             svg.append(self.__renderBackgroundShapes__())
+            self.time_lu['render_background_shapes'] = time.time() - t2
+            t3 = time.time()
             svg.append(self.__renderConvexHull__())
+            self.time_lu['render_convex_hull'] = time.time() - t3
 
             # Links and Nodes
+            t4 = time.time()
             svg.extend(self.__renderLinks__())
+            self.time_lu['render_links'] = time.time() - t4
+            t5 = time.time()
             svg.extend(self.__renderNodes__())
+            self.time_lu['render_nodes'] = time.time() - t5
 
             # Add any deferred rendering
             svg.extend(self.defer_render)
