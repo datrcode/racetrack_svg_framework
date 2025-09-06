@@ -332,13 +332,13 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         super().__init__(**kwargs)
 
         # Watch for callbacks
-        self.param.watch(self.applyDragOp,      'drag_op_finished')
-        self.param.watch(self.applyMoveOp,      'move_op_finished')
-        self.param.watch(self.applyWheelOp,     'wheel_op_finished')
-        self.param.watch(self.applyMiddleOp,    'middle_op_finished')
-        self.param.watch(self.applyKeyOp,       'key_op_finished')
-        self.param.watch(self.applyLayoutOp,    'layout_shape')
-        self.param.watch(self.unselectedMoveOp, 'unselected_move_op_finished')
+        self.param.watch(self.applyDragOp,            'drag_op_finished')
+        self.param.watch(self.applyMoveOp,            'move_op_finished')
+        self.param.watch(self.applyWheelOp,           'wheel_op_finished')
+        self.param.watch(self.applyMiddleOp,          'middle_op_finished')
+        self.param.watch(self.applyKeyOp,             'key_op_finished')
+        self.param.watch(self.applyLayoutInteraction, 'layout_shape')
+        self.param.watch(self.unselectedMoveOp,       'unselected_move_op_finished')
 
         # For companion visualizations
         self.companions = []
@@ -534,9 +534,9 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         pass
 
     #
-    # applyLayoutOp() - apply layout operation to the selected entities.
+    # applyLayoutInteraction() - apply layout interaction to the selected entities.
     #
-    def applyLayoutOp(self, event):
+    def applyLayoutInteraction(self, event):
         #self.lock.acquire()
         try:
             x0, y0, x1, y1 = self.drag_x0, self.drag_y0, self.drag_x1, self.drag_y1
