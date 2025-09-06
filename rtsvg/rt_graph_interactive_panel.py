@@ -1044,6 +1044,12 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 # Write new positions to _ln_.pos[_node_] = (x, y)
                 self.__layoutOperation__(self.layout_operation, _ln_, self.graphs[self.df_level], self.selected_entities)
 
+                # Recenter the view
+                if len(self.selected_entities) > 0: _view_ = _ln_.__calculateGeometry__(for_entities=self.selected_entities)
+                else:                               _view_ = _ln_.__calculateGeometry__()
+                _ln_.setViewWindow(_view_)
+
+                # Invalidate the stack of views & re-render
                 for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
                 self.__refreshView__(info=False)
 
