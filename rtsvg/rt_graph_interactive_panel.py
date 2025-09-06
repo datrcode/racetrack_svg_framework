@@ -528,6 +528,12 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             if isinstance(c, RTSelectable): c.setSelectedEntitiesAndNotifyOthers(_set_, callers=callers)
 
     #
+    # __layoutOperation__() - apply a layout operation
+    #
+    def __layoutOperation__(self, _layout_op_, _ln_, _sel_):
+        pass
+
+    #
     # applyLayoutOp() - apply layout operation to the selected entities.
     #
     def applyLayoutOp(self, event):
@@ -1016,6 +1022,18 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 self.layout_operation = self.layout_operations[(_index_+1) % len(self.layout_operations)]
 
                 self.__refreshView__(comp=False, all_ents=False, sel_ents=False)
+            
+            #
+            # Apply a layout operation to the selected nodes (or all nodes if no selection in place)
+            #
+            elif self.key_op_finished == 'w':
+                self.__cacheNodePositions__()
+
+                # Write new positions to _ln_.pos[_node_] = (x, y)
+                self.__layoutOperation__(self.layout_operation, _ln_, self.selected_entities)
+
+                for i in range(len(self.dfs_layout)): self.dfs_layout[i].invalidateRender()
+                self.__refreshView__(info=False)
 
         finally:
             self.key_op_finished = ''
