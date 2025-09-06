@@ -540,7 +540,7 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         if   _layout_op_ == self.SPRING_NX and len(_sel_) == 0: _pos_ = nx.spring_layout(_g_)
         elif _layout_op_ == self.SPRING:
             if len(_sel_) == 0:                                 _pos_ = PolarsSpringLayout(_g_).results()
-            else:                                               pass
+            else:                                               _pos_ = PolarsSpringLayout(_g_, pos=_ln_.pos, static_nodes=set(_g_.nodes()) - set(_sel_)).results()
         elif _layout_op_ == self.HYPERTREE and len(_sel_) == 0: _pos_ = self.hyperTreeLayout(_g_)
         else: pass
 
