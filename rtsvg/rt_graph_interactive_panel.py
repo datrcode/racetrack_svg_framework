@@ -294,7 +294,8 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self.SPRING_NX            = 'spring nx'
         self.SPRING               = 'spring'
         self.HYPERTREE            = 'hyper tree'
-        self.layout_operations    = [self.SPRING_NX, self.SPRING, self.HYPERTREE]
+        self.CONNECTED_COMPONENTS = 'connected components'
+        self.layout_operations    = [self.SPRING_NX, self.SPRING, self.HYPERTREE, self.CONNECTED_COMPONENTS]
 
         # Recast the template with the width's and height's
         self._template = f"""
@@ -537,11 +538,11 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     #
     def __layoutOperation__(self, _layout_op_, _ln_, _g_, _sel_):
         _pos_ = None
-        if   _layout_op_ == self.SPRING_NX and len(_sel_) == 0: _pos_ = nx.spring_layout(_g_)
-        elif _layout_op_ == self.SPRING:
-            if len(_sel_) == 0:                                 _pos_ = PolarsSpringLayout(_g_).results()
-            else:                                               _pos_ = PolarsSpringLayout(_g_, pos=_ln_.pos, static_nodes=set(_g_.nodes()) - set(_sel_)).results()
-        elif _layout_op_ == self.HYPERTREE and len(_sel_) == 0: _pos_ = self.rt_self.hyperTreeLayout(_g_)
+        if   _layout_op_ == self.SPRING_NX            and len(_sel_) == 0: _pos_ = nx.spring_layout(_g_)
+        elif _layout_op_ == self.SPRING               and len(_sel_) == 0: _pos_ = PolarsSpringLayout(_g_).results()
+        elif _layout_op_ == self.SPRING               and len(_sel_) >  0: _pos_ = PolarsSpringLayout(_g_, pos=_ln_.pos, static_nodes=set(_g_.nodes()) - set(_sel_)).results()
+        elif _layout_op_ == self.HYPERTREE            and len(_sel_) == 0: _pos_ = self.rt_self.hyperTreeLayout(_g_)
+        elif _layout_op_ == self.CONNECTED_COMPONENTS and len(_sel_) == 0: _pos_ = self.rt_self.treeMapGraphComponentPlacement(_g_, _ln_.pos)
         else: pass
 
         if _pos_ is not None:
