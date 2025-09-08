@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from locale import normalize
 import polars as pl
 import networkx as nx
 from math import sqrt
@@ -23,7 +24,7 @@ __name__ = 'polars_spring_layout'
 # PolarsSpringLayout() - modeled after the rt_graph_layouts_mixin.py springLayout() method
 #
 class PolarsSpringLayout(object):
-    def __init__(self, g, pos=None, static_nodes=None, spring_exp=1.0, iterations=None, stress_threshold=1e-2):
+    def __init__(self, g, pos=None, static_nodes=None, spring_exp=1.0, iterations=None, stress_threshold=1e-2, normalize_coordinates=False):
         self.g            = g
         self.pos          = pos
         self.static_nodes = static_nodes
@@ -105,17 +106,12 @@ class PolarsSpringLayout(object):
                 _stress_last_ = _stress_
             
             # Store the results
-            self.df_results.append(df_pos)
-
-            # This part was meant to rescale the results back into the original space
-            # ... however, it doesn't work with if you need to re-layout subgraphs of a previously layed out graph
-            # ... maybe it should be added as a input parameter
-            '''
-            self.df_results.append(df_pos.with_columns((pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min()), 
-                                                      ((pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min()))) \
-                                         .with_columns((x0 + pl.col('x') * (x1 - x0)).alias('x'), 
-                                                       (y0 + pl.col('y') * (y1 - y0)).alias('y')))
-            '''
+            if normalize_coordinates:
+                self.df_results.append(df_pos.with_columns((pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min()), 
+                                                          ((pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min()))) \
+                                             .with_columns((x0 + pl.col('x') * (x1 - x0)).alias('x'), 
+                                                           (y0 + pl.col('y') * (y1 - y0)).alias('y')))
+            else: self.df_results.append(df_pos)
             S_i += 1
 
     #
