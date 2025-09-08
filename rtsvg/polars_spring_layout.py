@@ -104,11 +104,18 @@ class PolarsSpringLayout(object):
                     stress_ok_times  = 0
                 _stress_last_ = _stress_
             
-            # Store the results -- re-scale the coordinates to their original bounds
+            # Store the results
+            self.df_results.append(df_pos)
+
+            # This part was meant to rescale the results back into the original space
+            # ... however, it doesn't work with if you need to re-layout subgraphs of a previously layed out graph
+            # ... maybe it should be added as a input parameter
+            '''
             self.df_results.append(df_pos.with_columns((pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min()), 
                                                       ((pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min()))) \
                                          .with_columns((x0 + pl.col('x') * (x1 - x0)).alias('x'), 
                                                        (y0 + pl.col('y') * (y1 - y0)).alias('y')))
+            '''
             S_i += 1
 
     #
