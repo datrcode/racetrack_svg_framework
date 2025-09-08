@@ -36,7 +36,7 @@ class LinkNodeGraphPatterns(object):
                 for dx in [-1, 0, 1]:
                     if (dx == 0 and dy == 0) or (abs(dx) == 1 and abs(dy) == 1): continue
                     _nbor_ = f'{prefix}node_{_y_+dy}_{_x_+dx}'
-                    if _nbor_ in _nodes_: g.add_edge(_node_, _nbor_)
+                    if _nbor_ in _nodes_: g.add_edge(_node_, _nbor_, weight=1.0)
         return g
 
     def __pattern_boxinbox__(self, **kwargs):
