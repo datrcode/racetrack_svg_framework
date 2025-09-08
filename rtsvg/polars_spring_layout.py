@@ -37,14 +37,15 @@ class PolarsSpringLayout(object):
             if _node_ not in self.pos: 
                 self.pos[_node_] = (random.random(), random.random())
 
-        self.df_anim      = {}
-        self.g_s          = {}
-        self.df_results   = []
+        self.df_anim          = {}
+        self.g_s              = {}
+        self.df_results       = []
+        self.df_result_bounds = []
 
         # For each subgraph
-        S   = [g.subgraph(c).copy() for c in nx.connected_components(g)]
+        self.S = [g.subgraph(c).copy() for c in nx.connected_components(g)]
         S_i = 0
-        for g_s in S:
+        for g_s in self.S:
             if len(g_s.nodes()) == 1: continue # skip if there's only one node
             self.df_anim[S_i] = []
             self.g_s    [S_i] = g_s
@@ -105,6 +106,9 @@ class PolarsSpringLayout(object):
                     stress_ok_times  = 0
                 _stress_last_ = _stress_
             
+            # Save off the normalization coordinates
+            self.df_result_bounds.append((df_pos['x'].min(), df_pos['y'].min(), df_pos['x'].max(), df_pos['y'].max()))
+
             # Store the results
             if normalize_coordinates:
                 self.df_results.append(df_pos.with_columns((pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min()), 
