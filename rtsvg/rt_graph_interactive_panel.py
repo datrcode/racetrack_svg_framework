@@ -541,7 +541,7 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         if   _layout_op_ == self.SPRING_NX            and len(_sel_) == 0: _pos_ = nx.spring_layout(_g_)
         elif _layout_op_ == self.SPRING               and len(_sel_) == 0: _pos_ = PolarsSpringLayout(_g_).results()
         elif _layout_op_ == self.SPRING               and len(_sel_) >  0: _pos_ = PolarsSpringLayout(_g_, pos=_ln_.pos, static_nodes=set(_g_.nodes()) - set(_sel_)).results()
-        elif _layout_op_ == self.HYPERTREE            and len(_sel_) == 0: _pos_ = self.rt_self.hyperTreeLayout(_g_)
+        elif _layout_op_ == self.HYPERTREE:                                _pos_ = self.rt_self.hyperTreeLayout(_g_, roots=_sel_)
         elif _layout_op_ == self.CONNECTED_COMPONENTS and len(_sel_) == 0: _pos_ = self.rt_self.treeMapGraphComponentPlacement(_g_, _ln_.pos)
         else: pass
 
@@ -1052,8 +1052,9 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 _pos_modified_ = self.__layoutOperation__(self.layout_operation, _ln_, self.graphs[self.df_level], self.selected_entities)
                 if _pos_modified_: # If positions were modified, invalidate the stack, recenter (if necessary) and re-render
                     # Recenter the view
-                    if len(self.selected_entities) > 0: _view_ = _ln_.__calculateGeometry__(for_entities=self.selected_entities)
-                    else:                               _view_ = _ln_.__calculateGeometry__()
+                    #if len(self.selected_entities) > 0: _view_ = _ln_.__calculateGeometry__(for_entities=self.selected_entities)
+                    #else:                               _view_ = _ln_.__calculateGeometry__()
+                    _view_ = _ln_.__calculateGeometry__()
                     _ln_.setViewWindow(_view_)
 
                     # Invalidate the stack of views & re-render

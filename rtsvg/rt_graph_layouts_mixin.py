@@ -829,7 +829,7 @@ class RTGraphLayoutsMixin(object):
                         touch_up_with_springs = False, # touch up the center of the layout with a spring layout
                         bounds_percent        = 0.1):  # for tree map positioning
         # Make sure root is a list
-        if type(roots) != list: roots = [roots]
+        if type(roots) is not list: roots = list(roots)
 
         # Separate graph into connected components
         _graph = nx.to_undirected(_graph)
