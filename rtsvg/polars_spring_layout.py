@@ -13,6 +13,7 @@
 # limitations under the License.
 #
 from locale import normalize
+from turtle import pos
 import polars as pl
 import networkx as nx
 from math import sqrt
@@ -41,6 +42,7 @@ class PolarsSpringLayout(object):
         self.g_s              = {}
         self.df_results       = []
         self.df_result_bounds = []
+        self.df_for_rms       = None
 
         # For each subgraph
         self.S = [g.subgraph(c).copy() for c in nx.connected_components(g)]
@@ -137,6 +139,34 @@ class PolarsSpringLayout(object):
             _stress_sum_ = (self.df_anim[0][i]['stress']).sum()
             _sums_.append(_stress_sum_)
         return _sums_
+
+    #
+    # rootMeanSquareError() - determine the root mean square error between the distances and the ideal distances
+    # - scale parameters will first be used to modify the distances relative to each other
+    # - this only looks at edges ... not nodes that don't share a connection
+    # - this method was created for interactively re-springing portions of the layout
+    #   (because the positions will need to be adjusted if they were normalized earlier -- see "normalized_coordinates" flag)
+    #
+    def rootMeanSquareError(self, x_scale=1.0, y_scale=1.0):
+        # Create the structure for the calculation
+        if self.df_for_rms is None:
+            pos = self.results()
+            _lu_ = {'n':[], 'nbor':[], 'w':[], 'n_x':[], 'nbor_x':[], 'n_y':[], 'nbor_y':[]}
+            for n in self.g.nodes():
+                for nbor in self.g.neighbors(n):
+                    _w_                  =  1.0 if 'weight' not in self.g[n][nbor] else self.g[n][nbor]['weight']
+                    _xy_n_, _xy_nbor_    =  pos[n], pos[nbor]
+                    _lu_['n'].append(n),                 _lu_['nbor'].append(nbor),             _lu_['w'].append(_w_)
+                    _lu_['n_x'].append(_xy_n_[0]),       _lu_['n_y'].append(_xy_n_[1])
+                    _lu_['nbor_x'].append(_xy_nbor_[0]), _lu_['nbor_y'].append(_xy_nbor_[1])
+            self.df_for_rms = pl.DataFrame(_lu_)
+        # Implementation using Polars Operations
+        __n_x__, __n_y__       = pl.col('n_x'), pl.col('n_y')
+        __nbor_x__, __nbor_y__ = pl.col('nbor_x'), pl.col('nbor_y')
+        _df_ = self.df_for_rms.with_columns(((__n_x__*x_scale - __nbor_x__*x_scale)**2 + (__n_y__*y_scale - __nbor_y__*y_scale)**2).alias('x2'))
+        _df_ = _df_.with_columns((pl.col('x2')**0.5).alias('d'))
+        _df_ = _df_.with_columns(((_df_['w'] - _df_['d'])**2).alias('rms'))
+        return sqrt(_df_['rms'].sum()/len(_df_))
 
     #
     # svgAnimation() - produce the animation svg for the spring layout
