@@ -58,7 +58,7 @@ class PolarsSpringLayout(object):
             for _node_ in self.dists.keys():
                 for _nbor_ in self.dists[_node_].keys():
                     if _node_ == _nbor_: continue
-                    _lu_['fm'].append(_node_), _lu_['to'].append(_nbor_), _lu_['t'].append(dists[_node_][_nbor_])
+                    _lu_['fm'].append(_node_), _lu_['to'].append(_nbor_), _lu_['t'].append(self.dists[_node_][_nbor_])
             self.df_dist = pl.DataFrame(_lu_)
             self.df_dist = self.df_dist.with_columns(pl.col('t').cast(pl.Float64))
 
