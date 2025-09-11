@@ -289,7 +289,8 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self.SUNFLOWER            = 'sunflower'
         self.GRID_BY_COLOR        = 'grid (color)'
         self.GRID_BY_COLOR_CLOUDS = 'grid (color, clouds)'
-        self.layout_modes         = [self.GRID, self.CIRCLE, self.SUNFLOWER, self.GRID_BY_COLOR, self.GRID_BY_COLOR_CLOUDS]
+        self.RESCALE              = 'rescale'
+        self.layout_modes         = [self.GRID, self.CIRCLE, self.SUNFLOWER, self.GRID_BY_COLOR, self.GRID_BY_COLOR_CLOUDS, self.RESCALE]
 
         self.SPRING_NX            = 'spring nx'
         self.SPRING               = 'spring'
@@ -576,6 +577,15 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                                                                      bounds=(x0,y0,x1,y1))
                     for _node_ in pos_adj: _ln_.pos[_node_] = (float(_ln_.xT_inv(pos_adj[_node_][0])),float(_ln_.yT_inv(pos_adj[_node_][1])))
                     nodes_moved = True
+                elif self.layout_shape == self.RESCALE:
+                     x0_orig, y0_orig, x1_orig, y1_orig = _ln_.pos[as_list[0]][0], _ln_.pos[as_list[0]][1], _ln_.pos[as_list[0]][0], _ln_.pos[as_list[0]][1]
+                     for _node_ in as_list:  x0_orig, y0_orig, x1_orig, y1_orig = min(x0_orig, _ln_.pos[_node_][0]), min(y0_orig, _ln_.pos[_node_][1]), max(x1_orig, _ln_.pos[_node_][0]), max(y1_orig, _ln_.pos[_node_][1])
+                     for _node_ in as_list:
+                         x,     y     = _ln_.pos[_node_]
+                         xperc, yperc = (x - x0_orig)/(x1_orig - x0_orig), (y - y0_orig)/(y1_orig - y0_orig)
+                         x_new, y_new = x0 + xperc*(x1 - x0),              y0 + yperc*(y1 - y0)
+                         _ln_.pos[_node_] = (float(_ln_.xT_inv(x_new)),    float(_ln_.yT_inv(y_new)))
+                     nodes_moved = True
                 elif self.layout_shape == self.CIRCLE:
                     wx0, wy0 = _ln_.xT_inv(x0), _ln_.yT_inv(y0)
                     wx1, wy1 = _ln_.xT_inv(x1), _ln_.yT_inv(y1)
@@ -1334,7 +1344,8 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
                 layoutsunflower.setAttribute("r",  Math.sqrt(dx*dx + dy*dy));            
             } else if (state.layout_op_shape == "grid" || 
                        state.layout_op_shape == "grid (color)" || 
-                       state.layout_op_shape == "grid (color, clouds)") { reset_rect = false;
+                       state.layout_op_shape == "grid (color, clouds)" ||
+                       state.layout_op_shape == "rescale") { reset_rect = false;
                 layoutrect.setAttribute("x", Math.min(state.x0_drag, state.x1_drag));
                 layoutrect.setAttribute("y", Math.min(state.y0_drag, state.y1_drag));
                 layoutrect.setAttribute("width",  Math.abs(dx));
