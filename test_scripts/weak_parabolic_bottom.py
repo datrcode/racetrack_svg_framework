@@ -30,12 +30,14 @@ class WeakParabolicBottom(object):
         # Iterate until convergence (for now, it will be just iterate three times)
         for i in range(3):
             # Add the bottom to the xys array
-            self.xys.append(self.bottoms[-1])
+            x = self.bottoms[-1][0]
+            self.xys.append((x, fn(x)))
             # Use the last three xys to fit a parabola
             a, b, c = self.fitParabolaNumpy(self.xys[-3:])
             self.parabolas.append((a,b,c))
             # Find the bottom
-            self.bottoms.append(self.parabolaBottom(a,b,c))
+            x, y = self.parabolaBottom(a,b,c)
+            self.bottoms.append((x,y))
             if approxEqual(self.bottoms[-1], self.bottoms[-2]): break
 
     #
@@ -66,7 +68,6 @@ class WeakParabolicBottom(object):
         _df_xys_ = pl.DataFrame(_lu_)
         _df_     = _df_xys_
 
-        '''
         _lu_ = {'x':[], 'y':[], 'group':[]}
         for _parabola_ in self.parabolas:
             a, b, c = _parabola_   
@@ -76,7 +77,6 @@ class WeakParabolicBottom(object):
                 x += 1.0
         _df_parabolas_ = pl.DataFrame(_lu_)
         _df_ = pl.concat([_df_xys_, _df_parabolas_])
-        '''
 
         return rtsvg.RACETrack().xy(_df_, x_field='x', y_field='y', color_by='group', dot_size=None, line_groupby_field='group',
                                     w=900, h=600)._repr_svg_()
