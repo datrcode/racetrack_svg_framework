@@ -79,6 +79,12 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
 
     def test_hyperTreeLayout(self):
         self.rt_self.hyperTreeLayout(self.g)
+        _roots_, _as_set_ = [], set()
+        for x in self.g.nodes():
+            _roots_.append(x), _as_set_.add(x)
+            break
+        self.rt_self.hyperTreeLayout(self.g, roots=_roots_)
+        self.rt_self.hyperTreeLayout(self.g, roots=_as_set_)
 
     def test_treeMapGraphComponentPlacement(self):
         self.rt_self.treeMapGraphComponentPlacement(self.g, self.pos)
