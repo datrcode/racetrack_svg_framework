@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-#from locale import normalize # where did this come from?  probably AI
-#from turtle import pos       # where did this come from?  probably AI
 import polars as pl
 import networkx as nx
 import numpy as np
