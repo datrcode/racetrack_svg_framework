@@ -1,5 +1,6 @@
 import polars as pl
 import numpy as np
+import random
 import rtsvg
 
 __name__ = 'weak_parabolic_bottom'
@@ -28,17 +29,22 @@ class WeakParabolicBottom(object):
         # Find the bottom
         self.bottoms   = [self.parabolaBottom(a,b,c)]
         # Iterate until convergence (for now, it will be just iterate three times)
-        for i in range(3):
+        for i in range(100):
             # Add the bottom to the xys array
             x = self.bottoms[-1][0]
-            self.xys.append((x, fn(x)))
-            # Use the last three xys to fit a parabola
+            
+            # Use the last three xys to fit a parabola & then find the bottom
             a, b, c = self.fitParabolaNumpy(self.xys[-3:])
-            self.parabolas.append((a,b,c))
-            # Find the bottom
-            x, y = self.parabolaBottom(a,b,c)
-            self.bottoms.append((x,y))
-            if approxEqual(self.bottoms[-1], self.bottoms[-2]): break
+            x, y    = self.parabolaBottom(a,b,c)
+            if x > 0.0:
+                self.parabolas.append((a,b,c))
+                self.bottoms.append((x,y))
+            else:
+                x = 0.1 + random.random() * 100.0
+            f_x = fn(x)
+            self.xys.append((x, fn(x)))    
+            # If they've converged, stop
+            if approxEqual(self.xys[-1], self.xys[-2]): break
 
     #
     # parabolaBottom() - given a, b, and c, calculate the bottom of the parabola
@@ -66,15 +72,19 @@ class WeakParabolicBottom(object):
         _lu_ = {'x':[], 'y':[], 'group':[]}
         for x,y in self.xys: _lu_['x'].append(x), _lu_['y'].append(y), _lu_['group'].append('xys')
         _df_xys_ = pl.DataFrame(_lu_)
-        _df_     = _df_xys_
+
+        x0, x1 = self.xys[0][0], self.xys[0][0]
+        for _xy_ in self.xys:
+            x0 = min(x0, _xy_[0])
+            x1 = max(x1, _xy_[0])
 
         _lu_ = {'x':[], 'y':[], 'group':[]}
         for _parabola_ in self.parabolas:
             a, b, c = _parabola_   
-            x = 1.0
-            while x < 100.0:
+            x = x0
+            while x <= x1:
                 _lu_['x'].append(x), _lu_['y'].append(a * x**2 + b * x + c), _lu_['group'].append(f'parabola {_parabola_}')
-                x += 1.0
+                x += (x1-x0)/100.0
         _df_parabolas_ = pl.DataFrame(_lu_)
         _df_ = pl.concat([_df_xys_, _df_parabolas_])
 
