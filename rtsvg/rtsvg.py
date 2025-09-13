@@ -256,7 +256,7 @@ class RACETrack(RTAnnotationsMixin,
                 try:
                     df[_column_] = df[_column_].astype('datetime64[ms]', utc=True)
                 except:
-                    print("columnsAreTimestamps() - fail over conversion for datetime (pandas)")
+                    # print("columnsAreTimestamps() - fail over conversion for datetime (pandas)")
                     df[_column_] = df[_column_].apply(lambda x: pd.to_datetime(x, utc=True).tz_convert(None))
             elif self.isPolars(df):
                 try:
@@ -266,7 +266,7 @@ class RACETrack(RTAnnotationsMixin,
                     if '.%f' in _format_: _format_ = _format_.replace('.%f', '%.f')
                     df = df.with_columns(pl.col(_column_).str.strptime(pl.Datetime, format=_format_).cast(pl.Datetime))
                 except:
-                    print(f"columnsAreTimestamps() - fail over conversion for datetime (polars) - example '{str(df[_column_][0])}'")
+                    # print(f"columnsAreTimestamps() - fail over conversion for datetime (polars) - example '{str(df[_column_][0])}'")
                     df = df.with_columns(pl.col(_column_).map_elements(lambda x: pd.to_datetime(x, utc=True).tz_convert(None), return_dtype=pl.Datetime))
                     #as_series = df[_column_].map_elements(lambda x: pd.to_datetime(x, utc=True).tz_convert(None), return_dtype=pl.Datetime)
                     #_format_  = self.guessTimestampFormat(str(as_series[0]))
