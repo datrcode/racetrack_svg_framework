@@ -254,7 +254,7 @@ class RACETrack(RTAnnotationsMixin,
         for _column_ in columns:
             if   self.isPandas(df):
                 try:
-                    df[_column_] = df[_column_].astype('datetime64[ms]')
+                    df[_column_] = df[_column_].astype('datetime64[ms]', utc=True)
                 except:
                     print("columnsAreTimestamps() - fail over conversion for datetime (pandas)")
                     df[_column_] = df[_column_].apply(lambda x: pd.to_datetime(x, utc=True).tz_convert(None))
