@@ -826,10 +826,9 @@ class RTGraphLayoutsMixin(object):
     def hyperTreeLayout(self,
                         _graph,                        # networkx graph
                         roots                 = None,  # root(s) to use... if not set, will be calculated
-                        touch_up_with_springs = False, # touch up the center of the layout with a spring layout
                         bounds_percent        = 0.1):  # for tree map positioning
         # Make sure root is a list
-        if type(roots) is not list: roots = list(roots)
+        if roots is not None and type(roots) is not list: roots = list(roots)
 
         # Separate graph into connected components
         _graph = nx.to_undirected(_graph)
@@ -899,15 +898,6 @@ class RTGraphLayoutsMixin(object):
 
             for x in G[my_root]: placeChildren(my_root, my_root, 0)
             
-            # Touch up center w/ spring layout
-            if touch_up_with_springs:
-                raise Exception('hyperTreeLayout() - touch_up_with_springs Not Implemented')
-                #dists   = dict(nx.all_pairs_shortest_path_length(G))
-                #leaves  = self.dagLeavesOnly(G)
-                #centers = set(G.nodes()) - leaves
-                # pos = self.springLayout(G, pos, centers, iterations=20, spring_exp=0.1, only_sel_adj=True, dists=dists)
-                # pos = self.springLayout(G, pos, leaves,  iterations=200, spring_exp=0.1, only_sel_adj=True, dists=dists)
-
         # Separate the connected components
         if len(S) > 1: return self.treeMapGraphComponentPlacement(_graph,pos,bounds_percent)
         else:          return pos
