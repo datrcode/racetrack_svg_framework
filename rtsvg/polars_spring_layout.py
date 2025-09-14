@@ -25,7 +25,7 @@ __name__ = 'polars_spring_layout'
 # PolarsSpringLayout() - modeled after the rt_graph_layouts_mixin.py springLayout() method
 #
 class PolarsSpringLayout(object):
-    def __init__(self, g, pos=None, static_nodes=None, spring_exp=1.0, iterations=None, stress_threshold=1e-2, normalize_coordinates=False):
+    def __init__(self, g, pos=None, static_nodes=None, spring_exp=1.0, iterations=None, stress_threshold=1e-2):
         self.g            = g
         self.pos          = pos
         self.static_nodes = static_nodes
@@ -112,12 +112,10 @@ class PolarsSpringLayout(object):
             self.df_result_bounds.append((df_pos['x'].min(), df_pos['y'].min(), df_pos['x'].max(), df_pos['y'].max()))
 
             # Store the results
-            if normalize_coordinates:
-                self.df_results.append(df_pos.with_columns((pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min()), 
-                                                          ((pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min()))) \
-                                             .with_columns((x0 + pl.col('x') * (x1 - x0)).alias('x'), 
-                                                           (y0 + pl.col('y') * (y1 - y0)).alias('y')))
-            else: self.df_results.append(df_pos)
+            self.df_results.append(df_pos.with_columns((pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min()), 
+                                                      ((pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min()))) \
+                                         .with_columns((x0 + pl.col('x') * (x1 - x0)).alias('x'), 
+                                                       (y0 + pl.col('y') * (y1 - y0)).alias('y')))
             S_i += 1
 
     #
