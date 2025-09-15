@@ -143,6 +143,8 @@ class PolarsSpringLayout(object):
     # - this only looks at edges ... not nodes that don't share a connection
     # - this method was created for interactively re-springing portions of the layout
     #   (because the positions will need to be adjusted if they were normalized earlier -- see "normalized_coordinates" flag)
+    # - if there are multiple components int the graph, then the root mean square error is calculated in total
+    #   ... which wouldn't be correct in most cases...
     #
     def rootMeanSquareError(self, x_scale=1.0, y_scale=1.0):
         # Create the structure for the calculation
