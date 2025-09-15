@@ -255,11 +255,12 @@ class WeakParabolicBottom(object):
 
         # Make some initial points at the earliest possible location
         self.xys = []
-        self.xys.append((1.0,   fn(1.0)))
-        self.xys.append((10.0,  fn(10.0)))
-        self.xys.append((100.0, fn(100.0)))
+        self.xys.append((1000.0, fn(1000.0)))
+        self.xys.append((1.0,    fn(1.0)))
+        self.xys.append((10.0,   fn(10.0)))
+        self.xys.append((100.0,  fn(100.0)))
         # Fit a parabola
-        a, b, c = self.fitParabolaNumpy(self.xys)
+        a, b, c = self.fitParabolaNumpy(self.xys[-3:])
         self.parabolas = [(a,b,c)]
         # Find the bottom
         self.bottoms   = [self.parabolaBottom(a,b,c)]
@@ -275,7 +276,13 @@ class WeakParabolicBottom(object):
                 self.parabolas.append((a,b,c))
                 self.bottoms.append((x,y))
             else:
-                x = 0.1 + random.random() * 100.0
+                # Find the two smallest y values and pick the halfway point between them
+                xy0, xy1 = self.xys[0], self.xys[1]
+                if xy0[1] > xy1[1]: xy0, xy1 = xy1, xy0 # make sure xy0 is the smallest
+                for j in range(2, len(self.xys)):
+                    if self.xys[j][1] < xy1[1]: xy1 = self.xys[j]
+                    if xy0[1] > xy1[1]: xy0, xy1 = xy1, xy0 # make sure xy0 is the smallest
+                x = (xy0[0] + xy1[0]) / 2
             f_x = fn(x)
             self.xys.append((x, fn(x)))    
             # If they've converged, stop
