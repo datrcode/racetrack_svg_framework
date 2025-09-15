@@ -53,7 +53,6 @@ class PolarsSpringLayout(object):
             self.g_s    [S_i] = g_s
             # Create a distance dataframe
             _lu_  = {'fm':[],'to':[], 't':[]}
-            #dists = dict(nx.all_pairs_shortest_path_length(g_s)) # doesn't consider weighted edges...
             self.dists = dict(nx.all_pairs_dijkstra_path_length(g_s))
             for _node_ in self.dists.keys():
                 for _nbor_ in self.dists[_node_].keys():
