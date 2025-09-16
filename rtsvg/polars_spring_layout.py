@@ -332,5 +332,26 @@ class WeakParabolicBottom(object):
 
         return rtsvg.RACETrack().xy(_df_, x_field='x', y_field='y', color_by='group', dot_size=None, line_groupby_field='group',
                                     w=900, h=600)._repr_svg_()
-        
 
+#
+# ConnectedGraphRMS - scaled down version of the RMS for a single connected component
+#
+from math import sqrt
+class ConnectedGraphRMS(object):
+    def __init__(self, g, pos):
+        _lu_ = {'n':[], 'nbor':[], 'w':[], 'n_x':[], 'nbor_x':[], 'n_y':[], 'nbor_y':[]}
+        for n in g.nodes():
+            for nbor in g.neighbors(n):
+                _w_                  =  1.0 if 'weight' not in g[n][nbor] else g[n][nbor]['weight']
+                _xy_n_, _xy_nbor_    =  pos[n], pos[nbor]
+                _lu_['n'].append(n),                 _lu_['nbor'].append(nbor),             _lu_['w'].append(_w_)
+                _lu_['n_x'].append(_xy_n_[0]),       _lu_['n_y'].append(_xy_n_[1])
+                _lu_['nbor_x'].append(_xy_nbor_[0]), _lu_['nbor_y'].append(_xy_nbor_[1])
+        self.df = pl.DataFrame(_lu_)
+    def rms(self, x_scale, y_scale):
+        __n_x__, __n_y__       = pl.col('n_x'), pl.col('n_y')
+        __nbor_x__, __nbor_y__ = pl.col('nbor_x'), pl.col('nbor_y')
+        _df_ = self.df.with_columns(((__n_x__*x_scale - __nbor_x__*x_scale)**2 + (__n_y__*y_scale - __nbor_y__*y_scale)**2).alias('x2'))
+        _df_ = _df_.with_columns((pl.col('x2')**0.5).alias('d'))
+        _df_ = _df_.with_columns(((_df_['w'] - _df_['d'])**2).alias('rms'))
+        return sqrt(_df_['rms'].sum()/len(_df_))
