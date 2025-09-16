@@ -33,10 +33,12 @@ class PolarsSpringLayout(object):
 
         if self.static_nodes is None: self.static_nodes = set()
 
+        all_nodes_had_initial_positions = True
         if self.pos is None: self.pos = {}
         for _node_ in self.g.nodes: 
             if _node_ not in self.pos: 
                 self.pos[_node_] = (random.random(), random.random())
+                all_nodes_had_initial_positions = False
 
         self.df_anim          = {}
         self.g_s              = {}
@@ -51,7 +53,8 @@ class PolarsSpringLayout(object):
             if len(g_s.nodes()) == 1: continue # skip if there's only one node
             self.df_anim[S_i] = []
             self.g_s    [S_i] = g_s
-            # Create a distance dataframe
+
+            # Create a graph distance dataframe
             _lu_  = {'fm':[],'to':[], 't':[]}
             self.dists = dict(nx.all_pairs_dijkstra_path_length(g_s))
             for _node_ in self.dists.keys():
@@ -70,7 +73,9 @@ class PolarsSpringLayout(object):
                 else:                           _lu_['s'].append(False)
             df_pos         = pl.DataFrame(_lu_).with_columns(pl.col('x').cast(pl.Float64), pl.col('y').cast(pl.Float64))
             x0, y0, x1, y1 = df_pos['x'].min(), df_pos['y'].min(), df_pos['x'].max(), df_pos['y'].max()
-            if x0 == x1 and y0 == y1: continue # skip if there's no positional differentiation
+            if x0 == x1 and y0 == y1: 
+                self.df_results.append(df_pos)
+                continue # skip if there's no positional differentiation
             
             # Determine the number of iterations
             if iterations is None: 
