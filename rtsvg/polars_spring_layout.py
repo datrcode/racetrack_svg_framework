@@ -77,6 +77,27 @@ class PolarsSpringLayout(object):
                 self.df_results.append(df_pos)
                 continue # skip if there's no positional differentiation
             
+            # Rescale so that the algorithm works correctly if only some nodes are being adjusted
+            # (and all nodes had initial positions...)
+            # (this is required because the calling application may have scaled the earlier results)
+            if all_nodes_had_initial_positions and len(static_nodes) > 0 and False:
+                conn_rms = ConnectedGraphRMS(g_s, self.pos)
+                x_scale, y_scale = 1.0, 1.0 # initial guesses for the scaling factors
+                _scales_         = []
+                for i in range(10):
+                    def _xfn_(x): return conn_rms.rms(x, y_scale)
+                    _wpb_x_ = WeakParabolicBottom(_xfn_)
+                    x_scale = _wpb_x_.xys[-1][0]
+                    def _yfn_(y): return conn_rms.rms(x_scale, y)
+                    _wpb_y_ = WeakParabolicBottom(_yfn_)
+                    y_scale = _wpb_y_.xys[-1][0]
+                    print(f'({x_scale:9.3f} @ {_wpb_x_.xys[-1][1]} | {y_scale:9.3f} @ {_wpb_y_.xys[-1][1]})')
+                    _scales_.append((x_scale, y_scale))
+                    if len(_scales_) > 1 and \
+                       round(_scales_[-1][0],3) == round(_scales_[-2][0],3) and \
+                       round(_scales_[-1][1],3) == round(_scales_[-2][1],3): break
+                df_pos = df_pos.with_columns(pl.col('x')*x_scale, pl.col('y')*y_scale)
+
             # Determine the number of iterations
             if iterations is None: 
                 iterations = len(g_s.nodes())
