@@ -1197,13 +1197,27 @@ class RTGeometryMixin(object):
         :return: parametric bezier curve object -- call object with _obj_(t) where t is 0.0 to 1.0
         """
         class BezierCurve(object):
-
             def __init__(self, pt1, pt1p, pt2p, pt2):
                 self.pt1, self.pt1p, self.pt2p, self.pt2 = pt1, pt1p, pt2p, pt2
+                self.length, self.segments = None, []
+                _xy0_, _length_, t, i = None, 0.0, 0.0, 0
+                for i in range(21):
+                    _xy1_ = self(t)
+                    if _xy0_ is not None: 
+                        _length_ += sqrt((_xy0_[0] - _xy1_[0])**2 + (_xy0_[1] - _xy1_[1])**2)
+                        self.segments.append((_xy0_, _xy1_))
+                    _xy0_, t = _xy1_, t + 0.05
+                self.length = _length_
 
             def __call__(self, t):
                 return (1-t)**3*self.pt1[0]+3*(1-t)**2*t*self.pt1p[0]+3*(1-t)*t**2*self.pt2p[0]+t**3*self.pt2[0], \
                        (1-t)**3*self.pt1[1]+3*(1-t)**2*t*self.pt1p[1]+3*(1-t)*t**2*self.pt2p[1]+t**3*self.pt2[1]
+            
+            def curveLengthApprox(self): return self.length
+
+            def __len__(self):        return 20
+            def __getitem__(self, i): return self.segments[i]
+
         return BezierCurve(pt1, pt1p, pt2p, pt2)
 
     #
