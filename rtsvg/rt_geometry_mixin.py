@@ -20,6 +20,7 @@ import networkx as nx
 from shapely.geometry              import Polygon, LineString, GeometryCollection, MultiLineString
 from shapely.geometry.multipolygon import MultiPolygon
 from math import sqrt, acos, pi, cos, sin, atan2
+import re
 import random
 import uuid
 import copy
@@ -1178,6 +1179,13 @@ class RTGeometryMixin(object):
         if _len_ < 0.0001:
             _len_ = 1.0
         return (dx/_len_, dy/_len_)
+
+    #
+    # svgParametricPath() - parse an SVG path description into its primitive components
+    # - limited to specific SVG Path commands -- see the class definiation below for more details
+    #
+    def svgParametricPath(self, svg_path_description):
+        return SVGParametricPath(self, svg_path_description)
 
     #
     # bezierCurve() - parametric bezier curve object
@@ -2621,6 +2629,11 @@ class RTGeometryMixin(object):
         return XYQuadTree(self, bounds, max_pts_per_node=max_pts_per_node)
 
 
+
+
+
+
+
 #
 # XYQuadTree() - implementation of an xy quad tree...
 #
@@ -3271,3 +3284,149 @@ class SegmentOctTree(object):
 
         svg +=  '</svg>'
         return svg
+
+
+#
+# SVGParametricPath() - parse an SVG path description into its primitive components
+# - limited -- only works on a subset of SVG path commands
+# - only accepts a single "M"ove command at the start
+# - returns the results as a list of tuples encapsulating each component
+#
+class SVGParametricPath(object):
+    def __init__(self, rt_self, _path_):
+        self.LINE, self.BEZIER = 'line', 'bezier' # give us a chance to not screw this up...
+        _components_ = []
+        def is_float(s):
+            try:               float(s)            
+            except ValueError: return False
+            return True
+        def are_floats(l): return all(is_float(x) for x in l)
+        _parts_ = re.split(r'([MmLlCc ,])',_path_)
+        _parts_ = [x for x in _parts_ if x != '' and x != ',' and x !=' ']
+        if _parts_[0] == 'M' or _parts_[0] == 'm': _parts_.pop(0)
+        else: raise ValueError(f'Path "{_path_}" should start with an M or m')
+        x, y    = float(_parts_[0]), float(_parts_[1])
+        _parts_ = _parts_[2:]
+        x_min, y_min, x_max, y_max = x, y, x, y
+        while len(_parts_) > 0:
+            # Line Component
+            if   _parts_[0] == 'L' or _parts_[0] == 'l' and len(_parts_) >= 3 and are_floats(_parts_[1:3]):
+                _cmd_, x1, y1 = _parts_[0], float(_parts_[1]), float(_parts_[2])
+                _parts_ = _parts_[3:]
+                if _cmd_ == 'l': x1, y1 = x+x1, y+y1 # lower case is relative
+                _components_.append(('line', x, y, x1, y1, sqrt((x1-x)**2 + (y1-y)**2)))
+            # Bezier Component
+            elif _parts_[0] == 'C' or _parts_[0] == 'c' and len(_parts_) >= 7 and are_floats(_parts_[1:7]):
+                _cmd_, xc0, yc0, xc1, yc1, x1, y1 = _parts_[0], float(_parts_[1]), float(_parts_[2]), float(_parts_[3]), float(_parts_[4]), float(_parts_[5]), float(_parts_[6])
+                _parts_ = _parts_[7:]
+                if _cmd_ == 'c': xc0, yc0, xc1, yc1, x1, y1 = x+xc0, y+yc0, x+xc1, y+yc1, x+x1, y+y1 # lower case is relative
+                x_min, y_min, x_max, y_max = min(x_min, xc0), min(y_min, yc0), max(x_max, xc0), max(y_max, yc0)
+                x_min, y_min, x_max, y_max = min(x_min, xc1), min(y_min, yc1), max(x_max, xc1), max(y_max, yc1)
+                _components_.append((self.BEZIER, x, y, xc0, yc0, xc1, yc1, x1, y1, rt_self.bezierCurve((x, y), (xc0, yc0), (xc1, yc1), (x1, y1))))
+            # Line Component (w/out the command)
+            elif len(_parts_) >= 2 and are_floats(_parts_[:2]):
+                x1, y1 = float(_parts_[0]), float(_parts_[1])
+                _parts_ = _parts_[2:]
+                _components_.append((self.LINE, x, y, x1, y1, sqrt((x1-x)**2 + (y1-y)**2)))
+            # Exception
+            else: raise ValueError(f'Path "{_path_}" contains an unexpected command "{_parts_[0]}"')
+            x, y = x1, y1
+            x_min, y_min, x_max, y_max = min(x_min, x), min(y_min, y), max(x_max, x), max(y_max, y)
+
+        # Save off the components
+        self.path       = _path_
+        self.components = _components_
+
+        # Make sure the bounds have a positive area
+        if x_min == x_max: x_min, x_max = x_min-1, x_max+1
+        if y_min == y_max: y_min, y_max = y_min-1, y_max+1
+        self.bounds     = (x_min, y_min, x_max, y_max)
+
+        # Determine the total length of the path
+        self.length = 0.0
+        for _comp_ in self.components:
+            if   _comp_[0] == self.LINE:   self.length += _comp_[5]
+            elif _comp_[0] == self.BEZIER: self.length += _comp_[9].curveLengthApprox()
+            else:                          raise ValueError(f'Unknown component type "{_comp_[0]}"')
+
+        # Determine the t values on a per component basis
+        self.ts, _length_ = [], 0.0
+        for _comp_ in self.components:
+            if   _comp_[0] == self.LINE:
+                self.ts.append(_length_ / self.length)
+                _length_ += _comp_[5]
+            elif _comp_[0] == self.BEZIER:
+                self.ts.append(_length_ / self.length)
+                _length_ += _comp_[9].curveLengthApprox()
+        self.ts.append(1.0) # so that we can always find the begin and end t for any segment
+
+    #
+    # __call__() - return the (x,y) for a specific parametric value
+    # - suboptimal implementation for now -- linear search for the t value
+    #
+    def __call__(self, t):
+        if t == 0.0: return self.components[0][1],  self.components[0][2]
+        for i, _t_ in enumerate(self.ts):
+            if t < _t_: break
+        _comp_, _t0_, _t1_ = self.components[i-1], self.ts[i-1], self.ts[i]
+        t_scaled = (t - _t0_) / (_t1_ - _t0_)
+        if   _comp_[0] == self.LINE:
+            x0, y0, x1, y1 = _comp_[1], _comp_[2], _comp_[3], _comp_[4]
+            return x0 + (x1-x0)*t_scaled, y0 + (y1-y0)*t_scaled
+        elif _comp_[0] == self.BEZIER:
+            return _comp_[9](t_scaled)
+
+    #
+    # segmentedTs() - return a list of t values for each component with interpolated values for bezier curves
+    #
+    def segmentedTs(self, precision=2):
+        _ts_ = []
+        for i in range(len(self.components)):
+            _comp_, _t0_, _t1_ = self.components[i], self.ts[i], self.ts[i+1]
+            if   _comp_[0] == self.LINE:    _ts_.append(round(_t0_,precision))
+            elif _comp_[0] == self.BEZIER:
+                t_sub = 0.0
+                while t_sub < 1.0:
+                    _ts_.append(round(_t0_ + t_sub * (_t1_ - _t0_),precision))
+                    t_sub += 0.05
+        _ts_.append(1.0)
+        return _ts_
+
+    #
+    # _repr_svg_() - return an SVG representation of the components
+    #
+    def _repr_svg_(self):
+        _w_, _h_ = 256, 256
+        x0, y0, x1, y1 = self.bounds
+        x_perc, y_perc = (x1-x0)*0.05, (y1-y0)*0.05
+        x0, y0, x1, y1 = x0-x_perc, y0-y_perc, x1+x_perc, y1+y_perc
+        r   = (x1-x0)*0.015 if (x1-x0) > (y1-y0) else (y1-y0)*0.015
+        r_w = r * 0.5
+        svg = [f'<svg x="0" y="0" width="{_w_}" height="{_h_}" viewBox="{x0} {y0} {x1-x0} {y1-y0}">']
+        svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="white"/>')
+        svg.append(f'<path d="{self.path}" stroke="gray" fill="none" />')
+        for _comp_ in self.components:
+            if   _comp_[0] == self.LINE:
+                svg.append(f'<circle cx="{_comp_[1]}" cy="{_comp_[2]}" r="{r}" fill="red" />')
+                svg.append(f'<circle cx="{_comp_[3]}" cy="{_comp_[4]}" r="{r}" stroke="blue" stroke-width="{r_w}" fill="None" />')
+            elif _comp_[0] == self.BEZIER:
+                svg.append(f'<circle cx="{_comp_[1]}" cy="{_comp_[2]}" r="{r}" fill="green" />')
+
+                svg.append(f'<line x1="{_comp_[3]-r}" y1="{_comp_[4]-r}" x2="{_comp_[3]+r}" y2="{_comp_[4]+r}" stroke="black" stroke-width="{r_w} fill="None" />')
+                svg.append(f'<line x1="{_comp_[3]+r}" y1="{_comp_[4]-r}" x2="{_comp_[3]-r}" y2="{_comp_[4]+r}" stroke="black" stroke-width="{r_w} fill="None" />')
+                svg.append(f'<line x1="{_comp_[1]}" y1="{_comp_[2]}" x2="{_comp_[3]}" y2="{_comp_[4]}" stroke="gray" stroke-width="{r_w} fill="None" stroke-dasharray="4" />')
+
+                svg.append(f'<line x1="{_comp_[5]-r}" y1="{_comp_[6]-r}" x2="{_comp_[5]+r}" y2="{_comp_[6]+r}" stroke="black" stroke-width="{r_w} fill="None" />')
+                svg.append(f'<line x1="{_comp_[5]+r}" y1="{_comp_[6]-r}" x2="{_comp_[5]-r}" y2="{_comp_[6]+r}" stroke="black" stroke-width="{r_w} fill="None" />')
+                svg.append(f'<line x1="{_comp_[7]}" y1="{_comp_[8]}" x2="{_comp_[5]}" y2="{_comp_[6]}" stroke="gray" stroke-width="{r_w} fill="None" stroke-dasharray="4" />')
+
+                svg.append(f'<circle cx="{_comp_[7]}" cy="{_comp_[8]}" r="{r}" stroke="black" stroke-width="{r_w}" fill="None" />')
+        
+        t = 0.0
+        while t <= 1.0:
+            x,y = self(t)
+            svg.append(f'<circle cx="{x}" cy="{y}" r="{r/2.0}" stroke="black" stroke-width="{r_w/2.0}" fill="black" />')
+            t += 0.1
+
+        svg.append('</svg>')
+        return ''.join(svg)
