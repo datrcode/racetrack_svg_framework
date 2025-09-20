@@ -1194,6 +1194,16 @@ class RTGeometryMixin(object):
     #
     def svgInterpolatedPathAnimation(self, path_descriptions):
         _parametric_paths_ = [self.svgParametricPath(_path_description_) for _path_description_ in path_descriptions]
+
+        # If they are the same component order, SVG animation works correctly
+        _same_comp_order_, _comp_order_ = True, _parametric_paths_[0].componentOrder()
+        for _pp_ in _parametric_paths_[1:]:
+            if _pp_.componentOrder() != _comp_order_: 
+                _same_comp_order_ = False
+                break
+        if _same_comp_order_: return ';'.join(path_descriptions)
+
+        # Otherwise, interpolate
         _ts_all_           = []
         for _pp_ in _parametric_paths_: _ts_all_.extend(_pp_.segmentedTs())
         _ts_uniq_ = [key for key, _ in groupby(sorted(_ts_all_))]
@@ -3405,6 +3415,14 @@ class SVGParametricPath(object):
                     t_sub += 0.05
         _ts_.append(1.0)
         return _ts_
+
+    #
+    # componentOrder() - return the order of the components
+    #
+    def componentOrder(self):
+        _order_ = []
+        for _comp_ in self.components: _order_.append(_comp_[0])
+        return tuple(_order_)
 
     #
     # _repr_svg_() - return an SVG representation of the components
