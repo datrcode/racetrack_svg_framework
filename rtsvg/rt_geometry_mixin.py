@@ -20,6 +20,7 @@ import networkx as nx
 from shapely.geometry              import Polygon, LineString, GeometryCollection, MultiLineString
 from shapely.geometry.multipolygon import MultiPolygon
 from math import sqrt, acos, pi, cos, sin, atan2
+from itertools import groupby
 import re
 import random
 import uuid
@@ -1186,6 +1187,24 @@ class RTGeometryMixin(object):
     #
     def svgParametricPath(self, svg_path_description):
         return SVGParametricPath(self, svg_path_description)
+
+    #
+    # Create the animation using the interpolated paths
+    # - Interpolation attempts to capture the fidelity of the original paths
+    #
+    def svgInterpolatedPathAnimation(self, path_descriptions):
+        _parametric_paths_ = [self.svgParametricPath(_path_description_) for _path_description_ in path_descriptions]
+        _ts_all_           = []
+        for _pp_ in _parametric_paths_: _ts_all_.extend(_pp_.segmentedTs())
+        _ts_uniq_ = [key for key, _ in groupby(sorted(_ts_all_))]
+        _paths_interpolated_ = []
+        for _pp_ in _parametric_paths_:
+            _xys_ = []
+            for t in _ts_uniq_: 
+                _xy_ = _pp_(t)
+                _xys_.extend([f'{_xy_[0]:.1f}', f'{_xy_[1]:.1f}'])
+            _paths_interpolated_.append('M ' + ' '.join(_xys_))
+        return ';'.join(_paths_interpolated_)
 
     #
     # bezierCurve() - parametric bezier curve object
@@ -2627,11 +2646,6 @@ class RTGeometryMixin(object):
     #
     def xyQuadTree(self, bounds, max_pts_per_node=50):
         return XYQuadTree(self, bounds, max_pts_per_node=max_pts_per_node)
-
-
-
-
-
 
 
 #
