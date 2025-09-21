@@ -77,3 +77,27 @@ class LinkNodeGraphPatterns(object):
             g.add_edge('c', 'c'+str(i), weight=0.5)
         return g
 
+    def __pattern_X__(self, **kwargs):
+        g = nx.Graph()
+        for i in range(30):
+            g.add_edge(f'a{i}', f'a{i+1}')
+            g.add_edge(f'b{i}', f'b{i+1}')
+            g.add_edge(f'c{i}', f'c{i+1}')
+            g.add_edge(f'd{i}', f'd{i+1}')
+        g.add_edge('center', 'a0')
+        g.add_edge('center', 'b0')
+        g.add_edge('center', 'c0')
+        g.add_edge('center', 'd0')
+        return g
+
+    def __pattern_Y__(self, **kwargs):
+        g = nx.Graph()
+        for i in range(30):
+            g.add_edge(f'a{i}', f'a{i+1}')
+            g.add_edge(f'b{i}', f'b{i+1}')
+            g.add_edge(f'c{i}', f'c{i+1}')
+        g.add_edge('center', 'a0')
+        g.add_edge('center', 'b0')
+        g.add_edge('center', 'c0')
+        return g
+
