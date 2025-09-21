@@ -1,4 +1,4 @@
-# Copyright 2024 David Trimm
+# Copyright 2025 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -274,6 +274,40 @@ class Testrt_geometry_mixin(unittest.TestCase):
             l.append('Z')
             _voronoi_svg_.append(f'<path d="{"".join(l)}" fill="{_co_}" stroke="{_co_}" fill-opacity="0.25" stroke-width="2"/>')
             _voronoi_svg_.append(f'<circle cx="{pts[i][0]}" cy="{pts[i][1]}" r="5" fill="none" stroke="{_co_}" stroke-width="2"/>')
+
+    # Copied from path_animation.ipynb
+    # - only tests for exceptions
+    def test_svgParametricPath(self):
+        paths = ['M 10 10 L 200 200',
+                 'M 20 30 L 100 140 L 200 235',
+                 'M 15 50 C 100 140 150 250 240 230',
+                 'M 20 70 40 90 100 180 L 150 200 200 300',
+                 'M 20 120 40 150 100 200 C150,240 200 340 250 350 L 270 380',
+                 'M30,180l130,  170L300,420',
+                 'M 20 200 C 100 240 150 450 260 400',
+                 'M 10 10 c 100 140 150 250 240 230 L 200 200',
+                 'M 20 30 c 100 140 150 250 240 230 L 100 140',
+                 'M 20 40 c 100 140 150 250 240 230 L 100 140',]
+        for p in paths: self.rt_self.svgParametricPath(p)
+
+    # Copied from path_animation.ipynb
+    # - mostly tests for exceptions -- except for the simple non-interpolated case
+    def test_svgInterpolatedPathAnimation(self):
+        paths = ['M 10 10 L 200 200',
+                 'M 20 30 L 100 140 L 200 235',
+                 'M 15 50 C 100 140 150 250 240 230',
+                 'M 20 70 40 90 100 180 L 150 200 200 300',
+                 'M 20 120 40 150 100 200 C150,240 200 340 250 350 L 270 380',
+                 'M30,180l130,  170L300,420',
+                 'M 20 200 C 100 240 150 450 260 400',]
+        _str_ = self.rt_self.svgInterpolatedPathAnimation(paths)
+
+        paths = ['M 10 10 c 100 140 150 250 240 230 L 200 200',
+                 'M 20 30 c 100 140 150 250 240 230 L 100 140',
+                 'M 20 40 c 100 140 150 250 240 230 L 100 140',]
+        _str_ = self.rt_self.svgInterpolatedPathAnimation(paths)
+
+        self.assertEqual(_str_, ';'.join(paths))
 
 if __name__ == '__main__':
     unittest.main()
