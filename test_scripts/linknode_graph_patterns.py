@@ -102,7 +102,7 @@ class LinkNodeGraphPatterns(object):
         return g
     
     def __pattern_checker__(self, **kwargs):
-        n = 8
+        n = 5
         g = nx.Graph()
         for x in range(n):
             for y in range(n):
