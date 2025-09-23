@@ -107,8 +107,11 @@ class LinkNodeGraphPatterns(object):
         for x in range(n):
             for y in range(n):
                 for wo in ['ul', 'ur', 'll', 'lr', 'center']:
-                    g.add_edge(f'{wo}_{x}_{y}', f'{wo}_{x}_{y+1}')
-                    g.add_edge(f'{wo}_{x}_{y}', f'{wo}_{x+1}_{y}')
+                    g.add_edge(f'{wo}_{x}_{y}',     f'{wo}_{x}_{y+1}')
+                    g.add_edge(f'{wo}_{x}_{y}',     f'{wo}_{x+1}_{y}')
+                    g.add_edge(f'{wo}_{x+1}_{y+1}', f'{wo}_{x}_{y+1}') # may add duplicate edges
+                    g.add_edge(f'{wo}_{x+1}_{y+1}', f'{wo}_{x+1}_{y}') # may add duplicate edges
+
         g.add_edge(f'center_0_0',     f'ul_{n}_{n}')
         g.add_edge(f'center_{n}_{n}', f'lr_0_0')
         g.add_edge(f'center_{n}_0',   f'ur_0_{n}')
