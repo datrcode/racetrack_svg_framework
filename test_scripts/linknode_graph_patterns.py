@@ -100,4 +100,21 @@ class LinkNodeGraphPatterns(object):
         g.add_edge('center', 'b0')
         g.add_edge('center', 'c0')
         return g
+    
+    def __pattern_checker__(self, **kwargs):
+        n = 8
+        g = nx.Graph()
+        for x in range(n):
+            for y in range(n):
+                for wo in ['ul', 'ur', 'll', 'lr', 'center']:
+                    g.add_edge(f'{wo}_{x}_{y}', f'{wo}_{x}_{y+1}')
+                    g.add_edge(f'{wo}_{x}_{y}', f'{wo}_{x+1}_{y}')
+        g.add_edge(f'center_0_0',     f'ul_{n}_{n}')
+        g.add_edge(f'center_{n}_{n}', f'lr_0_0')
+        g.add_edge(f'center_{n}_0',   f'ur_0_{n}')
+        g.add_edge(f'center_0_{n}',   f'll_{n}_0')
+
+        return g
+
+
 
