@@ -86,7 +86,7 @@ import copy
 
 from shapely import Polygon
 
-from rtsvg.polars_spring_layout import PolarsSpringLayout
+from rtsvg.polars_force_directed_layout import PolarsForceDirectedLayout
 
 from .rt_stackable import RTStackable, RTSelectable
 
@@ -209,7 +209,7 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     #
     # Layout Operation String
     #
-    layout_operation  = param.String(default="spring")
+    layout_operation  = param.String(default="spring nx")
 
     #
     # Keyboard Help X Value
@@ -293,10 +293,10 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self.layout_modes         = [self.GRID, self.CIRCLE, self.SUNFLOWER, self.GRID_BY_COLOR, self.GRID_BY_COLOR_CLOUDS, self.RESCALE]
 
         self.SPRING_NX            = 'spring nx'
-        self.SPRING               = 'spring'
+        self.FORCE_DIRECTED       = 'force directed'
         self.HYPERTREE            = 'hyper tree'
         self.CONNECTED_COMPONENTS = 'connected components'
-        self.layout_operations    = [self.SPRING_NX, self.SPRING, self.HYPERTREE, self.CONNECTED_COMPONENTS]
+        self.layout_operations    = [self.SPRING_NX, self.FORCE_DIRECTED, self.HYPERTREE, self.CONNECTED_COMPONENTS]
 
         # Recast the template with the width's and height's
         self._template = f"""
@@ -540,8 +540,8 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
     def __layoutOperation__(self, _layout_op_, _ln_, _g_, _sel_):
         _pos_ = None
         if   _layout_op_ == self.SPRING_NX            and len(_sel_) == 0: _pos_ = nx.spring_layout(_g_)
-        elif _layout_op_ == self.SPRING               and len(_sel_) == 0: _pos_ = PolarsSpringLayout(_g_).results()
-        elif _layout_op_ == self.SPRING               and len(_sel_) >  0: _pos_ = PolarsSpringLayout(_g_, pos=_ln_.pos, static_nodes=set(_g_.nodes()) - set(_sel_)).results()
+        elif _layout_op_ == self.FORCE_DIRECTED       and len(_sel_) == 0: _pos_ = PolarsForceDirectedLayout(_g_).results()
+        elif _layout_op_ == self.FORCE_DIRECTED       and len(_sel_) >  0: _pos_ = PolarsForceDirectedLayout(_g_, pos=_ln_.pos, static_nodes=set(_g_.nodes()) - set(_sel_)).results()
         elif _layout_op_ == self.HYPERTREE:                                _pos_ = self.rt_self.hyperTreeLayout(_g_, roots=_sel_)
         elif _layout_op_ == self.CONNECTED_COMPONENTS and len(_sel_) == 0: _pos_ = self.rt_self.treeMapGraphComponentPlacement(_g_, _ln_.pos)
         else: pass

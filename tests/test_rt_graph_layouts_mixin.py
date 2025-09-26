@@ -96,9 +96,9 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
     def test_barycentricLayout(self):
         self.rt_self.barycentricLayout(self.g, self.pos, selection=self.node_subset)
 
-    def test_polarsSpringLayout(self):
-        PolarsSpringLayout(self.g).results()
-        PolarsSpringLayout(self.g, self.pos, static_nodes=self.node_subset).results()
+    def test_polarsForceDirectedLayout(self):
+        PolarsForceDirectedLayout(self.g).results()
+        PolarsForceDirectedLayout(self.g, self.pos, static_nodes=self.node_subset).results()
 
 if __name__ == '__main__':
     unittest.main()

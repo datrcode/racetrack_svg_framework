@@ -19,12 +19,13 @@ from math import sqrt
 import random
 import rtsvg
 
-__name__ = 'polars_spring_layout'
+__name__ = 'polars_force_directed_layout'
 
 #
-# PolarsSpringLayout() - modeled after the rt_graph_layouts_mixin.py springLayout() method
+# PolarsForceDirectedLayout() - modeled after the rt_graph_layouts_mixin.py springLayout() method
+# - renamed ForceDirected vs Springs because this implements a broader class of layout algorithms
 #
-class PolarsSpringLayout(object):
+class PolarsForceDirectedLayout(object):
     def __init__(self, g, pos=None, static_nodes=None, spring_exp=1.0, iterations=None, stress_threshold=1e-2):
         self.g            = g
         self.pos          = pos
