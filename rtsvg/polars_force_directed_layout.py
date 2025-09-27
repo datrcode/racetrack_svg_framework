@@ -133,13 +133,11 @@ class PolarsForceDirectedLayout(object):
         return _pos_
 
     #
-    # stressSums() -- produce an array of stress summations for the specific subgraph
+    # stressVector() -- produce an array of stress summations for the specific subgraph
     #
-    def stressSums(self, subgraph_i=0):
+    def stressVector(self, subgraph_i=0, k=0):
         _sums_ = []
-        for i in range(1, len(self.df_anim[subgraph_i])):
-            _stress_sum_ = (self.df_anim[subgraph_i][i]['stress']).sum()
-            _sums_.append(_stress_sum_)
+        for i in range(len(self.df_anim[subgraph_i])): _sums_.append(self.stress(subgraph_i=subgraph_i, k=k, animation_step=i))
         return _sums_
 
     #
@@ -153,8 +151,8 @@ class PolarsForceDirectedLayout(object):
     # k=1 # semi-proportional stress
     # k=2 # proportional stress
     #
-    def stress(self, subgraph_i=0, k=0):
-        df_pos  = self.df_results[subgraph_i]
+    def stress(self, subgraph_i=0, k=0, animation_step=-1):
+        df_pos  = self.df_anim[subgraph_i][animation_step]
         df_dist = self.df_dist[subgraph_i]
         _df_    = df_pos.join(df_pos, how='cross') \
                         .filter(pl.col('node') != pl.col('node_right')) \
