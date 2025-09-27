@@ -42,6 +42,7 @@ class PolarsForceDirectedLayout(object):
                 all_nodes_had_initial_positions = False
 
         self.df_anim          = {}
+        self.df_dist          = {}
         self.g_s              = {}
         self.df_results       = []
         self.df_result_bounds = []
@@ -62,8 +63,8 @@ class PolarsForceDirectedLayout(object):
                 for _nbor_ in self.dists[_node_].keys():
                     if _node_ == _nbor_: continue
                     _lu_['fm'].append(_node_), _lu_['to'].append(_nbor_), _lu_['t'].append(self.dists[_node_][_nbor_])
-            self.df_dist = pl.DataFrame(_lu_)
-            self.df_dist = self.df_dist.with_columns(pl.col('t').cast(pl.Float64))
+            self.df_dist[S_i] = pl.DataFrame(_lu_)
+            self.df_dist[S_i] = self.df_dist[S_i].with_columns(pl.col('t').cast(pl.Float64))
 
             # Create a node position dataframe
             _lu_ = {'node':[], 'x':[], 'y':[], 's':[]}
@@ -92,7 +93,7 @@ class PolarsForceDirectedLayout(object):
                 df_pos = df_pos.join(df_pos, how='cross') \
                                .filter(pl.col('node') != pl.col('node_right')) \
                                .with_columns((__dx__**2 + __dy__**2).sqrt().alias('d')) \
-                               .join(self.df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
+                               .join(self.df_dist[S_i], left_on=['node', 'node_right'], right_on=['fm','to']) \
                                .with_columns(pl.col('t').pow(self.spring_exp).alias('e')) \
                                .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
                                              pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('w')) \
