@@ -135,10 +135,10 @@ class PolarsForceDirectedLayout(object):
     #
     # stressSums() -- produce an array of stress summations for the specific subgraph
     #
-    def stressSums(self, anim_i=0):
+    def stressSums(self, subgraph_i=0):
         _sums_ = []
-        for i in range(1, len(self.df_anim[0])):
-            _stress_sum_ = (self.df_anim[0][i]['stress']).sum()
+        for i in range(1, len(self.df_anim[subgraph_i])):
+            _stress_sum_ = (self.df_anim[subgraph_i][i]['stress']).sum()
             _sums_.append(_stress_sum_)
         return _sums_
 
@@ -153,9 +153,9 @@ class PolarsForceDirectedLayout(object):
     # k=1 # semi-proportional stress
     # k=2 # proportional stress
     #
-    def stress(self, anim_i=0, k=0):
-        df_pos  = self.df_results[anim_i]
-        df_dist = self.df_dist[anim_i]
+    def stress(self, subgraph_i=0, k=0):
+        df_pos  = self.df_results[subgraph_i]
+        df_dist = self.df_dist[subgraph_i]
         _df_    = df_pos.join(df_pos, how='cross') \
                         .filter(pl.col('node') != pl.col('node_right')) \
                         .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
@@ -198,21 +198,20 @@ class PolarsForceDirectedLayout(object):
     # svgAnimation() - produce the animation svg for the spring layout
     # - copied from the udist_scatterplots_via_sectors_tile_opt.py method
     #
-    def svgAnimation(self, duration='10s', w=256, h=256, r=0.04, anim_i=0, draw_links=True, draw_nodes=True):
-        df = self.df_anim[anim_i][0]
-        x_cols = [f'x{i}' for i in range(0, len(self.df_anim[anim_i]))]
-        y_cols = [f'y{i}' for i in range(0, len(self.df_anim[anim_i]))]
+    def svgAnimation(self, duration='10s', w=256, h=256, r=0.04, subgraph_i=0, draw_links=True, draw_nodes=True):
+        df = self.df_anim[subgraph_i][0]
+        x_cols = [f'x{i}' for i in range(0, len(self.df_anim[subgraph_i]))]
+        y_cols = [f'y{i}' for i in range(0, len(self.df_anim[subgraph_i]))]
         x_cols.extend(x_cols[::-1]), y_cols.extend(y_cols[::-1])
-        for i in range(1, len(self.df_anim[anim_i])): df = df.join(self.df_anim[anim_i][i].drop(['s', 'stress']), on=['node']).rename({'x_right':f'x{i}', 'y_right':f'y{i}'})
+        for i in range(1, len(self.df_anim[subgraph_i])): df = df.join(self.df_anim[subgraph_i][i].drop(['s', 'stress']), on=['node']).rename({'x_right':f'x{i}', 'y_right':f'y{i}'})
         df = df.rename({'x':'x0', 'y':'y0'})
         # Determine the bounds
         x0, y0, x1, y1 = df['x0'].min(), df['y0'].min(), df['x0'].max(), df['y0'].max()
-        for i in range(1, len(self.df_anim[anim_i])):
+        for i in range(1, len(self.df_anim[subgraph_i])):
             x0, y0, x1, y1 = min(x0, df[f'x{i}'].min()), min(y0, df[f'y{i}'].min()), max(x1, df[f'x{i}'].max()), max(y1, df[f'y{i}'].max())
         # Produce the values strings for x & y and drop the unneeded columns
         df = df.with_columns(pl.concat_str(x_cols, separator=';').alias('x_values_str'), 
                              pl.concat_str(y_cols, separator=';').alias('y_values_str')).drop(x_cols).drop(y_cols)
-
 
         svg = []
         svg.append(f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="{x0} {y0} {x1-x0} {y1-y0}" xmlns="http://www.w3.org/2000/svg">')
@@ -221,8 +220,8 @@ class PolarsForceDirectedLayout(object):
         # Edges
         if draw_links:
             _lu_ = {'fm':[], 'to':[]}
-            for _node_ in self.g_s[anim_i].nodes():
-                for _nbor_ in self.g_s[anim_i].neighbors(_node_):
+            for _node_ in self.g_s[subgraph_i].nodes():
+                for _nbor_ in self.g_s[subgraph_i].neighbors(_node_):
                     _lu_['fm'].append(_node_), _lu_['to'].append(_nbor_)
             df_edges = pl.DataFrame(_lu_).join(df, left_on='fm', right_on='node') \
                                          .rename({'x_values_str':'fm_x_values_str', 'y_values_str':'fm_y_values_str'}) \
