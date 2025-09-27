@@ -143,6 +143,28 @@ class PolarsForceDirectedLayout(object):
         return _sums_
 
     #
+    # stress() - calculate the stress per the following paper:
+    #
+    # Drawing Graphs to Convey Proximity: An Incremental Arrangement Method
+    # J.D. Cohen
+    # ACM Transactions on Computer-Human Interaction, Vol. 4, No. 3, September 1997, Pages 197–229.
+    #
+    # k=0 # absolute stress
+    # k=1 # semi-proportional stress
+    # k=2 # proportional stress
+    #
+    def stress(self, anim_i=0, k=0):
+        df_pos  = self.df_results[anim_i]
+        df_dist = self.df_dist[anim_i]
+        _df_    = df_pos.join(df_pos, how='cross') \
+                        .filter(pl.col('node') != pl.col('node_right')) \
+                        .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
+                        .with_columns(((pl.col('x') - pl.col('x_right'))**2 + (pl.col('y') - pl.col('y_right'))**2).sqrt().alias('d')) \
+                        .with_columns((pl.col('t')**(2-k)).alias('__prod_1__'),
+                                    ((pl.col('d') - pl.col('t'))**2 / pl.col('t')**k).alias('__prod_2__'))
+        return (1.0 / _df_['__prod_1__'].sum()) * _df_['__prod_2__'].sum()
+
+    #
     # rootMeanSquareError() - determine the root mean square error between the distances and the ideal distances
     # - scale parameters will first be used to modify the distances relative to each other
     # - this only looks at edges ... not nodes that don't share a connection
