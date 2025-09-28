@@ -26,11 +26,11 @@ __name__ = 'polars_force_directed_layout'
 # - renamed ForceDirected vs Springs because this implements a broader class of layout algorithms
 #
 class PolarsForceDirectedLayout(object):
-    def __init__(self, g, pos=None, static_nodes=None, spring_exp=1.0, iterations=None, stress_threshold=1e-2):
+    def __init__(self, g, pos=None, static_nodes=None, k=2.0, iterations=None, stress_threshold=1e-2):
         self.g            = g
         self.pos          = pos
         self.static_nodes = static_nodes
-        self.spring_exp   = spring_exp
+        self.k            = k
 
         if self.static_nodes is None: self.static_nodes = set()
 
@@ -83,7 +83,7 @@ class PolarsForceDirectedLayout(object):
             if iterations is None: 
                 iterations = len(g_s.nodes())
                 if iterations < 64: iterations = 64
-            mu = 1.0/len(g_s.nodes())
+            mu = 1.0/(2.0*len(g_s.nodes()))
 
             # Perform the iterations by shifting the nodes per the spring force
             _stress_last_, stress_ok_times = 1e9, 0
@@ -94,12 +94,12 @@ class PolarsForceDirectedLayout(object):
                                .filter(pl.col('node') != pl.col('node_right')) \
                                .with_columns((__dx__**2 + __dy__**2).sqrt().alias('d')) \
                                .join(self.df_dist[S_i], left_on=['node', 'node_right'], right_on=['fm','to']) \
-                               .with_columns(pl.col('t').pow(self.spring_exp).alias('e')) \
+                               .with_columns(pl.col('t').pow(self.k).alias('t_k')) \
                                .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
                                              pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('w')) \
-                               .with_columns(((2.0*__dx__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('e')).alias('xadd'),
-                                             ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('e')).alias('yadd'),
-                                             ((pl.col('t') - pl.col('d'))**2).alias('stress')) \
+                               .with_columns(((2.0*__dx__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('xadd'),
+                                             ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('yadd'),
+                                             (((pl.col('t') - pl.col('d'))**2)/pl.col('t_k')).alias('stress')) \
                                .group_by(['node','x','y','s']).agg(pl.col('xadd').sum(), pl.col('yadd').sum(), pl.col('stress').sum()/len(g_s.nodes())) \
                                .with_columns(pl.when(pl.col('s')).then(pl.col('x')).otherwise(pl.col('x') - mu * pl.col('xadd')).alias('x'),
                                              pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') - mu * pl.col('yadd')).alias('y')) \
