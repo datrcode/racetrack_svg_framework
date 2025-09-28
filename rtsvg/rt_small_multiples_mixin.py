@@ -1342,16 +1342,16 @@ class RTSmallMultiplesMixin(object):
     # ... a lot of assumptions built into this one -- specifically 
     #     that the passed in SVG is at coordinates (0,0)
     #
-    def addTitleToSVG(self, _svg_, _title_, txt_h=12, _color_=None, _font_=None):
+    def titleSVG(self, _svg_, _title_, txt_h=12, color=None, font=None):
         if type(_svg_) != str:
             _svg_ = _svg_._repr_svg_()
         w,h = self.__extractSVGWidthAndHeight__(_svg_)
         _co = self.co_mgr.getTVColor('background','default')
-        _new_svg  =  f'<svg x="0" y="0" width="{w}" height="{h+txt_h+4}">'
+        _new_svg  = f'<svg x="0" y="0" width="{w}" height="{h+txt_h+4}">'
         _new_svg += f'<rect x="0" y="0" width="{w}" height="{h+txt_h+4}" fill="{_co}" />'
         _new_svg += _svg_
         _cropped  = self.cropText(_title_, txt_h, w)
-        _new_svg += self.svgText(_cropped, w/2, h + txt_h + 1, txt_h, anchor='middle', color=_color_, font=_font_)
+        _new_svg += self.svgText(_cropped, w/2, h + txt_h + 1, txt_h, anchor='middle', color=color, font=font)
         _new_svg += f'</svg>'
         return _new_svg
     
