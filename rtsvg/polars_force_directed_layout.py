@@ -25,6 +25,12 @@ __name__ = 'polars_force_directed_layout'
 # PolarsForceDirectedLayout() - modeled after the rt_graph_layouts_mixin.py springLayout() method
 # - renamed ForceDirected vs Springs because this implements a broader class of layout algorithms
 #
+# Implements portions of the following:
+#
+# Drawing Graphs to Convey Proximity: An Incremental Arrangement Method
+# J.D. Cohen
+# ACM Transactions on Computer-Human Interaction, Vol. 4, No. 3, September 1997, Pages 197–229.
+#
 class PolarsForceDirectedLayout(object):
     def __init__(self, g, pos=None, static_nodes=None, k=2.0, iterations=None, stress_threshold=1e-2):
         self.g            = g
