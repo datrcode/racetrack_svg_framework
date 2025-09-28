@@ -87,7 +87,7 @@ class PolarsForceDirectedLayout(object):
             
             # Determine the number of iterations
             if iterations is None: 
-                iterations = len(g_s.nodes())
+                iterations = 2*len(g_s.nodes())
                 if iterations < 64: iterations = 64
             mu = 1.0/(2.0*len(g_s.nodes()))
 
