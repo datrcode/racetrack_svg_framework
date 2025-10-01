@@ -13,6 +13,16 @@
 # limitations under the License.
 #
 
+#
+# Implements [parts of] the visualization from the following paper:
+#
+# SpreadLine: Visualizing Egocentric Dynamic Influence
+# Yun-Hsin Kuo, Dongyu Liu, and Kwan-Liu Ma 
+# arXiv:2408.08992v1 [cs.HC] 16 Aug 2024
+#
+# https://arxiv.org/html/2408.08992v1
+#
+
 __name__ = 'rt_spreadlines_mixin'
 
 import polars as pl
