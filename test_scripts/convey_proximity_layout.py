@@ -25,6 +25,11 @@ class ConveyProximityLayout(object):
         Q           = self.__orderVertices__(g_connected, distances)       # Make vector Q of vertices in order of inclusion
         H           = set()                                                # Initialize vertices to arrange
 
+        # Stress information
+        self.stress_lu      = {'stress':[], 'i':[], 'i_global':[], 'arrange_round':[]}
+        self.arrange_round  = 0
+        self.i_global       = 0
+
         # There needs to be an initial vertex set that is already placed for the while loop to actually work...
         # vvv
         for i in range(self.__numberToAddThisTime__(len(H), len(V))):
@@ -124,19 +129,24 @@ class ConveyProximityLayout(object):
         __dx__, __dy__ = (pl.col('x') - pl.col('x_right')), (pl.col('y') - pl.col('y_right'))
         for i in range(iterations):
             df_pos = df_pos.join(df_pos, how='cross') \
-                        .filter(pl.col('node') != pl.col('node_right')) \
-                        .with_columns((__dx__**2 + __dy__**2).sqrt().alias('d')) \
-                        .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
-                        .with_columns(pl.col('t').pow(k).alias('t_k')) \
-                        .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
-                                      pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('w')) \
-                        .with_columns(((2.0*__dx__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('xadd'),
-                                      ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('yadd'),
-                                      (((pl.col('t') - pl.col('d'))**2)/pl.col('t_k')).alias('stress')) \
-                        .group_by(['node','x','y','s']).agg(pl.col('xadd').sum(), pl.col('yadd').sum(), pl.col('stress').sum()/len(_nodes_)) \
-                        .with_columns(pl.when(pl.col('s')).then(pl.col('x')).otherwise(pl.col('x') - mu * pl.col('xadd')).alias('x'),
-                                      pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') - mu * pl.col('yadd')).alias('y')) \
-                        .drop(['xadd','yadd'])
+                           .filter(pl.col('node') != pl.col('node_right')) \
+                           .with_columns((__dx__**2 + __dy__**2).sqrt().alias('d')) \
+                           .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
+                           .with_columns(pl.col('t').pow(k).alias('t_k')) \
+                           .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
+                                         pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('w')) \
+                           .with_columns((pl.col('t')**(2-k)).alias('__prod_1__'),
+                                         ((2.0*__dx__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('xadd'),
+                                         ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('yadd'),
+                                         (((pl.col('t') - pl.col('d'))**2)/(pl.col('t_k'))**k).alias('__prod_2__')) \
+                           .group_by(['node','x','y','s']).agg(pl.col('xadd').sum(), pl.col('yadd').sum(), pl.col('__prod_1__').sum(), pl.col('__prod_2__').sum()) \
+                           .with_columns(pl.when(pl.col('s')).then(pl.col('x')).otherwise(pl.col('x') - mu * pl.col('xadd')).alias('x'),
+                                         pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') - mu * pl.col('yadd')).alias('y')) \
+                           .drop(['xadd','yadd'])
+            stress = (1.0 / df_pos['__prod_1__'].sum()) * df_pos['__prod_2__'].sum()
+            self.stress_lu['stress'].append(stress), self.stress_lu['i'].append(i), self.stress_lu['i_global'].append(self.i_global), self.stress_lu['arrange_round'].append(self.arrange_round)
+            self.i_global += 1
+        self.arrange_round += 1
         _updated_ = {}
         for i in range(len(df_pos)): _updated_[df_pos['node'][i]] = (df_pos['x'][i], df_pos['y'][i])
         return _updated_
