@@ -165,7 +165,7 @@ class PolarsForceDirectedLayout(object):
                         .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
                         .with_columns(((pl.col('x') - pl.col('x_right'))**2 + (pl.col('y') - pl.col('y_right'))**2).sqrt().alias('d')) \
                         .with_columns((pl.col('t')**(2-k)).alias('__prod_1__'),
-                                    ((pl.col('d') - pl.col('t'))**2 / pl.col('t')**k).alias('__prod_2__'))
+                                     ((pl.col('d') - pl.col('t'))**2 / pl.col('t')**k).alias('__prod_2__'))
         return (1.0 / _df_['__prod_1__'].sum()) * _df_['__prod_2__'].sum()
 
     #
