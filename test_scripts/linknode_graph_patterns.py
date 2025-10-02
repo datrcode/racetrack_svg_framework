@@ -10,6 +10,9 @@ class LinkNodeGraphPatterns(object):
             _match_ = re.match('__pattern_(.*)__', _str_)
             if _match_ is not None: self.types.append(_match_.group(1))
 
+    def __len__    (self):    return len(self.types)
+    def __getitem__(self, i): return self.types[i]
+
     def createPattern(self, _type_, prefix='', **kwargs):
         if _type_ not in self.types: raise Exception(f'Unknown pattern type: {_type_}')
         _fn_ = '__pattern_' + _type_ + '__'
