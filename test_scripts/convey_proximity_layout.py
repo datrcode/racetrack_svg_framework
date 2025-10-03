@@ -127,7 +127,8 @@ class ConveyProximityLayout(object):
         iterations = max(64, len(_nodes_))
         mu         = 1.0/(2.0*len(_nodes_))
         __dx__, __dy__ = (pl.col('x') - pl.col('x_right')), (pl.col('y') - pl.col('y_right'))
-        for i in range(iterations):
+        i = 0
+        while True:
             df_pos = df_pos.join(df_pos, how='cross') \
                            .filter(pl.col('node') != pl.col('node_right')) \
                            .with_columns((__dx__**2 + __dy__**2).sqrt().alias('d')) \
