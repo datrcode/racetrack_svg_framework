@@ -143,9 +143,14 @@ class ConveyProximityLayout(object):
                            .with_columns(pl.when(pl.col('s')).then(pl.col('x')).otherwise(pl.col('x') - mu * pl.col('xadd')).alias('x'),
                                          pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') - mu * pl.col('yadd')).alias('y')) \
                            .drop(['xadd','yadd'])
+            # Stress calculation & storage
             stress = (1.0 / df_pos['__prod_1__'].sum()) * df_pos['__prod_2__'].sum()
             self.stress_lu['stress'].append(stress), self.stress_lu['i'].append(i), self.stress_lu['i_global'].append(self.i_global), self.stress_lu['arrange_round'].append(self.arrange_round)
             self.i_global += 1
+            # Early termination
+            if i > 3 and round(self.stress_lu['stress'][-1],3) == round(self.stress_lu['stress'][-2],3) and round(self.stress_lu['stress'][-2],3) == round(self.stress_lu['stress'][-3],3): break
+
+
         self.arrange_round += 1
         _updated_ = {}
         for i in range(len(df_pos)): _updated_[df_pos['node'][i]] = (df_pos['x'][i], df_pos['y'][i])
