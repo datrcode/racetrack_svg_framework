@@ -124,11 +124,10 @@ class ConveyProximityLayout(object):
         df_pos, df_dist = pl.DataFrame(_lu_pos_), pl.DataFrame(_lu_dist_)
 
         # Iterate using the force directed layout algorithm
-        iterations = max(64, len(_nodes_))
+        iterations = max(128, 4*len(_nodes_))
         mu         = 1.0/(2.0*len(_nodes_))
         __dx__, __dy__ = (pl.col('x') - pl.col('x_right')), (pl.col('y') - pl.col('y_right'))
-        i = 0
-        while True:
+        for i in range(iterations):
             df_pos = df_pos.join(df_pos, how='cross') \
                            .filter(pl.col('node') != pl.col('node_right')) \
                            .with_columns((__dx__**2 + __dy__**2).sqrt().alias('d')) \
@@ -149,8 +148,10 @@ class ConveyProximityLayout(object):
             self.stress_lu['stress'].append(stress), self.stress_lu['i'].append(i), self.stress_lu['i_global'].append(self.i_global), self.stress_lu['arrange_round'].append(self.arrange_round)
             self.i_global += 1
             # Early termination
-            if i > 3 and round(self.stress_lu['stress'][-1],3) == round(self.stress_lu['stress'][-2],3) and round(self.stress_lu['stress'][-2],3) == round(self.stress_lu['stress'][-3],3): break
-
+            _round_prec_ = 4
+            if i > 8 and round(self.stress_lu['stress'][-1],_round_prec_) == round(self.stress_lu['stress'][-2],_round_prec_) and \
+                         round(self.stress_lu['stress'][-2],_round_prec_) == round(self.stress_lu['stress'][-3],_round_prec_) and \
+                         round(self.stress_lu['stress'][-3],_round_prec_) == round(self.stress_lu['stress'][-4],_round_prec_): break
 
         self.arrange_round += 1
         _updated_ = {}
