@@ -114,10 +114,10 @@ class ConveyProximityLayout(object):
     #
     def __arrangeDirect__(self, _nodes_, _pos_, _distances_, k):
         # Construct the df_pos and df_dist dataframes
-        _lu_pos_  = {'node':[], 'x':[], 'y':[], 's':[]}
+        _lu_pos_  = {'node':[], 'x':[], 'y':[]}
         _lu_dist_ = {'fm':[],'to':[], 't':[]}
         for _node_ in _nodes_:
-            _lu_pos_['node'].append(_node_), _lu_pos_['x'].append(_pos_[_node_][0]), _lu_pos_['y'].append(_pos_[_node_][1]), _lu_pos_['s'].append(False)
+            _lu_pos_['node'].append(_node_), _lu_pos_['x'].append(_pos_[_node_][0]), _lu_pos_['y'].append(_pos_[_node_][1])
             for _nbor_ in _nodes_:
                 if _nbor_ == _node_: continue
                 _lu_dist_['fm'].append(_node_), _lu_dist_['to'].append(_nbor_), _lu_dist_['t'].append(_distances_[_node_][_nbor_])
@@ -139,9 +139,9 @@ class ConveyProximityLayout(object):
                                          ((2.0*__dx__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('xadd'),
                                          ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('yadd'),
                                          (((pl.col('t') - pl.col('d'))**2)/(pl.col('t_k'))**k).alias('__prod_2__')) \
-                           .group_by(['node','x','y','s']).agg(pl.col('xadd').sum(), pl.col('yadd').sum(), pl.col('__prod_1__').sum(), pl.col('__prod_2__').sum()) \
-                           .with_columns(pl.when(pl.col('s')).then(pl.col('x')).otherwise(pl.col('x') - mu * pl.col('xadd')).alias('x'),
-                                         pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') - mu * pl.col('yadd')).alias('y')) \
+                           .group_by(['node','x','y']).agg(pl.col('xadd').sum(), pl.col('yadd').sum(), pl.col('__prod_1__').sum(), pl.col('__prod_2__').sum()) \
+                           .with_columns((pl.col('x') - mu * pl.col('xadd')).alias('x'),
+                                         (pl.col('y') - mu * pl.col('yadd')).alias('y')) \
                            .drop(['xadd','yadd'])
             # Stress calculation & storage
             stress = (1.0 / df_pos['__prod_1__'].sum()) * df_pos['__prod_2__'].sum()
