@@ -18,12 +18,23 @@ class ConveyProximityLayout(object):
     #
     # Table V of paper (algorithm that includes multiple trials)
     #
-    def __init__(self, g_connected, k=2.0):
-        self.g_connected         = g_connected
-        self.k                   = k
-        self.V                   = set(self.g_connected.nodes)
-        self.distances           = self.__getTargetDistances__(g_connected)          # Establish target distances
-        self.pos, self.stress_lu = self.__performTrial__()
+    def __init__(self, g_connected, number_of_trials=1, k=2.0):
+        self.g_connected          = g_connected
+        self.k                    = k
+        self.V                    = set(self.g_connected.nodes)
+        self.distances            = self.__getTargetDistances__(g_connected)          # Establish target distances
+
+        # Begin the trials
+        stress_dfs = []
+        _best_stress_, _best_pos_ = None, None
+        for _trial_ in range(number_of_trials):
+            pos, stress_lu = self.__performTrial__()
+            stress_dfs.append(pl.DataFrame(stress_lu).with_columns(pl.lit(_trial_).alias('trial')))
+            _end_stress_   = stress_lu['stress'][-1]
+            if _best_stress_ is None or _end_stress_ < _best_stress_: _best_stress_, _best_pos_ = _end_stress_, pos
+        
+        self.pos       = _best_pos_
+        self.stress_df = pl.concat(stress_dfs)
 
     #
     # Table II of paper (simplified algorithm that does not include multiple trials)
