@@ -5,6 +5,7 @@
 # J.D. Cohen
 # ACM Transactions on Computer-Human Interaction, Vol. 4, No. 3, September 1997, Pages 197–229.
 #
+from typing import TypeGuard
 import polars as pl
 import networkx as nx
 from math import log10, ceil
@@ -17,8 +18,65 @@ __name__ = 'convey_proximity_layout'
 class ConveyProximityLayout(object):
     #
     # Table V of paper (algorithm that includes multiple trials)
+    # ... no really... this time it will do what's described :(
     #
-    def __init__(self, g_connected, number_of_trials=1, k=2.0):
+    def __init__(self, g_connected, k=2.0):
+        self.g_connected          = g_connected
+        self.k                    = k
+        self.V                    = set(self.g_connected.nodes)
+        self.distances            = self.__getTargetDistances__(g_connected)          # Establish target distances
+
+        pos            = {}                                                           # Results
+        Q              = self.__orderVertices__(self.g_connected, self.distances)     # Make vector Q of vertices in order of inclusion
+        H              = set()                                                        # Initialize vertices to arrange
+        arrange_round  = 0
+
+        # There needs to be an initial vertex set that is already placed for the while loop to actually work...
+        # vvv
+        _to_randomize_ = set()
+        for i in range(self.__numberToAddThisTime__(len(H), len(self.V))):
+            H.add(Q[0]), _to_randomize_.add(Q[0])
+            Q = Q[1:]
+        _best_stress_, _best_pos_ = None, None
+        for _trial_ in range(self.__numberOfTrialsThisTime__(H)):
+            for _vertex_ in _to_randomize_: pos[_vertex_] = (random.random(), random.random())
+            _stress_lu_  = {'stress':[], 'i':[]}
+            pos          = self.__arrangeDirect__(H, pos, _stress_lu_)
+            _end_stress_ = _stress_lu_['stress'][-1]
+            if _best_stress_ is None or _end_stress_ < _best_stress_: _best_stress_, _best_pos_ = _end_stress_, pos
+            arrange_round += 1
+        pos = _best_pos_
+        # ^^^
+
+        while H != self.V:
+            _number_to_add_ = self.__numberToAddThisTime__(len(H), len(self.V))
+            for i in range(_number_to_add_):
+                v      = Q[0]                                                  # Get next vertex
+                h1, h2 = self.__closestMembers__(H, v)                         # Find closest two members of H
+                pos[v] = self.__neighborlyLocation__(v, h1, h2, pos)           # Put new vertex near them
+                Q      = Q[1:]                                                 # This vertex is done
+                H.add(v)
+            # One optimization described in the performance section of the paper is to not perform the arrangeDirect
+            # on the last iteration ...
+            pos = self.__arrangeDirect__(H, pos, _stress_lu_)                  # Arrange accumulated subset
+            arrange_round += 1
+        
+        self.pos, self.stress_df = pos, pl.DataFrame(_stress_lu_)
+
+    def __numberOfTrialsThisTime__(self, H):
+        _h_len_  = len(H)
+        if _h_len_ < 1:  _h_len_ = 1
+        _times_  = len(self.V) // _h_len_
+        if _times_ < 1:  _times_ = 1
+        if _times_ > 10: _times_ = 10
+        return _times_
+
+
+    #
+    # Table V of paper (algorithm that includes multiple trials)
+    # ... incorrect implementation...
+    #
+    def XXX__init__XXX(self, g_connected, number_of_trials=1, k=2.0):
         self.g_connected          = g_connected
         self.k                    = k
         self.V                    = set(self.g_connected.nodes)
@@ -28,7 +86,7 @@ class ConveyProximityLayout(object):
         stress_dfs = []
         _best_stress_, _best_pos_ = None, None
         for _trial_ in range(number_of_trials):
-            pos, stress_lu = self.__performTrial__()
+            pos, stress_lu = self.XXX__performTrial__XXX()
             stress_dfs.append(pl.DataFrame(stress_lu).with_columns(pl.lit(_trial_).alias('trial')))
             _end_stress_   = stress_lu['stress'][-1]
             if _best_stress_ is None or _end_stress_ < _best_stress_: _best_stress_, _best_pos_ = _end_stress_, pos
@@ -39,7 +97,7 @@ class ConveyProximityLayout(object):
     #
     # Table II of paper (simplified algorithm that does not include multiple trials)
     #
-    def __performTrial__(self):
+    def XXX__performTrial__XXX(self):
         pos         = {}                                                        # Results
         Q           = self.__orderVertices__(self.g_connected, self.distances)  # Make vector Q of vertices in order of inclusion
         H           = set()                                                     # Initialize vertices to arrange
@@ -104,11 +162,11 @@ class ConveyProximityLayout(object):
         return _inc_
 
     # Primitive version of closest members
-    def __closestMembers__(self, _H_, _v_, _distances_):
+    def __closestMembers__(self, _H_, _v_):
         _h1_, _h1_d_, _h2_, _h2_d_ = None, None, None, None
         for _k_ in _H_:
             if _k_ == _v_: continue
-            _d_ = _distances_[_v_][_k_]
+            _d_ = self.distances[_v_][_k_]
             if   _h1_d_ is None: _h1_, _h1_d_ = _k_, _d_
             elif _h2_d_ is None: _h2_, _h2_d_ = _k_, _d_
             elif _d_ < _h1_d_ or _d_ < _h2_d_:
@@ -121,8 +179,8 @@ class ConveyProximityLayout(object):
 
     # Figure 3 from the paper (and the accompanying formulas)
     # Primitive version of neighborlyLocation()
-    def __neighborlyLocation__(self, i, j, k, _pos_, _distances_):
-        t_ik, t_ij, t_jk = _distances_[i][k], _distances_[i][j], _distances_[j][k]
+    def __neighborlyLocation__(self, i, j, k, _pos_):
+        t_ik, t_ij, t_jk = self.distances[i][k], self.distances[i][j], self.distances[j][k]
         _expr_   = (1.0 / (2 * t_jk**2)) * (t_ik**2 - t_ij**2 - t_jk**2)
         _gamma_  = min(_expr_, 0.5)
         x_j, y_j = _pos_[j]
@@ -134,7 +192,7 @@ class ConveyProximityLayout(object):
     #
     # Modified version from the PolarsForceDirectedLayout implementation
     #
-    def __arrangeDirect__(self, _nodes_, _pos_, _distances_, _stress_lu_, k=2.0, arrange_round=0):
+    def __arrangeDirect__(self, _nodes_, _pos_, _stress_lu_):
         # Construct the df_pos and df_dist dataframes
         _lu_pos_  = {'node':[], 'x':[], 'y':[]}
         _lu_dist_ = {'fm':[],'to':[], 't':[]}
@@ -142,7 +200,7 @@ class ConveyProximityLayout(object):
             _lu_pos_['node'].append(_node_), _lu_pos_['x'].append(_pos_[_node_][0]), _lu_pos_['y'].append(_pos_[_node_][1])
             for _nbor_ in _nodes_:
                 if _nbor_ == _node_: continue
-                _lu_dist_['fm'].append(_node_), _lu_dist_['to'].append(_nbor_), _lu_dist_['t'].append(_distances_[_node_][_nbor_])
+                _lu_dist_['fm'].append(_node_), _lu_dist_['to'].append(_nbor_), _lu_dist_['t'].append(self.distances[_node_][_nbor_])
         df_pos, df_dist = pl.DataFrame(_lu_pos_), pl.DataFrame(_lu_dist_)
 
         # Iterate using the force directed layout algorithm
@@ -154,20 +212,20 @@ class ConveyProximityLayout(object):
                            .filter(pl.col('node') != pl.col('node_right')) \
                            .with_columns((__dx__**2 + __dy__**2).sqrt().alias('d')) \
                            .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
-                           .with_columns(pl.col('t').pow(k).alias('t_k')) \
+                           .with_columns(pl.col('t').pow(self.k).alias('t_k')) \
                            .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
                                          pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('w')) \
-                           .with_columns((pl.col('t')**(2-k)).alias('__prod_1__'),
+                           .with_columns((pl.col('t')**(2-self.k)).alias('__prod_1__'),
                                          ((2.0*__dx__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('xadd'),
                                          ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('yadd'),
-                                         (((pl.col('t') - pl.col('d'))**2)/(pl.col('t_k'))**k).alias('__prod_2__')) \
+                                         (((pl.col('t') - pl.col('d'))**2)/(pl.col('t_k'))**self.k).alias('__prod_2__')) \
                            .group_by(['node','x','y']).agg(pl.col('xadd').sum(), pl.col('yadd').sum(), pl.col('__prod_1__').sum(), pl.col('__prod_2__').sum()) \
                            .with_columns((pl.col('x') - mu * pl.col('xadd')).alias('x'),
                                          (pl.col('y') - mu * pl.col('yadd')).alias('y')) \
                            .drop(['xadd','yadd'])
             # Stress calculation & storage
             stress = (1.0 / df_pos['__prod_1__'].sum()) * df_pos['__prod_2__'].sum()
-            _stress_lu_['stress'].append(stress), _stress_lu_['i'].append(i), _stress_lu_['i_global'].append(len(_stress_lu_['i_global'])), _stress_lu_['arrange_round'].append(arrange_round)
+            _stress_lu_['stress'].append(stress), _stress_lu_['i'].append(i)
             # Early termination
             _round_prec_ = 4
             if i > 8 and round(_stress_lu_['stress'][-1],_round_prec_) == round(_stress_lu_['stress'][-2],_round_prec_) and \
