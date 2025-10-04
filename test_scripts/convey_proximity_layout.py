@@ -208,7 +208,7 @@ class ConveyProximityLayout(object):
         _gamma_  = min(_expr_, 0.5)
         x_j, y_j = _pos_[j]
         x_k, y_k = _pos_[k]
-        e_x, e_y = random.random() * 0.01, random.random() * 0.01
+        e_x, e_y = (random.random()-0.5) * 0.1, (random.random()-0.5) * 0.1
         x, y     = x_j + _gamma_ * (x_j - x_k) + e_x, y_j + _gamma_ * (y_j - y_k) + e_y
         return x, y
 
