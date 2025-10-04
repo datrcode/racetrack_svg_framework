@@ -30,6 +30,8 @@ class ConveyProximityLayout(object):
         Q              = self.__orderVertices__(self.g_connected, self.distances)     # Make vector Q of vertices in order of inclusion
         H              = set()                                                        # Initialize vertices to arrange
         arrange_round  = 0
+        stress_dfs     = []
+        i_global       = None
 
         # There needs to be an initial vertex set that is already placed for the while loop to actually work...
         # vvv
@@ -42,26 +44,48 @@ class ConveyProximityLayout(object):
             for _vertex_ in _to_randomize_: pos[_vertex_] = (random.random(), random.random())
             _stress_lu_  = {'stress':[], 'i':[]}
             pos          = self.__arrangeDirect__(H, pos, _stress_lu_)
+            # Determine if this is the best stress so far
             _end_stress_ = _stress_lu_['stress'][-1]
             if _best_stress_ is None or _end_stress_ < _best_stress_: _best_stress_, _best_pos_ = _end_stress_, pos
+            # Save the stress dataframe
+            stress_dfs.append(pl.DataFrame(_stress_lu_).with_columns(pl.lit(_trial_).alias('trial'), pl.lit(arrange_round).alias('round'), pl.col('i').alias('i_global')))
+            i_global       = _stress_lu_['i'][-1] if i_global is None else max(_stress_lu_['i'][-1], i_global)
             arrange_round += 1
+        # Retrieve the best position and use that for the next round
         pos = _best_pos_
         # ^^^
 
         while H != self.V:
+            # Identify the new vertices to add
             _number_to_add_ = self.__numberToAddThisTime__(len(H), len(self.V))
+            H_fixed         = H.copy()                                         # Fix this before the addition round to prevent non-placed vertices from interfering
+            _to_randomize_  = []
             for i in range(_number_to_add_):
                 v      = Q[0]                                                  # Get next vertex
-                h1, h2 = self.__closestMembers__(H, v)                         # Find closest two members of H
-                pos[v] = self.__neighborlyLocation__(v, h1, h2, pos)           # Put new vertex near them
+                h1, h2 = self.__closestMembers__(H_fixed, v)                   # Find closest two members of H
+                _to_randomize_.append((v, h1, h2))
                 Q      = Q[1:]                                                 # This vertex is done
                 H.add(v)
-            # One optimization described in the performance section of the paper is to not perform the arrangeDirect
-            # on the last iteration ...
-            pos = self.__arrangeDirect__(H, pos, _stress_lu_)                  # Arrange accumulated subset
-            arrange_round += 1
+            # Perform the trials on this round...
+            _best_stress_, _best_pos_, i_global_next = None, None, None
+            for _trial_ in range(self.__numberOfTrialsThisTime__(H)):
+                # Randomize the positions for this trial
+                for _tuple_ in _to_randomize_:
+                    v, h1, h2 = _tuple_
+                    pos[v]    = self.__neighborlyLocation__(v, h1, h2, pos)       # Put new vertex near them
+                _stress_lu_   = {'stress':[], 'i':[]}
+                pos = self.__arrangeDirect__(H, pos, _stress_lu_)                 # Arrange accumulated subset
+                # Determine if this is the best stress so far
+                _end_stress_  = _stress_lu_['stress'][-1]
+                if _best_stress_ is None or _end_stress_ < _best_stress_: _best_stress_, _best_pos_ = _end_stress_, pos
+                # Save the stress dataframe & update the global index / arrange round
+                stress_dfs.append(pl.DataFrame(_stress_lu_).with_columns(pl.lit(_trial_).alias('trial'), pl.lit(arrange_round).alias('round'), (pl.col('i')+i_global).alias('i_global')))
+                i_global_next = (_stress_lu_['i'][-1] + i_global) if i_global_next is None else max(_stress_lu_['i'][-1] + i_global, i_global_next)
+                arrange_round += 1
+            # Retrieve the best position and use that for the next round
+            pos, i_global = _best_pos_, i_global_next
         
-        self.pos, self.stress_df = pos, pl.DataFrame(_stress_lu_)
+        self.pos, self.stress_df = pos, pl.concat(stress_dfs)
 
     def __numberOfTrialsThisTime__(self, H):
         _h_len_  = len(H)
@@ -70,7 +94,6 @@ class ConveyProximityLayout(object):
         if _times_ < 1:  _times_ = 1
         if _times_ > 10: _times_ = 10
         return _times_
-
 
     #
     # Table V of paper (algorithm that includes multiple trials)
