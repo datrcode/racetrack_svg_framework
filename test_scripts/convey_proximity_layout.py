@@ -16,40 +16,49 @@ __name__ = 'convey_proximity_layout'
 
 class ConveyProximityLayout(object):
     #
-    # Table II of paper
+    # Table V of paper (algorithm that includes multiple trials)
     #
     def __init__(self, g_connected, k=2.0):
-        pos         = {}                                                   # Results
-        V           = set(g_connected.nodes)
-        distances   = self.__getTargetDistances__(g_connected)             # Establish target distances
-        Q           = self.__orderVertices__(g_connected, distances)       # Make vector Q of vertices in order of inclusion
-        H           = set()                                                # Initialize vertices to arrange
+        self.g_connected         = g_connected
+        self.k                   = k
+        self.V                   = set(self.g_connected.nodes)
+        self.distances           = self.__getTargetDistances__(g_connected)          # Establish target distances
+        self.pos, self.stress_lu = self.__performTrial__()
+
+    #
+    # Table II of paper (simplified algorithm that does not include multiple trials)
+    #
+    def __performTrial__(self):
+        pos         = {}                                                        # Results
+        Q           = self.__orderVertices__(self.g_connected, self.distances)  # Make vector Q of vertices in order of inclusion
+        H           = set()                                                     # Initialize vertices to arrange
 
         # Stress information
-        self.stress_lu      = {'stress':[], 'i':[], 'i_global':[], 'arrange_round':[]}
-        self.arrange_round  = 0
-        self.i_global       = 0
+        _stress_lu_    = {'stress':[], 'i':[], 'i_global':[], 'arrange_round':[]}
+        arrange_round  = 0
 
         # There needs to be an initial vertex set that is already placed for the while loop to actually work...
         # vvv
-        for i in range(self.__numberToAddThisTime__(len(H), len(V))):
+        for i in range(self.__numberToAddThisTime__(len(H), len(self.V))):
             H.add(Q[0])
             pos[Q[0]] = (random.random(), random.random())
             Q = Q[1:]
-        pos = self.__arrangeDirect__(H, pos, distances, k=k)
+        pos = self.__arrangeDirect__(H, pos, self.distances, _stress_lu_, k=self.k, arrange_round=arrange_round)
+        arrange_round += 1
         # ^^^
 
-        while H != V:
-            _number_to_add_ = self.__numberToAddThisTime__(len(H), len(V))
+        while H != self.V:
+            _number_to_add_ = self.__numberToAddThisTime__(len(H), len(self.V))
             for i in range(_number_to_add_):
-                v      = Q[0]                                                   # Get next vertex
-                h1, h2 = self.__closestMembers__(H, v, distances)               # Find closest two members of H
-                pos[v] = self.__neighborlyLocation__(v, h1, h2, pos, distances) # Put new vertex near them
-                Q      = Q[1:]                                                  # This vertex is done
+                v      = Q[0]                                                            # Get next vertex
+                h1, h2 = self.__closestMembers__(H, v, self.distances)                   # Find closest two members of H
+                pos[v] = self.__neighborlyLocation__(v, h1, h2, pos, self.distances)     # Put new vertex near them
+                Q      = Q[1:]                                                           # This vertex is done
                 H.add(v)
-            pos = self.__arrangeDirect__(H, pos, distances, k=k)                # Arrange accumulated subset
+            pos = self.__arrangeDirect__(H, pos, self.distances, _stress_lu_, k=self.k, arrange_round=arrange_round)  # Arrange accumulated subset
+            arrange_round += 1
         
-        self.pos = pos
+        return pos, _stress_lu_
 
     # results() - returns the results
     def results(self): return self.pos
@@ -112,7 +121,7 @@ class ConveyProximityLayout(object):
     #
     # Modified version from the PolarsForceDirectedLayout implementation
     #
-    def __arrangeDirect__(self, _nodes_, _pos_, _distances_, k):
+    def __arrangeDirect__(self, _nodes_, _pos_, _distances_, _stress_lu_, k=2.0, arrange_round=0):
         # Construct the df_pos and df_dist dataframes
         _lu_pos_  = {'node':[], 'x':[], 'y':[]}
         _lu_dist_ = {'fm':[],'to':[], 't':[]}
@@ -145,15 +154,13 @@ class ConveyProximityLayout(object):
                            .drop(['xadd','yadd'])
             # Stress calculation & storage
             stress = (1.0 / df_pos['__prod_1__'].sum()) * df_pos['__prod_2__'].sum()
-            self.stress_lu['stress'].append(stress), self.stress_lu['i'].append(i), self.stress_lu['i_global'].append(self.i_global), self.stress_lu['arrange_round'].append(self.arrange_round)
-            self.i_global += 1
+            _stress_lu_['stress'].append(stress), _stress_lu_['i'].append(i), _stress_lu_['i_global'].append(len(_stress_lu_['i_global'])), _stress_lu_['arrange_round'].append(arrange_round)
             # Early termination
             _round_prec_ = 4
-            if i > 8 and round(self.stress_lu['stress'][-1],_round_prec_) == round(self.stress_lu['stress'][-2],_round_prec_) and \
-                         round(self.stress_lu['stress'][-2],_round_prec_) == round(self.stress_lu['stress'][-3],_round_prec_) and \
-                         round(self.stress_lu['stress'][-3],_round_prec_) == round(self.stress_lu['stress'][-4],_round_prec_): break
+            if i > 8 and round(_stress_lu_['stress'][-1],_round_prec_) == round(_stress_lu_['stress'][-2],_round_prec_) and \
+                         round(_stress_lu_['stress'][-2],_round_prec_) == round(_stress_lu_['stress'][-3],_round_prec_) and \
+                         round(_stress_lu_['stress'][-3],_round_prec_) == round(_stress_lu_['stress'][-4],_round_prec_): break
 
-        self.arrange_round += 1
         _updated_ = {}
         for i in range(len(df_pos)): _updated_[df_pos['node'][i]] = (df_pos['x'][i], df_pos['y'][i])
         return _updated_
