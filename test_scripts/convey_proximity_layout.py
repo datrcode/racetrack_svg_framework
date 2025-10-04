@@ -66,6 +66,8 @@ class ConveyProximityLayout(object):
                 pos[v] = self.__neighborlyLocation__(v, h1, h2, pos, self.distances)     # Put new vertex near them
                 Q      = Q[1:]                                                           # This vertex is done
                 H.add(v)
+            # One optimization described in the performance section of the paper is to not perform the arrangeDirect
+            # on the last iteration ...
             pos = self.__arrangeDirect__(H, pos, self.distances, _stress_lu_, k=self.k, arrange_round=arrange_round)  # Arrange accumulated subset
             arrange_round += 1
         
