@@ -12,6 +12,7 @@ from math import log10, ceil
 import random
 import time
 import rtsvg
+import numpy as np
 
 __name__ = 'convey_proximity_layout'
 
@@ -20,11 +21,12 @@ class ConveyProximityLayout(object):
     # Table V of paper (algorithm that includes multiple trials)
     # ... no really... this time it will do what's described :(
     #
-    def __init__(self, g_connected, k=2.0):
-        self.g_connected          = g_connected
-        self.k                    = k
-        self.V                    = set(self.g_connected.nodes)
-        self.distances            = self.__getTargetDistances__(g_connected)          # Establish target distances
+    def __init__(self, g_connected, use_resistive_distances=True, k=2.0):
+        self.g_connected             = g_connected
+        self.k                       = k
+        self.V                       = set(self.g_connected.nodes)
+        self.use_resistive_distances = use_resistive_distances
+        self.distances               = self.__getTargetDistances__(g_connected)          # Establish target distances
 
         pos            = {}                                                           # Results
         Q              = self.__orderVertices__(self.g_connected, self.distances)     # Make vector Q of vertices in order of inclusion
@@ -103,7 +105,38 @@ class ConveyProximityLayout(object):
     def results(self): return self.pos
 
     # __getTargetDistances__()
-    def __getTargetDistances__(self, _g_): return dict(nx.all_pairs_dijkstra_path_length(_g_))
+    def __getTargetDistances__(self, _g_):
+        # From the paper's appendix section
+        if self.use_resistive_distances:
+            N = list(_g_.nodes())
+            n = len(N)
+            G = np.zeros((n, n), dtype=float)
+            # Set the elements to the graph weights
+            for i in range(n):
+                i_n = N[i]
+                for j in range(n):
+                    j_n = N[j]
+                    if j_n not in _g_[i_n]: continue
+                    G[i][j] = 1.0 if 'weight' not in _g_[i_n][j_n] else _g_[i_n][j_n]['weight']
+            # Set the diagonals
+            for i in range(n):
+                _sum_ = 0.0
+                for j in range(n):
+                    if i == j: continue
+                    _sum_ += -G[i][j]
+                G[i][i] = _sum_
+            # Calculate the Moore-Pensore Pseudoinverse
+            _inv_ = np.linalg.pinv(G)
+            # Fill in the distance dictionary
+            _dist_ = {}
+            for i in range(n):
+                _dist_[N[i]] = {}
+                for j in range(n):
+                    if i == j: continue
+                    _dist_[N[i]][N[j]] = abs(_inv_[i][i] + _inv_[j][j] - 2.0 * _inv_[i][j])
+            return _dist_
+        # Else, use Dijkstra
+        return dict(nx.all_pairs_dijkstra_path_length(_g_))
 
     # Table IV of paper
     def __everyNthMember__(self, Q, n): return [Q[i] for i in range(0, len(Q), n)]
