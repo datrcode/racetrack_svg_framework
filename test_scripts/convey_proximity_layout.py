@@ -21,11 +21,14 @@ class ConveyProximityLayout(object):
     # Table V of paper (algorithm that includes multiple trials)
     # ... no really... this time it will do what's described :(
     #
-    def __init__(self, g_connected, use_resistive_distances=True, k=2.0):
+    def __init__(self, g_connected, use_resistive_distances=True, k=2.0, iterations_min=32, iterations_multiplier=2):
         self.g_connected             = g_connected
         self.k                       = k
         self.V                       = set(self.g_connected.nodes)
         self.use_resistive_distances = use_resistive_distances
+        self.iterations_min          = iterations_min
+        self.iterations_multiplier   = iterations_multiplier
+
         self.distances               = self.__getTargetDistances__(g_connected)          # Establish target distances
 
         pos            = {}                                                           # Results
@@ -205,7 +208,7 @@ class ConveyProximityLayout(object):
         df_pos, df_dist = pl.DataFrame(_lu_pos_), pl.DataFrame(_lu_dist_)
 
         # Iterate using the force directed layout algorithm
-        iterations = max(128, 4*len(_nodes_))
+        iterations = max(self.iterations_min, self.iterations_multiplier*len(_nodes_))
         mu         = 1.0/(2.0*len(_nodes_))
         __dx__, __dy__ = (pl.col('x') - pl.col('x_right')), (pl.col('y') - pl.col('y_right'))
         for i in range(iterations):
