@@ -125,7 +125,7 @@ class ConveyProximityLayout(object):
                     if i == j: continue
                     _sum_ += -G[i][j]
                 G[i][i] = _sum_
-            # Calculate the Moore-Pensore Pseudoinverse
+            # Calculate the Moore-Penrose Pseudoinverse
             _inv_ = np.linalg.pinv(G)
             # Fill in the distance dictionary
             _dist_ = {}
