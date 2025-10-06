@@ -13,6 +13,15 @@ class LinkNodeGraphPatterns(object):
     def __len__    (self):    return len(self.types)
     def __getitem__(self, i): return self.types[i]
 
+    #
+    # minimumStressFound() - minimum stress found so far
+    #
+    def minimumStressFound(self, 
+                           _type_, 
+                           distance_metric, # dijkstra or resistive
+                           k=0):
+        pass
+
     def createPattern(self, _type_, prefix='', **kwargs):
         if _type_ not in self.types: raise Exception(f'Unknown pattern type: {_type_}')
         _fn_ = '__pattern_' + _type_ + '__'
