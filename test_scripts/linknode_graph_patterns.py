@@ -121,6 +121,68 @@ class LinkNodeGraphPatterns(object):
         g.add_edge(f'center_0_{n}',   f'll_{n}_0')
 
         return g
+    
+    # Figure 14(b) of "Drawing Graphs to Convey Proximity" Paper
+    # by Cohen
+    # ACM Transactions on Computer-Human Interaction, Vol. 4, No. 3, September 1997, Pages 197–229.
+    # Originally from Eades [1984]
+    def __pattern_cohen_fig_14a__(self, **kwargs):
+        g = nx.Graph()
+        # triangle 0
+        g.add_edge('t0_a', 't0_b'), g.add_edge('t0_a', 't0_c'), g.add_edge('t0_b', 't0_c')
+        # diamond
+        g.add_edge('d_a', 'd_b'), g.add_edge('d_b', 'd_c'), g.add_edge('d_c', 'd_d'), g.add_edge('d_d', 'd_a')
+        # pentagon
+        g.add_edge('p_a', 'p_b'), g.add_edge('p_b', 'p_c'), g.add_edge('p_c', 'p_d')
+        g.add_edge('p_d', 'p_e'), g.add_edge('p_e', 'p_a')
+        # L
+        g.add_edge('l_0', 'l_1'), g.add_edge('l_1', 'l_2')
+        # connections back to diamond
+        g.add_edge('d_a', 't0_c') # triangle 0
+        g.add_edge('d_b', 'x0'), g.add_edge('d_b', 'x1'), g.add_edge('x0', 'x1')
+        g.add_edge('d_c', 'l_0'), g.add_edge('d_d', 'l_1') # L
+        g.add_edge('d_d', 'p_a') # pentagon
+        return g
+
+    # Figure 14(b) of "Drawing Graphs to Convey Proximity" Paper
+    # by Cohen
+    # ACM Transactions on Computer-Human Interaction, Vol. 4, No. 3, September 1997, Pages 197–229.
+    # Originally from Kamada and Kawai [1989]
+    def __pattern_cohen_fig_14b__(self, **kwargs):
+        g = nx.Graph()
+        _fms_ = 'a b c d e f g h h h k k m g g n p g q e e r t t'.split()
+        _tos_ = 'c c d e f g h d j k l m l n p o o q f t r s s u'.split()
+        for fm, to in zip(_fms_, _tos_): g.add_edge(fm, to)
+        return g
+
+    # Figure 5 of "Drawing Graphs to Convey Proximity" Paper
+    # by Cohen
+    # ACM Transactions on Computer-Human Interaction, Vol. 4, No. 3, September 1997, Pages 197–229.
+    def __pattern_cohen_fig_5__(self, **kwargs):
+        g = nx.Graph()
+        for i in range(12): g.add_edge(f'{i}', f'{(i+1)%12}') # the ring
+        for i in range(0, 12, 2):
+            b0, b1 = f'{i}', f'{(i+1)%12}'
+            for j in range(4):
+                _nbor_ = f'{i}_{(i+1)%12}_{j}'
+                g.add_edge(b0, _nbor_), g.add_edge(b1, _nbor_)
+        return g
+    
+    # Figure 11 of "Drawing Graphs to Convey Proximity" Paper
+    # by Cohen
+    # ACM Transactions on Computer-Human Interaction, Vol. 4, No. 3, September 1997, Pages 197–229.
+    # Originally from Davidson and Harel [1990] and Fruchterman and Reingold [1991]
+    def __pattern_cohen_fig_11__(self, **kwargs):
+        g     = nx.Graph()
+        _cen_ = 'center'
+        for i in range(10): g.add_edge(f'{_cen_}', f'{i}')
+        for i in range(10): 
+            n0, n1 = f'{i}', f'{(i+1)%10}'
+            o = f'outer_{i}'
+            g.add_edge(n0, n1)
+            g.add_edge(n0, o), g.add_edge(n1, o)
+            g.add_edge(_cen_, o)
+        return g
 
 
 
