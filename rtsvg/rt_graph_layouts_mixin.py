@@ -63,6 +63,33 @@ class RTGraphLayoutsMixin(object):
         self.pos_templates = {} # [_node_] = (x, y)
         for i in range(len(df)): self.pos_templates[df['node'][i]] = [df['x'][i], df['y'][i]]
 
+    #
+    # layoutStress() - calculate the stress per the following paper:
+    #
+    # Drawing Graphs to Convey Proximity: An Incremental Arrangement Method
+    # J.D. Cohen
+    # ACM Transactions on Computer-Human Interaction, Vol. 4, No. 3, September 1997, Pages 197–229.
+    #
+    # k=0 # absolute stress
+    # k=1 # semi-proportional stress
+    # k=2 # proportional stress
+    #
+    def layoutStress(self, pos, dists, k=0):
+        _lu_ = {'node':[],'x':[],'y':[]}
+        for _node_ in pos.keys(): _lu_['node'].append(_node_), _lu_['x'].append(pos[_node_][0]), _lu_['y'].append(pos[_node_][1])
+        df_pos  = pl.DataFrame(_lu_)
+        _lu_ = {'fm':[],'to':[],'t':[]}
+        for _node_ in pos.keys():
+            for _other_ in pos.keys():
+                _lu_['fm'].append(_node_), _lu_['to'].append(_other_), _lu_['t'].append(dists[_node_][_other_])
+        df_dist = pl.DataFrame(_lu_)
+        _df_    = df_pos.join(df_pos, how='cross') \
+                        .filter(pl.col('node') != pl.col('node_right')) \
+                        .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
+                        .with_columns(((pl.col('x') - pl.col('x_right'))**2 + (pl.col('y') - pl.col('y_right'))**2).sqrt().alias('d')) \
+                        .with_columns((pl.col('t')**(2-k)).alias('__prod_1__'),
+                                      ((pl.col('d') - pl.col('t'))**2 / pl.col('t')**k).alias('__prod_2__'))
+        return (1.0 / _df_['__prod_1__'].sum()) * _df_['__prod_2__'].sum()
 
     #
     # identifyLandmarks()
