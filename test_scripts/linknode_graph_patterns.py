@@ -184,5 +184,35 @@ class LinkNodeGraphPatterns(object):
             g.add_edge(_cen_, o)
         return g
 
+    #
+    # The “twin cubes” graph of Fruchterman and Reingold [1991]
+    # ... or Figure 12 from Cohen
+    #
+    def __pattern_twin_cubes__(self, **kwargs):
+        g = nx.Graph()
+        for i in range(4): 
+            # top, middle, and bottom square
+            g.add_edge(f'a{i}', f'a{(i+1)%4}'), g.add_edge(f'b{i}', f'b{(i+1)%4}'), g.add_edge(f'c{i}', f'c{(i+1)%4}')
+            # connections between top, middle, and bottom
+            g.add_edge(f'a{i}', f'b{i}'), g.add_edge(f'b{i}', f'c{i}')
+        return g
+
+    #
+    # "Dodecahedron" in Kamada and Kawai [1989] and in Fruchterman and Reingold [1991].
+    # ... or Figure 13 from Cohen
+    #
+    def __pattern_dodecahedron__(self, **kwargs):
+        g = nx.Graph()
+        for i in range(5):
+            j = (i+1)%5
+            g.add_edge(f'top_{i}', f'top_{j}')
+            g.add_edge(f'top_{i}', f'mid_{2*i}')
+            g.add_edge(f'bot_{i}', f'bot_{j}')
+            g.add_edge(f'bot_{i}', f'mid_{2*i+1}')
+        for i in range(10):
+            j = (i+1)%10
+            g.add_edge(f'mid_{i}', f'mid_{j}')
+        return g
+
 
 
