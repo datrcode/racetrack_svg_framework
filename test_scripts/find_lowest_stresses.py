@@ -16,7 +16,7 @@ for i in range(len(_patterns_)):
     _g_       = _patterns_.createPattern(_pattern_)
     _stress_min_, _algo_min_, _algo_min_str_ = None, None, None
     for k in range(2):
-        for _trial_ in range(4):
+        for _trial_ in range(200):
             for _algo_no_ in range(2):
                 t0 = time.time()
                 if _algo_no_ == 0: _algo_, _algo_str_  = rtsvg.PolarsForceDirectedLayout(_g_, k=k),                      'PFDL'
