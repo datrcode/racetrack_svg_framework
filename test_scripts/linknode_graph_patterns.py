@@ -28,7 +28,12 @@ class LinkNodeGraphPatterns(object):
         return getattr(self, _fn_)(prefix=prefix,**kwargs)
 
     def __pattern_binarytree__(self, depth=5, prefix='', **kwargs):
-        return nx.balanced_tree(depth,2)
+        _g_     = nx.balanced_tree(depth,2)
+        _g_str_ = nx.Graph()
+        for _node_ in _g_.nodes:
+            for _nbor_ in _g_.neighbors(_node_):
+                _g_str_.add_edge(prefix+str(_node_), prefix+str(_nbor_))
+        return _g_str_
 
     def __pattern_ring__(self, spokes=20, prefix='', **kwargs):
         g = nx.Graph()

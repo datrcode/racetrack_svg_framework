@@ -107,6 +107,9 @@ class ConveyProximityLayout(object):
     # results() - returns the results
     def results(self): return self.pos
 
+    # stress() - returns the final stress of the system
+    def stress(self): return self.stress_df['stress'][-1]
+
     # __getTargetDistances__()
     def __getTargetDistances__(self, _g_):
         # From the paper's appendix section
