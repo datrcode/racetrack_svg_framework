@@ -81,7 +81,7 @@ class RTGraphLayoutsMixin(object):
         _lu_ = {'fm':[],'to':[],'t':[]}
         for _node_ in pos.keys():
             for _other_ in pos.keys():
-                _lu_['fm'].append(_node_), _lu_['to'].append(_other_), _lu_['t'].append(dists[_node_][_other_])
+                _lu_['fm'].append(_node_), _lu_['to'].append(_other_), _lu_['t'].append(float(dists[_node_][_other_]))
         df_dist = pl.DataFrame(_lu_)
         _df_    = df_pos.join(df_pos, how='cross') \
                         .filter(pl.col('node') != pl.col('node_right')) \
