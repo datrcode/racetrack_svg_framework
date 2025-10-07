@@ -9,6 +9,28 @@ class LinkNodeGraphPatterns(object):
         for _str_ in dir(self):
             _match_ = re.match('__pattern_(.*)__', _str_)
             if _match_ is not None: self.types.append(_match_.group(1))
+        self.stress_min = {}
+        for k in range(2):
+            self.stress_min[k] = {}
+            for distance_metric in ['dijkstra', 'resistive']: self.stress_min[k][distance_metric] = {}
+
+        _empirical_results_ = [
+{"k":0, "distance_metric":'dijkstra', "pattern":'mesh',          "stress_min":0.010369263755955656}, {"k":1, "distance_metric":'dijkstra', "pattern":'mesh',          "stress_min":0.013293017494576767},
+{"k":0, "distance_metric":'dijkstra', "pattern":'checker',       "stress_min":0.005664990413741567}, {"k":1, "distance_metric":'dijkstra', "pattern":'checker',       "stress_min":0.008883382169004963},
+{"k":0, "distance_metric":'dijkstra', "pattern":'twin_cubes',    "stress_min":0.06221410493122583},  {"k":1, "distance_metric":'dijkstra', "pattern":'twin_cubes',    "stress_min":0.079472668165888},
+{"k":0, "distance_metric":'dijkstra', "pattern":'boxinbox',      "stress_min":0.01447779149306904},  {"k":1, "distance_metric":'dijkstra', "pattern":'boxinbox',      "stress_min":0.016053802417961435},
+{"k":0, "distance_metric":'dijkstra', "pattern":'cohen_fig_11',  "stress_min":0.0811873537809558},   {"k":1, "distance_metric":'dijkstra', "pattern":'cohen_fig_11',  "stress_min":0.08903415275462864},
+{"k":1, "distance_metric":'dijkstra', "pattern":'X',             "stress_min":0.02217642443451038},  {"k":0, "distance_metric":'dijkstra', "pattern":'X',             "stress_min":0.023052634013478644},
+{"k":0, "distance_metric":'dijkstra', "pattern":'cohen_fig_14b', "stress_min":0.01621650561726668},  {"k":1, "distance_metric":'dijkstra', "pattern":'cohen_fig_14b', "stress_min":0.020594855267259012},
+{"k":0, "distance_metric":'dijkstra', "pattern":'cohen_fig_14a', "stress_min":0.013212881076396985}, {"k":1, "distance_metric":'dijkstra', "pattern":'cohen_fig_14a', "stress_min":0.016426480814406175},
+{"k":0, "distance_metric":'dijkstra', "pattern":'trianglestars', "stress_min":0.026355947825847624}, {"k":1, "distance_metric":'dijkstra', "pattern":'trianglestars', "stress_min":0.04820164626380459},
+{"k":0, "distance_metric":'dijkstra', "pattern":'dodecahedron',  "stress_min":0.08044964406979078},  {"k":1, "distance_metric":'dijkstra', "pattern":'dodecahedron',  "stress_min":0.0889790908811913},
+{"k":0, "distance_metric":'dijkstra', "pattern":'binarytree',    "stress_min":0.07365983175066931},  {"k":1, "distance_metric":'dijkstra', "pattern":'binarytree',    "stress_min":0.08357673128571591},
+{"k":0, "distance_metric":'dijkstra', "pattern":'ring',          "stress_min":0.015327039145082866}, {"k":1, "distance_metric":'dijkstra', "pattern":'ring',          "stress_min":0.017092802044942786},
+{"k":0, "distance_metric":'dijkstra', "pattern":'Y',             "stress_min":0.0017536710968615503},{"k":1, "distance_metric":'dijkstra', "pattern":'Y',             "stress_min":0.0030471103667565735},
+{"k":0, "distance_metric":'dijkstra', "pattern":'cohen_fig_5',   "stress_min":0.018539759586453625}, {"k":1, "distance_metric":'dijkstra', "pattern":'cohen_fig_5',   "stress_min":0.028864567878219248},
+]
+        for _d_ in _empirical_results_: self.stress_min[_d_['k']][_d_['distance_metric']][_d_['pattern']] = _d_['stress_min']
 
     def __len__    (self):    return len(self.types)
     def __getitem__(self, i): return self.types[i]
@@ -17,10 +39,10 @@ class LinkNodeGraphPatterns(object):
     # minimumStressFound() - minimum stress found so far
     #
     def minimumStressFound(self, 
-                           _type_, 
-                           distance_metric, # dijkstra or resistive
+                           _type_,                     # graph pattern
+                           distance_metric='dijkstra', # dijkstra or resistive
                            k=0):
-        pass
+        return self.stress_min[k][distance_metric][_type_]
 
     def createPattern(self, _type_, prefix='', **kwargs):
         if _type_ not in self.types: raise Exception(f'Unknown pattern type: {_type_}')
