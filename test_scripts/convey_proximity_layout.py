@@ -21,7 +21,7 @@ class ConveyProximityLayout(object):
     # Table V of paper (algorithm that includes multiple trials)
     # ... no really... this time it will do what's described :(
     #
-    def __init__(self, g_connected, use_resistive_distances=True, k=2.0, iterations_min=32, iterations_multiplier=2):
+    def __init__(self, g_connected, use_resistive_distances=True, k=2.0, iterations_min=32, iterations_multiplier=2, distances=None):
         self.g_connected             = g_connected
         self.k                       = k
         self.V                       = set(self.g_connected.nodes)
@@ -29,7 +29,7 @@ class ConveyProximityLayout(object):
         self.iterations_min          = iterations_min
         self.iterations_multiplier   = iterations_multiplier
 
-        self.distances               = self.__getTargetDistances__(g_connected)          # Establish target distances
+        self.distances = self.__getTargetDistances__(g_connected) if distances is None else distances # Establish target distances
 
         pos            = {}                                                           # Results
         Q              = self.__orderVertices__(self.g_connected, self.distances)     # Make vector Q of vertices in order of inclusion
