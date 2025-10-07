@@ -53,6 +53,20 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
                 _already_seen_.add(_node_)
                 self.node_subset.append(_node_)
 
+    def test_distanceDictionary(self):
+        # Example graph from page 212 of the Cohen paper
+        g = nx.DiGraph()
+        g.add_edge('a', 'b', weight=2.0), g.add_edge('b','a', weight=2.0)
+        g.add_edge('a', 'c', weight=2.0), g.add_edge('c','a', weight=2.0)
+        g.add_edge('b', 'c', weight=1.0), g.add_edge('c','b', weight=1.0)
+        g.add_edge('b', 'd', weight=3.0), g.add_edge('d','b', weight=3.0)
+        _distances_ = self.rt_self.distanceDictionary(g, distance_metric='resistive')
+        self.assertAlmostEqual(_distances_['b']['d'], 1.0/3.0)
+        self.assertAlmostEqual(_distances_['b']['c'], 1.0/2.0)
+        _distances_ = self.rt_self.distanceDictionary(g, distance_metric='dijkstra')
+        self.assertAlmostEqual(_distances_['b']['d'], 3.0)
+        self.assertAlmostEqual(_distances_['b']['c'], 1.0)
+
     def test_positionExtents(self):
         self.rt_self.positionExtents(self.pos, self.g)
         self.rt_self.positionExtents(self.pos)

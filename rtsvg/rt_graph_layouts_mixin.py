@@ -110,7 +110,7 @@ class RTGraphLayoutsMixin(object):
             for j in range(n):
                 j_n = N[j]
                 if j_n not in g_connected[i_n]: continue
-                G[i][j] = 1.0 if 'weight' not in _g_[i_n][j_n] else _g_[i_n][j_n]['weight']
+                G[i][j] = 1.0 if 'weight' not in g_connected[i_n][j_n] else g_connected[i_n][j_n]['weight']
         # Set the diagonals
         for i in range(n):
             _sum_ = 0.0
