@@ -29,7 +29,7 @@ import os
 
 from collections.abc import Iterable
 
-from math import sqrt, pi, cos, sin, ceil, floor, inf, atan2
+from math import dist, sqrt, pi, cos, sin, ceil, floor, inf, atan2
 from dataclasses import dataclass
 
 __name__ = 'rt_graph_layouts_mixin'
@@ -90,6 +90,52 @@ class RTGraphLayoutsMixin(object):
                         .with_columns((pl.col('t')**(2-k)).alias('__prod_1__'),
                                       ((pl.col('d') - pl.col('t'))**2 / pl.col('t')**k).alias('__prod_2__'))
         return (1.0 / _df_['__prod_1__'].sum()) * _df_['__prod_2__'].sum()
+
+    #
+    # __resistiveDistanceDictionary__() - return a dictionary of resistive distances between nodes in a connected graph
+    #
+    # From the appendix section in the following paper:
+    #
+    # Drawing Graphs to Convey Proximity: An Incremental Arrangement Method
+    # J.D. Cohen
+    # ACM Transactions on Computer-Human Interaction, Vol. 4, No. 3, September 1997, Pages 197–229.
+    #
+    def __resistiveDistanceDictionary__(self, g_connected):
+        N = list(g_connected.nodes())
+        n = len(N)
+        G = np.zeros((n, n), dtype=float)
+        # Set the elements to the graph weights
+        for i in range(n):
+            i_n = N[i]
+            for j in range(n):
+                j_n = N[j]
+                if j_n not in g_connected[i_n]: continue
+                G[i][j] = 1.0 if 'weight' not in _g_[i_n][j_n] else _g_[i_n][j_n]['weight']
+        # Set the diagonals
+        for i in range(n):
+            _sum_ = 0.0
+            for j in range(n):
+                if i == j: continue
+                _sum_ += -G[i][j]
+            G[i][i] = _sum_
+        # Calculate the Moore-Penrose Pseudoinverse
+        _inv_ = np.linalg.pinv(G)
+        # Fill in the distance dictionary
+        _dist_ = {}
+        for i in range(n):
+            _dist_[N[i]] = {}
+            for j in range(n):
+                if i == j: continue
+                _dist_[N[i]][N[j]] = abs(_inv_[i][i] + _inv_[j][j] - 2.0 * _inv_[i][j])
+        return _dist_
+        
+    #
+    # distanceDictionary()
+    #
+    def distanceDictionary(self, g_connected, distance_metric='dijkstra'):
+        if   distance_metric == 'resistive': return self.__resistiveDistanceDictionary__(g_connected)
+        elif distance_metric == 'dijkstra':  return dict(nx.all_pairs_dijkstra_path_length(g_connected))
+        else: raise Exception(f"Unknown distance metric: {distance_metric} ... use 'dijkstra' or 'resistive'")
 
     #
     # identifyLandmarks()
