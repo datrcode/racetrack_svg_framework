@@ -140,15 +140,14 @@ class PolarsForceDirectedLayout(object):
     # k=2 # proportional stress
     #
     def stress(self, animation_step=-1):
-        if k is None: k = self.k
         df_pos  = self.df_anim[animation_step]
         df_dist = self.df_dist
         _df_    = df_pos.join(df_pos, how='cross') \
                         .filter(pl.col('node') != pl.col('node_right')) \
                         .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
                         .with_columns(((pl.col('x') - pl.col('x_right'))**2 + (pl.col('y') - pl.col('y_right'))**2).sqrt().alias('d')) \
-                        .with_columns((pl.col('t')**(2-k)).alias('__prod_1__'),
-                                     ((pl.col('d') - pl.col('t'))**2 / pl.col('t')**k).alias('__prod_2__'))
+                        .with_columns((pl.col('t')**(2-self.k)).alias('__prod_1__'),
+                                     ((pl.col('d') - pl.col('t'))**2 / pl.col('t')**self.k).alias('__prod_2__'))
         return (1.0 / _df_['__prod_1__'].sum()) * _df_['__prod_2__'].sum()
 
     #

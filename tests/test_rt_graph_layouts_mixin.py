@@ -97,8 +97,10 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
         self.rt_self.barycentricLayout(self.g, self.pos, selection=self.node_subset)
 
     def test_polarsForceDirectedLayout(self):
-        PolarsForceDirectedLayout(self.g).results()
-        PolarsForceDirectedLayout(self.g, self.pos, static_nodes=self.node_subset).results()
+        _pfdl_ = PolarsForceDirectedLayout(self.g)
+        _pfdl_.results(), _pfdl_.svgAnimation(), _pfdl_.stress(), _pfdl_.stressVector()
+        _pfdl_ = PolarsForceDirectedLayout(self.g, self.pos, static_nodes=self.node_subset)
+        _pfdl_.results(), _pfdl_.svgAnimation(), _pfdl_.stress(), _pfdl_.stressVector()
 
 if __name__ == '__main__':
     unittest.main()
