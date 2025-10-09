@@ -2657,6 +2657,14 @@ class RTGeometryMixin(object):
     def xyQuadTree(self, bounds, max_pts_per_node=50):
         return XYQuadTree(self, bounds, max_pts_per_node=max_pts_per_node)
 
+    #
+    # smallestEnclosingCircleApprox() - return the smallest enclosing circle for a set of points
+    # - see the class definition later in this file for implementation details
+    # - approximation
+    #
+    def smallestEnclosingCircleApprox(self, points):
+        _sec_ = SmallestEnclosingCircle(points)
+        return (_sec_.center[0], _sec_.center[1], _sec_.radius)
 
 #
 # XYQuadTree() - implementation of an xy quad tree...
@@ -3462,3 +3470,99 @@ class SVGParametricPath(object):
 
         svg.append('</svg>')
         return ''.join(svg)
+
+#
+# Claude Sonnet 4.5:  Python code for "i have n points as a list of (x,y) tuples.  I need the smallest possible circle the inscribes all of the points."
+# ... then asking again for a non-recursive version (or rather, a fixed version)
+# Claude Sonnet 4.5 response when reply:  "The algorithm fails when more than 3,100 points are provided.  Can you fix it to work with more points?"
+#
+class SmallestEnclosingCircle(object):
+    """
+    Find the smallest circle that encloses all given points.
+    Uses iterative version of Welzl's algorithm with expected O(n) time complexity.
+    
+    Args:
+        points: List of (x, y) tuples
+    
+    Results are stored in self.center and self.radius
+    """
+    def __init__(self, points):
+        if not points: return ((0, 0), 0)
+        
+        # Shuffle for better average performance
+        shuffled = points.copy()
+        random.shuffle(shuffled)
+        
+        # Start with circle from first point
+        circle = (shuffled[0], 0)
+        
+        # Incrementally add points
+        for i in range(1, len(shuffled)):
+            if not self._is_inside(shuffled[i], circle):
+                circle = self._min_circle_with_point(shuffled[:i+1], shuffled[i])
+        
+        self.center = circle[0]
+        self.radius = circle[1]
+
+    def _min_circle_with_point(self, points, p):
+        """Find minimum circle containing all points with p on boundary"""
+        circle = (p, 0)
+        
+        for i in range(len(points)):
+            if not self._is_inside(points[i], circle):
+                circle = self._min_circle_with_2_points(points[:i+1], p, points[i])
+        
+        return circle
+
+    def _min_circle_with_2_points(self, points, p1, p2):
+        """Find minimum circle with p1 and p2 on boundary"""
+        circle = self._circle_from_2_points(p1, p2)
+        
+        for i in range(len(points)):
+            if not self._is_inside(points[i], circle):
+                circle = self._circle_from_3_points(p1, p2, points[i])
+        
+        return circle
+
+    def _circle_from_2_points(self, p1, p2):
+        """Circle with diameter from p1 to p2"""
+        cx = (p1[0] + p2[0]) / 2
+        cy = (p1[1] + p2[1]) / 2
+        r = sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2) / 2
+        return ((cx, cy), r)
+
+    def _circle_from_3_points(self, p1, p2, p3):
+        """Circumcircle of 3 points"""
+        ax, ay = p1
+        bx, by = p2
+        cx, cy = p3
+        
+        d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
+        
+        if abs(d) < 1e-10:
+            # Points are collinear, return circle from furthest pair
+            return self._furthest_pair_circle([p1, p2, p3])
+        
+        ux = ((ax**2 + ay**2) * (by - cy) + (bx**2 + by**2) * (cy - ay) + (cx**2 + cy**2) * (ay - by)) / d
+        uy = ((ax**2 + ay**2) * (cx - bx) + (bx**2 + by**2) * (ax - cx) + (cx**2 + cy**2) * (bx - ax)) / d
+        
+        r = sqrt((ax - ux)**2 + (ay - uy)**2)
+        return ((ux, uy), r)
+
+    def _furthest_pair_circle(self, points):
+        """Circle from furthest pair of points"""
+        max_dist = 0
+        pair = (points[0], points[1])
+        for i in range(len(points)):
+            for j in range(i + 1, len(points)):
+                dist = sqrt((points[i][0] - points[j][0])**2 + (points[i][1] - points[j][1])**2)
+                if dist > max_dist:
+                    max_dist = dist
+                    pair = (points[i], points[j])
+        return self._circle_from_2_points(pair[0], pair[1])
+
+    def _is_inside(self, point, circle):
+        """Check if point is inside or on circle boundary"""
+        (cx, cy), r = circle
+        dist = sqrt((point[0] - cx)**2 + (point[1] - cy)**2)
+        return dist <= r + 1e-10  # Small epsilon for floating point
