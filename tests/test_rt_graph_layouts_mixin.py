@@ -100,13 +100,13 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
         self.rt_self.hyperTreeLayout(self.g, roots=_roots_)
         self.rt_self.hyperTreeLayout(self.g, roots=_as_set_)
 
-    def test_circlePackTheSeparateComponents(self):
+    def test_circlePackGraphComponentPlacement(self):
         df     = pl.DataFrame({'fm':['a','b','c','d'], 'to':['b','a','d','c']})
         g      = self.rt_self.createNetworkXGraph(df, [('fm','to')])
         pos    = {'a':(0,0), 'b':(1,2), 'c':(5,8), 'd':(7,3)}
         def dist(x,y): return ((pos[x][0] - pos[y][0])**2 + (pos[x][1] - pos[y][1])**2)**0.5
         d0, d1 = dist('a','b'), dist('c','d')
-        pos_adj, shapes_gen = self.rt_self.circlePackTheSeparateComponents(g, pos)
+        pos_adj, shapes_gen = self.rt_self.circlePackGraphComponentPlacement(g, pos)
         self.rt_self.link(df, [('fm','to')], pos_adj, bg_shape_lu=shapes_gen)._repr_svg_()
 
     def test_treeMapGraphComponentPlacement(self):

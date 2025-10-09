@@ -482,10 +482,10 @@ class RTGraphLayoutsMixin(object):
         return top_ten
 
     #
-    # circlePackTheSeparateComponents() - separate g into different graph components
+    # circlePackGraphComponentPlacement() - separate g into different graph components
     # and then place them into a circle packed transform
     #
-    def circlePackTheSeparateComponents(self, g, pos):
+    def circlePackGraphComponentPlacement(self, g, pos):
         # separate g into different graph components
         g_components              = [g.subgraph(c) for c in nx.connected_components(g)]
         # determine the bounds of each component
