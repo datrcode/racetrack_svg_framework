@@ -3487,7 +3487,9 @@ class SmallestEnclosingCircle(object):
     Results are stored in self.center and self.radius
     """
     def __init__(self, points):
-        if not points: return ((0, 0), 0)
+        if not points:
+            self.center, self.radius = (0, 0), 0
+            return
         
         # Shuffle for better average performance
         shuffled = points.copy()

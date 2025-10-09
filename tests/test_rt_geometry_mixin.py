@@ -17,6 +17,7 @@ import pandas as pd
 import polars as pl
 import numpy as np
 import random
+import time
 
 from math import sin, cos, sqrt, pi
 
@@ -308,6 +309,23 @@ class Testrt_geometry_mixin(unittest.TestCase):
         _str_ = self.rt_self.svgInterpolatedPathAnimation(paths)
 
         self.assertEqual(_str_, ';'.join(paths))
+
+    #
+    def test_smallestEnclosingCircleApprox(self):
+        _perf_ = {'points':[], 'time':[]}
+        for n in [0,1,2,3,4,5,10,100,1000,10000]:
+            points = [(random.uniform(-100, 100), random.uniform(-100, 100)) for _ in range(n)]
+            t0 = time.time()
+            _circle_ = self.rt_self.smallestEnclosingCircleApprox(points)
+            t1 = time.time()
+            if n != 0 and n != 1: # 0 or 1 points is a degenerate case
+                for pt in points: self.assertTrue(self.rt_self.segmentLength((_circle_, pt)) < 1.01 * _circle_[2]) # approximation of the circle
+            _perf_['points'].append(n), _perf_['time'].append(t1 - t0)
+        #_svg_ = ['<svg x="0" y="0" width="512" height="512" viewBox="-150 -150 300 300"><rect x="-150" y="-150" width="300" height="300" fill="white" stroke="black" stroke-width="1" />']
+        #for _pt_ in points: _svg_.append(f'<circle cx="{_pt_[0]}" cy="{_pt_[1]}" r="1" fill="black" />')
+        #_svg_.append(f'<circle cx="{_circle_[0]}" cy="{_circle_[1]}" r="{_circle_[2]}" fill="None" stroke="red" />')
+        #_svg_.append('</svg>')
+        #rt.tile([rt.xy(pl.DataFrame(_perf_), x_field='points', y_field='time', dot_size='large', w=512, h=512), ''.join(_svg_)])
 
 if __name__ == '__main__':
     unittest.main()
