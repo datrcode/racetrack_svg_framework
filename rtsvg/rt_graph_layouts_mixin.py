@@ -488,24 +488,15 @@ class RTGraphLayoutsMixin(object):
     def circlePackGraphComponentPlacement(self, g, pos):
         # separate g into different graph components
         g_components              = [g.subgraph(c) for c in nx.connected_components(g)]
-        # determine the bounds of each component
+
+        # determine the minimal circle for each component
         component_bounds, circles = [], []
         for _g_ in g_components:
-            # figure out the extents of the node positions
-            x0, y0, x1, y1 = None, None, None, None
-            for _node_ in _g_.nodes:
-                x, y = pos[_node_]
-                if x0 is None or x < x0: x0 = x
-                if y0 is None or y < y0: y0 = y
-                if x1 is None or x > x1: x1 = x
-                if y1 is None or y > y1: y1 = y
-            if x0 == x1: x0, x1 = x0 - 0.5, x1 + 0.5
-            if y0 == y1: y0, y1 = y0 - 0.5, y1 + 0.5
-            component_bounds.append((x0, y0, x1, y1))
-            # add a circle to the center of the component
-            _cx_, _cy_ = (x0+x1)*0.5, (y0+y1)*0.5
-            _d_        = sqrt((x1-x0)**2 + (y1-y0)**2)
-            circles.append((_cx_, _cy_, _d_/2.0))
+            _pts_    = [pos[_node_] for _node_ in _g_.nodes]
+            _circle_ = self.smallestEnclosingCircleApprox(_pts_)
+            circles.append(_circle_)
+            
+        # Pack those circles
         _packed_ = self.packCircles(circles)
 
         # move the nodes of the component to the new positions
