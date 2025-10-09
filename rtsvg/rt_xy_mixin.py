@@ -20,6 +20,8 @@ import time
 
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
 
+import xml.etree.ElementTree as ET
+
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 
@@ -879,11 +881,18 @@ class RTXYMixin(object):
             
         # Handle intermediate types
         if   type(shape_desc) == str:   # path description
-            _shape_svg, _label_svg = self.__transformPathDescription__(shape_name,           shape_desc,
-                                                                       x_trans_norm_func,    y_trans_norm_func,
-                                                                       bg_shape_label_color, bg_shape_opacity,
-                                                                       bg_shape_fill,        bg_shape_stroke_w,
-                                                                       bg_shape_stroke,      txt_h)
+            if shape_desc.lower().startswith('<circle'):
+                _shape_svg, _label_svg = self.__transformCircleSVG__(shape_name,           shape_desc,
+                                                                     x_trans_norm_func,    y_trans_norm_func,
+                                                                     bg_shape_label_color, bg_shape_opacity,
+                                                                     bg_shape_fill,        bg_shape_stroke_w,
+                                                                     bg_shape_stroke,      txt_h)
+            else:
+                _shape_svg, _label_svg = self.__transformPathDescription__(shape_name,           shape_desc,
+                                                                           x_trans_norm_func,    y_trans_norm_func,
+                                                                           bg_shape_label_color, bg_shape_opacity,
+                                                                           bg_shape_fill,        bg_shape_stroke_w,
+                                                                           bg_shape_stroke,      txt_h)
         elif type(shape_desc) == list:  # list of tuple pairs
             _shape_svg, _label_svg = self.__transformPointsList__(shape_name,            shape_desc,
                                                                   x_trans_norm_func,     y_trans_norm_func,
@@ -896,7 +905,33 @@ class RTXYMixin(object):
         return _shape_svg, _label_svg
 
     #
+    # __transformCircleSVG__() - transform a circle based on the transform functions
+    # ... a little better than what was done for the path element...
+    #
+    def __transformCircleSVG__(self, 
+                               name,
+                               shape_desc,
+                               x_trans_func,
+                               y_trans_func,
+                               bg_shape_label_color,
+                               bg_shape_opacity,
+                               bg_shape_fill,
+                               bg_shape_stroke_w,
+                               bg_shape_stroke,
+                               txt_h):
+        _root_tree_ = ET.fromstring(shape_desc)
+        cx,   cy,   r          = float(_root_tree_.attrib['cx']), float(_root_tree_.attrib['cy']), float(_root_tree_.attrib['r'])
+        cx_s, cy_s, rx_s, ry_s = x_trans_func(cx), y_trans_func(cy), x_trans_func(r+cx), y_trans_func(r+cy)
+        rx_s, ry_s = abs(rx_s - cx_s), abs(ry_s - cy_s)
+        svg = f'<ellipse cx="{cx_s}" cy="{cy_s}" rx="{rx_s}" ry="{ry_s}"'
+        svg += self.__backgroundShapeRenderDetails__(name, bg_shape_opacity, bg_shape_fill, 
+                                                     bg_shape_stroke_w, bg_shape_stroke)
+        return svg + '/>',self.__backgroundShapeLabel__(name, cx_s, cy_s, rx_s, ry_s, bg_shape_label_color, txt_h)
+
+    #
     # For background context, transform an existing path description using the transforms and return as an SVG path.
+    # ... this isn't particularly well thought out ...  this should really take an SVG element and then
+    #     transform that...
     #
     def __transformPathDescription__(self,
                                      name,
@@ -912,20 +947,20 @@ class RTXYMixin(object):
         svg = '<path d="'
         x0,y0,x1,y1 = None,None,None,None
         shape_desc = " ".join(shape_desc.split()) # make sure there's no extra whitespaces
-        tokens = shape_desc.lower().split(' ')
+        tokens = shape_desc.split(' ')
         i = 0
         while i < len(tokens):
-            if   tokens[i] == 'm':
+            if   tokens[i] == 'M':
                 _x,_y = x_trans_func(float(tokens[i+1])),y_trans_func(float(tokens[i+2]))
                 svg += f' M {_x} {_y}'
                 x0,y0,x1,y1 = self.__minsAndMaxes__(_x,_y,x0,y0,x1,y1)
                 i += 3
-            elif tokens[i] == 'l':
+            elif tokens[i] == 'L':
                 _x,_y = x_trans_func(float(tokens[i+1])),y_trans_func(float(tokens[i+2]))
                 svg += f' L {x_trans_func(float(tokens[i+1]))} {y_trans_func(float(tokens[i+2]))}'
                 x0,y0,x1,y1 = self.__minsAndMaxes__(_x,_y,x0,y0,x1,y1)
                 i += 3
-            elif tokens[i] == 'c':
+            elif tokens[i] == 'C':
                 _x_cp1,_y_cp1 = x_trans_func(float(tokens[i+1])),y_trans_func(float(tokens[i+2]))
                 _x_cp2,_y_cp2 = x_trans_func(float(tokens[i+3])),y_trans_func(float(tokens[i+4]))
                 _x,_y         = x_trans_func(float(tokens[i+5])),y_trans_func(float(tokens[i+6]))
@@ -934,7 +969,7 @@ class RTXYMixin(object):
                 x0,y0,x1,y1 = self.__minsAndMaxes__(_x_cp1,_y_cp1,x0,y0,x1,y1)
                 x0,y0,x1,y1 = self.__minsAndMaxes__(_x_cp2,_y_cp2,x0,y0,x1,y1)
                 i += 7
-            elif tokens[i] == 'z':
+            elif tokens[i] == 'Z':
                 svg += ' Z'
                 i += 1
             else:
