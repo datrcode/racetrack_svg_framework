@@ -296,7 +296,8 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self.FORCE_DIRECTED       = 'force directed'
         self.HYPERTREE            = 'hyper tree'
         self.CONNECTED_COMPONENTS = 'connected components'
-        self.layout_operations    = [self.SPRING_NX, self.FORCE_DIRECTED, self.HYPERTREE, self.CONNECTED_COMPONENTS]
+        self.CIRCLE_PACK          = 'circle pack'
+        self.layout_operations    = [self.SPRING_NX, self.FORCE_DIRECTED, self.HYPERTREE, self.CONNECTED_COMPONENTS, self.CIRCLE_PACK]
 
         # Recast the template with the width's and height's
         self._template = f"""
@@ -544,6 +545,7 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         elif _layout_op_ == self.FORCE_DIRECTED       and len(_sel_) >  0: _pos_ = PolarsForceDirectedLayout(_g_, pos=_ln_.pos, static_nodes=set(_g_.nodes()) - set(_sel_)).results()
         elif _layout_op_ == self.HYPERTREE:                                _pos_ = self.rt_self.hyperTreeLayout(_g_, roots=_sel_)
         elif _layout_op_ == self.CONNECTED_COMPONENTS and len(_sel_) == 0: _pos_ = self.rt_self.treeMapGraphComponentPlacement(_g_, _ln_.pos)
+        elif _layout_op_ == self.CIRCLE_PACK          and len(_sel_) == 0: _pos_, _circlesvg_ = self.rt_self.circlePackGraphComponentPlacement(_g_, _ln_.pos)
         else: pass
 
         if _pos_ is not None:
