@@ -482,6 +482,44 @@ class RTGraphLayoutsMixin(object):
         return top_ten
 
     #
+    # circlePackTheSeparateComponents() - separate g into different graph components
+    # and then place them into a circle packed transform
+    #
+    def circlePackTheSeparateComponents(self, g, pos):
+        # separate g into different graph components
+        g_components              = [g.subgraph(c) for c in nx.connected_components(g)]
+        # determine the bounds of each component
+        component_bounds, circles = [], []
+        for _g_ in g_components:
+            # figure out the extents of the node positions
+            x0, y0, x1, y1 = None, None, None, None
+            for _node_ in _g_.nodes:
+                x, y = pos[_node_]
+                if x0 is None or x < x0: x0 = x
+                if y0 is None or y < y0: y0 = y
+                if x1 is None or x > x1: x1 = x
+                if y1 is None or y > y1: y1 = y
+            if x0 == x1: x0, x1 = x0 - 0.5, x1 + 0.5
+            if y0 == y1: y0, y1 = y0 - 0.5, y1 + 0.5
+            component_bounds.append((x0, y0, x1, y1))
+            # add a circle to the center of the component
+            _cx_, _cy_ = (x0+x1)*0.5, (y0+y1)*0.5
+            _d_        = sqrt((x1-x0)**2 + (y1-y0)**2)
+            circles.append((_cx_, _cy_, _d_/2.0))
+        _packed_ = self.packCircles(circles)
+
+        # move the nodes of the component to the new positions
+        _new_pos_, _shapes_ = {}, {}
+        for i in range(len(g_components)):
+            _g_ = g_components[i] 
+            _dx_, _dy_ = circles[i][0] - _packed_[i][0], circles[i][1] - _packed_[i][1]
+            for _node_ in _g_.nodes: _new_pos_[_node_] = pos[_node_][0] - _dx_, pos[_node_][1] - _dy_
+            _shapes_[i] = f'<circle cx="{_packed_[i][0]}" cy="{_packed_[i][1]}" r="{_packed_[i][2]}" fill="None" stroke="#000000" stroke-width="1" />'
+        
+        return _new_pos_, _shapes_
+
+
+    #
     # treeMapNodeColorPlacement() - place nodes in a tree map based on node color (if the node's color is assigned in the node_color_lu)
     # - pos gets modified in place (and also returned)
     #
