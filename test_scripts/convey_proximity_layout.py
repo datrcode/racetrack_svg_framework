@@ -221,7 +221,7 @@ class ConveyProximityLayout(object):
                            .join(df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
                            .with_columns(pl.col('t').pow(self.k).alias('t_k')) \
                            .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
-                                         pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('w')) \
+                                         pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('t')) \
                            .with_columns((pl.col('t')**(2-self.k)).alias('__prod_1__'),
                                          ((2.0*__dx__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('xadd'),
                                          ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('yadd'),
