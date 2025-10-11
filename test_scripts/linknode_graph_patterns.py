@@ -107,9 +107,9 @@ class LinkNodeGraphPatterns(object):
 
     def __pattern_trianglestars__(self, prefix='',**kwargs):
         g = nx.Graph()
-        g.add_edge(f'{prefix}a', f'{prefix}b', weight=2.0)
-        g.add_edge(f'{prefix}a', f'{prefix}c', weight=2.0)
-        g.add_edge(f'{prefix}b', f'{prefix}c', weight=2.0)
+        g.add_edge(f'{prefix}a', f'{prefix}b', weight=10.0)
+        g.add_edge(f'{prefix}a', f'{prefix}c', weight=10.0)
+        g.add_edge(f'{prefix}b', f'{prefix}c', weight=10.0)
         for i in range(40):
             g.add_edge(f'{prefix}a', f'{prefix}a'+str(i), weight=0.5)
             g.add_edge(f'{prefix}b', f'{prefix}b'+str(i), weight=0.5)
