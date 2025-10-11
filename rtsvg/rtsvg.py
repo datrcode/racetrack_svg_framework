@@ -1570,7 +1570,7 @@ for (i=32;i<128;i++) {
         return f'<svg x="0" y="0" width="{w}" height="{my_h}">' + ''.join(svg) + '</svg>'
 
     #
-    # svgAnimation() - produce the animation svg for the spring layout
+    # graphLayoutSVGAnimation() - produce the animation svg for a graph layout
     # - copied from polars_force_directed_layout.py ... but that was copied from:
     # - copied from the udist_scatterplots_via_sectors_tile_opt.py method
     #

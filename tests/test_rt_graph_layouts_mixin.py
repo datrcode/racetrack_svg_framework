@@ -121,9 +121,12 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
 
     def test_polarsForceDirectedLayout(self):
         _pfdl_ = PolarsForceDirectedLayout(self.g)
-        _pfdl_.results(), _pfdl_.svgAnimation(), _pfdl_.stress(), _pfdl_.stressVector()
+        _pfdl_.results(), _pfdl_.stress(), _pfdl_.stressVector()
+        self.rt_self.graphLayoutSVGAnimation(_pfdl_.df_anim, _pfdl_.g_connected)
+
         _pfdl_ = PolarsForceDirectedLayout(self.g, self.pos, static_nodes=self.node_subset)
-        _pfdl_.results(), _pfdl_.svgAnimation(), _pfdl_.stress(), _pfdl_.stressVector()
+        _pfdl_.results(), _pfdl_.stress(), _pfdl_.stressVector()
+        self.rt_self.graphLayoutSVGAnimation(_pfdl_.df_anim, _pfdl_.g_connected)
 
 if __name__ == '__main__':
     unittest.main()
