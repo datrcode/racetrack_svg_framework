@@ -1569,3 +1569,78 @@ for (i=32;i<128;i++) {
 
         return f'<svg x="0" y="0" width="{w}" height="{my_h}">' + ''.join(svg) + '</svg>'
 
+    #
+    # svgAnimation() - produce the animation svg for the spring layout
+    # - copied from polars_force_directed_layout.py ... but that was copied from:
+    # - copied from the udist_scatterplots_via_sectors_tile_opt.py method
+    #
+    def graphLayoutSVGAnimation(self, dfs, g, duration='10s', w=256, h=256, r=0.04, draw_links=True, draw_nodes=True):
+        df = dfs[0]
+        x_cols = [f'x{i}' for i in range(0, len(dfs))]
+        y_cols = [f'y{i}' for i in range(0, len(dfs))]
+        x_cols.extend(x_cols[::-1]), y_cols.extend(y_cols[::-1])
+        for i in range(1, len(dfs)):
+            _to_drop_ = []
+            if 's'      in dfs[i].columns: _to_drop_.append('s')
+            if 'stress' in dfs[i].columns: _to_drop_.append('stress')
+            df = df.join(dfs[i].drop(_to_drop_), on=['node']).rename({'x_right':f'x{i}', 'y_right':f'y{i}'})
+        df = df.rename({'x':'x0', 'y':'y0'})
+        # Determine the bounds
+        x0, y0, x1, y1 = df['x0'].min(), df['y0'].min(), df['x0'].max(), df['y0'].max()
+        for i in range(1, len(dfs)):
+            x0, y0, x1, y1 = min(x0, df[f'x{i}'].min()), min(y0, df[f'y{i}'].min()), max(x1, df[f'x{i}'].max()), max(y1, df[f'y{i}'].max())
+        # Produce the values strings for x & y and drop the unneeded columns
+        df = df.with_columns(pl.concat_str(x_cols, separator=';').alias('x_values_str'), 
+                             pl.concat_str(y_cols, separator=';').alias('y_values_str')).drop(x_cols).drop(y_cols)
+
+        svg = []
+        svg.append(f'<svg x="0" y="0" width="{w}" height="{h}" viewBox="{x0} {y0} {x1-x0} {y1-y0}" xmlns="http://www.w3.org/2000/svg">')
+        svg.append(f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="#ffffff" />')
+
+        # Edges
+        if draw_links:
+            _lu_ = {'fm':[], 'to':[]}
+            for _node_ in g.nodes():
+                for _nbor_ in g.neighbors(_node_):
+                    _lu_['fm'].append(_node_), _lu_['to'].append(_nbor_)
+            df_edges = pl.DataFrame(_lu_).join(df, left_on='fm', right_on='node') \
+                                         .rename({'x_values_str':'fm_x_values_str', 'y_values_str':'fm_y_values_str'}) \
+                                         .join(df, left_on='to', right_on='node') \
+                                         .rename({'x_values_str':'to_x_values_str', 'y_values_str':'to_y_values_str'})
+            _str_ops_ = [pl.lit(f'<line stroke-width="{r}" stroke="#a0a0a0">'),
+                        
+                         pl.lit('<animate attributeName="x1" values="'),
+                         pl.col('fm_x_values_str'),
+                         pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
+
+                         pl.lit('<animate attributeName="y1" values="'),
+                         pl.col('fm_y_values_str'),
+                         pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
+
+                         pl.lit('<animate attributeName="x2" values="'),
+                         pl.col('to_x_values_str'),
+                         pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
+
+                         pl.lit('<animate attributeName="y2" values="'),
+                         pl.col('to_y_values_str'),
+                         pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
+
+                         pl.lit('</line>')]
+            df_edges = df_edges.with_columns(pl.concat_str(*_str_ops_, separator='').alias('svg'))
+            svg.extend(df_edges['svg'])
+
+        # Nodes
+        if draw_nodes:
+            _str_ops_ = [pl.lit(f'<circle r="{r}" fill="#000000"> <animate attributeName="cx" values="'),
+                         pl.col('x_values_str'),
+                         pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
+                         pl.lit('<animate attributeName="cy" values="'),
+                         pl.col('y_values_str'),
+                         pl.lit(f'" begin="0s" dur="{duration}" repeatCount="indefinite" />'),
+                         pl.lit('</circle>')]
+            df = df.with_columns(pl.concat_str(*_str_ops_, separator='').alias('svg'))
+            svg.extend(df['svg'])
+
+        # Close the SVG
+        svg.append('</svg>')
+        return ''.join(svg)
