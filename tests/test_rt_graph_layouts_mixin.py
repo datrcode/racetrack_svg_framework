@@ -128,5 +128,14 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
         _pfdl_.results(), _pfdl_.stress(), _pfdl_.stressVector()
         self.rt_self.graphLayoutSVGAnimation(_pfdl_.df_anim, _pfdl_.g_connected)
 
+    def test_polarsSpringLayout(self):
+        _psl_ = PolarsSpringLayout(self.g)
+        _psl_.results()
+        self.rt_self.graphLayoutSVGAnimation(_psl_.pos_history, self.g)
+
+        _psl_ = PolarsSpringLayout(self.g, self.pos, static_nodes=self.node_subset)
+        _psl_.results()
+        self.rt_self.graphLayoutSVGAnimation(_psl_.pos_history, self.g)
+
 if __name__ == '__main__':
     unittest.main()
