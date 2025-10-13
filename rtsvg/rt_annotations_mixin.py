@@ -91,8 +91,8 @@ class RTAnnotationsMixin(object):
     # - ensure sorting
     def __tagNormalizer__(self, tag):
         if tag is None:       return ''
-        if type(tag) is str:  tag = tag.split('|')
-        if type(tag) is list: tag = set(tag)
+        if isinstance(tag, str):  tag = tag.split('|')
+        if isinstance(tag, list): tag = set(tag)
         _sort_ = sorted(list(tag))
         _norm_ = []
         _seen_ = set()
@@ -215,7 +215,7 @@ class RTAnnotationsMixin(object):
             annotations = [annotations]
         
         # Wrap entity_fields into a list
-        if entity_fields is not None and type(entity_fields) == str:
+        if entity_fields is not None and isinstance(entity_fields, str):
             entity_fields = [entity_fields]
 
         matcher_booleans = None
@@ -313,7 +313,7 @@ class RTAnnotationsMixin(object):
         #
         # SVG Path Version
         #
-        if   type(geospatial_bounds) == str:
+        if   isinstance(geospatial_bounds, str):
             as_str = geospatial_bounds
 
             if as_str not in self.__poly_cache__:
@@ -368,7 +368,7 @@ class RTAnnotationsMixin(object):
         #
         # Point List Version
         #
-        elif type(geospatial_bounds) == list:
+        elif isinstance(geospatial_bounds, list):
             as_str = self.__pointListToString__(geospatial_bounds)
 
             if as_str not in self.__poly_cache__.keys():
@@ -810,22 +810,22 @@ class RTAnnotationsMixin(object):
         if   annotations is None:
              for _annotation in self.annotations_ls:
                   _possibles.append(_annotation)
-        elif type(annotations) == list or type(annotations) == set:
+        elif isinstance(annotations, list) or isinstance(annotations, set):
              for _annotation in annotations:
-                if   type(_annotation) == str:
+                if   isinstance(_annotation, str):
                     _possibles.append(self.entityAnnotation(_annotation))
-                elif type(_annotation) == int:
+                elif isinstance(_annotation, int):
                     _possibles.append(self.entityAnnotation(str(_annotation)))
                 elif isinstance(_annotation, RTAnnotation):
                     _possibles.append(_annotation)
                 else:
                     raise Exception(f'annotateTimelineInstances() - annotations type not understood -- "{type(_annotation)}"')
-        elif type(annotations) == dict:
+        elif isinstance(annotations, dict):
              for _k,_v in annotations.items():
                  _possibles.append(self.entityAnnotation(str(_k),str(_v)))
         elif isinstance(annotations, RTAnnotation):
              _possibles.append(annotations)
-        elif type(annotations) == str or type(annotations) == int:
+        elif isinstance(annotations, str) or isinstance(annotations, int):
              _possibles.append(self.entityAnnotation(str(annotations)))
         else:
              raise Exception(f'annotateTimelineInstances() - annotations parameter must be None, a list of RTAnnotation, found type = "{type(annotations)}"')
@@ -1025,10 +1025,10 @@ class RTAnnotationsMixin(object):
         if   annotations is None:
              for _annotation in self.annotations_ls:
                   _possibles.append(_annotation)
-        elif type(annotations) == list:
+        elif isinstance(annotations, list):
              for _annotation in annotations:
                   _possibles.append(_annotation)                       
-        elif type(annotations) == RTAnnotation:
+        elif isinstance(annotations, RTAnnotation):
              _possibles.append(annotations)
         else:
              raise Exception(f'annotateTimelineInstances() - annotations parameter must be None, a list of RTAnnotation, found type = "{type(annotations)}"')
@@ -1288,10 +1288,10 @@ class RTAnnotationsMixin(object):
         if   annotations is None:
              for _annotation in self.annotations_ls:
                   _possibles.append(_annotation)
-        elif type(annotations) == list:
+        elif isinstance(annotations, list):
              for _annotation in annotations:
                   _possibles.append(_annotation)                       
-        elif type(annotations) == RTAnnotation:
+        elif isinstance(annotations, RTAnnotation):
              _possibles.append(annotations)
         else:
              raise Exception(f'annotateTimelineInstances() - annotations parameter must be None, a list of RTAnnotation, found type = "{type(annotations)}"')
@@ -1682,17 +1682,17 @@ class RTAnnotation(object):
         # Determine the exact timing for event or geospatial bounds...
         if timestamp_str is not None:
             if timestamp_end_str is None:
-                if type(timestamp_str) == str:
+                if isinstance(timestamp_str, str):
                     self.__ts0__ = pd.to_datetime(rt_self.minTimeForStringPrecision(timestamp_str))
                     self.__ts1__ = pd.to_datetime(rt_self.maxTimeForStringPrecision(timestamp_str))
                 else:
                     self.__ts0__ = self.ts1 = pd.to_datetime(timestamp_str)
             else:
-                if type(timestamp_str) == str:
+                if isinstance(timestamp_str, str):
                     self.__ts0__ = pd.to_datetime(rt_self.minTimeForStringPrecision(timestamp_str))
                 else:
                     self.__ts0__ = timestamp_str
-                if type(timestamp_end_str) == str:
+                if isinstance(timestamp_end_str,  str):
                     self.__ts1__ = pd.to_datetime(rt_self.maxTimeForStringPrecision(timestamp_end_str))
                 else:
                     self.__ts1__ = timestamp_end_str
@@ -1812,7 +1812,7 @@ class RTAnnotation(object):
         # Geospatial Matcher
         #
         elif self.annotation_type == 'geospatial':
-            if lat_lon_fields is None or (type(lat_lon_fields) != list and type(lat_lon_fields) != tuple) or len(lat_lon_fields) != 2:
+            if lat_lon_fields is None or ((isinstance(lat_lon_fields, list) == False) and (isinstance(lat_lon_fields, tuple) == False)) or len(lat_lon_fields) != 2:
                 raise Exception('RTAnnotation.matches() - missing lat_lon_fields for filtering geospatials... must be list or tuple... must be length of two')
 
             # Time compare first -- cheaper/easier
