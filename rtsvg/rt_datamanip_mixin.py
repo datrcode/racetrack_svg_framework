@@ -33,7 +33,7 @@ class RTDataManipMixin(object):
     # - Modified to work w/ multiple fields (upto 3) and to sort the type field prior to grouping
     #
     def polarsGroupOverlappingTimeframes(self, _df_, _time_start_, _time_end_, fields, threshold='15m'):
-        if type(fields) is not list: fields = [fields]
+        if isinstance(fields, list) == False: fields = [fields]
         if len(fields) == 1:
             return (_df_.sort([fields[0], _time_start_])
                         .with_columns(((pl.col(_time_end_).dt.offset_by(threshold) < pl.col(_time_start_).shift(-1)) | (pl.col(fields[0]) != pl.col(fields[0]).shift(-1)))
@@ -139,10 +139,8 @@ class RTDataManipMixin(object):
     #
     def temporalStatsAggregation(self, df, ts_field=None, freq='YS', fields=[], stats=['sum','max','median','mean','min','stdev','rows','set_size']):
         # Convert parameters to a list if necessary
-        if type(fields) != list:
-            fields = [fields]
-        if type(stats)  != list:
-            stats  = [stats]
+        if isinstance(fields, list) == False: fields = [fields]
+        if isinstance(stats,  list) == False: stats  = [stats]
 
         # Determine the timestamp field
         if ts_field is None:
@@ -210,12 +208,9 @@ class RTDataManipMixin(object):
                                              freq='YS',            # Frequency for the aggregation
                                              stats=['sum','max','median','mean','min','stdev','rows','set_size']):
         # Convert parameters to a list if necessary
-        if type(fields) != list:
-            fields = [fields]
-        if type(stats)  != list:
-            stats  = [stats]
-        if type(gb_fields) != list:
-            gb_fields = [gb_fields]
+        if isinstance(fields,    list) == False: fields    = [fields]
+        if isinstance(stats,     list) == False: stats     = [stats]
+        if isinstance(gb_fields, list) == False: gb_fields = [gb_fields]
 
         # Determine the timestamp field
         if ts_field is None:
@@ -294,7 +289,7 @@ class RTDataManipMixin(object):
                 for _date in pd.date_range(start=earliest_seen, end=latest_seen, freq=freq):
                     _k_as_list = list()
                     _k_as_list.append(_date)
-                    if type(k) == tuple:
+                    if isinstance(k, tuple):
                         _k_as_list += k
                     else:
                         _k_as_list.append(k)
