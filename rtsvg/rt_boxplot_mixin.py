@@ -128,7 +128,7 @@ class RTBoxplotMixin(object):
 
             # Make sure the bin_by is a list...
             bin_by = kwargs['bin_by']
-            self.bin_by = [bin_by] if type(bin_by) != list else bin_by
+            self.bin_by = [bin_by] if isinstance(bin_by, list) == False else bin_by
 
             self.style              = kwargs['style']
             self.cap_swarm_at       = kwargs['cap_swarm_at']
@@ -232,7 +232,7 @@ class RTBoxplotMixin(object):
                     w_count_by = self.bin_by.copy()
                     _df        = self.df.groupby(by=w_count_by).size()
                     order      = _df.groupby(by=self.bin_by).size().sort_values(ascending=self.ascending)
-            elif type(self.order_by) == list: # custom ordering... convert the order index into a categorical... remove missing... and sort by that
+            elif isinstance(self.order_by, list): # custom ordering... convert the order index into a categorical... remove missing... and sort by that
                 order = gb[self.count_by].max().sort_values(ascending=self.ascending)
                 order.index = pd.Categorical(order.index, categories=self.order_by)
                 order = order[order.index.notnull()]
@@ -260,7 +260,7 @@ class RTBoxplotMixin(object):
             pb = self.df.partition_by(self.bin_by, as_dict=True)
             if    self.count_by is None or self.count_by_set: # barchart...
                 order = self.rt_self.polarsCounter(self.df, self.bin_by, self.count_by, self.count_by_set)
-            elif  type(self.order_by) == list: # user supplied a list... descend by that value
+            elif  isinstance(self.order_by, list): # user supplied a list... descend by that value
                 counts = []
                 for i in range(len(self.order_by)):
                     counts.append(len(self.order_by) - i)
@@ -362,13 +362,13 @@ class RTBoxplotMixin(object):
                     if self.rt_self.isPandas(self.df):
                         _index    = order.index[i]
                         _value    = order.iloc[i]
-                        _as_tuple = (_index,) if type(_index) is not tuple else _index
+                        _as_tuple = (_index,) if isinstance(_index, tuple) == False else _index
                         _df    = gb.get_group(_as_tuple)
                     elif self.rt_self.isPolars(self.df):
                         _index = order[i].rows()[0][:len(self.bin_by)]
                         if len(self.bin_by) == 1: _index = _index[0]
                         _value = order['__count__'][i]
-                        if type(_index) is not tuple: _index = (_index,)
+                        if isinstance(_index, tuple) == False: _index = (_index,)
                         _df    = gb[_index]
 
                     if self.style == 'boxplot' or self.style == 'boxplot_w_swarm':
@@ -415,13 +415,13 @@ class RTBoxplotMixin(object):
                 if self.rt_self.isPandas(self.df):
                     _index    = order.index[i]
                     _value    = order.iloc[i]
-                    _as_tuple = (_index,) if type(_index) is not tuple else _index
+                    _as_tuple = (_index,) if isinstance(_index, tuple) == False else _index
                     _df    = gb.get_group(_as_tuple)
                 elif self.rt_self.isPolars(self.df):
                     _index = order[i].rows()[0][:len(self.bin_by)]
                     if len(self.bin_by) == 1: _index = _index[0]
                     _value = order['__count__'][i]
-                    if type(_index) is not tuple: _index = (_index,)
+                    if isinstance(_index, tuple) == False: _index = (_index,)
                     _df    = gb[_index]
 
                 px     = max_bar_h * _value / group_by_max
@@ -508,16 +508,16 @@ class RTBoxplotMixin(object):
                 horz_fits = True
                 if len(label_to_x.keys()) > 1: # by default... length of 1 == horizontal...
                     for _label in label_to_x.keys():
-                        if type(_label) is tuple: as_str = '|'.join(_label)
-                        else:                     as_str = str(_label)
+                        if isinstance(_label, tuple): as_str = '|'.join(_label)
+                        else:                         as_str = str(_label)
                         if self.rt_self.textLength(as_str, self.txt_h) > bar_w+actual_h_gap: horz_fits = False
                 
                 # Horizontal label rendering
                 if horz_fits:
                     for _label in label_to_x.keys():
                         x = label_to_x[_label]
-                        if type(_label) is tuple: as_str = '|'.join(_label)
-                        else:                     as_str = str(_label)
+                        if isinstance(_label, tuple): as_str = '|'.join(_label)
+                        else:                         as_str = str(_label)
                         svg.append(self.rt_self.svgText(as_str, x, self.y_ins + self.sm_h + max_bar_h + self.txt_h , self.txt_h, anchor='middle'))
 
                 # Angled label rendering...
@@ -529,8 +529,8 @@ class RTBoxplotMixin(object):
                     _angle = self.rt_self.bestAngleForRotatedLabels(bar_w+actual_h_gap,usable_txt_h)
                     for _label in label_to_x.keys():
                         x = label_to_x[_label]
-                        if type(_label) is tuple: as_str = '|'.join(_label)
-                        else:                     as_str = str(_label)
+                        if isinstance(_label, tuple): as_str = '|'.join(_label)
+                        else:                         as_str = str(_label)
                         tpos,bpos = self.rt_self.calculateAngledLabelTopAndBottomPosition(x-bar_w, self.y_ins+self.sm_h+max_bar_h, bar_w+actual_h_gap, usable_txt_h, _angle)
                         svg.append(self.rt_self.svgText(as_str, bpos[0], bpos[1] - usable_txt_h/3, usable_txt_h, rotation=_angle))
 
