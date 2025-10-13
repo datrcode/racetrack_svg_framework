@@ -585,8 +585,7 @@ class RTXYMixin(object):
                                       _dx            = None,   # data x delta
                                       _dy            = None,   # data y delta
                                       ratio_svg      = None):  # Ratio of the svg between the two axes
-        if type(field) != list:
-            field = [field]
+        if isinstance(field, list) == False: field = [field]
         is_time = False        
         field_countable = self.fieldIsArithmetic(df, field[0])
         f0 = field[0]
@@ -729,8 +728,7 @@ class RTXYMixin(object):
                                     _dx            = None,   # data x delta
                                     _dy            = None,   # data y delta
                                     ratio_svg      = None):  # Ratio of the svg between the two axes
-        if type(field) != list:
-            field = [field]
+        if isinstance(field, list) == False: field = [field]
         is_time = False    
         field_countable = self.fieldIsArithmetic(df, field[0])
         f0 = field[0]
@@ -840,7 +838,7 @@ class RTXYMixin(object):
 
             # Compute the min and max labels
             def concatAsStrs(x):
-                if type(x) == list:
+                if isinstance(x, list):
                     s = str(x[0])
                     for i in range(1,len(x)):
                         s += '|' + str(x[i])
@@ -880,7 +878,7 @@ class RTXYMixin(object):
             return '', ''
             
         # Handle intermediate types
-        if   type(shape_desc) == str:   # path description
+        if   isinstance(shape_desc, str):   # path description
             if shape_desc.lower().startswith('<circle'):
                 _shape_svg, _label_svg = self.__transformCircleSVG__(shape_name,           shape_desc,
                                                                      x_trans_norm_func,    y_trans_norm_func,
@@ -893,7 +891,7 @@ class RTXYMixin(object):
                                                                            bg_shape_label_color, bg_shape_opacity,
                                                                            bg_shape_fill,        bg_shape_stroke_w,
                                                                            bg_shape_stroke,      txt_h)
-        elif type(shape_desc) == list:  # list of tuple pairs
+        elif isinstance(shape_desc, list):  # list of tuple pairs
             _shape_svg, _label_svg = self.__transformPointsList__(shape_name,            shape_desc,
                                                                   x_trans_norm_func,     y_trans_norm_func,
                                                                   bg_shape_label_color,  bg_shape_opacity,
@@ -1037,7 +1035,7 @@ class RTXYMixin(object):
         if bg_shape_fill is not None and bg_shape_opacity is not None:
             # Handle opacity
             _opacity = 1.0
-            if type(bg_shape_opacity) == dict:
+            if isinstance(bg_shape_opacity, dict):
                 if name in bg_shape_opacity.keys():
                     _opacity = bg_shape_opacity[name]
                 else:
@@ -1048,11 +1046,11 @@ class RTXYMixin(object):
             svg += f' fill-opacity="{_opacity}"'
 
             # Handle fill
-            if    type(bg_shape_fill) == dict and name in bg_shape_fill.keys():
+            if    isinstance(bg_shape_fill, dict) and name in bg_shape_fill.keys():
                 _co = bg_shape_fill[name]
             elif  bg_shape_fill == 'vary':
                 _co = self.co_mgr.getColor(name)
-            elif  type(bg_shape_fill) == str and bg_shape_fill.startswith('#') and len(bg_shape_fill) == 7:
+            elif  isinstance(bg_shape_fill, str) and bg_shape_fill.startswith('#') and len(bg_shape_fill) == 7:
                 _co = bg_shape_fill
             else:
                 _co = self.co_mgr.getTVColor('context','default')
@@ -1065,15 +1063,15 @@ class RTXYMixin(object):
         if bg_shape_stroke_w is not None and bg_shape_stroke is not None:
             if   bg_shape_stroke == 'vary':
                 _co = self.co_mgr.getColor(name)
-            elif type(bg_shape_stroke) == str and bg_shape_stroke.startswith('#') and len(bg_shape_stroke) == 7:
+            elif isinstance(bg_shape_stroke, str) and bg_shape_stroke.startswith('#') and len(bg_shape_stroke) == 7:
                 _co = bg_shape_stroke
-            elif type(bg_shape_stroke) == dict and name in bg_shape_stroke.keys():
+            elif isinstance(bg_shape_stroke, dict) and name in bg_shape_stroke.keys():
                 _co = bg_shape_stroke[name] 
             else:
                 _co =self.co_mgr.getTVColor('context','text')
 
             _wi = 1.0
-            if type(bg_shape_stroke_w) == dict and name in bg_shape_stroke_w.keys():
+            if isinstance(bg_shape_stroke_w, dict) and name in bg_shape_stroke_w.keys():
                 _wi = bg_shape_stroke_w[name]
             else:
                 _wi = bg_shape_stroke_w
@@ -1093,11 +1091,11 @@ class RTXYMixin(object):
                                  txt_h):
         if bg_shape_label_color is not None:
 
-            if    type(bg_shape_label_color) == dict and name in bg_shape_label_color.keys():
+            if    isinstance(bg_shape_label_color, dict) and name in bg_shape_label_color.keys():
                 _co = bg_shape_label_color[name]
             elif  bg_shape_label_color == 'vary':
                 _co = self.co_mgr.getColor(name)
-            elif  type(bg_shape_label_color) == str and bg_shape_label_color.startswith('#') and len(bg_shape_label_color) == 7:
+            elif  isinstance(bg_shape_label_color, str) and bg_shape_label_color.startswith('#') and len(bg_shape_label_color) == 7:
                 _co = bg_shape_label_color
             else:
                 _co = self.co_mgr.getTVColor('context','text')
@@ -1191,9 +1189,9 @@ class RTXYMixin(object):
                 else:
                     self.df2 = None
 
-                if self.x2_field is not None and type(self.x2_field) != list:
+                if self.x2_field is not None and isinstance(self.x2_field, list) == False:
                     self.x2_field = [self.x2_field]
-                if self.y2_field is not None and type(self.y2_field) != list:
+                if self.y2_field is not None and isinstance(self.y2_field, list) == False:
                     self.y2_field = [self.y2_field]
 
             #
@@ -1296,13 +1294,13 @@ class RTXYMixin(object):
                 self.dot_size = 'medium'
 
             # Make sure x_field and y_field are lists...
-            if type(self.x_field) != list: # Make it into a list for consistency
+            if isinstance(self.x_field, list) == False: # Make it into a list for consistency
                 self.x_field = [self.x_field]
-            if type(self.y_field) != list: # Make it into a list for consistency
+            if isinstance(self.y_field, list) == False: # Make it into a list for consistency
                 self.y_field = [self.y_field]
-            if self.x2_field is not None and type(self.x2_field) != list: # Make it into a list for consistency
+            if self.x2_field is not None and isinstance(self.x2_field, list) == False: # Make it into a list for consistency
                 self.x2_field = [self.x2_field]
-            if self.y2_field is not None and type(self.y2_field) != list: # Make it into a list for consistency
+            if self.y2_field is not None and isinstance(self.y2_field, list) == False: # Make it into a list for consistency
                 self.y2_field = [self.y2_field]
 
             #
@@ -1467,7 +1465,8 @@ class RTXYMixin(object):
             # dot_w will be used for the actual geometry
             def dotSizeNumber(_str_):
                 if _str_ is None or _str_ == 'hidden':           return  0
-                elif type(_str_) == int or type(_str_) == float: return  _str_
+                elif isinstance(_str_, int) or \
+                     isinstance(_str_, float):                   return  _str_
                 elif _str_ == 'medium':                          return  2
                 elif _str_ == 'small':                           return  1
                 elif _str_ == 'large':                           return  3
@@ -1640,7 +1639,7 @@ class RTXYMixin(object):
             # Handle the line option... this needs to be rendered before the dots so that the lines are behind the dots
             # ... first version handles vector data...
             t0_render_lines = time.time()
-            if self.line_groupby_field is not None and type(self.line_groupby_field) == list:
+            if self.line_groupby_field is not None and isinstance(self.line_groupby_field, list):
                 svg_strs.append(self.__rendersvg_line_groupby_timestamped__())
             # ... second version handles the normal use cases...
             elif self.line_groupby_field:
@@ -2002,24 +2001,17 @@ class RTXYMixin(object):
         #
         def timestampXCoord(self, 
                             _timestamp):
-            if type(_timestamp) == str:
-                _ts = pd.to_datetime(_timestamp)
-            else:
-                _ts = _timestamp
+            if isinstance(_timestamp, str): _ts = pd.to_datetime(_timestamp)
+            else:                           _ts = _timestamp
 
             _ts0,_ts1 = self.timestamp_min,self.timestamp_max
-            if type(_ts0) == str:
-                _ts0 = pd.to_datetime(_ts0)
-            if type(_ts1) == str:
-                _ts1 = pd.to_datetime(_ts1)
+            if isinstance(_ts0, str): _ts0 = pd.to_datetime(_ts0)
+            if isinstance(_ts1, str): _ts1 = pd.to_datetime(_ts1)
 
             if self.x_is_time:
-                if _ts   < _ts0:
-                    return -self.x_left
-                elif _ts > _ts1:
-                    return -(self.x_left + self.w_usable)
-                else:
-                    return self.x_left + self.w_usable*((_ts - _ts0)/(_ts1 - _ts0))
+                if _ts   < _ts0: return -self.x_left
+                elif _ts > _ts1: return -(self.x_left + self.w_usable)
+                else:            return self.x_left + self.w_usable*((_ts - _ts0)/(_ts1 - _ts0))
             else:
                 return None
         
@@ -2029,10 +2021,8 @@ class RTXYMixin(object):
         #
         def timestampExtents(self):
             _ts0,_ts1 = self.timestamp_min,self.timestamp_max
-            if type(_ts0) == str:
-                _ts0 = pd.to_datetime(_ts0)
-            if type(_ts1) == str:
-                _ts1 = pd.to_datetime(_ts1)
+            if isinstance(_ts0, str): _ts0 = pd.to_datetime(_ts0)
+            if isinstance(_ts1, str): _ts1 = pd.to_datetime(_ts1)
             return _ts0,_ts1
 
         #

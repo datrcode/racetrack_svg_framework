@@ -104,10 +104,8 @@ class RTWordCloudMixin(object):
             if self.widget_id is None:
                 self.widget_id = "wordcloud_" + str(random.randint(0,65535))
 
-            if type(kwargs['text_fields']) == list:
-                self.text_fields = kwargs['text_fields']
-            else:
-                self.text_fields = [kwargs['text_fields']]
+            if isinstance(kwargs['text_fields'], list): self.text_fields =  kwargs['text_fields']
+            else:                                       self.text_fields = [kwargs['text_fields']]
 
             self.x_view               = kwargs['x_view']
             self.y_view               = kwargs['y_view']

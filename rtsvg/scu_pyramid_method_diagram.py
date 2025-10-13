@@ -390,7 +390,7 @@ class SCUPyramidMethodDiagram(object):
         if len(scus) == 2: return list(scus)
 
         # Make sure it's a list
-        if type(scus) != list: scus = list(scus)
+        if isinstance(scus, list) == False: scus = list(scus)
         # Make a corresponding list of the sources -- this lines up with the scus list
         sources_sets = []
         for _scu_ in scus:

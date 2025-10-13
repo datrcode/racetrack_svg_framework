@@ -163,7 +163,7 @@ class RACETrack(RTAnnotationsMixin,
     # Render the SVG as HTML and display it within a notebook
     #
     def displaySVG(self,_svg):
-        if type(_svg) is not str: _svg = _svg._repr_svg_()
+        if isinstance(_svg, str) == False: _svg = _svg._repr_svg_()
         return display(HTML(_svg))
 
     #
@@ -174,7 +174,7 @@ class RACETrack(RTAnnotationsMixin,
     # - ... furthermore, browsers (or VSCode) may implement the features differently
     #
     def displaySVGAsImage(self, _svg):
-        if type(_svg) is not str: _svg = _svg._repr_svg_()
+        if isinstance(_svg, str) == False: _svg = _svg._repr_svg_()
         b = io.BytesIO()
         renderPM.drawToFile(svg2rlg(io.StringIO(_svg)), b, 'PNG')
         return ipc_display.Image(data=b.getvalue(),format='png',embed=True)
@@ -206,8 +206,8 @@ class RACETrack(RTAnnotationsMixin,
     def flattenTuple(self, _tuple_):
         _ls_ = []
         for x in _tuple_:
-            if type(x) is tuple: _ls_.extend(self.flattenTuple(x))
-            else:                _ls_.append(x)
+            if isinstance(x, tuple): _ls_.extend(self.flattenTuple(x))
+            else:                    _ls_.append(x)
         return tuple(_ls_)
 
     #
@@ -249,7 +249,7 @@ class RACETrack(RTAnnotationsMixin,
     # - "format" parameter only applies to the polars typing method
     #
     def columnsAreTimestamps(self, df, columns, format=None):
-        if type(columns) is not list:
+        if isinstance(columns, list) == False:
             columns = [columns]
         for _column_ in columns:
             if   self.isPandas(df):
@@ -375,8 +375,7 @@ class RACETrack(RTAnnotationsMixin,
     # Return a consistent hashcode for a string
     #
     def hashcode(self,s):
-        if type(s) is not str: # Force non-strings to be strings
-            s = str(s)
+        if isinstance(s,str) == False: s = str(s) # Force non-strings to be strings
         if s not in RACETrack.hashcode_lu.keys(): # Cache the results so that we don't have to redo the calculation
             my_bytes = hashlib.sha256(s.encode('utf-8')).digest()
             value = ((my_bytes[0]<<24)&0x00ff000000) | ((my_bytes[1]<<16)&0x0000ff0000) | \
@@ -407,10 +406,10 @@ class RACETrack(RTAnnotationsMixin,
     #
     def encSVGID(self, s):
         _enc = 'encsvgid_'
-        if   type(s) is int:
+        if   isinstance(s, int):
             _enc += f'i_{s}'
             
-        elif type(s) is str:        
+        elif isinstance(s, str):        
             _enc += 's_'
             for c in s:
                 if (c >= 'a' and c <= 'z') or \
@@ -475,7 +474,7 @@ class RACETrack(RTAnnotationsMixin,
         # Perform the transforms
         new_field_list = []
         for x in field_list:
-            if type(x) is list:
+            if isinstance(x, list):
                 new_list = []
                 for y in x:
                     if self.isTField(y) and y not in df.columns:
@@ -496,7 +495,7 @@ class RACETrack(RTAnnotationsMixin,
     # Determine if a field is a tfield
     #
     def isTField(self,tfield):
-        return tfield is not None and type(tfield) is str and tfield.startswith('|tr|')      
+        return tfield is not None and isinstance(tfield, str) and tfield.startswith('|tr|')      
     
     #
     # Return the applicable field for this transformation field (tfiled)
@@ -762,14 +761,14 @@ class RACETrack(RTAnnotationsMixin,
             self.__recursiveDecompose__(v, columns_set)
 
     def __recursiveDecompose__(self, something, columns_set):
-        if   type(something) is str:
+        if   isinstance(something, str):
             columns_set.add(something)
-        elif type(something) is bool: # unclear why None may be converted to False // is that what's happening?
+        elif isinstance(something, bool): # unclear why None may be converted to False // is that what's happening?
             pass # do nothing
-        elif type(something) is list or type(something) is tuple:
+        elif isinstance(something, list) or isinstance(something, tuple):
             for x in something:
                 self.__recursiveDecompose__(x, columns_set)
-        elif type(something) is dict:
+        elif isinstance(something, dict):
             pass # do nothing
         else:
             raise Exception(f'Unknown type ("{type(something)}") for ("{something}") encountered in identifyColumnsFromParameters()')
@@ -788,7 +787,7 @@ class RACETrack(RTAnnotationsMixin,
     # polarsCounter() -- return a dataframe with fields and an __count__ column.
     #
     def polarsCounter(self, df, fields, count_by=None, count_by_set=False):
-        fields = [fields] if type(fields) is not list else fields
+        fields = [fields] if (isinstance(fields,list) == False) else fields
         if count_by is not None and count_by_set == False:
             if self.fieldIsArithmetic(df, count_by) == False:
                 count_by_set = True
@@ -817,7 +816,7 @@ class RACETrack(RTAnnotationsMixin,
                    count_by):  # field to check
         if count_by is None:
             return False
-        if type(df) is list:
+        if isinstance(df, list):
             for _df in df:
                 if self.isPandas(_df):
                     if count_by in _df.columns:
@@ -1546,10 +1545,10 @@ for (i=32;i<128;i++) {
         svg = []
         y_so_far = y_ins
         for _tuple_ in text_tuples:
-            if   type(_tuple_) is str:
+            if   isinstance(_tuple_, str):
                 svg.append(self.svgText(_tuple_, x_ins, y_so_far + txt_h, txt_h))
                 y_so_far += txt_h + h_gap
-            elif type(_tuple_) is tuple:
+            elif isinstance(_tuple_, tuple):
                 my_str      = _tuple_[0]
                 my_txt_h    = _tuple_[1] if len(_tuple_) >= 2 else txt_h
                 my_color    = _tuple_[2] if len(_tuple_) >= 3 else None

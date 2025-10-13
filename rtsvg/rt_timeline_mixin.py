@@ -140,11 +140,9 @@ class RTTimelineMixin(object):
                 self.timestamp     = self.df[self.ts_field].min()
                 self.timestamp_end = self.df[self.ts_field].max()
             elif kwargs['df'] is None and self.timestamp is not None and self.timestamp_end is not None:
-                if type(self.timestamp)     == str:
-                    self.timestamp     = pd.to_datetime(self.rt_self.minTimeForStringPrecision(self.timestamp))
-                if type(self.timestamp_end) == str:
-                    self.timestamp_end = pd.to_datetime(self.rt_self.maxTimeForStringPrecision(self.timestamp_end))
-            elif kwargs['df'] is None and self.timestamp is not None and type(self.timestamp) == str:
+                if isinstance(self.timestamp, str):      self.timestamp     = pd.to_datetime(self.rt_self.minTimeForStringPrecision(self.timestamp))
+                if isinstance(self.timestamp_end, str):  self.timestamp_end = pd.to_datetime(self.rt_self.maxTimeForStringPrecision(self.timestamp_end))
+            elif kwargs['df'] is None and self.timestamp is not None and isinstance(self.timestamp, str):
                 _str = self.timestamp
                 self.timestamp     = pd.to_datetime(self.rt_self.minTimeForStringPrecision(_str))
                 self.timestamp_end = pd.to_datetime(self.rt_self.maxTimeForStringPrecision(_str))
@@ -203,10 +201,8 @@ class RTTimelineMixin(object):
         #
         def timestampXCoord(self, 
                             _timestamp):
-            if type(_timestamp) == str:
-                _ts = pd.to_datetime(_timestamp)
-            else:
-                _ts = _timestamp
+            if isinstance(_timestamp, str): _ts = pd.to_datetime(_timestamp)
+            else:                           _ts = _timestamp
 
             if    _ts < self.timestamp:
                 return -self.x_ins
