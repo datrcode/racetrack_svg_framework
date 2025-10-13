@@ -38,10 +38,10 @@ class RTChordDiagramMixin(object):
     # concats two strings in alphabetical order
     def __den_fromToString__(self, x, fm, to, _connector_ = ' <-|-> ', _type_sep_ = '|>>>|'):
         _fm_, _to_ = str(x[fm]), str(x[to])
-        if type(x[fm]) != str:
+        if isinstance(x[fm], str) == False:
             _fm_ += _type_sep_+str(type(x[fm]))
             if x[fm] != self.__den_retyped__(_fm_): raise Exception(f'RTChordDiagramMixin.__den_fromToString__() - type mismatch between "{x[fm]}" and "{_fm_}" [fm]')
-        if type(x[to]) != str: 
+        if isinstance(x[to], str) == False: 
             _to_ += _type_sep_+str(type(x[to]))
             if x[to] != self.__den_retyped__(_to_): raise Exception(f'RTChordDiagramMixin.__den_fromToString__() - type mismatch between "{x[to]}" and "{_to_}" [to]')
         return (_fm_+_connector_+_to_) if (_fm_<_to_) else (_to_+_connector_+_fm_)
@@ -411,9 +411,9 @@ class RTChordDiagramMixin(object):
         while len(_heap_) > 0:
             _strength_, _fmto_ = heapq.heappop(_heap_)
             _fm_, _to_ = _fmto_
-            if type(_fm_) != tuple:
+            if isinstance(_fm_, tuple) == False:
                 _fm_ = (_fm_,)
-            if type(_to_) != tuple:
+            if isinstance(_to_, tuple) == False:
                 _to_ = (_to_,)
             if _fm_ != _to_ and _fm_ not in _merged_already_ and _to_ not in _merged_already_:
                 _merged_already_.add(_fm_), _merged_already_.add(_to_)
@@ -746,7 +746,7 @@ class RTChordDiagramMixin(object):
             # Apply transforms to nodes
             for _edge in self.relationships:
                 for _node in _edge:
-                    if type(_node) == str:
+                    if isinstance(_node, str):
                         if rt_self.isTField(_node) and rt_self.tFieldApplicableField(_node) in self.df.columns:
                             self.df,_throwaway = rt_self.applyTransform(self.df, _node)
                     else:
@@ -758,12 +758,12 @@ class RTChordDiagramMixin(object):
             # If either from or to are lists, concat them together...
             _ts_ = time.time()
             _fm_ = self.relationships[0][0]
-            if type(_fm_) == list or type(_fm_) == tuple:
+            if isinstance(_fm_, list) or isinstance(_fm_, tuple):
                 new_fm = '__fmcat__'
                 self.df = self.rt_self.createConcatColumn(self.df, _fm_, new_fm)
                 _fm_ = new_fm
             _to_ = self.relationships[0][1]
-            if type(_to_) == list or type(_to_) == tuple:
+            if isinstance(_to_, list) or isinstance(_to_, tuple):
                 new_to = '__tocat__'
                 self.df = self.rt_self.createConcatColumn(self.df, _to_, new_to)
                 _to_ = new_to
@@ -1207,7 +1207,7 @@ class RTChordDiagramMixin(object):
             _color_ = self.rt_self.co_mgr.getTVColor('data','default')
             for node in self.node_to_arc.keys():
                 _path_  = self.__entityArc__(node)
-                if   type(self.node_color) == str and len(self.node_color) == 7 and self.node_color.startswith('#'):
+                if   isinstance(self.node_color, str) and len(self.node_color) == 7 and self.node_color.startswith('#'):
                     _node_color_ = self.node_color
                 elif self.color_by is not None and self.node_color == 'vary':
                     _node_color_ = node_color_lu[node]
@@ -1236,7 +1236,7 @@ class RTChordDiagramMixin(object):
                     for node in arc_lu:
                         a0, a1 = arc_lu[node]
                         _path_  = self.__genericArc__(a0, a1, ring_r, ring_r + self.node_h)
-                        if   type(self.node_color) == str and len(self.node_color) == 7 and self.node_color.startswith('#'):
+                        if   isinstance(self.node_color, str) and len(self.node_color) == 7 and self.node_color.startswith('#'):
                             _node_color_ = self.node_color
                         elif self.color_by is not None and self.node_color == 'vary':
                             _node_color_ = node_color_lu[node]
@@ -1304,7 +1304,7 @@ class RTChordDiagramMixin(object):
                                      f'A {self.r-self.node_h} {self.r-self.node_h} 0 0 0 {xa0} {ya0}'
 
                         # should be refactored
-                        if   self.link_color is not None and type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                        if   self.link_color is not None and isinstance(self.link_color, str) and len(self.link_color) == 7 and self.link_color[0] == '#':
                             _link_color_ = self.link_color
                         elif self.link_color is None or self.color_by is None:
                             _link_color_ = self.rt_self.co_mgr.getTVColor('data', 'default')
@@ -1355,7 +1355,7 @@ class RTChordDiagramMixin(object):
                         xarrow1_pt,yarrow1_pt = self.xTarrow(b_avg), self.yTarrow(b_avg)
 
                         # should be refactored (2nd copy)
-                        if   self.link_color is not None and type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                        if   self.link_color is not None and isinstance(self.link_color, str) and len(self.link_color) == 7 and self.link_color[0] == '#':
                             _link_color_ = self.link_color
                         elif self.link_color is None or self.color_by is None:
                             _link_color_ = self.rt_self.co_mgr.getTVColor('data', 'default')
@@ -1998,7 +1998,7 @@ class RTChordDiagramMixin(object):
                                 svg.append(f'<line x1="{_pts_[i][0]}" y1="{_pts_[i][1]}" x2="{_pts_[i+1][0]}" y2="{_pts_[i+1][1]}" stroke="{_link_color_}" stroke-width="{link_w}" stroke-opacity="{self.link_opacity}" />')
                         else:
                             # should be refactored (3rd copy)
-                            if   self.link_color is not None and type(self.link_color) == str and len(self.link_color) == 7 and self.link_color[0] == '#':
+                            if   self.link_color is not None and isinstance(self.link_color, str) and len(self.link_color) == 7 and self.link_color[0] == '#':
                                 _link_color_ = self.link_color
                             elif self.link_color is None or self.color_by is None:
                                 _link_color_ = self.rt_self.co_mgr.getTVColor('data', 'default')
