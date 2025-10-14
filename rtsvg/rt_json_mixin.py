@@ -28,7 +28,7 @@ class RTJSONMixin(object):
     # jsonRepr() - create an RTJSON object from a JSON reference
     #
     def jsonRepr(self, json_ref):
-        if type(json_ref) == str:  json_ref = json.loads(json_ref)
+        if isinstance(json_ref, str): json_ref = json.loads(json_ref)
         return self.RTJSON(self, json_ref)
 
     #
@@ -44,7 +44,7 @@ class RTJSONMixin(object):
             self.fmto_abs   = {}
             self.absEOL     = {}
             self.starEOL    = {}
-            if type(_json_) == list:
+            if isinstance(_json_, list):
                 for i in range(len(_json_)):
                     self.__recursiveParseJSON__('$', '$', _json_[i])
             else:
@@ -73,28 +73,28 @@ class RTJSONMixin(object):
         # __recursiveParseJSON__()
         #
         def __recursiveParseJSON__(self, _path_abs_, _path_star_, _json_):
-            if type(_json_) == dict:
+            if isinstance(_json_, dict):
                 for k in _json_.keys():
                     _path_abs_child_, _path_star_child_  = _path_abs_+'.'+k, _path_star_+'.'+k
                     self.__updateFMTO__(_path_star_, _path_star_child_, False), self.__updateFMTO__(_path_abs_, _path_abs_child_, True)
                     self.__recursiveParseJSON__(_path_abs_child_, _path_star_child_, _json_[k])
-            elif type(_json_) == list:
+            elif isinstance(_json_, list):
                 _path_star_child_ = _path_star_+'[*]'
                 self.__updateFMTO__(_path_star_, _path_star_child_, False)
                 for i in range(len(_json_)):
                     _path_abs_child_  = _path_abs_+'['+str(i)+']'
                     self.__updateFMTO__(_path_abs_, _path_abs_child_, True)
                     self.__recursiveParseJSON__(_path_abs_child_, _path_star_child_, _json_[i])
-            elif type(_json_) == str:
+            elif isinstance(_json_, str):
                 self.__updateFMTO__(_path_star_, _path_star_+'-<str>', False), self.__updateFMTO__(_path_abs_, _path_abs_+f'-<str> {_json_}', True)
                 self.__updateEOL__(_path_abs_, _path_star_, _json_)
-            elif type(_json_) == int:
+            elif isinstance(_json_, int):
                 self.__updateFMTO__(_path_star_, _path_star_+'-<int>', False), self.__updateFMTO__(_path_abs_, _path_abs_+f'-<int> {_json_}', True)
                 self.__updateEOL__(_path_abs_, _path_star_, _json_)
-            elif type(_json_) == float:
+            elif isinstance(_json_, float):
                 self.__updateFMTO__(_path_star_, _path_star_+'-<float>', False), self.__updateFMTO__(_path_abs_, _path_abs_+f'-<float> {_json_}', True)
                 self.__updateEOL__(_path_abs_, _path_star_, _json_)
-            elif type(_json_) == bool:
+            elif isinstance(_json_, bool):
                 self.__updateFMTO__(_path_star_, _path_star_+'-<bool>', False), self.__updateFMTO__(_path_abs_, _path_abs_+f'-<bool> {_json_}', True)
                 self.__updateEOL__(_path_abs_, _path_star_, _json_)
             elif _json_ is None:

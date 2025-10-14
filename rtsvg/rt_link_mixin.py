@@ -305,7 +305,7 @@ class RTLinkMixin(object):
             # Apply node field transforms
             for _edge in self.relationships_orig:
                 for _node in _edge:
-                    if type(_node) == str:
+                    if isinstance(_node,  str):
                         if rt_self.isTField(_node) and rt_self.tFieldApplicableField(_node) in self.df.columns:
                             self.df,_throwaway = rt_self.applyTransform(self.df, _node)
                     else:
@@ -323,14 +323,14 @@ class RTLinkMixin(object):
             for _edge_ in self.relationships_orig:
                 _fm_ = _edge_[0]
                 _to_ = _edge_[1]
-                if type(_fm_) == tuple or type(_to_) == tuple:
+                if isinstance(_fm_, tuple) or isinstance(_to_, tuple):
                     new_fm, new_to = _fm_, _to_
 
-                    if type(_fm_) == tuple:
+                    if isinstance(_fm_, tuple):
                         new_fm = f'__fm{i}__'
                         self.df = self.rt_self.createConcatColumn(self.df, _fm_, new_fm)
 
-                    if type(_to_) == tuple:
+                    if isinstance(_to_, tuple):
                         new_to = f'__to{i}__'
                         self.df = self.rt_self.createConcatColumn(self.df, _to_, new_to)
 
@@ -361,7 +361,7 @@ class RTLinkMixin(object):
                     self.df = self.df.with_columns(pl.col(self.color_by).map_elements(lambda x: self.rt_self.co_mgr.getColor(x), return_dtype=pl.String).alias('__color_links__'))
 
             # Handle fixed color for nodes
-            if self.node_color is not None and type(self.node_color) is str and self.node_color.startswith('#') and len(self.node_color) == 7:
+            if self.node_color is not None and isinstance(self.node_color, str) and self.node_color.startswith('#') and len(self.node_color) == 7:
                 self.df = self.df.with_columns(pl.lit(self.node_color).alias('__color_nodes__'))
             
             # Make sure there's something for node colors
@@ -370,7 +370,7 @@ class RTLinkMixin(object):
                 self.df = self.df.with_columns(pl.lit(_co_).alias('__color_nodes__'))
 
             # Handle fixed color for links
-            if self.link_color is not None and type(self.link_color) is str and self.link_color.startswith('#') and len(self.link_color) == 7:
+            if self.link_color is not None and isinstance(self.link_color, str) and self.link_color.startswith('#') and len(self.link_color) == 7:
                 self.df = self.df.with_columns(pl.lit(self.link_color).alias('__color_links__'))
             
             # Make sures there's something for link colors
@@ -403,10 +403,10 @@ class RTLinkMixin(object):
         # - this controls which labels will be shown
         #
         def labelOnly(self,  label_set):
-            if label_set is None:        label_set = set()
-            if type(label_set) == list:  label_set = set(label_set)
-            if type(label_set) == str:   label_set = set([label_set])
-            self.label_only  = label_set
+            if label_set is None:           label_set = set()
+            if isinstance(label_set, list): label_set = set(label_set)
+            if isinstance(label_set, str):  label_set = set([label_set])
+            self.label_only = label_set
 
         #
         # drawLabels() - set the draw labels flag
@@ -599,7 +599,7 @@ class RTLinkMixin(object):
                     break
 
                 # Determine the points for each convex hull
-                if type(_first_value_) is list or type(_first_value_) is set: # convex_hull_lu[name] = list | set of node names
+                if isinstance(_first_value_, list) or isinstance(_first_value_, set): # convex_hull_lu[name] = list | set of node names
                     for convex_hull_name in self.convex_hull_lu:
                         possibles = {}
                         for node_str in self.convex_hull_lu[convex_hull_name]:
@@ -820,7 +820,7 @@ class RTLinkMixin(object):
         #
         def __renderLinks__(self):
             _sz_ = self.link_size_lu[self.link_size] if self.link_size in self.link_size_lu else 1.0
-            if type(self.link_size) == int or type(self.link_size) == float: _sz_ = self.link_size
+            if isinstance(self.link_size, int) or isinstance(self.link_size, float): _sz_ = self.link_size
 
             _set_ = set() # final set of SVG tags to append to the SVG array of strings
 
@@ -974,7 +974,7 @@ class RTLinkMixin(object):
             self.df_node = pl.concat(_dfs_)
 
             # Handle the node color dictionary ... not ideal here because we already did work on the node color... but no where else to really put it
-            if self.node_color is not None and type(self.node_color) == dict:
+            if self.node_color is not None and isinstance(self.node_color, dict):
                 _filled_ = {}
                 for k,v in self.node_color.items():
                     _color_     = v if len(v) == 7 and v[0] == '#' else self.rt_self.co_mgr.getColor(v)
@@ -1000,7 +1000,7 @@ class RTLinkMixin(object):
 
             # Create the node SVG
             if    self.node_size is None: _svg_strs_ = []
-            elif  self.node_size in self.node_size_lu or type(self.node_size) == int or type(self.node_size) == float:
+            elif  self.node_size in self.node_size_lu or isinstance(self.node_size, int) or isinstance(self.node_size, float):
                 _sz_         = self.node_size_lu[self.node_size] if self.node_size in self.node_size_lu else self.node_size
                 stroke_width = 1.0 if _sz_ > 3 else _sz_/2.0
                 self.df_node = self.df_node.with_columns(pl.lit(_sz_).alias('__sz__'))

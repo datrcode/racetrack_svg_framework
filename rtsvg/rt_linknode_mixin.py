@@ -52,12 +52,12 @@ class RTLinkNodeMixin(object):
         for i in range(len(relationships)):
             _relationship_ = relationships[i]
             _fm_ , _to_ = _relationship_[0], _relationship_[1]
-            if type(_relationship_[0]) == tuple:
+            if isinstance(_relationship_[0], tuple):
                 if len(_relationship_[0]) == 1: _fm_ = _relationship_[0][0]
                 else:
                     _fm_ = f'__fm{i}__'
                     df = self.createConcatColumn(df, _relationship_[0], _fm_)
-            if type(_relationship_[1]) == tuple:
+            if isinstance(_relationship_[1], tuple):
                 if len(_relationship_[1]) == 1: _to_ = _relationship_[1][0]
                 else:
                     _to_ = f'__to{i}__'
@@ -129,16 +129,16 @@ class RTLinkNodeMixin(object):
     def graphDictToDataFrame(self, d):
         fms, tos, cts = [], [], []
         for fm in d.keys():
-            fm_str = fm if (type(fm) == int or type(fm) == float) else str(fm)
-            if   type(d[fm]) == set:
+            fm_str = fm if (isinstance(fm, int) or isinstance(fm, float)) else str(fm)
+            if   isinstance(d[fm], set):
                 for to in d[fm]:
-                    to_str = to if (type(to) == int or type(to) == float) else str(to)
+                    to_str = to if (isinstance(to, int) or isinstance(to, float)) else str(to)
                     fms.append(fm_str), tos.append(to_str), cts.append(1)
-            elif type(d[fm]) == dict:
+            elif isinstance(d[fm], dict):
                 for to in d[fm].keys():
-                    to_str = to if (type(to) == int or type(to) == float) else str(to)
+                    to_str = to if (isinstance(to, int) or isinstance(to, float)) else str(to)
                     fms.append(fm_str), tos.append(to_str), cts.append(d[fm][to])
-            elif type(d[fm]) == list:
+            elif isinstance(d[fm], list):
                 for i in range(len(d[fm])):
                     to_str = str(d[fm][i])
                     fms.append(fm_str), tos.append(to_str), cts.append(1)
@@ -282,18 +282,16 @@ class RTLinkNodeMixin(object):
     #
     def nodeString(self, k):        
         # Figure out the actual string (or integer)
-        if type(k) == tuple or type(k) == list:
+        if isinstance(k, tuple) or isinstance(k, list):
             if len(k) == 1:
                 node_str = k[0]
             else:
                 node_str = str(k[0])
-                for i in range(1,len(k)):
-                    node_str = node_str + '|' + str(k[i])
+                for i in range(1,len(k)): node_str = node_str + '|' + str(k[i])
         else:
             node_str = k
         # Make sure it's a string
-        if type(node_str) != str:
-            node_str = str(node_str)
+        if isinstance(node_str, str) == False: node_str = str(node_str)
         return node_str
 
     #
@@ -302,19 +300,18 @@ class RTLinkNodeMixin(object):
     #
     def nodeStringAndFillPos(self, k, pos=None):
         # Figure out the actual string (or integer)
-        if type(k) == tuple or type(k) == list:
+        if isinstance(k, tuple) or isinstance(k, list):
             if len(k) == 1:
                 node_str = k[0]
             else:
                 node_str = str(k[0])
-                for i in range(1,len(k)):
-                    node_str = node_str + '|' + str(k[i])
+                for i in range(1,len(k)): node_str = node_str + '|' + str(k[i])
         else:
             node_str = k
 
         # Get or make the node's position
         if pos is not None:
-            if type(node_str) == str:
+            if isinstance(node_str, str):
                 if node_str not in pos.keys():
                     pos[node_str] = [random.random(),random.random()]
             else:
@@ -323,8 +320,7 @@ class RTLinkNodeMixin(object):
                     node_str = str(node_str)
                 else:
                     node_str = str(node_str)
-                    if node_str not in pos.keys():
-                        pos[node_str] = [random.random(),random.random()]
+                    if node_str not in pos.keys(): pos[node_str] = [random.random(),random.random()]
         return node_str
 
     #
@@ -802,13 +798,13 @@ class RTLinkNodeMixin(object):
         for _edge_ in relationships:
             _fm_ = _edge_[0]
             _to_ = _edge_[1]
-            if type(_fm_) == tuple or type(_to_) == tuple:
+            if isinstance(_fm_, tuple) or isinstance(_to_, tuple):
                 new_fm, new_to = _fm_, _to_
-                if type(_fm_) == tuple:
+                if isinstance(_fm_, tuple):
                     new_fm = f'__fm{i}__'
                     df = self.createConcatColumn(df, _fm_, new_fm)
 
-                if type(_to_) == tuple:
+                if isinstance(_to_, tuple):
                     new_to = f'__to{i}__'
                     df = self.createConcatColumn(df, _to_, new_to)
 
@@ -963,7 +959,7 @@ class RTLinkNodeMixin(object):
             # Apply node field transforms
             for _edge in self.relationships_orig:
                 for _node in _edge:
-                    if type(_node) == str:
+                    if isinstance(_node, str):
                         if rt_self.isTField(_node) and rt_self.tFieldApplicableField(_node) in self.df.columns:
                             self.df,_throwaway = rt_self.applyTransform(self.df, _node)
                     else:
@@ -981,14 +977,14 @@ class RTLinkNodeMixin(object):
             for _edge_ in self.relationships_orig:
                 _fm_ = _edge_[0]
                 _to_ = _edge_[1]
-                if type(_fm_) == tuple or type(_to_) == tuple:
+                if isinstance(_fm_, tuple) or isinstance(_to_, tuple):
                     new_fm, new_to = _fm_, _to_
 
-                    if type(_fm_) == tuple:
+                    if isinstance(_fm_, tuple):
                         new_fm = f'__fm{i}__'
                         self.df = self.rt_self.createConcatColumn(self.df, _fm_, new_fm)
 
-                    if type(_to_) == tuple:
+                    if isinstance(_to_, tuple):
                         new_to = f'__to{i}__'
                         self.df = self.rt_self.createConcatColumn(self.df, _to_, new_to)
 
@@ -1113,7 +1109,7 @@ class RTLinkNodeMixin(object):
                     break
 
                 # Determine the points for each convex hull
-                if type(_first_value_) is list or type(_first_value_) is set: # convex_hull_lu[name] = list | set of node names
+                if isinstance(_first_value_, list) or isinstance(_first_value_, set): # convex_hull_lu[name] = list | set of node names
                     for convex_hull_name in self.convex_hull_lu:
                         possibles = {}
                         for node_str in self.convex_hull_lu[convex_hull_name]:
@@ -1290,9 +1286,9 @@ class RTLinkNodeMixin(object):
             if self.link_size is not None and self.link_size != 'hidden':
                 link_to_dfs, link_to_xy = {}, {} # For small multiples (if enabled)
                 # Set the link size
-                if   type(self.link_size) == dict:
+                if   isinstance(self.link_size, dict):
                     _sz = 1
-                elif type(self.link_size) == int or type(self.link_size) == float:
+                elif isinstance(self.link_size, int) or isinstance(self.link_size, float):
                     _sz = self.link_size
                 elif self.link_size == 'small':
                     _sz = 1
@@ -1362,19 +1358,18 @@ class RTLinkNodeMixin(object):
                         if self.node_size is not None and self.node_size != 'hidden' and (self.link_arrow == True or self.link_shape == 'arrow'):
                             node_sz = self.__nodeSize__()
                             if node_sz > 1 and l > 5+2*node_sz: # node has to be larger than 1... and the distance between the two also needs to be large
-                                if   self.node_shape is None:                                            shape1 = 'circle'
-                                elif type(self.node_shape) == str:                                       shape1 = self.node_shape
-                                elif type(self.node_shape) == dict and fm_str in self.node_shape.keys(): shape1 = self.node_shape[fm_str]
-                                else:                                                                    shape1 = None
+                                if   self.node_shape is None:                                                shape1 = 'circle'
+                                elif isinstance(self.node_shape, str):                                       shape1 = self.node_shape
+                                elif isinstance(self.node_shape, dict) and fm_str in self.node_shape.keys(): shape1 = self.node_shape[fm_str]
+                                else:                                                                        shape1 = None
 
                                 x1_orig, y1_orig = x1, y1
-                                if shape1 is not None:
-                                    x1, y1 = self.rt_self.shapeAttachmentPoint(shape1, x1, y1, node_sz, x2, y2)
+                                if shape1 is not None: x1, y1 = self.rt_self.shapeAttachmentPoint(shape1, x1, y1, node_sz, x2, y2)
 
-                                if   self.node_shape is None:                                            shape2 = 'circle'
-                                elif type(self.node_shape) == str:                                       shape2 = self.node_shape
-                                elif type(self.node_shape) == dict and to_str in self.node_shape.keys(): shape2 = self.node_shape[to_str]
-                                else:                                                                    shape2 = None
+                                if   self.node_shape is None:                                                shape2 = 'circle'
+                                elif isinstance(self.node_shape, str):                                       shape2 = self.node_shape
+                                elif isinstance(self.node_shape, dict) and to_str in self.node_shape.keys(): shape2 = self.node_shape[to_str]
+                                else:                                                                        shape2 = None
 
                                 if shape2 is not None:
                                     x2, y2 = self.rt_self.shapeAttachmentPoint(shape2, x2, y2, node_sz, x1_orig, y1_orig)
@@ -1383,15 +1378,15 @@ class RTLinkNodeMixin(object):
                         if _sz is None:
                             _this_sz = self.link_size_min + (self.link_size_max - self.link_size_min) * (_weight_ - _sz_min) / (_sz_max - _sz_min)
                         else:
-                            if type(self.link_size) == dict:
+                            if isinstance(self.link_size, dict):
                                 if rel_tuple in self.link_size.keys():
                                     _str_ = self.link_size[rel_tuple]
-                                    if   type(_str_) == int or type(_str_) == float: _this_sz = _str_
-                                    elif _str_ == 'small':                           _this_sz = 1
-                                    elif _str_ == 'medium':                          _this_sz = 3
-                                    elif _str_ == 'large':                           _this_sz = 5
-                                    elif _str_ == 'nil':                             _this_sz = 0.2
-                                    else:                                            _this_sz = 0.0
+                                    if   isinstance(_str_, int) or isinstance(_str_, float): _this_sz = _str_
+                                    elif _str_ == 'small':                                   _this_sz = 1
+                                    elif _str_ == 'medium':                                  _this_sz = 3
+                                    elif _str_ == 'large':                                   _this_sz = 5
+                                    elif _str_ == 'nil':                                     _this_sz = 0.2
+                                    else:                                                    _this_sz = 0.0
                                 else: _this_sz = 0.0
                             else: _this_sz = _sz
 
@@ -1439,9 +1434,9 @@ class RTLinkNodeMixin(object):
                         # Determine stroke dash
                         stroke_dash = ''
                         if self.link_dash is not None:
-                            if   type(self.link_dash) == str:
+                            if   isinstance(self.link_dash, str):
                                 stroke_dash = f'stroke-dasharray="{self.link_dash}"'
-                            elif type(self.link_dash) == dict and rel_tuple in self.link_dash:
+                            elif isinstance(self.link_dash, dict) and rel_tuple in self.link_dash:
                                 stroke_dash = f'stroke-dasharray="{self.link_dash[rel_tuple]}"'
                             elif callable(self.link_dash):
                                 _return_value_ = self.link_dash(fm_str, to_str, (x1,y1), (x2,y2))
@@ -1587,11 +1582,11 @@ class RTLinkNodeMixin(object):
         # __nodeSize__() - return the node size
         #
         def __nodeSize__(self):
-            if   type(self.node_size) == int or type(self.node_size) == float:   _sz = self.node_size
-            elif self.node_size == 'small':                                      _sz = 2
-            elif self.node_size == 'medium':                                     _sz = 5
-            elif self.node_size == 'large':                                      _sz = 8
-            else:                                                                _sz = 1 # Vary
+            if   isinstance(self.node_size, int) or isinstance(self.node_size, float): _sz = self.node_size
+            elif self.node_size == 'small':                                            _sz = 2
+            elif self.node_size == 'medium':                                           _sz = 5
+            elif self.node_size == 'large':                                            _sz = 8
+            else:                                                                      _sz = 1 # Vary
             return _sz
 
         #
@@ -1648,7 +1643,7 @@ class RTLinkNodeMixin(object):
 
                             # iterate over the nodes
                             for k,k_df in gb:
-                                k_unwrapped = k[0] if type(k) is tuple and len(k) == 1 else k
+                                k_unwrapped = k[0] if isinstance(k, tuple) and len(k) == 1 else k
                                 node_str = self.rt_self.nodeStringAndFillPos(k, self.pos)
 
                                 # Prevents duplicate renderings
@@ -1677,7 +1672,7 @@ class RTLinkNodeMixin(object):
 
                                 else:
                                     # Determine the color
-                                    if   type(self.node_color) == dict:
+                                    if   isinstance(self.node_color, dict):
                                         if node_str in self.node_color.keys():
                                             _lu_co = self.node_color[node_str]
 
@@ -1729,8 +1724,8 @@ class RTLinkNodeMixin(object):
                                     if isinstance(self.node_shape, dict):
                                         # Create the Node Shape Key ... complicated by tuples... // field (column) version
                                         _node_shape_key = flds
-                                        if type(_node_shape_key) == list and len(_node_shape_key) == 1: _node_shape_key = _node_shape_key[0]
-                                        if type(_node_shape_key) == list and len(_node_shape_key) >  1: _node_shape_key = tuple(_node_shape_key)
+                                        if isinstance(_node_shape_key, list) and len(_node_shape_key) == 1: _node_shape_key = _node_shape_key[0]
+                                        if isinstance(_node_shape_key, list) and len(_node_shape_key) >  1: _node_shape_key = tuple(_node_shape_key)
 
                                         # Retrieve the node shape key
                                         if _node_shape_key in self.node_shape.keys():
@@ -1796,7 +1791,7 @@ class RTLinkNodeMixin(object):
                                             if self.node_labels_only: y_label = y + _sz + 1*self.txt_h
                                             else:                     y_label = y + _sz + 2*self.txt_h
                                             _strs_  = self.node_labels[k_str]
-                                            if type(_strs_) == str:
+                                            if isinstance(_strs_, str):
                                                 _str_render_ = _strs_
                                                 if self.node_label_max_w is not None:
                                                     _str_render_ = self.rt_self.cropText(_strs_, self.txt_h, self.node_label_max_w)

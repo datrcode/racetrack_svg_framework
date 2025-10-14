@@ -156,14 +156,14 @@ class RTLayoutsMixin(object):
         #
         # Leaf Node -- store the dimensions
         #
-        if type(my_node) == tuple:
+        if isinstance(my_node, tuple):
             widget_type       = str(my_node)
             leaf_dims[so_far] = (dims[widget_type]['min'],dims[widget_type]['pref'])
 
         #
         # Leaf Node -- that doesn't really have a tuple...
         #
-        elif type(my_node) == str:
+        elif isinstance(my_node, str):
             widget_type       = my_node
             leaf_dims[so_far] = (dims[widget_type]['min'],dims[widget_type]['pref'])
             
@@ -206,11 +206,11 @@ class RTLayoutsMixin(object):
         placement[so_far] = (x,y,w,h)
         
         # Leaf node... which should be a widget
-        if type(my_node) == tuple:
+        if isinstance(my_node, tuple):
             placement[so_far+'|'+my_node[0]] = (x+widget_h_gap,y+widget_v_gap,w-2*widget_h_gap,h-2*widget_v_gap)
 
         # Leaf node... which is a tuple with only one element.. i.e., just the element
-        elif type(my_node) == str:
+        elif isinstance(my_node, str):
             placement[so_far+'|'+my_node] = (x+widget_h_gap,y+widget_v_gap,w-2*widget_h_gap,h-2*widget_v_gap)
             
         # Interior node - requires processing the layout type and allocating spacing basd on the layout type 
@@ -508,12 +508,9 @@ class RTLayoutsMixin(object):
         # Determine type of specification...
         str_count,tup_count,unk_count = 0,0,0
         for k in spec.keys():
-            if type(k) == str:
-                str_count += 1
-            elif type(k) == tuple:
-                tup_count += 1
-            else:
-                unk_count += 1
+            if   isinstance(k, str):   str_count += 1
+            elif isinstance(k, tuple): tup_count += 1
+            else:                      unk_count += 1
         if    str_count >  0 and tup_count == 0 and unk_count == 0:
             return self.multiWidgetPanel(df,spec,widget_id,w,h,h_gap,v_gap,widget_h_gap,widget_v_gap,track_state,rt_reactive_html,**kwargs)
         elif  str_count == 0 and tup_count >  0 and unk_count == 0:
@@ -550,10 +547,8 @@ class RTLayoutsMixin(object):
         # ... time granularity
         widgets_set = set()
         for k,v in spec.items():
-            if type(v) == tuple:
-                widgets_set.add(v[0])
-            else:
-                widgets_set.add(v)
+            if isinstance(v, tuple): widgets_set.add(v[0])
+            else:                    widgets_set.add(v)
 
         if ('temporal_granularity' not in kwargs.keys()) and 'temporalBarChart' in widgets_set:
             if ('ts_field' not in kwargs.keys()) or kwargs['ts_field'] is None:
@@ -588,7 +583,7 @@ class RTLayoutsMixin(object):
                 
                 # If the spec_tuple is actually a tuple, they copy those parts into the params as well
                 # - these should override any passed from this method (the kwargs.copy())
-                if type(spec_tuple) == tuple:
+                if isinstance(spec_tuple, tuple):
                     widget_method = spec_tuple[0]
                     for k in spec_tuple[1].keys():
                         v = spec_tuple[1][k]
@@ -650,14 +645,10 @@ class RTLayoutsMixin(object):
         _tile_x_max,_tile_y_max = 1,1
         for xywh_tuple in spec.keys():
             _x0,_y0,_tile_w,_tile_h = xywh_tuple
-            if (_x0 + _tile_w) > _tile_x_max:
-                _tile_x_max = _x0 + _tile_w
-            if (_y0 + _tile_h) > _tile_y_max:
-                _tile_y_max = _y0 + _tile_h
-            if type(spec[xywh_tuple]) == tuple:
-                widgets_set.add(spec[xywh_tuple][0])
-            else:
-                widgets_set.add(spec[xywh_tuple])
+            if (_x0 + _tile_w) > _tile_x_max: _tile_x_max = _x0 + _tile_w
+            if (_y0 + _tile_h) > _tile_y_max: _tile_y_max = _y0 + _tile_h
+            if isinstance(spec[xywh_tuple], tuple): widgets_set.add(spec[xywh_tuple][0])
+            else:                                   widgets_set.add(spec[xywh_tuple])
         # - Allocate a representation
         cells = [[0 for i in range(_tile_x_max)] for j in range(_tile_y_max)] # cells[y][x]
         for _y in range(_tile_y_max):
@@ -668,8 +659,7 @@ class RTLayoutsMixin(object):
             _x0,_y0,_tile_w,_tile_h = xywh_tuple
             for _x in range(_x0,_x0+_tile_w):
                 for _y in range(_y0,_y0+_tile_h):
-                    if cells[_y][_x] != -1:
-                        raise Exception(f'gridBagLayout() - overlapping coordinate @ {_x},{_y}')
+                    if cells[_y][_x] != -1: raise Exception(f'gridBagLayout() - overlapping coordinate @ {_x},{_y}')
                     cells[_y][_x] = xywh_tuple
         
         # Determine the tile size -- make it into actual pixels... x-pixels-per-tile (xppt)
@@ -703,7 +693,7 @@ class RTLayoutsMixin(object):
                 
             # If the spec_tuple is actually a tuple, then copy those parts into the params as well
             # - these should override any passed from this method (the kwargs.copy())
-            if type(spec_tuple) == tuple:
+            if isinstance(spec_tuple, tuple):
                 widget_method = spec_tuple[0]
                 for k in spec_tuple[1].keys():
                     v = spec_tuple[1][k]
@@ -921,21 +911,16 @@ class RTComponentsLayout(RTComponent):
     # overlappingDataFrames() - Return Overlapping Dataframes
     #
     def overlappingDataFrames(self, to_intersect):
-        if type(to_intersect) == tuple: # assume it's a bounding box (x0,y0,x1,y1)
+        if isinstance(to_intersect, tuple): # assume it's a bounding box (x0,y0,x1,y1)
             _x0,_y0,_x1,_y1 = to_intersect
-            if _x0 > _x1:
-                _x0,_x1 = _x1,_x0
-            if _y0 > _y1:
-                _y0,_y1 = _y1,_y0
+            if _x0 > _x1: _x0,_x1 = _x1,_x0
+            if _y0 > _y1: _y0,_y1 = _y1,_y0
             to_intersect = Polygon([[_x0,_y0],[_x0,_y1],[_x1,_y1],[_x1,_y0]])
         _dfs = []
         for _poly in self.instance_lu.keys():
             if _poly.intersects(to_intersect):
                 adj_to_intersect = translate(to_intersect, -_poly.bounds[0], -_poly.bounds[1])
                 _df = self.instance_lu[_poly].overlappingDataFrames(adj_to_intersect)
-                if _df is not None and len(_df) > 0:
-                    _dfs.append(_df)
-        if len(_dfs) > 0:
-            return self.rt_self.concatDataFrames(_dfs)
-        else:
-            return None
+                if _df is not None and len(_df) > 0: _dfs.append(_df)
+        if len(_dfs) > 0: return self.rt_self.concatDataFrames(_dfs)
+        else:             return None
