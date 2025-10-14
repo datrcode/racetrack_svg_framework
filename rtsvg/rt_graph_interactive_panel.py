@@ -396,8 +396,8 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
 
         # Perform either substring or regex matching if selected
         if   method == 'substring': # SUBSTRING MATCHES
-            if type(selection) == str: _substrings_ = set([selection])
-            else:                      _substrings_ = set(selection)
+            if isinstance(selection, str): _substrings_ = set([selection])
+            else:                          _substrings_ = set(selection)
             _set_ = set()
             for _substring_ in _substrings_:
                 if ignore_case: _substring_ = _substring_.lower()
@@ -415,10 +415,10 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
             _set_ = set() # Not Implemented Yet
         else:                       # EXACT MATCHES
             # Fix up the selection so that it's definitely a set...
-            if    selection is None:                                 selection_as_set = set()
-            elif  type(selection) == list or type(selection) == set: selection_as_set = set(selection)
-            elif  type(selection) == dict:                           selection_as_set = set(selection.keys())
-            else:                                                    selection_as_set = set([selection])
+            if    selection is None:                                         selection_as_set = set()
+            elif  isinstance(selection, list) or isinstance(selection, set): selection_as_set = set(selection)
+            elif  isinstance(selection, dict):                               selection_as_set = set(selection.keys())
+            else:                                                            selection_as_set = set([selection])
 
             # Fix the case...
             if ignore_case: selection_as_set = {x.lower() for x in selection_as_set}

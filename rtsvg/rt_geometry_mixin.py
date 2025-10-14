@@ -889,7 +889,7 @@ class RTGeometryMixin(object):
             for to in tos: svg.append(f'<line x1="{to[0]}" y1="{to[1]}" x2="{to[0]}" y2="{to[1]+to[2]}" stroke="#ff0000" stroke-width="4.0" />')
         # Do the defs
         id_lu = {}
-        if type(colors) is dict and fm in colors:
+        if isinstance(colors, dict) and fm in colors:
             svg.append('<defs>')
             for to in tos:
                 if to in colors:
@@ -905,11 +905,11 @@ class RTGeometryMixin(object):
             _d_         = (to[0] - fm[0]) / 3.0 # push out for the bezier curve
             _fattening_ = 1.2                   # helps to fatten up the line if the geometry is too narrow
             d = f'M {fm[0]} {y} C {fm[0]+_d_} {y} {to[0]-_fattening_*_d_} {to[1]} {to[0]} {to[1]} L {to[0]} {to[1]+to[2]} C {to[0]-_d_} {to[1]+to[2]} {fm[0]+_fattening_*_d_} {y+to[2]} {fm[0]} {y+to[2]} Z'
-            if   colors is None:       _color_ = '#000000'
-            elif type(colors) is str:  _color_ = colors
-            elif type(colors) is dict and fm in colors and to in colors: _color_ = 'url(#'+id_lu[(fm, to)]+')'
-            elif type(colors) is dict and fm in colors:                  _color_ = colors[fm]
-            else:                                                        _color_ = '#000000'
+            if   colors is None:                                             _color_ = '#000000'
+            elif isinstance(colors, str):                                    _color_ = colors
+            elif isinstance(colors, dict) and fm in colors and to in colors: _color_ = 'url(#'+id_lu[(fm, to)]+')'
+            elif isinstance(colors, dict) and fm in colors:                  _color_ = colors[fm]
+            else:                                                            _color_ = '#000000'
             svg.append(f'<path d="{d}" fill="{_color_}" fill-opacity="{opacity}" stroke="none" stroke-width="0.5" />')
             y += to[2]
         return ''.join(svg)+'</svg>'
@@ -2767,10 +2767,9 @@ class XYQuadTree(object):
     # - if q is a set, the set will be iterated over and added as nbors
     #
     def __nbors__STRICT__(self, q):
-        if type(q) is set:
+        if isinstance(q, set):
             _set_ = set()
-            for _q_ in q:
-                _set_ = _set_ | set([_q_]) | self.__nbors__(_q_)
+            for _q_ in q: _set_ = _set_ | set([_q_]) | self.__nbors__(_q_)
             return _set_
         else:
             _set_ = set()
@@ -2805,10 +2804,9 @@ class XYQuadTree(object):
     # - if q is a set, the set will be iterated over and added as nbors
     #
     def __nbors__(self, q):
-        if type(q) is set:
+        if isinstance(q, set):
             _set_ = set()
-            for _q_ in q:
-                _set_ = _set_ | set([_q_]) | self.__nbors__(_q_)
+            for _q_ in q: _set_ = _set_ | set([_q_]) | self.__nbors__(_q_)
             return _set_
         else:
             _set_ = set()

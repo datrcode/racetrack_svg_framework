@@ -203,7 +203,7 @@ class RTColorManager:
         # Default method
         else:
             if s not in self.str_to_color_lu.keys():
-                if type(s) == str and len(s) == 7 and s[0] == '#' and self.__allhex__(s[1:]):
+                if isinstance(s, str) and len(s) == 7 and s[0] == '#' and self.__allhex__(s[1:]):
                     self.str_to_color_lu[s] = s
                 else:    
                     hc = self.rt_self.hashcode(s)
@@ -342,7 +342,7 @@ class RTColorManager:
     #
     def optimizeCategoricalColors(self, cats):
         cat_ordered = sorted(list(set(cats))) # want it to be the same
-        if type(cat_ordered[0]) is not str:
+        if isinstance(cat_ordered[0], str) == False:
             hc = self.rt_self.hashcode('|'.join([str(x) for x in cat_ordered])) & 0x00ffff
         else:
             hc = self.rt_self.hashcode('|'.join(cat_ordered)) & 0x00ffff

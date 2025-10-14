@@ -566,7 +566,7 @@ class RTGraphLayoutsMixin(object):
         if x0 > x1: x0, x1 = x1, x0
         if y0 > y1: y0, y1 = y1, y0
         dx, dy = float(x1-x0), float(y1-y0)
-        if type(nodes) is not list: nodes = list(nodes)
+        if isinstance(nodes, list) == False: nodes = list(nodes)
         if pos is None: pos = {}
         if   len(nodes) == 1:
             pos[nodes[0]] = (x0 + dx/2.0, y0 + dy/2.0)
@@ -602,8 +602,8 @@ class RTGraphLayoutsMixin(object):
             _degrees_ = g.degree(nodes)
             for node in nodes: 
                 _degrees_ = g.degree(node)
-                if type(_degrees_) == int: _sorter_.append((_degrees_,      node))
-                else:                      _sorter_.append((len(_degrees_), node))
+                if isinstance(_degrees_, int): _sorter_.append((_degrees_,      node))
+                else:                          _sorter_.append((len(_degrees_), node))
             _sorter_ = sorted(_sorter_, reverse=True)
 
             x_i, y_i = 0, 0
@@ -622,7 +622,7 @@ class RTGraphLayoutsMixin(object):
     # sunflowerSeedArrangement() - arrange a list of nodes in a sunflower arrangement
     #
     def sunflowerSeedArrangement(self, g, nodes, pos=None, xy=None, r_max=1.0):
-        if type(nodes) is not list: nodes = list(nodes)
+        if isinstance(nodes, list) == False: nodes = list(nodes)
         if xy is None: xy = (0,0)
         n = len(nodes)
 
@@ -631,8 +631,8 @@ class RTGraphLayoutsMixin(object):
         _degrees_ = g.degree(nodes)
         for node in nodes: 
             _degrees_ = g.degree(node)
-            if type(_degrees_) == int: _sorter_.append((_degrees_,      node))
-            else:                      _sorter_.append((len(_degrees_), node))
+            if isinstance(_degrees_, int): _sorter_.append((_degrees_,      node))
+            else:                          _sorter_.append((len(_degrees_), node))
         _sorter_ = sorted(_sorter_, reverse=True)
 
         if pos is None:  pos = {}
@@ -930,7 +930,7 @@ class RTGraphLayoutsMixin(object):
                         roots                 = None,  # root(s) to use... if not set, will be calculated
                         bounds_percent        = 0.1):  # for tree map positioning
         # Make sure root is a list
-        if roots is not None and type(roots) is not list: roots = list(roots)
+        if roots is not None and isinstance(roots, list) == False: roots = list(roots)
 
         # Separate graph into connected components
         _graph = nx.to_undirected(_graph)

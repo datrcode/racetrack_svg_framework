@@ -189,10 +189,8 @@ class RTHistogramMixin(object):
 
             # Make sure the bin_by is a list...
             bin_by = kwargs['bin_by']
-            if type(bin_by) != list: # Make it into a list for consistency
-                self.bin_by = [bin_by]
-            else:
-                self.bin_by = bin_by
+            if isinstance(bin_by, list) == False: self.bin_by = [bin_by]
+            else:                                 self.bin_by =  bin_by
 
             self.color_by           = kwargs['color_by']
             self.global_color_order = kwargs['global_color_order']
@@ -385,11 +383,12 @@ class RTHistogramMixin(object):
                 # Bin label... used for the id... and used for the labeling (if draw_labels is true)
                 if self.rt_self.isPandas(self.df):
                     px = max_bar_w * order.iloc[i] / max_group_by
-                    if type(order.index[i]) != list and type(order.index[i]) != tuple: bin_text = str(order.index[i])
-                    else:                                                              bin_text = ' | '.join([str(x) for x in order.index[i]])
+                    if (isinstance(order.index[i], list)  == False) and \
+                       (isinstance(order.index[i], tuple) == False): bin_text = str(order.index[i])
+                    else:                                            bin_text = ' | '.join([str(x) for x in order.index[i]])
 
                     _tuple_ = order.index[i]
-                    if type(_tuple_) != tuple: _tuple_ = (_tuple_, )
+                    if isinstance(_tuple_, tuple) == False: _tuple_ = (_tuple_, )
                     k_df = gb.get_group(_tuple_)
 
                     # k_df = gb.get_group(order.index[i]) # 2024-02-07 -- changed due to pandas warning...
@@ -572,10 +571,9 @@ class RTHistogramMixin(object):
                 # Width of the bar in pixels
                 if self.rt_self.isPandas(self.df):
                     px = max_bar_w * order.iloc[i] / max_group_by
-                    if type(order.index[i]) != list and type(order.index[i]) != tuple:
-                        bin_text = str(order.index[i])
-                    else:
-                        bin_text = ' | '.join([str(x) for x in order.index[i]])
+                    if isinstance(order.index[i], list)  == False and \
+                       isinstance(order.index[i], tuple) == False: bin_text = str(order.index[i])
+                    else:                                          bin_text = ' | '.join([str(x) for x in order.index[i]])
                 elif self.rt_self.isPolars(self.df):
                     px = max_bar_w * order['__count__'][i] / max_group_by
                     _list_ = []
