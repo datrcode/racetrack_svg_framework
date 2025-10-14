@@ -459,9 +459,9 @@ class RTOntology(object):
         for _uid_ in self.uid_lu:
             _lu_['uid'].append(_uid_)
             _lu_['t0'].append(str(self.uid_lu[_uid_][0]))
-            if        self.uid_lu[_uid_][0] is None: _lu_['t0_type'].append('none')
-            elif type(self.uid_lu[_uid_][0]) == str: _lu_['t0_type'].append('str')
-            elif type(self.uid_lu[_uid_][0]) == int: _lu_['t0_type'].append('int')
+            if   self.uid_lu[_uid_][0] is None:          _lu_['t0_type'].append('none')
+            elif isinstance(self.uid_lu[_uid_][0], str): _lu_['t0_type'].append('str')
+            elif isinstance(self.uid_lu[_uid_][0], int): _lu_['t0_type'].append('int')
             else: raise Exception(f'Unexpected type for "{self.uid_lu[_uid_][0]}" -- type is {type(self.uid_lu[_uid_][0])}')
 
             _lu_['t1'].append(self.uid_lu[_uid_][1])
@@ -661,7 +661,7 @@ class RTOntology(object):
             # Subject (Required)
             #
             _sbj_, _sbj_type_, _sbj_disp_ = pre_df['sbj'][i], s_type, s_disp
-            if type(_sbj_) == tuple:
+            if isinstance(_sbj_, tuple):
                 _sbj_type_ = _sbj_[1] if len(_sbj_) > 1 else s_type
                 _sbj_disp_ = _sbj_[2] if len(_sbj_) > 2 else s_disp
                 _sbj_      = _sbj_[0]
@@ -678,7 +678,7 @@ class RTOntology(object):
             # Object (Required)
             #
             _obj_, _obj_type_, _obj_disp_ = pre_df['obj'][i], o_type, o_disp
-            if type(_obj_) == tuple:
+            if isinstance(_obj_, tuple):
                 _obj_type_ = _obj_[1] if len(_obj_) > 1 else o_type
                 _obj_disp_ = _obj_[2] if len(_obj_) > 2 else o_disp
                 _obj_      = _obj_[0]
@@ -707,7 +707,7 @@ class RTOntology(object):
             #
             if g_values is not None:
                 _grp_, _grp_type_, _grp_disp_ = pre_df['grp'][i], g_type, g_disp
-                if type(_grp_) == tuple:
+                if isinstance(_grp_, tuple):
                     _grp_type_ = _grp_[1] if len(_grp_) > 1 else g_type
                     _grp_disp_ = _grp_[2] if len(_grp_) > 2 else g_disp
                     _grp_      = _grp_[0]
@@ -771,8 +771,8 @@ class RTOntology(object):
     # - only three are required -- sbj, vrb, obj
     #
     def bufferTripleToAddLater(self, sbj, vrb, obj, grp=None, src=None):
-        if type(sbj) is not int: raise Exception(f'bufferTripleToAddLater() - sbj is {type(sbj)}')
-        if type(obj) is not int: raise Exception(f'bufferTripleToAddLater() - obj is {type(obj)}')
+        if isinstance(sbj, int) == False: raise Exception(f'bufferTripleToAddLater() - sbj is {type(sbj)}')
+        if isinstance(obj, int) == False: raise Exception(f'bufferTripleToAddLater() - obj is {type(obj)}')
 
         # Create a unique id for the triple
         my_uid = 100_000 + len(self.uid_lu.keys())
@@ -867,14 +867,14 @@ class RTOntology(object):
         for _node_ in subset: 
             if self.uid_lu[_node_][0] is not None:
                 _tuple_ = self.uid_lu[_node_]
-                if type(_tuple_[0]) == int and _tuple_[2] == 'uniq': _node_labels_[_node_] = str(_tuple_[1])
-                else:                                                _node_labels_[_node_] = str(_tuple_[0])
+                if isinstance(_tuple_[0], int) and _tuple_[2] == 'uniq': _node_labels_[_node_] = str(_tuple_[1])
+                else:                                                    _node_labels_[_node_] = str(_tuple_[0])
         return _node_labels_
 
     # parse() - parse json into ontology via specification
     def parse(self, jlist):
         spec_to_parse_count = {}
-        if type(jlist) != list: jlist = [jlist]
+        if isinstance(jlist, list) == False: jlist = [jlist]
         _dfs_ = []
         for j in jlist:
             for l in self.xform_spec_lines:

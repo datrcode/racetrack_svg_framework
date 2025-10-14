@@ -347,8 +347,8 @@ class RTPieChartMixin(object):
                 deg, not_rendered = 0, []
                 my_intersection = self.rt_self.__myIntersection__(self.global_color_order['index'], counter[self.color_by])
                 for cb_bin in my_intersection:
-                    if type(cb_bin) != tuple: cb_bin_as_tuple = (cb_bin,)
-                    else:                     cb_bin_as_tuple = cb_bin
+                    if isinstance(cb_bin, tuple) == False: cb_bin_as_tuple = (cb_bin,)
+                    else:                                  cb_bin_as_tuple =  cb_bin
                     my_color = cb_bin
                     my_total = counter.filter(pl.col(self.color_by) == cb_bin)['__count__'][0]
                     # Replicated arc code
@@ -557,10 +557,8 @@ class RTPieChartMixin(object):
             _dfs = []
             for _poly in self.geom_to_df.keys():
                 if _poly.intersects(to_intersect):
-                    if type(self.geom_to_df[_poly]) == list:
-                        _dfs.extend(self.geom_to_df[_poly])
-                    else:
-                        _dfs.append(self.geom_to_df[_poly])
+                    if isinstance(self.geom_to_df[_poly], list): _dfs.extend(self.geom_to_df[_poly])
+                    else:                                        _dfs.append(self.geom_to_df[_poly])
             if len(_dfs) > 0:
                 return self.rt_self.concatDataFrames(_dfs)
             else:

@@ -95,19 +95,19 @@ class RTLinkNodeShortestMixin(object):
             self.time_lu             = {'link_labels':0.0}
 
             # Fix up the pairs / make sure it's a list
-            if type(self.pairs) != list: self.pairs = [self.pairs]
+            if isinstance(self.pairs, list) == False: self.pairs = [self.pairs]
 
             # If either from or to are tuples, concat them together... // could improve a little by ensuring any same tuples are not created more than once
             _ts_ = time.time()
             new_relationships = []
             for i in range(len(self.relationships)):
                 _fm_ = self.relationships[i][0]
-                if type(_fm_) == list or type(_fm_) == tuple:
+                if isinstance(_fm_, list) or isinstance(_fm_, tuple):
                     new_fm = f'__fmcat{i}__'
                     self.df = self.rt_self.createConcatColumn(self.df, _fm_, new_fm)
                     _fm_ = new_fm
                 _to_ = self.relationships[i][1]
-                if type(_to_) == list or type(_to_) == tuple:
+                if isinstance(_to_, list) or isinstance(_to_, tuple):
                     new_to = '__tocat{i}__'
                     self.df = self.rt_self.createConcatColumn(self.df, _to_, new_to)
                     _to_ = new_to
@@ -118,14 +118,14 @@ class RTLinkNodeShortestMixin(object):
 
             self.node_size_px = 3
             if self.node_size is not None:
-                if type(self.node_size) == int or type(self.node_size) == float: self.node_size_px = self.node_size
+                if isinstance(self.node_size, int) or isinstance(self.node_size, float): self.node_size_px = self.node_size
                 elif self.node_size == 'small':  self.node_size_px = 2
                 elif self.node_size == 'medium': self.node_size_px = 4
                 elif self.node_size == 'large':  self.node_size_px = 6
             
             self.link_size_px = 2
             if self.link_size is not None:
-                if type(self.link_size) == int or type(self.link_size) == float: self.link_size_px = self.link_size
+                if isinstance(self.link_size, int) or isinstance(self.link_size, float): self.link_size_px = self.link_size
                 elif self.link_size == 'small':  self.link_size_px = 1
                 elif self.link_size == 'medium': self.link_size_px = 2
                 elif self.link_size == 'large':  self.link_size_px = 3
