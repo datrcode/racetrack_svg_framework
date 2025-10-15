@@ -37,7 +37,7 @@ class PolarsSpringLayoutOpt(object):
                  pos          = None, 
                  static_nodes = None, 
                  iterations   = None,
-                 t            = 4.0,
+                 t            = 5.0,
                  C            = 0.2,
                  W            = 256,
                  H            = 256):
@@ -161,12 +161,14 @@ class PolarsSpringLayoutOpt(object):
                                          pl.when(pl.col('dy').abs() > t).then(pl.lit(t)).otherwise(pl.col('dy')).alias('ymag')) \
                            .with_columns((pl.when(pl.col('s')).then(pl.col('x')).otherwise(pl.col('x') + pl.col('xmag')*pl.col('dx')/pl.col('d'))).alias('x'),
                                          (pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') + pl.col('ymag')*pl.col('dy')/pl.col('d'))).alias('y')) \
-                           .drop({'dx','dy','d','xmag','ymag'})
+                           .drop({'dx','dy','d','xmag','ymag'}) \
+                           .with_columns((W*(pl.col('x') - pl.col('x').min())/(pl.col('x').max() - pl.col('x').min())).alias('x'), 
+                                         (H*(pl.col('y') - pl.col('y').min())/(pl.col('y').max() - pl.col('y').min())).alias('y'))
             t13 = time.time()
             self.time_lu['adjust_iteration'] += t13 - t12
             
             # Cool the temperature
-            t *= 0.98
+            t *= 0.999
 
         self.pos_history.append(df_pos)
 
