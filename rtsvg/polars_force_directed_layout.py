@@ -91,13 +91,13 @@ class PolarsForceDirectedLayout(object):
                             .join(self.df_dist, left_on=['node', 'node_right'], right_on=['fm','to']) \
                             .with_columns(pl.col('t').pow(self.k).alias('t_k')) \
                             .with_columns(pl.when(pl.col('d') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('d')).alias('d'),
-                                            pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('w')) \
+                                          pl.when(pl.col('t') < 0.001).then(pl.lit(0.001)).otherwise(pl.col('t')).alias('w')) \
                             .with_columns(((2.0*__dx__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('xadd'),
-                                            ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('yadd'),
-                                            (((pl.col('t') - pl.col('d'))**2)/pl.col('t_k')).alias('stress')) \
+                                          ((2.0*__dy__*(1.0 - pl.col('t')/pl.col('d')))/pl.col('t_k')).alias('yadd'),
+                                          (((pl.col('t') - pl.col('d'))**2)/pl.col('t_k')).alias('stress')) \
                             .group_by(['node','x','y','s']).agg(pl.col('xadd').sum(), pl.col('yadd').sum(), pl.col('stress').sum()/len(self.g_connected.nodes())) \
                             .with_columns(pl.when(pl.col('s')).then(pl.col('x')).otherwise(pl.col('x') - mu * pl.col('xadd')).alias('x'),
-                                            pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') - mu * pl.col('yadd')).alias('y')) \
+                                          pl.when(pl.col('s')).then(pl.col('y')).otherwise(pl.col('y') - mu * pl.col('yadd')).alias('y')) \
                             .drop(['xadd','yadd'])
             # Keep track of the animation sequence
             self.df_anim.append(df_pos)
