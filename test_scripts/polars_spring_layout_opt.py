@@ -45,6 +45,7 @@ class PolarsSpringLayoutOpt(object):
         area = W * H
         k    = C * sqrt(area/len(g.nodes()))
 
+        # State to determine overall performance
         self.time_lu = {'dist_df_create'       : 0.0, 
                         'pos_df_create'        : 0.0,
                         'cross_join_iteration' : 0.0,
@@ -53,6 +54,7 @@ class PolarsSpringLayoutOpt(object):
                         'sum_iteration'        : 0.0,
                         'adjust_iteration'     : 0.0,
                         'copy_pos'             : 0.0,}
+        self.repulse_rows = []
 
         # Create the distance dataframe from the graph
         t0 = time.time()
@@ -95,14 +97,15 @@ class PolarsSpringLayoutOpt(object):
             # Dataframe describing one off tiles
             df_around = pl.DataFrame({'xi_offset':[-1,  0,  1, -1, 0, 1, -1, 0, 1],
                                       'yi_offset':[-1, -1, -1,  0, 0, 0,  1, 1, 1]})
-            # Calculate the tile xi, yi based on the 2*k parameter
-            # Determine which tiles a node needs
-            # Join those tiles in (and remove self-to-self edges)
-            # Remove all the fields related to tiles
-            # Remove edges (these are not repulsed)
-            # Calculate the distance squared
-            # filter out the ones that are too far and calculate distance
-            # Proceed with the original calculation (and using the modified formula)
+            # Next set of commands do the following:
+            # - Calculate the tile xi, yi based on the 2*k parameter
+            # - Determine which tiles a node needs
+            # - Join those tiles in (and remove self-to-self edges)
+            # - Remove all the fields related to tiles
+            # - Remove edges (these are not repulsed)
+            # - Calculate the distance squared
+            # - filter out the ones that are too far and calculate distance
+            # - Proceed with the original calculation (and using the modified formula)
             df_repulse = df_pos.with_columns(((pl.col('x') - pl.col('x').min())//(2 * k)).cast(pl.Int32).alias('xi'),
                                              ((pl.col('y') - pl.col('y').min())//(2 * k)).cast(pl.Int32).alias('yi')) \
                                .join(df_around, how='cross') \
@@ -120,6 +123,7 @@ class PolarsSpringLayoutOpt(object):
                                    .with_columns((((k**2)/pl.col('d'))*(2.0 * k - pl.col('d'))).alias('f_r')) \
                                    .with_columns(((__dx__/pl.col('d')) * pl.col('f_r')).alias('disp_x'),
                                                  ((__dy__/pl.col('d')) * pl.col('f_r')).alias('disp_y'))
+            self.repulse_rows.append(len(df_repulse))
             t7 = time.time()
             self.time_lu['repulse_iteration'] += t7 - t6
 
@@ -137,15 +141,10 @@ class PolarsSpringLayoutOpt(object):
             t9 = time.time()
             self.time_lu['attract_iteration'] += t9 - t8
 
-            # Sum them up
+            # Sum them up (but prepare the same columns for both dataframes columns)
             t10 = time.time()
-            #print(df_repulse.columns, df_attract.columns)
-            #df_repulse.columns = ['node', 'x', 'y', 'node_right', 'x_right', 'y_right', 'd_squared', 'd', 'f_r', 'disp_x', 'disp_y'] 
-            #df_attract.columns = ['node',           'node_right',                               't', 'd', 'f_a', 'disp_x', 'disp_y', 'disp_x_right', 'disp_y_right']
             df_repulse = df_repulse.drop(['x','y','node_right','x_right','y_right','d_squared',    'd','f_r'])
             df_attract = df_attract.drop([                                                     't','d','f_a'])
-
-
             df_sums = pl.concat([df_repulse,
                                  df_attract.drop({'node_right','disp_x_right','disp_y_right'}),
                                  df_attract.drop({'node',      'disp_x',      'disp_y'}).rename({'node_right':'node','disp_x_right':'disp_x','disp_y_right':'disp_y'})]) \

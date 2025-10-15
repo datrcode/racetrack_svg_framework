@@ -44,6 +44,7 @@ class PolarsSpringLayout(object):
         area = W * H
         k    = C * sqrt(area/len(g.nodes()))
 
+        # Performance information
         self.time_lu = {'dist_df_create'       : 0.0, 
                         'pos_df_create'        : 0.0,
                         'cross_join_iteration' : 0.0,
@@ -52,6 +53,7 @@ class PolarsSpringLayout(object):
                         'sum_iteration'        : 0.0,
                         'adjust_iteration'     : 0.0,
                         'copy_pos'             : 0.0,}
+        self.repulse_rows = []
 
         # Create the distance dataframe from the graph
         t0 = time.time()
@@ -97,6 +99,7 @@ class PolarsSpringLayout(object):
                                  .with_columns(((k**2)/pl.col('d')).alias('f_r')) \
                                  .with_columns(((__dx__/pl.col('d')) * pl.col('f_r')).alias('disp_x'),
                                                ((__dy__/pl.col('d')) * pl.col('f_r')).alias('disp_y'))
+            self.repulse_rows.append(len(df_repulse))
             t7 = time.time()
             self.time_lu['repulse_iteration'] += t7 - t6
 
