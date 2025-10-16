@@ -63,7 +63,7 @@ class RTShapesMixin(object):
                           stroke_width = None,  # none, float, or pl.col()
                           opacity      = None): # none, float, or pl.col()
 
-        if type(sz) is float:
+        if isinstance(sz, float):
             if   shape == 'square':    _op_ = [pl.lit('<rect x="'),    x-sz, pl.lit('" y="'),  y-sz, pl.lit(f'" width="{2*sz}" height="{2*sz}"')]
             elif shape == 'triangle':  _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y-sz, pl.lit(f' l {sz} {2*sz} l {-2*sz} 0 z"')]
             elif shape == 'utriangle': _op_ = [pl.lit('<path d="M '),  x,    pl.lit(' '),      y+sz, pl.lit(f' l {-sz} {-2*sz} l {2*sz} 0 z"')]
@@ -81,17 +81,17 @@ class RTShapesMixin(object):
             else:                      _op_ = [pl.lit('<circle cx="'), x,    pl.lit('" cy="'),    y, pl.lit('" r="'),       sz, pl.lit('"')]
 
         if fill is not None:
-             if type(fill) is str:        _op_.append(pl.lit(f' fill="{fill}"'))
+             if isinstance(fill, str):    _op_.append(pl.lit(f' fill="{fill}"'))
              else:                        _op_.extend([pl.lit(f' fill="'), fill, pl.lit('"')])
         if stroke is not None:
-             if type(stroke) is str: _op_.append(pl.lit(f' stroke="{stroke}"'))
-             else:                      _op_.extend([pl.lit(f' stroke="'), stroke, pl.lit('"')])
+             if isinstance(stroke, str):  _op_.append(pl.lit(f' stroke="{stroke}"'))
+             else:                        _op_.extend([pl.lit(f' stroke="'), stroke, pl.lit('"')])
         if stroke_width is not None:
-             if type(stroke_width) is float: _op_.append(pl.lit(f' stroke-width="{stroke_width}"'))
-             else:                           _op_.extend([pl.lit(f' stroke-width="'), stroke_width, pl.lit('"')])
+             if isinstance(stroke_width, float): _op_.append(pl.lit(f' stroke-width="{stroke_width}"'))
+             else:                               _op_.extend([pl.lit(f' stroke-width="'), stroke_width, pl.lit('"')])
         if opacity is not None:
-             if type(opacity) is float: _op_.append(pl.lit(f' opacity="{opacity}"'))
-             else:                      _op_.extend([pl.lit(f' opacity="'), opacity, pl.lit('"')])
+             if isinstance(opacity, float): _op_.append(pl.lit(f' opacity="{opacity}"'))
+             else:                          _op_.extend([pl.lit(f' opacity="'), opacity, pl.lit('"')])
         
         _op_.append(pl.lit('/>'))
 

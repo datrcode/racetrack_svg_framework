@@ -99,11 +99,11 @@ class RTSpreadLinesMixin(object):
             if self.count_by is not None: _all_columns_.append(self.count_by)
             for _relationship_ in self.relationships:
                 _fm_, _to_ = _relationship_[0], _relationship_[1]
-                if   type(_fm_) is str: _all_columns_.append(_fm_)
-                elif type(_fm_) is tuple:
+                if   isinstance(_fm_, str): _all_columns_.append(_fm_)
+                elif isinstance(_fm_, tuple):
                     for i in range(len(_fm_)): _all_columns_.append(_fm_[i])
-                if   type(_to_) is str: _all_columns_.append(_to_)
-                elif type(_to_) is tuple:
+                if   isinstance(_to_, str): _all_columns_.append(_to_)
+                elif isinstance(_to_, tuple):
                     for i in range(len(_to_)): _all_columns_.append(_to_[i])
             # Transform the fields
             self.df, _new_columns_ = self.rt_self.transformFieldListAndDataFrame(self.df, _all_columns_)
@@ -120,19 +120,19 @@ class RTSpreadLinesMixin(object):
             _new_relationships_ = []
             for _relationship_ in self.relationships:
                 _fm_, _to_ = _relationship_[0], _relationship_[1]
-                if   type(_fm_) is str: 
+                if   isinstance(_fm_, str): 
                     _fm_ = _new_columns_[col_i]
                     col_i += 1
-                elif type(_fm_) is tuple:
+                elif isinstance(_fm_, tuple):
                     as_list = []
                     for i in range(len(_fm_)):
                         as_list.append(_new_columns_[col_i])                    
                         col_i += 1
                     _fm_ = tuple(as_list)
-                if   type(_to_) is str: 
+                if   isinstance(_to_, str): 
                     _to_ = _new_columns_[col_i]
                     col_i += 1
-                elif type(_to_) is tuple:
+                elif isinstance(_to_, tuple):
                     as_list = []
                     for i in range(len(_to_)): 
                         as_list.append(_new_columns_[col_i])
@@ -154,10 +154,10 @@ class RTSpreadLinesMixin(object):
                 _fm_, _to_ = self.relationships[i]
                 new_fm = f'__fm{i}__'
                 new_to = f'__to{i}__'
-                if type(_fm_) is str: self.df = self.df.with_columns(pl.col(_fm_).alias(new_fm))
-                else:                 self.df = self.rt_self.createConcatColumn(self.df, _fm_, new_fm)
-                if type(_to_) is str: self.df = self.df.with_columns(pl.col(_to_).alias(new_to))
-                else:                 self.df = self.rt_self.createConcatColumn(self.df, _to_, new_to)
+                if isinstance(_fm_, str): self.df = self.df.with_columns(pl.col(_fm_).alias(new_fm))
+                else:                     self.df = self.rt_self.createConcatColumn(self.df, _fm_, new_fm)
+                if isinstance(_to_, str): self.df = self.df.with_columns(pl.col(_to_).alias(new_to))
+                else:                     self.df = self.rt_self.createConcatColumn(self.df, _to_, new_to)
                 new_relationships.append((new_fm, new_to))
             self.relationships = new_relationships
 
@@ -170,8 +170,8 @@ class RTSpreadLinesMixin(object):
             self.relationships        = kwargs['relationships']
 
             self.node_focus           = kwargs['node_focus']
-            if   type(self.node_focus) is     list: self.node_focus = set(self.node_focus)
-            elif type(self.node_focus) is not set:  self.node_focus = set([self.node_focus])
+            if   isinstance(self.node_focus, list):          self.node_focus = set(self.node_focus)
+            elif isinstance(self.node_focus, set) == False:  self.node_focus = set([self.node_focus])
 
             self.only_render_nodes    = kwargs['only_render_nodes']
             self.ts_field             = self.rt_self.guessTimestampField(self.df) if kwargs['ts_field'] is None else kwargs['ts_field']
@@ -718,10 +718,10 @@ class RTSpreadLinesMixin(object):
 
         # __nodeColor__() - determine the color of a node... still need to do "vary"
         def __nodeColor__(self, _node_):
-            if   self.node_color is None:                                      _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
-            elif self.node_color == 'node':                                    _color_ = self.rt_self.co_mgr.getColor(_node_)
-            elif type(self.node_color) is dict and _node_ in self.node_color:  _color_ = self.rt_self.getColor(self.node_color[_node_])
-            else:                                                              _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
+            if   self.node_color is None:                                          _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
+            elif self.node_color == 'node':                                        _color_ = self.rt_self.co_mgr.getColor(_node_)
+            elif isinstance(self.node_color, dict) and _node_ in self.node_color:  _color_ = self.rt_self.getColor(self.node_color[_node_])
+            else:                                                                  _color_ = self.rt_self.co_mgr.getTVColor('axis','major')
             return _color_
 
         #
@@ -1064,6 +1064,6 @@ class RTSpreadLinesMixin(object):
 
         def setNodeFocus(self, node_focus):
             self.node_focus = node_focus
-            if   type(self.node_focus) is list: self.node_focus = set(self.node_focus)
-            elif type(self.node_focus) is not set: self.node_focus = set([self.node_focus])
+            if   isinstance(self.node_focus, list):         self.node_focus = set(self.node_focus)
+            elif isinstance(self.node_focus, set) == False: self.node_focus = set([self.node_focus])
             self.invalidateRender()

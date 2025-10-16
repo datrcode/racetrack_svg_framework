@@ -951,7 +951,7 @@ class RTTextMixin(object):
                              spacing          = 16,
                              opacity          = 0.8,
                              w                = 1280):
-        if type(text_summaries) == str:
+        if isinstance(text_summaries, str):
             text_summaries = {'Default':text_summaries}
         if   methodology == "sentence_embeddings":
             return self.__textCompareSummaries__sentence_embeddings__(text_main, text_summaries, embed_fn, main_txt_h, summary_txt_h, spacing, opacity, w)
@@ -1686,12 +1686,10 @@ class RTTextMixin(object):
                                              w):
         # Geometry & Parameter Evaluation
         main_w = summary_w = (w - spacing)/2
-        if type(text_summaries) == str:
-            text_summaries = {'Default':text_summaries}
+        if isinstance(text_summaries, str): text_summaries = {'Default':text_summaries}
 
         # Create the model if necessary
-        if model is None:
-            model,tokenizer,device = self.__textTrainBertModel__(text_main)
+        if model is None: model,tokenizer,device = self.__textTrainBertModel__(text_main)
 
         # Put the two last functions together for input highlights text input...
         def highlightsForText(_txt):
@@ -1941,18 +1939,18 @@ class RTTextBlock(object):
 
         # Draw the highlights
         for k in lu.keys():
-            if   type(k) == tuple:
+            if   isinstance(k, tuple):
                 if index_length_mode:  _poly        = self.spanGeometry(k[0],k[0] + k[1])
                 else:                  _poly        = self.spanGeometry(k[0],k[1])
                 _poly_scaled = affinity.scale(_poly,xfact=scale,yfact=scale,origin=(0,0,0))
                 _co          = self.rt_self.co_mgr.getColor(lu[k])
                 svg.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_scaled)}" fill-opacity="{opacity}" fill="{_co}" />')
-            elif type(k) == str:
+            elif isinstance(k, str):
                 re_match = re.findall(k,self.txt)
                 if re_match is not None and len(re_match) > 0:
                     i = 0
                     for _match in re_match:
-                        if type(_match) == tuple: _match = _match[0]
+                        if isinstance(_match, tuple): _match = _match[0]
                         i = self.txt.index(_match,i)
                         j = i + len(_match)
                         _poly        = self.spanGeometry(i,j)
@@ -1977,16 +1975,16 @@ class RTTextBlock(object):
             _co = lu[k]
             if _co.startswith('#') == False or len(_co) != 7: # If it's not a hex hash color string... then look it up...
                 _co = self.rt_self.co_mgr.getColor(_co)
-            if   type(k) == tuple:
+            if   isinstance(k, tuple):
                 if index_length_mode: _poly = self.spanGeometry(k[0],k[0] + k[1])
                 else:                 _poly = self.spanGeometry(k[0],k[1])
                 svg_underlay += f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly)}" fill="{_co}" fill-opacity="{opacity}" />'
-            elif type(k) == str:
+            elif isinstance(k, str):
                 re_match = re.findall(k,self.txt)
                 if re_match is not None and len(re_match) > 0:
                     i = 0
                     for _match in re_match:
-                        if type(_match) == tuple: _match = _match[0]
+                        if isinstance(_match, tuple): _match = _match[0]
                         i = self.txt.index(_match,i)
                         j = i + len(_match)
                         _poly = self.spanGeometry(i,j)
@@ -2040,16 +2038,16 @@ class RTTextBlock(object):
                 _co = self.rt_self.co_mgr.getTVColor('data','default')
             if _co.startswith('#') == False or len(_co) != 7: # If it's not a hex hash color string... then look it up...
                 _co = self.rt_self.co_mgr.getColor(_co)
-            if   type(k) == tuple:
+            if   isinstance(k, tuple):
                 if index_length_mode: i0, i1 = k[0], k[0] + k[1]
                 else:                 i0, i1 = k
                 svg_underlay += self.__underlineSpan__(i0, i1, _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
-            elif type(k) == str:
+            elif isinstance(k, str):
                 re_match = re.findall(k,self.txt)
                 if re_match is not None and len(re_match) > 0:
                     i = 0
                     for _match in re_match:
-                        if type(_match) == tuple: _match = _match[0]
+                        if isinstance(_match, tuple): _match = _match[0]
                         i = self.txt.index(_match,i)
                         j = i + len(_match)
                         svg_underlay += self.__underlineSpan__(i, j, _co=_co, strikethrough=strikethrough, y_offset=y_offset, _stroke_w=underline_stroke_w)
@@ -2456,11 +2454,11 @@ class RTTextBlock(object):
                 if len(_color_str_) == 7 and _color_str_[0] == '#': _color_ = _color_str_
                 else:                                               _color_ = self.rt_self.co_mgr.getColor(_color_str_) 
                 # Determine the type of span
-                if   type(_span_) is tuple:
+                if   isinstance(_span_, tuple):
                     _poly_ = _tb_.spanGeometry(_span_[0],_span_[1])
                     svg_this.append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_)}" fill="{_color_}" opacity="{opacity}" />')
                     svg_all. append(f'<path d="{self.rt_self.shapelyPolygonToSVGPathDescription(_poly_)}" fill="{_color_}" opacity="{opacity_all}" />')
-                elif type(_span_) is str:
+                elif isinstance(_span_, str):
                     i = 0
                     while _span_ in _tb_.txt[i:]:
                         _index_ = _tb_.txt.index(_span_, i)
@@ -2490,8 +2488,9 @@ class RTTextBlock(object):
             for highlight_location in highlight_locations:
                 if highlight_location not in location_lookups:
                     location_lookups[highlight_location] = []
-                    if   type(highlight_location) is tuple: location_lookups[highlight_location].append(highlight_location) # it's already a span
-                    elif type(highlight_location) is str:
+                    if   isinstance(highlight_location, tuple): 
+                        location_lookups[highlight_location].append(highlight_location) # it's already a span
+                    elif isinstance(highlight_location, str):
                         _str_, i = highlight_location, 0
                         while _str_ in self.txt[i:]:
                             _index_ = self.txt.index(_str_, i)

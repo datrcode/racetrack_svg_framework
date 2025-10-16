@@ -415,7 +415,7 @@ class RTTemporalBarChartMixin(object):
                     else:
                         self.x2_field = self.rt_self.guessTimestampField(self.df2)
 
-                if type(self.y2_field) != list:
+                if isinstance(self.y2_field, list) == False:
                     self.y2_field = [self.y2_field]
                 
                 if self.y2_field_is_scalar:
@@ -606,8 +606,8 @@ class RTTemporalBarChartMixin(object):
                 if   self.rt_self.isPandas(self.df):
                     self.df = self.df[self.df[self.ts_field] >= self.ts_min]
                 elif self.rt_self.isPolars(self.df):
-                    if type(self.ts_min) == str: _ts_min_ = datetime.fromisoformat(self.ts_min)
-                    else:                        _ts_min_ = self.ts_min
+                    if isinstance(self.ts_min, str): _ts_min_ = datetime.fromisoformat(self.ts_min)
+                    else:                            _ts_min_ = self.ts_min
                     self.df = self.df.filter(pl.col(self.ts_field) >= _ts_min_)
             if len(self.df) != _len_before_min_:
                 self.min_cropped = True
@@ -621,18 +621,16 @@ class RTTemporalBarChartMixin(object):
                 if   self.rt_self.isPandas(self.df):
                     self.df = self.df[self.df[self.ts_field] <= self.ts_max]
                 elif self.rt_self.isPolars(self.df):
-                    if type(self.ts_max) == str:
-                        _ts_max_ = datetime.fromisoformat(self.ts_max)
-                    else:
-                        _ts_max_ = self.ts_max
+                    if isinstance(self.ts_max, str): _ts_max_ = datetime.fromisoformat(self.ts_max)
+                    else:                            _ts_max_ = self.ts_max
                     self.df = self.df.filter(pl.col(self.ts_field) <= _ts_max_)
             if len(self.df) != _len_before_max_:
                 self.max_cropped = True
             else:
                 self.max_cropped = False
 
-            if type(self.ts_min) != np.datetime64: self.ts_min = np.datetime64(self.ts_min)
-            if type(self.ts_max) != np.datetime64: self.ts_max = np.datetime64(self.ts_max)
+            if isinstance(self.ts_min, np.datetime64) == False: self.ts_min = np.datetime64(self.ts_min)
+            if isinstance(self.ts_max, np.datetime64) == False: self.ts_max = np.datetime64(self.ts_max)
         
             # If the height/width are less than the minimums, turn off labeling... and make the min_bar_w = 1
             # ... for this component as a small multiples
@@ -729,7 +727,7 @@ class RTTemporalBarChartMixin(object):
             # Iterate over the order and render each bar
             if self.style == 'barchart':    
                 for k,k_df in groupby:
-                    if type(k) == tuple and len(k) == 1: k = k[0] # fixes for Polars 2024-07-19
+                    if isinstance(k, tuple) and len(k) == 1: k = k[0] # fixes for Polars 2024-07-19
 
                     if   self.count_by is None: px = max_bar_h * len(k_df)                     / group_by_max
                     elif self.count_by_set:     px = max_bar_h * len(set(k_df[self.count_by])) / group_by_max
@@ -754,7 +752,7 @@ class RTTemporalBarChartMixin(object):
 
                 # Render the boxplot columns
                 for k,k_df in groupby:
-                    if type(k) == tuple and len(k) == 1: k = k[0] # fixes for Polars 2024-07-19
+                    if isinstance(k, tuple) and len(k) == 1: k = k[0] # fixes for Polars 2024-07-19
                     x = x_left + 1 + xi_lu[k] * (bar_w + self.h_gap)
                     _cx = x + bar_w/2
                     svg += self.rt_self.renderBoxPlotColumn(self.style, k_df, _cx, yT, group_by_max, group_by_min, _bar_w, self.count_by, self.color_by, self.cap_swarm_at)
@@ -777,7 +775,7 @@ class RTTemporalBarChartMixin(object):
                 node_to_dfs = {}
 
                 for key,key_df in groupby:
-                    if type(key) == tuple and len(key) == 1: key = key[0] # fixes for Polars 2024-07-19
+                    if isinstance(key, tuple) and len(key) == 1: key = key[0] # fixes for Polars 2024-07-19
                     key_as_str = str(key) # was datetime... but needs to be a string for the polars implementation to work
                     x = x_left + 1 + xi_lu[key] * (bar_w + self.h_gap)
                     if len(key_df) != 0:
@@ -863,7 +861,7 @@ class RTTemporalBarChartMixin(object):
                     if   self.rt_self.isPandas(self.df2): _gb = self.df2.groupby (by=self.line2_groupby_field)
                     elif self.rt_self.isPolars(self.df2): _gb = self.df2.group_by(by=self.line2_groupby_field)
                     for k,k_df in _gb:
-                        if type(k) == tuple and len(k) == 1: k = k[0]
+                        if   isinstance(k, tuple) and len(k) == 1: k = k[0]
                         if   self.rt_self.isPandas(k_df):
                             _points,gbxy = '',k_df.groupby([self.x2_axis_col+'_px',self.y2_axis_col+'_px'])    
                         elif self.rt_self.isPolars(k_df):
@@ -1034,10 +1032,8 @@ class RTTemporalBarChartMixin(object):
                 self.ts_min = self.df[self.ts_field].min()
             if self.ts_max is None:
                 self.ts_max = self.df[self.ts_field].max()        
-            if type(self.ts_min) != np.datetime64:
-                self.ts_min = np.datetime64(self.ts_min)
-            if type(self.ts_max) != np.datetime64:
-                self.ts_max = np.datetime64(self.ts_max)
+            if isinstance(self.ts_min, np.datetime64) == False: self.ts_min = np.datetime64(self.ts_min)
+            if isinstance(self.ts_max, np.datetime64) == False: self.ts_max = np.datetime64(self.ts_max)
         
             # If the height/width are less than the minimums, turn off labeling... and make the min_bar_w = 1
             # ... for this component as a small multiples

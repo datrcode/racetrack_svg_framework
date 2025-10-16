@@ -33,11 +33,8 @@ __name__ = 'rt_small_multiples_mixin'
 class RTSmallMultiplesMixin(object):
     #
     # categoryOrder() - determine the order of the categories
-    # - category_by should be a list of fields
     #
     def categoryOrder(self, df, category_by, sort_by, sort_by_field):
-        #if type(category_by) != list:
-        #    category_by = [category_by]
         if   self.isPandas(df): return self.__categoryOrder_pandas__(df, category_by, sort_by, sort_by_field)
         elif self.isPolars(df): return self.__categoryOrder_polars__(df, category_by, sort_by, sort_by_field)
         else: raise Exception('RTSmallMultiples.categoryOrder() - only pandas and polars are supported')
@@ -47,7 +44,7 @@ class RTSmallMultiplesMixin(object):
         cat_gb = df.groupby(category_by)
         if   sort_by is None or sort_by == 'alpha':
             cat_order = cat_gb.count()
-        elif type(sort_by) == list:            
+        elif isinstance(sort_by, list):            
             cat_order = pd.Series(np.zeros(len(sort_by)), index=sort_by)
         elif sort_by == 'records' or sort_by_field is None or sort_by_field in category_by:    
             cat_order = cat_gb.size().sort_values(ascending=False)
@@ -71,7 +68,7 @@ class RTSmallMultiplesMixin(object):
         if   sort_by is None or sort_by == 'alpha': # (Y_check)
             df_min    = df.drop(set(df.columns) - set(category_by))
             cat_order = df_min.unique(subset=category_by).sort(category_by)
-        elif type(sort_by) == list: # (Y)
+        elif isinstance(sort_by, list): # (Y)
             cat_order = pl.DataFrame({'category_by':sort_by})
         elif sort_by == 'records' or sort_by_field is None or sort_by_field in category_by: # (Y_check)
             cat_order = df.group_by(category_by, maintain_order=True).agg(pl.len().alias('__count__')).sort('__count__', descending=True)
@@ -178,7 +175,7 @@ class RTSmallMultiplesMixin(object):
         if sm_params is not None and 'color_by' in sm_params: color_by = sm_params['color_by']
 
         # Make the categories into a list (if not already so)
-        if type(category_by) != list: category_by = [category_by]
+        if isinstance(category_by, list) == False: category_by = [category_by]
 
         # Organize by similarity...        
         if sort_by == 'similarity':
@@ -329,8 +326,7 @@ class RTSmallMultiplesMixin(object):
                 for cat_i in range(0,max_categories):
                     if   self.isPandas(df):
                         key    = cat_order.index[cat_i]
-                        if type(key) != tuple:
-                            key = (key,)
+                        if isinstance(key, tuple) == False: key = (key,)
                         key_df = cat_gb.get_group(key)
                     elif self.isPolars(df):
                         key    = cat_order[category_by][cat_i].rows()[0]
@@ -395,7 +391,7 @@ class RTSmallMultiplesMixin(object):
             grid_lu          = {}
 
             # If the order is specified, then use it
-            if type(sort_by) == list:
+            if isinstance(sort_by, list):
                 row_order,col_order = [],[]
                 for _tuple_pair in sort_by:
                     _row,_col = _tuple_pair[0],_tuple_pair[1]
@@ -649,7 +645,7 @@ class RTSmallMultiplesMixin(object):
                 # Convert key to a category string
                 key = cat_order.index[cat_i] if self.isPandas(df) else cat_order[category_by][cat_i].rows()[0] if self.isPolars(df) else None
 
-                if type(key) == tuple:
+                if isinstance(key, tuple):
                     key_str = ''
                     for _part in key:
                         if len(key_str) > 0:
@@ -665,8 +661,7 @@ class RTSmallMultiplesMixin(object):
 
                 if   self.isPandas(df):
                     _tuple_ = key
-                    if type(_tuple_) != tuple:
-                        _tuple_ = (_tuple_, )
+                    if isinstance(_tuple_, tuple) == False: _tuple_ = (_tuple_, )
                     key_df = cat_gb.get_group(_tuple_)
                 elif self.isPolars(df):
                     key_df = cat_gb[key]
@@ -719,11 +714,10 @@ class RTSmallMultiplesMixin(object):
                 key_df = cat_gb.get_group(key) if self.isPandas(df) else cat_gb[key] if self.isPolars(df) else None
                 xi_sm,yi_sm = grid_lu[key]
 
-                if type(key) == tuple:
+                if isinstance(key, tuple):
                     key_str = ''
                     for _part in key:
-                        if len(key_str) > 0:
-                            key_str += '|'
+                        if len(key_str) > 0: key_str += '|'
                         key_str += str(_part)
                 else:
                     key_str = str(key)
@@ -1050,8 +1044,7 @@ class RTSmallMultiplesMixin(object):
                             df,                     # single dataframe or a list of dataframes
                             required_columns):      # required columns as a set
         # if it's already one, just return it...
-        if self.isPandas(df) or self.isPolars(df) or type(df) != list:
-            return df
+        if self.isPandas(df) or self.isPolars(df) or isinstance(df, list) == False: return df
         
         # Otherwise, concat together if the fields are ther... when wouldn't the fields be there? 2023-11-10
         _dfs_ = []                                
@@ -1099,10 +1092,8 @@ class RTSmallMultiplesMixin(object):
         my_cat_column = 'my_cat_col_' + str(random.randint(0,65535))
 
         df_example = None
-        if type(df) == list and len(df) > 0:
-            df_example = df[0]
-        else:
-            df_example = df 
+        if isinstance(df, list) and len(df) > 0: df_example = df[0]
+        else:                                    df_example = df 
 
         if   self.isPandas(df_example):
             _dfs_ = []
@@ -1120,8 +1111,8 @@ class RTSmallMultiplesMixin(object):
                 df_list    = str_to_df_list[k]
                 aligned_df = self.__alignDataFrames__(df_list,required_columns)
                 #aligned_df = aligned_df.with_columns(pl.lit(k).alias(my_cat_column)) # original
-                if type(k) == str: aligned_df = aligned_df.with_columns(pl.lit(k).alias(my_cat_column)) # attempt to fix due to unhashable type...
-                else:              aligned_df = aligned_df.with_columns(pl.lit(k).list.join('|').alias(my_cat_column)) # attempt to fix due to unhashable type...
+                if isinstance(k, str): aligned_df = aligned_df.with_columns(pl.lit(k).alias(my_cat_column)) # attempt to fix due to unhashable type...
+                else:                  aligned_df = aligned_df.with_columns(pl.lit(k).list.join('|').alias(my_cat_column)) # attempt to fix due to unhashable type...
                 _dfs_.append(aligned_df)
             master_df = pl.concat(_dfs_)
         else:
@@ -1328,7 +1319,7 @@ class RTSmallMultiplesMixin(object):
         if hasattr(svg, 'w') and hasattr(svg, 'h'):
             _width, _height = svg.w, svg.h
         else:
-            if type(svg) != str: svg = svg._repr_svg_()
+            if isinstance(svg, str) == False: svg = svg._repr_svg_()
             i0 = svg.index('width="')
             i1 = svg.index('"',i0+len('width="'))
             _width = float(svg[i0+len('width="'):i1])
@@ -1343,8 +1334,7 @@ class RTSmallMultiplesMixin(object):
     #     that the passed in SVG is at coordinates (0,0)
     #
     def titleSVG(self, _svg_, _title_, txt_h=12, color=None, font=None):
-        if type(_svg_) != str:
-            _svg_ = _svg_._repr_svg_()
+        if isinstance(_svg_, str) == False: _svg_ = _svg_._repr_svg_()
         w,h = self.__extractSVGWidthAndHeight__(_svg_)
         _co = self.co_mgr.getTVColor('background','default')
         _new_svg  = f'<svg x="0" y="0" width="{w}" height="{h+txt_h+4}">'
@@ -1389,7 +1379,7 @@ class RTSmallMultiplesMixin(object):
         if horz:
             w_overall,h_max = 0,0
             for _svg in svg_list:
-                if type(_svg) != str: _svg = _svg._repr_svg_()
+                if isinstance(_svg, str) == False: _svg = _svg._repr_svg_()
                 w,h       =  self.__extractSVGWidthAndHeight__(_svg)
                 w_overall += w+spacer
                 h_max     =  max(h_max, h)
@@ -1398,7 +1388,7 @@ class RTSmallMultiplesMixin(object):
             svg.append(f'<rect width="{w_overall}" height="{h_max}" x="0" y="0" fill="{background_override}" />')
             w_overall = 0
             for _svg in svg_list:
-                if type(_svg) != str: _svg = _svg._repr_svg_()
+                if isinstance(_svg, str) == False: _svg = _svg._repr_svg_()
                 w,h  = self.__extractSVGWidthAndHeight__(_svg)
                 svg.append(self.__overwriteSVGOriginPosition__(_svg, (w_overall + w/2, h/2), w, h))
                 w_overall += w+spacer
@@ -1406,7 +1396,7 @@ class RTSmallMultiplesMixin(object):
         else:
             w_max,h_overall = 0,0
             for _svg in svg_list:
-                if type(_svg) != str: _svg = _svg._repr_svg_()
+                if isinstance(_svg, str) == False: _svg = _svg._repr_svg_()
                 w,h       =  self.__extractSVGWidthAndHeight__(_svg)
                 h_overall += h+spacer
                 w_max     =  max(w_max, w)
@@ -1415,7 +1405,7 @@ class RTSmallMultiplesMixin(object):
             svg.append(f'<rect width="{w_max}" height="{h_overall}" x="0" y="0" fill="{background_override}" />')
             h_overall = 0
             for _svg in svg_list:
-                if type(_svg) != str: _svg = _svg._repr_svg_()
+                if isinstance(_svg, str) == False: _svg = _svg._repr_svg_()
                 w,h  = self.__extractSVGWidthAndHeight__(_svg)
                 svg.append(self.__overwriteSVGOriginPosition__(_svg, (w/2, h_overall + h/2), w, h))
                 h_overall += h+spacer
