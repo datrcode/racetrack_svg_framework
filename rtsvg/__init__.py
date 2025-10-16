@@ -2,6 +2,7 @@ from .rtsvg                                   import RACETrack
 from .circle_packer                           import CirclePacker
 from .polars_force_directed_layout            import PolarsForceDirectedLayout
 from .polars_spring_layout                    import PolarsSpringLayout
+from .polars_spring_layout_opt                import PolarsSpringLayoutOpt
 from .rt_entity_position                      import RTEntityPosition
 from .rt_graph_interactive_panel              import RTGraphInteractivePanel
 from .rt_layouts_mixin                        import RTComponentsLayout
