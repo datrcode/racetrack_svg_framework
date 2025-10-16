@@ -137,5 +137,14 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
         _psl_.results()
         self.rt_self.graphLayoutSVGAnimation(_psl_.pos_history, self.g)
 
+    def test_polarsSpringLayoutOpt(self):
+        _pslo_ = PolarsSpringLayoutOpt(self.g)
+        _pslo_.results()
+        self.rt_self.graphLayoutSVGAnimation(_pslo_.pos_history, self.g)
+
+        _pslo_ = PolarsSpringLayoutOpt(self.g, self.pos, static_nodes=self.node_subset)
+        _pslo_.results()
+        self.rt_self.graphLayoutSVGAnimation(_pslo_.pos_history, self.g)
+
 if __name__ == '__main__':
     unittest.main()
