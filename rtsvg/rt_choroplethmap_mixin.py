@@ -263,7 +263,7 @@ class RTChoroplethMapMixin(object):
                     _max_ += 0.5
                 _['_count_'] = (_['_count_'] - _min_) / (_max_ - _min_)
             elif self.rt_self.isPolars(self.df):
-                if self.count_by is None: _ = self.df.group_by(self.shape_field).agg(pl.count().alias('_count_'))
+                if self.count_by is None: _ = self.df.group_by(self.shape_field).agg(pl.len().alias('_count_'))
                 elif self.count_by_set:   _ = self.df.group_by(self.shape_field).agg(pl.col(self.count_by).n_unique().alias('_count_'))
                 else:                     _ = self.df.group_by(self.shape_field).agg(pl.col(self.count_by).sum().alias('_count_'))
                 _min_,_max_ = _['_count_'].min(), _['_count_'].max()
