@@ -43,8 +43,8 @@ class ConveyProximityLayout(object):
         # vvv
         _to_randomize_ = set()
         for i in range(self.__numberToAddThisTime__(len(H), len(self.V))):
-            H.add(Q[0]), _to_randomize_.add(Q[0])
-            Q = Q[1:]
+            v = Q.pop()
+            H.add(v), _to_randomize_.add(v)
         _best_stress_, _best_pos_ = None, None
         for _trial_ in range(self.__numberOfTrialsThisTime__(H)):
             for _vertex_ in _to_randomize_: pos[_vertex_] = (random.random(), random.random())
@@ -68,10 +68,9 @@ class ConveyProximityLayout(object):
             H_fixed         = H.copy()                                         # Fix this before the addition round to prevent non-placed vertices from interfering
             _to_randomize_  = []
             for i in range(_number_to_add_):
-                v      = Q[0]                                                  # Get next vertex
+                v      = Q.pop()                                               # Get next vertex
                 h1, h2 = self.__closestMembers__(H_fixed, v)                   # Find closest two members of H
                 _to_randomize_.append((v, h1, h2))
-                Q      = Q[1:]                                                 # This vertex is done
                 H.add(v)
             # Perform the trials on this round...
             _best_stress_, _best_pos_, i_global_next = None, None, None
@@ -157,7 +156,9 @@ class ConveyProximityLayout(object):
 
     def __orderVertices__(self, _g_, _dist_):
         Q = [n for n in nx.traversal.dfs_preorder_nodes(_g_)]
-        return self.__disperseTheseVertices__(Q)
+        _list_ = self.__disperseTheseVertices__(Q)
+        _list_.reverse()
+        return _list_
 
     # Table III of paper
     def __numberToAddThisTime__(self, _prev_, _final_, increment_ratio=1, increment_minimum=10):
