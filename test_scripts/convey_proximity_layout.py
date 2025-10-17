@@ -21,7 +21,7 @@ class ConveyProximityLayout(object):
     # Table V of paper (algorithm that includes multiple trials)
     # ... no really... this time it will do what's described :(
     #
-    def __init__(self, g_connected, use_resistive_distances=True, k=2.0, iterations_min=32, iterations_multiplier=2, distances=None):
+    def __init__(self, g_connected, use_resistive_distances=True, k=0.0, iterations_min=32, iterations_multiplier=2, distances=None):
         self.g_connected             = g_connected
         self.k                       = k
         self.V                       = set(self.g_connected.nodes)
@@ -259,5 +259,5 @@ class ConveyProximityLayout(object):
             for v in self.vertices_added[i]: _colors_[v] = 'red'
             _link_ = rt.link(_df_, [('fm','to')], self.results(), node_color=_colors_)
             _tiles_.append(_link_)
-            
+
         return rt.table(_tiles_, per_row=8)
