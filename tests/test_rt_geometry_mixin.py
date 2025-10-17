@@ -327,5 +327,22 @@ class Testrt_geometry_mixin(unittest.TestCase):
         #_svg_.append('</svg>')
         #rt.tile([rt.xy(pl.DataFrame(_perf_), x_field='points', y_field='time', dot_size='large', w=512, h=512), ''.join(_svg_)])
 
+    #
+    def test_uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(self):
+        num_of_pts    = [300, 400, 200]
+        circle_geoms = [(5,5,1),(20,10,2),(8,8,1)]
+        colors       = ['#ff0000','#006400','#0000ff']
+        _xvals_, _yvals_, _weights_, _colors_ = [12.0], [8.0], [1.0], ['#000000']
+        for i in range(len(num_of_pts)):
+            for j in range(num_of_pts[i]):
+                a, l = random.random() * 2 * pi, random.random() * circle_geoms[i][2]
+                x, y = circle_geoms[i][0] + l * cos(a), circle_geoms[i][1] + l * sin(a)
+                _xvals_.append(x), _yvals_.append(y), _weights_.append(1.0), _colors_.append(colors[i])
+        for i in range(100):
+            x, y = 20*random.random(), 20*random.random()
+            _xvals_.append(x), _yvals_.append(y), _weights_.append(1.0), _colors_.append('#000000')
+        df         = pl.DataFrame({'x':_xvals_, 'y':_yvals_, 'weight':_weights_, 'color':_colors_})
+        df_results = self.rt_self.uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(df, 'x', 'y', weight_field='weight')        
+
 if __name__ == '__main__':
     unittest.main()
