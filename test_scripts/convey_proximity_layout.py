@@ -155,13 +155,12 @@ class ConveyProximityLayout(object):
             B = [item for item in Q if item not in F]     # Q - F
             F = self.__disperseTheseVertices__(F)
             F.extend(B)
-            F
+            return F
         return Q
-
     def __orderVertices__(self, _g_, _dist_):
         Q = [n for n in nx.traversal.dfs_preorder_nodes(_g_)]
         _list_ = self.__disperseTheseVertices__(Q)
-        _list_.reverse()
+        _list_.reverse() # because we will use the pop operator to remove the vertices
         return _list_
 
     # Table III of paper
@@ -248,7 +247,7 @@ class ConveyProximityLayout(object):
         for i in range(len(df_pos)): _updated_[df_pos['node'][i]] = (df_pos['x'][i], df_pos['y'][i])
         return _updated_
 
-    def svgOfVertexAdditions(self, rt):
+    def svgOfVertexAdditions(self, rt, w=256, h=256):
         _lu_ = {'fm':[],'to':[]}
         for _edge_ in self.g_connected.edges: _lu_['fm'].append(_edge_[0]), _lu_['to'].append(_edge_[1])
         _df_ = pl.DataFrame(_lu_)
@@ -257,7 +256,7 @@ class ConveyProximityLayout(object):
         for i in range(len(self.vertices_added)):
             _colors_ = {}
             for v in self.vertices_added[i]: _colors_[v] = 'red'
-            _link_ = rt.link(_df_, [('fm','to')], self.results(), node_color=_colors_)
+            _link_ = rt.link(_df_, [('fm','to')], self.results(), node_color=_colors_, w=w, h=h, node_size='small')
             _tiles_.append(_link_)
 
         return rt.table(_tiles_, per_row=8)
