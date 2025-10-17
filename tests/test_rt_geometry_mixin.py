@@ -342,7 +342,12 @@ class Testrt_geometry_mixin(unittest.TestCase):
             x, y = 20*random.random(), 20*random.random()
             _xvals_.append(x), _yvals_.append(y), _weights_.append(1.0), _colors_.append('#000000')
         df         = pl.DataFrame({'x':_xvals_, 'y':_yvals_, 'weight':_weights_, 'color':_colors_})
-        df_results = self.rt_self.uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(df, 'x', 'y', weight_field='weight')        
+        # via the rt_geometry_mixin
+        df_results = self.rt_self.uniformSampleDistributionInScatterplotsViaSectorBasedTransformation(df, 'x', 'y', weight_field='weight')
+        # directly (which provides coverage for two more functions)
+        _udspvsto_ = UDistScatterPlotsViaSectorsTileOpt(_xvals_, _yvals_, _weights_, _colors_)
+        _udspvsto_.svgAnimation()
+        _udspvsto_._repr_svg_()
 
 if __name__ == '__main__':
     unittest.main()
