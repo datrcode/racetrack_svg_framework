@@ -36,15 +36,17 @@ class ConveyProximityLayout(object):
         H              = set()                                                        # Initialize vertices to arrange
         arrange_round  = 0
         stress_dfs     = []
+        vertices_added = []   # tracks which vertices are added at what rounds
         i_global       = None
         trial_global   = 0
 
         # There needs to be an initial vertex set that is already placed for the while loop to actually work...
         # vvv
         _to_randomize_ = set()
+        vertices_added.append(set())
         for i in range(self.__numberToAddThisTime__(len(H), len(self.V))):
             v = Q.pop()
-            H.add(v), _to_randomize_.add(v)
+            H.add(v), _to_randomize_.add(v), vertices_added[-1].add(v)
         _best_stress_, _best_pos_ = None, None
         for _trial_ in range(self.__numberOfTrialsThisTime__(H)):
             for _vertex_ in _to_randomize_: pos[_vertex_] = (random.random(), random.random())
@@ -67,11 +69,13 @@ class ConveyProximityLayout(object):
             _number_to_add_ = self.__numberToAddThisTime__(len(H), len(self.V))
             H_fixed         = H.copy()                                         # Fix this before the addition round to prevent non-placed vertices from interfering
             _to_randomize_  = []
+            vertices_added.append(set())
             for i in range(_number_to_add_):
                 v      = Q.pop()                                               # Get next vertex
                 h1, h2 = self.__closestMembers__(H_fixed, v)                   # Find closest two members of H
                 _to_randomize_.append((v, h1, h2))
                 H.add(v)
+                vertices_added[-1].add(v)
             # Perform the trials on this round...
             _best_stress_, _best_pos_, i_global_next = None, None, None
             for _trial_ in range(self.__numberOfTrialsThisTime__(H)):
@@ -92,7 +96,7 @@ class ConveyProximityLayout(object):
             # Retrieve the best position and use that for the next round
             pos, i_global = _best_pos_, i_global_next
         
-        self.pos, self.stress_df = pos, pl.concat(stress_dfs)
+        self.pos, self.stress_df, self.vertices_added = pos, pl.concat(stress_dfs), vertices_added
 
     # __numberOfTrialsThisTime__() - the number of trials to perform based on how vertices have already been added
     def __numberOfTrialsThisTime__(self, H):
@@ -243,3 +247,17 @@ class ConveyProximityLayout(object):
         _updated_ = {}
         for i in range(len(df_pos)): _updated_[df_pos['node'][i]] = (df_pos['x'][i], df_pos['y'][i])
         return _updated_
+
+    def svgOfVertexAdditions(self, rt):
+        _lu_ = {'fm':[],'to':[]}
+        for _edge_ in self.g_connected.edges: _lu_['fm'].append(_edge_[0]), _lu_['to'].append(_edge_[1])
+        _df_ = pl.DataFrame(_lu_)
+
+        _tiles_ = []
+        for i in range(len(self.vertices_added)):
+            _colors_ = {}
+            for v in self.vertices_added[i]: _colors_[v] = 'red'
+            _link_ = rt.link(_df_, [('fm','to')], self.results(), node_color=_colors_)
+            _tiles_.append(_link_)
+            
+        return rt.table(_tiles_, per_row=8)
