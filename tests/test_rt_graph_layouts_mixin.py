@@ -146,5 +146,10 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
         _pslo_.results()
         self.rt_self.graphLayoutSVGAnimation(_pslo_.pos_history, self.g)
 
+    def test_ConveyProximityLayout(self):
+        _cpl_ = ConveyProximityLayout(self.g)
+        _cpl_.results()
+        _cpl_.svgOfVertexAdditions(self.rt_self)._repr_svg_()
+
 if __name__ == '__main__':
     unittest.main()
