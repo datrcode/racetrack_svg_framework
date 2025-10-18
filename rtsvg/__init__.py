@@ -1,5 +1,6 @@
 from .rtsvg                                   import RACETrack
 from .circle_packer                           import CirclePacker
+from .convey_proximity_layout                 import ConveyProximityLayout
 from .polars_force_directed_layout            import PolarsForceDirectedLayout
 from .polars_spring_layout                    import PolarsSpringLayout
 from .polars_spring_layout_opt                import PolarsSpringLayoutOpt
