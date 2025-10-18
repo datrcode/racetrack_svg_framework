@@ -36,6 +36,7 @@ class ConveyProximityLayout(object):
         H              = set()                                                        # Initialize vertices to arrange
         arrange_round  = 0
         stress_dfs     = []
+        best_trials    = []   # best found trials
         vertices_added = []   # tracks which vertices are added at what rounds
         i_global       = None
         trial_global   = 0
@@ -47,20 +48,21 @@ class ConveyProximityLayout(object):
         for i in range(self.__numberToAddThisTime__(len(H), len(self.V))):
             v = Q.pop()
             H.add(v), _to_randomize_.add(v), vertices_added[-1].add(v)
-        _best_stress_, _best_pos_ = None, None
+        _best_stress_, _best_pos_, _best_trial_ = None, None, None
         for _trial_ in range(self.__numberOfTrialsThisTime__(H)):
             for _vertex_ in _to_randomize_: pos[_vertex_] = (random.random(), random.random())
             _stress_lu_  = {'stress':[], 'i':[]}
             pos          = self.__arrangeDirect__(H, pos, _stress_lu_)
             # Determine if this is the best stress so far
             _end_stress_ = _stress_lu_['stress'][-1]
-            if _best_stress_ is None or _end_stress_ < _best_stress_: _best_stress_, _best_pos_ = _end_stress_, pos
+            if _best_stress_ is None or _end_stress_ < _best_stress_: _best_stress_, _best_pos_, _best_trial_ = _end_stress_, pos, _trial_
             # Save the stress dataframe
             stress_dfs.append(pl.DataFrame(_stress_lu_).with_columns(pl.lit(_trial_).alias('trial'), pl.lit(arrange_round).alias('round'), pl.lit(trial_global).alias('trial_global'), pl.col('i').alias('i_global')))
             trial_global += 1
             i_global      = _stress_lu_['i'][-1] if i_global is None else max(_stress_lu_['i'][-1], i_global)
         arrange_round += 1
         # Retrieve the best position and use that for the next round
+        best_trials.append(_best_trial_)
         pos = _best_pos_
         # ^^^
 
@@ -77,7 +79,7 @@ class ConveyProximityLayout(object):
                 H.add(v)
                 vertices_added[-1].add(v)
             # Perform the trials on this round...
-            _best_stress_, _best_pos_, i_global_next = None, None, None
+            _best_stress_, _best_pos_, i_global_next, _best_trial_ = None, None, None, None
             for _trial_ in range(self.__numberOfTrialsThisTime__(H)):
                 # Randomize the positions for this trial
                 for _tuple_ in _to_randomize_:
@@ -87,16 +89,24 @@ class ConveyProximityLayout(object):
                 pos = self.__arrangeDirect__(H, pos, _stress_lu_)                 # Arrange accumulated subset
                 # Determine if this is the best stress so far
                 _end_stress_  = _stress_lu_['stress'][-1]
-                if _best_stress_ is None or _end_stress_ < _best_stress_: _best_stress_, _best_pos_ = _end_stress_, pos
+                if _best_stress_ is None or _end_stress_ < _best_stress_: _best_stress_, _best_pos_, _best_trial_ = _end_stress_, pos, _trial_
                 # Save the stress dataframe & update the global index / arrange round
                 stress_dfs.append(pl.DataFrame(_stress_lu_).with_columns(pl.lit(_trial_).alias('trial'), pl.lit(arrange_round).alias('round'), pl.lit(trial_global).alias('trial_global'), (pl.col('i')+i_global).alias('i_global')))
                 trial_global  += 1
                 i_global_next  = (_stress_lu_['i'][-1] + i_global) if i_global_next is None else max(_stress_lu_['i'][-1] + i_global, i_global_next)
             arrange_round += 1
             # Retrieve the best position and use that for the next round
+            best_trials.append(_best_trial_)
             pos, i_global = _best_pos_, i_global_next
         
-        self.pos, self.stress_df, self.vertices_added = pos, pl.concat(stress_dfs), vertices_added
+        self.pos, self.stress_df, self.vertices_added, self.best_trials = pos, pl.concat(stress_dfs), vertices_added, best_trials
+
+        # Add the best trials to the stress dataframe
+        _lu_ = {'round':[],'trial':[], 'best_flag':[]}
+        for i in range(len(best_trials)): _lu_['round'].append(i), _lu_['trial'].append(best_trials[i]), _lu_['best_flag'].append(True)
+        df_bests = pl.DataFrame(_lu_)
+        self.stress_df = pl.concat([self.stress_df.join(df_bests, on=['round','trial']),
+                                    self.stress_df.join(df_bests, on=['round','trial'], how='anti').with_columns(pl.lit(False).alias('best_flag'))])
 
     # __numberOfTrialsThisTime__() - the number of trials to perform based on how vertices have already been added
     def __numberOfTrialsThisTime__(self, H):
