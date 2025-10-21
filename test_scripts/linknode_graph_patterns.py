@@ -1,3 +1,4 @@
+import polars as pl
 import networkx as nx
 import re
 
@@ -34,6 +35,16 @@ class LinkNodeGraphPatterns(object):
 
     def __len__    (self):    return len(self.types)
     def __getitem__(self, i): return self.types[i]
+
+    #
+    # nxGraphToPolarsDataFrame()
+    #
+    def nxGraphToPolarsDataFrame(self, g, **kwargs):
+        _lu_ = {'fm':[], 'to':[]}
+        for _node_ in g.nodes:
+            for _nbor_ in g.neighbors(_node_):
+                _lu_['fm'].append(_node_), _lu_['to'].append(_nbor_)
+        return pl.DataFrame(_lu_)
 
     #
     # minimumStressFound() - minimum stress found so far
@@ -250,5 +261,13 @@ class LinkNodeGraphPatterns(object):
             g.add_edge(f'{prefix}mid_{i}', f'{prefix}mid_{j}')
         return g
 
-
-
+    def __pattern_stanford_facebook_networks__(self, prefix='', graph_num=1912, **kwargs):
+        _edges_ = None
+        with open(f'../../data/stanford/facebook/{graph_num}.edges', 'rt') as f:
+            _edges_ = f.read()
+        g = nx.Graph()
+        for _edge_ in _edges_.split('\n'):
+            if _edge_ == '': continue
+            parts = _edge_.split(' ')
+            g.add_edge(parts[0], parts[1])
+        return g
