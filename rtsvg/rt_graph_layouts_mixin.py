@@ -198,6 +198,60 @@ class RTGraphLayoutsMixin(object):
         return found, shortests
 
     #
+    # Sparse multidimensional scaling using landmark points
+    # Vin de Silva∗ & Joshua B. Tenenbaum†
+    # June 30, 2004
+    #
+    # Figure 2 // attempted to keep the same nomenclature
+    #
+    # (note to self -- based on how this works, it will go across disconnected
+    #  components... however, if there are more disconnected components than
+    #  requested landmarks, then it won't have a landmark in every connected
+    #  component...)
+    #
+    def landmarkMaxMin(self,
+                       g, 
+                       n = 10,  # desired number of landmark points
+                       s = 2):  # number of seed points
+        nodes = list(g.nodes())
+        N     = len(nodes)
+
+        # Choose seeds at random
+        l     = [] # landmarks to return
+        while len(l) < s:
+            seed  = random.choice(nodes)
+            if seed not in l: l.append(seed)
+        d = {} # d[landmark_point][all_other_points]
+
+        # Determine the shortest paths for the selected nodes
+        for i in range(len(l)): d[l[i]] = dict(nx.single_source_shortest_path_length(g, l[i]))
+
+        # Determine the min distance from any of the selected nodes
+        m = [(N+1) for i in range(N)] # max distance for all entries
+        for i in range(len(l)):       # for each seed
+            for j in range(N):        # fill in the minimum found distance to that seed
+                if nodes[j] not in d[l[i]]: continue
+                m[j] = min(m[j], d[l[i]][nodes[j]])
+
+        # Add the landmark points via MaxMin methodology
+        while len(l) < s + n:
+            # Determine the max of the m array
+            _max_i_ = 0
+            for j in range(N):
+                if m[_max_i_] < m[j]: _max_i_ = j
+
+            # That's the new landmark -- add it to the list and fill in the distance array
+            l.append(nodes[_max_i_])
+            d[nodes[_max_i_]] = dict(nx.single_source_shortest_path_length(g, nodes[_max_i_]))
+
+            # Update the mins
+            for j in range(N):
+                if nodes[j] not in d[nodes[_max_i_]]: continue
+                m[j] = min(m[j], d[nodes[_max_i_]][nodes[j]])
+
+        return l, d
+
+    #
     # collapseDataFrameGraphByClusters()
     # - only works with polars at the moment
     # - limitations -- only single field from/tos can be used (i.e., no multifield nodes)
