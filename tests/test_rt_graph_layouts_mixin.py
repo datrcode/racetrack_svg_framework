@@ -151,5 +151,11 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
         _cpl_.results()
         _cpl_.svgOfVertexAdditions(self.rt_self)._repr_svg_()
 
+    def test_landmarkMaxMin(self):
+        self.rt_self.landmarkMaxMin(self.g)
+
+    def test_identifyLandmarks(self):
+        self.rt_self.identifyLandmarks(self.g)
+
 if __name__ == '__main__':
     unittest.main()
