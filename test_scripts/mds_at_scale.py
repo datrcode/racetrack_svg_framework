@@ -19,7 +19,7 @@ __name__ = 'mds_at_scale'
 # ... fixed by copying the pivotmds implementation (but now it performs it twice like pivotmds does)
 #
 class LandmarkMDSLayout(object):
-    def __init__(self, g, num_landmarks=None, dimensions=2):
+    def __init__(self, g, num_landmarks=None, dimensions=2, landmarks=None, landmark_pos=None):
         """
         Landmark Multidimensional Scaling (L-MDS) algorithm for graph embedding.
         
@@ -31,6 +31,12 @@ class LandmarkMDSLayout(object):
             Number of landmark nodes to select. If None, uses sqrt(n) where n is number of nodes.
         dimensions : int, default=2
             Number of dimensions for the embedding.
+        landmarks : list, optional
+            List of landmark nodes. If provided, uses these landmarks instead of selecting randomly.
+            These will be converted into indices by the class.
+        landmark_pos : dict, optional
+            If specified, provides coordinates for the landmarks. If not provided, then the algorithm will use MDS to compute them.
+            The keys will be in the original node ids... so also will be converted via the class into numpy indices.
         """
         
         # Convert graph to adjacency matrix if needed
