@@ -54,7 +54,7 @@ class LandmarkMDSLayout(object):
             raise ValueError("Graph must be NetworkX graph, scipy sparse matrix, or numpy array")
 
         # If the landmarks weren't specified by the user, determine them via the MaxMin strategy
-        if landmarks is None:
+        if landmarks is None and landmark_pos is None:
             # Set number of landmarks if not specified
             if num_landmarks is None:
                 num_landmarks = max(int(np.sqrt(n)), dimensions + 1)
@@ -92,51 +92,67 @@ class LandmarkMDSLayout(object):
             #
 
         else:
+            # Pull them from the positional keys if the landmarks parameter is None
+            if landmarks is None: landmarks = list(landmark_pos.keys())
             # Need to convert them to numpy array indices
             num_landmarks   = len(landmarks)
             _as_set_        = set(landmarks)
             _nodes_as_list_ = list(g.nodes())
             landmarks       = np.array([_nodes_as_list_.index(landmark) for landmark in _as_set_])
+            # Ensure that landmark positions were provided ... if not, set it to None            
+            if landmark_pos is not None:
+                all_positions_filled = True
+                for landmark in landmarks:
+                    if _nodes_as_list_[landmark] not in landmark_pos:
+                        all_positions_filled = False
+                        break
+                if not all_positions_filled: landmark_pos = None
 
-
-        # Step 2: Compute shortest path distances from all nodes to landmarks
-        # Using Dijkstra's algorithm from each landmark
-        distances = np.zeros((n, num_landmarks))
-        
-        for i, landmark in enumerate(landmarks):
-            dist = dijkstra(adj_matrix, directed=False, indices=landmark)
-            distances[:, i] = dist
-        
-        # Handle infinite distances (disconnected components)
-        max_finite_dist = np.max(distances[np.isfinite(distances)])
-        distances[np.isinf(distances)] = 2 * max_finite_dist
-        
-        # Step 3: Apply classical MDS on the distance matrix
-        # Center the squared distance matrix
-        D_squared = distances ** 2
-        n_samples = D_squared.shape[0]
-        n_landmarks = D_squared.shape[1]
-        
-        # Centering matrix
-        landmark_mean = D_squared.mean(axis=0)
-        overall_mean = D_squared.mean()
-        
-        # Double centering
-        B = -0.5 * (D_squared - landmark_mean - D_squared.mean(axis=1, keepdims=True) + overall_mean)
-        
-        # Step 4: Compute eigendecomposition and extract coordinates
-        # Use PCA for efficiency (equivalent to eigendecomposition)
-        pca = PCA(n_components=dimensions)
-        coords = pca.fit_transform(B)
-        
         # Create node mapping for NetworkX graphs
         node_mapping = None
-        if isinstance(g, nx.Graph):
-            node_mapping = list(g.nodes())
+        if isinstance(g, nx.Graph): node_mapping = list(g.nodes())
+
+        if landmark_pos is None:
+            # Step 2: Compute shortest path distances from all nodes to landmarks
+            # Using Dijkstra's algorithm from each landmark
+            distances = np.zeros((n, num_landmarks))
             
-        # Get landmark coordinates
-        landmark_coords = coords[landmarks]
-        
+            for i, landmark in enumerate(landmarks):
+                dist = dijkstra(adj_matrix, directed=False, indices=landmark)
+                distances[:, i] = dist
+            
+            # Handle infinite distances (disconnected components)
+            max_finite_dist = np.max(distances[np.isfinite(distances)])
+            distances[np.isinf(distances)] = 2 * max_finite_dist
+            
+            # Step 3: Apply classical MDS on the distance matrix
+            # Center the squared distance matrix
+            D_squared = distances ** 2
+            n_samples = D_squared.shape[0]
+            n_landmarks = D_squared.shape[1]
+            
+            # Centering matrix
+            landmark_mean = D_squared.mean(axis=0)
+            overall_mean = D_squared.mean()
+            
+            # Double centering
+            B = -0.5 * (D_squared - landmark_mean - D_squared.mean(axis=1, keepdims=True) + overall_mean)
+            
+            # Step 4: Compute eigendecomposition and extract coordinates
+            # Use PCA for efficiency (equivalent to eigendecomposition)
+            pca = PCA(n_components=dimensions)
+            coords = pca.fit_transform(B)
+                        
+            # Get landmark coordinates
+            landmark_coords = coords[landmarks]
+        else:
+            # Use landmark positions provided by user
+            # ... note that the algorithm assumes the positions are within some range (guessing, centered around origin)
+            coords = np.array([landmark_pos[_nodes_as_list_[landmark]] for landmark in landmarks])
+            print(f'{coords=}')   
+            # Get landmark coordinates
+            landmark_coords = coords
+
         # Refine non-landmark positions using weighted least squares
         # (triangulation based on distances to landmarks)
         if isinstance(g, nx.Graph):
