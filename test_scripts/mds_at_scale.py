@@ -52,45 +52,52 @@ class LandmarkMDSLayout(object):
             n = adj_matrix.shape[0]
         else:
             raise ValueError("Graph must be NetworkX graph, scipy sparse matrix, or numpy array")
-        
-        # Set number of landmarks if not specified
-        if num_landmarks is None:
-            num_landmarks = max(int(np.sqrt(n)), dimensions + 1)
-        
-        num_landmarks = min(num_landmarks, n)
-        
-        # Step 1: Select landmark nodes (random selection)
-        # landmarks = np.random.choice(n, size=num_landmarks, replace=False)
 
-        #
-        # vvv -- copied from the pivotmds implementation below --- vvv
-        #
-        # Step 1: Select pivots using MaxMin strategy
-        landmarks = []
-        
-        # Select first pivot randomly
-        first_landmark = np.random.randint(0, n)
-        landmarks.append(first_landmark)
-        
-        # Initialize minimum distances to first pivot
-        min_distances = dijkstra(adj_matrix, directed=False, indices=first_landmark)
-        min_distances[np.isinf(min_distances)] = 0
-        
-        # Select remaining pivots
-        for _ in range(num_landmarks - 1):
-            # Select node with maximum minimum distance to existing pivots
-            next_landmark = np.argmax(min_distances)
-            landmarks.append(next_landmark)
+        # If the landmarks weren't specified by the user, determine them via the MaxMin strategy
+        if landmarks is None:
+            # Set number of landmarks if not specified
+            if num_landmarks is None:
+                num_landmarks = max(int(np.sqrt(n)), dimensions + 1)
             
-            # Update minimum distances
-            new_distances = dijkstra(adj_matrix, directed=False, indices=next_landmark)
-            new_distances[np.isinf(new_distances)] = 0
-            min_distances = np.minimum(min_distances, new_distances)
-        
-        landmarks = np.array(landmarks)
-        #
-        # ^^^ --- copied from the pivotmds implementation below --- ^^^
-        #
+            num_landmarks = min(num_landmarks, n)
+            
+            #
+            # vvv -- copied from the pivotmds implementation below --- vvv
+            #
+            # Step 1: Select pivots using MaxMin strategy
+            landmarks = []
+            
+            # Select first pivot randomly
+            first_landmark = np.random.randint(0, n)
+            landmarks.append(first_landmark)
+            
+            # Initialize minimum distances to first pivot
+            min_distances = dijkstra(adj_matrix, directed=False, indices=first_landmark)
+            min_distances[np.isinf(min_distances)] = 0
+            
+            # Select remaining pivots
+            for _ in range(num_landmarks - 1):
+                # Select node with maximum minimum distance to existing pivots
+                next_landmark = np.argmax(min_distances)
+                landmarks.append(next_landmark)
+                
+                # Update minimum distances
+                new_distances = dijkstra(adj_matrix, directed=False, indices=next_landmark)
+                new_distances[np.isinf(new_distances)] = 0
+                min_distances = np.minimum(min_distances, new_distances)
+            
+            landmarks = np.array(landmarks)
+            #
+            # ^^^ --- copied from the pivotmds implementation below --- ^^^
+            #
+
+        else:
+            # Need to convert them to numpy array indices
+            num_landmarks   = len(landmarks)
+            _as_set_        = set(landmarks)
+            _nodes_as_list_ = list(g.nodes())
+            landmarks       = np.array([_nodes_as_list_.index(landmark) for landmark in _as_set_])
+
 
         # Step 2: Compute shortest path distances from all nodes to landmarks
         # Using Dijkstra's algorithm from each landmark
