@@ -157,5 +157,15 @@ class Testrt_graph_layouts_mixin(unittest.TestCase):
     def test_identifyLandmarks(self):
         self.rt_self.identifyLandmarks(self.g)
 
+    def test_landmarkMDS(self):
+        LandmarkMDSLayout(self.g).results()
+        LandmarkMDSLayout(self.g, landmarks=self.node_subset).results()
+        _pos_ = {}
+        for _node_ in self.node_subset: _pos_[_node_] = (random.random(), random.random())
+        LandmarkMDSLayout(self.g, landmarks=self.node_subset, landmark_pos=_pos_).results()
+
+    def test_pivotMDS(self):
+        PivotMDSLayout(self.g).results()
+
 if __name__ == '__main__':
     unittest.main()

@@ -163,7 +163,6 @@ class LandmarkMDSLayout(object):
             # Use landmark positions provided by user
             # ... note that the algorithm assumes the positions are within some range (guessing, centered around origin)
             coords = np.array([landmark_pos[_nodes_as_list_[landmark]] for landmark in landmarks])
-            print(f'{coords=}')   
             # Get landmark coordinates
             landmark_coords = coords
 
