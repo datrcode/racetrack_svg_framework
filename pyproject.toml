@@ -20,6 +20,8 @@ dependencies    = [
   "polars",
   "pyarrow",
   "pyperclip",
+  "scikit-learn",
+  "scipy",
   "shapely",
   "squarify",
   "svglib",
