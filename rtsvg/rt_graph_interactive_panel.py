@@ -86,7 +86,9 @@ import copy
 
 from shapely import Polygon
 
+from rtsvg.convey_proximity_layout      import ConveyProximityLayout
 from rtsvg.polars_force_directed_layout import PolarsForceDirectedLayout
+from rtsvg.mds_at_scale                 import LandmarkMDSLayout, PivotMDSLayout
 
 from .rt_stackable import RTStackable, RTSelectable
 
@@ -295,9 +297,15 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         self.SPRING_NX            = 'spring nx'
         self.FORCE_DIRECTED       = 'force directed'
         self.HYPERTREE            = 'hyper tree'
+        self.CONVEY_PROXIMITY     = 'convey proximity'
+        self.LANDMARK_MDS         = 'landmark mds'
+        self.LANDMARK_MDS_POS     = 'landmark mds pos'
+        self.PIVOT_MDS            = 'pivot mds'
         self.CONNECTED_COMPONENTS = 'connected components'
         self.CIRCLE_PACK          = 'circle pack'
-        self.layout_operations    = [self.SPRING_NX, self.FORCE_DIRECTED, self.HYPERTREE, self.CONNECTED_COMPONENTS, self.CIRCLE_PACK]
+        self.layout_operations    = [self.SPRING_NX, self.FORCE_DIRECTED, self.HYPERTREE, 
+                                     self.CONVEY_PROXIMITY, self.LANDMARK_MDS, self.LANDMARK_MDS_POS, self.PIVOT_MDS,
+                                     self.CONNECTED_COMPONENTS, self.CIRCLE_PACK]
 
         # Recast the template with the width's and height's
         self._template = f"""
@@ -546,14 +554,29 @@ z . | select node under mouse by color (shift, ctrl, and ctrl-shift apply)
         elif _layout_op_ == self.HYPERTREE:                                _pos_ = self.rt_self.hyperTreeLayout(_g_, roots=_sel_)
         elif _layout_op_ == self.CONNECTED_COMPONENTS and len(_sel_) == 0: _pos_ = self.rt_self.treeMapGraphComponentPlacement(_g_, _ln_.pos)
         elif _layout_op_ == self.CIRCLE_PACK          and len(_sel_) == 0: _pos_, _circlesvg_ = self.rt_self.circlePackGraphComponentPlacement(_g_, _ln_.pos)
+        elif _layout_op_ == self.CONVEY_PROXIMITY     and len(_sel_) == 0: _pos_ = ConveyProximityLayout(_g_, use_resistive_distances=True).results()
+        elif _layout_op_ == self.LANDMARK_MDS:
+            if len(_sel_) == 0: _pos_ = LandmarkMDSLayout(_g_).results()
+            else:               _pos_ = LandmarkMDSLayout(_g_, landmarks=_sel_).results()
+        elif _layout_op_ == self.LANDMARK_MDS_POS:
+            if len(_sel_) == 0: _pos_ = LandmarkMDSLayout(_g_).results()
+            else:
+                _lm_pos_ = {}
+                for _node_ in _sel_: _lm_pos_[_node_] = _ln_.pos[_node_]
+                _pos_    = LandmarkMDSLayout(_g_, landmark_pos=_lm_pos_).results()
+        elif _layout_op_ == self.PIVOT_MDS            and len(_sel_) == 0: 
+            _subgraphs_ = [nx.subgraph(_g_, subgraph) for subgraph in nx.connected_components(_g_)]
+            _pos_        = {}
+            for _subgraph_ in _subgraphs_: 
+                _pos_subgraph_ = PivotMDSLayout(_subgraph_).results()
+                for _node_ in _pos_subgraph_: _pos_[_node_] = _pos_subgraph_[_node_]
+            _pos_, _circlesvg_ = self.rt_self.circlePackGraphComponentPlacement(_g_, _pos_)
         else: pass
 
         if _pos_ is not None:
             for _node_ in _pos_: _ln_.pos[_node_] = (float(_pos_[_node_][0]),float(_pos_[_node_][1]))
             return True
         return False
-
-
 
     #
     # applyLayoutInteraction() - apply layout interaction to the selected entities.
