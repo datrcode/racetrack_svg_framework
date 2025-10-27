@@ -10,6 +10,7 @@ class LinkNodeGraphPatterns(object):
         for _str_ in dir(self):
             _match_ = re.match('__pattern_(.*)__', _str_)
             if _match_ is not None: self.types.append(_match_.group(1))
+        self.stanford_facebook_graph_nums = [0, 107, 1684, 1912, 3437, 348, 3980, 414, 686, 698]
         self.stress_min = {}
         for k in range(2):
             self.stress_min[k] = {}
@@ -261,6 +262,11 @@ class LinkNodeGraphPatterns(object):
             g.add_edge(f'{prefix}mid_{i}', f'{prefix}mid_{j}')
         return g
 
+    #
+    # Citation (for the data):
+    # J. McAuley and J. Leskovec. Learning to Discover Social Circles in Ego Networks. NIPS, 2012.
+    # https://snap.stanford.edu/data/egonets-Facebook.html
+    #
     def __pattern_stanford_facebook_networks__(self, prefix='', graph_num=1912, **kwargs):
         _edges_ = None
         with open(f'../../data/stanford/facebook/{graph_num}.edges', 'rt') as f:
