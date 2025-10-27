@@ -17,6 +17,7 @@ import networkx as nx
 from scipy.sparse.csgraph import dijkstra
 from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
+import rtsvg
 
 __name__ = 'mds_at_scale'
 
@@ -52,7 +53,19 @@ class LandmarkMDSLayout(object):
             If specified, provides coordinates for the landmarks. If not provided, then the algorithm will use MDS to compute them.
             The keys will be in the original node ids... so also will be converted via the class into numpy indices.
         """
-        
+
+        # If separate components, split up and process each separately
+        if nx.is_connected(g) == False:
+            components = list(nx.connected_components(g))
+            _pos_      = {}
+            for _subgraph_nodes_ in components:
+                _subgraph_         = g.subgraph(_subgraph_nodes_)
+                _subgraph_layout_  = LandmarkMDSLayout(_subgraph_, num_landmarks, dimensions, landmarks, landmark_pos)
+                _pos_             |= _subgraph_layout_.results()
+            rt = rtsvg.RACETrack()
+            self.resulting_positions, _throwaway_ = rt.circlePackGraphComponentPlacement(g, _pos_)
+            return
+
         # Convert graph to adjacency matrix if needed
         if isinstance(g, nx.Graph):
             n = g.number_of_nodes()
@@ -187,12 +200,14 @@ class LandmarkMDSLayout(object):
         distances[np.isinf(distances)] = 2 * max_finite_dist
 
         self.coords, self.landmarks, self.node_mapping = coords, landmarks, node_mapping
-    
-    def results(self):
-        _pos_ = {}
-        for i in range(len(self.coords)): _pos_[self.node_mapping[i]] = self.coords[i]
-        return _pos_
 
+        self.resulting_positions = {}
+        for i in range(len(self.coords)): self.resulting_positions[self.node_mapping[i]] = self.coords[i]
+    
+    #
+    # results() - return the final positions
+    #
+    def results(self): return self.resulting_positions
 #
 # Implementation of PivotMDS
 #
@@ -229,7 +244,19 @@ class PivotMDSLayout(object):
         node_mapping : list or None
             List mapping array indices to original node identifiers.
         """
-        
+
+        # If separate components, split up and process each separately
+        if nx.is_connected(g) == False:
+            components = list(nx.connected_components(g))
+            _pos_      = {}
+            for _subgraph_nodes_ in components:
+                _subgraph_         = g.subgraph(_subgraph_nodes_)
+                _subgraph_layout_  = PivotMDSLayout(_subgraph_, num_pivots, dimensions)
+                _pos_             |= _subgraph_layout_.results()
+            rt = rtsvg.RACETrack()
+            self.resulting_positions, _throwaway_ = rt.circlePackGraphComponentPlacement(g, _pos_)
+            return
+
         # Convert graph to adjacency matrix if needed
         if isinstance(g, nx.Graph):
             n = g.number_of_nodes()
@@ -300,7 +327,10 @@ class PivotMDSLayout(object):
         
         self.coords, self.pivots, self.node_mapping = coords, pivots, node_mapping
 
-    def results(self):
-        _pos_ = {}
-        for i in range(len(self.coords)): _pos_[self.node_mapping[i]] = self.coords[i]
-        return _pos_
+        self.resulting_positions = {}
+        for i in range(len(self.coords)): self.resulting_positions[self.node_mapping[i]] = self.coords[i]
+
+    #
+    # results() - return the final positions
+    #
+    def results(self): return self.resulting_positions
