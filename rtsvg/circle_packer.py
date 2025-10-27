@@ -21,7 +21,7 @@ __name__ = 'circle_packer'
 
 #
 # CirclePacker()
-# 
+#
 # Implementation of the following paper:
 #
 #@inproceedings{10.1145/1124772.1124851,
@@ -47,18 +47,25 @@ __name__ = 'circle_packer'
 #               series = {CHI '06} }
 #
 class CirclePacker(object):
+    """ 
+    Implements the circle packing algorithm from "Visualization of large hierarchical data by circle packing".
+    """
     #
     # __init__()
     #
-    def __init__(self, rt_self, circles, epsilon=0.01, largest_to_smallest=True, keep_order=True):
-        self.rt_self             = rt_self
-        self.circles             = circles
+    def __init__(self,
+                 rt_self             : object,
+                 circles             : list[tuple[float, float, float]],
+                 epsilon             : float  = 0.01,
+                 largest_to_smallest : bool   = True,
+                 keep_order          : bool   = True):
+        self.rt_self = rt_self
+        self.circles = circles
 
         # Find the min and max radii
         circles_with_i = []
         self.r_min = self.r_max  = self.circles[0][2]
-        for i in range(len(self.circles)):
-            c = self.circles[i]
+        for i, c in enumerate(self.circles):
             self.r_min, self.r_max = min(self.r_min, c[2]), max(self.r_max, c[2])
             circles_with_i.append((c[0], c[1], c[2], i))
         self.circles = circles_with_i
@@ -111,12 +118,14 @@ class CirclePacker(object):
     # packedCircles() - return the packed circles
     #
     def packedCircles(self, into_circle=None):
+        """
+        Return the packed circles
+        """
         if into_circle is None: return copy.deepcopy(self.packed)
         _inscribed_ = self.optimalInscriptionCircle()
         scale       = _inscribed_[2] / into_circle[2]
         _return_    = []
-        for i in range(len(self.packed)):
-            _to_transform_ = self.packed[i]
+        for _to_transform_ in self.packed:
             x = (_to_transform_[0] - _inscribed_[0])/scale + into_circle[0]
             y = (_to_transform_[1] - _inscribed_[1])/scale + into_circle[1]
             r = _to_transform_[2] / scale
