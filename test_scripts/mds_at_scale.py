@@ -244,7 +244,19 @@ class PivotMDSLayout(object):
         node_mapping : list or None
             List mapping array indices to original node identifiers.
         """
-        
+
+        # If separate components, split up and process each separately
+        if nx.is_connected(g) == False:
+            components = list(nx.connected_components(g))
+            _pos_      = {}
+            for _subgraph_nodes_ in components:
+                _subgraph_         = g.subgraph(_subgraph_nodes_)
+                _subgraph_layout_  = PivotMDSLayout(_subgraph_, num_pivots, dimensions)
+                _pos_             |= _subgraph_layout_.results()
+            rt = rtsvg.RACETrack()
+            self.resulting_positions, _throwaway_ = rt.circlePackGraphComponentPlacement(g, _pos_)
+            return
+
         # Convert graph to adjacency matrix if needed
         if isinstance(g, nx.Graph):
             n = g.number_of_nodes()
@@ -315,7 +327,10 @@ class PivotMDSLayout(object):
         
         self.coords, self.pivots, self.node_mapping = coords, pivots, node_mapping
 
-    def results(self):
-        _pos_ = {}
-        for i in range(len(self.coords)): _pos_[self.node_mapping[i]] = self.coords[i]
-        return _pos_
+        self.resulting_positions = {}
+        for i in range(len(self.coords)): self.resulting_positions[self.node_mapping[i]] = self.coords[i]
+
+    #
+    # results() - return the final positions
+    #
+    def results(self): return self.resulting_positions
