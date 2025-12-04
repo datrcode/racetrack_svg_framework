@@ -113,6 +113,8 @@ class RTPanelMixin(object):
             Horizontal, vertical, and widget gap between views
         
         To debug, use the ".show()" version of the instance.  Then, errors (and prints) will be sent back to the notebook.
+        Another debug option is to use rt.layout(_spec_, df) to determine if the rendering is working correctly.
+        TODO: double check that none of the widths/heights in the spec are 0 ...
         '''
         return RTCoordinatedViews(df, self, spec, w, h, rt_params, h_gap, v_gap, widget_h_gap, widget_v_gap, **kwargs)
 
