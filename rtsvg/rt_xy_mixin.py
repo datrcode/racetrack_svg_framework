@@ -36,6 +36,25 @@ from .rt_component import RTComponent
 __name__ = 'rt_xy_mixin'
 
 #
+# Notes For Next Version
+# - streamline to just Polars
+# - for most common cases, do a single pass through the data using lazy evaluation
+# - make sure color by magnitude works for counting by rows
+# -- provide a mechanism to stretch the color scale across monotonically increasing values
+# -- (that may be what stretch already does)
+# - use SVG group blocks to reduce the size in the SVG
+# - use precision to reduce the size of the SVG
+# - use rectanges without strokes to make a seamless grid (at least for the dot_size=1 case)
+# - for non-scalar axes, provide a mechanism to allocate one pixel per row
+# -- provide a per row coloring scheme in this case
+# - provide a mechanism to display the x distribution within and the y distribution outside of the plot
+# -- provide a way to cluster parts of the plot & provide separate distributions on a per group basis
+# -- or vice versa
+# - make creating interactive plots easier and more seamless
+# -- make a way to tag/annotate groups of points in the interactive version
+#
+
+#
 # Abstraction for XY Scatterplot
 #
 class RTXYMixin(object):
