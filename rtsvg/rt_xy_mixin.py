@@ -52,6 +52,11 @@ __name__ = 'rt_xy_mixin'
 # -- or vice versa
 # - make creating interactive plots easier and more seamless
 # -- make a way to tag/annotate groups of points in the interactive version
+# - switch to the following schema for x_field and y_field:
+# - str -- simple / 1 field axis
+# - tuple(str, str) - combined field forming a single axis
+# - list(str) -- multiple fields on the same axis -- the other (x/y) axis should have the same length
+# - list(tuple(str,str), tuple(str,str), str) -- multiple fields on the same axis -- the other (x/y) axis should have the same length
 #
 
 #
