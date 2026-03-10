@@ -824,7 +824,8 @@ class RTTemporalBarChartMixin(object):
                     if   self.rt_self.isPandas(self.df2):
                         self.df2[self.x2_axis_col] = (self.df2[self.x2_field] - _ts0)/(_ts1 - _ts0)
                     elif self.rt_self.isPolars(self.df2):
-                        self.df2 = self.df2.with_columns(((pl.col(self.x2_field)-_ts0)/(_ts1 - _ts0)).alias(self.x2_axis_col))
+                        self.df2 = self.df2.with_columns(((pl.col(self.x2_field)-_ts0.to_pydatetime())/
+                                                          (_ts1.to_pydatetime() - _ts0.to_pydatetime())).alias(self.x2_axis_col))
                 # Scale the y coordinates
                 if self.y2_axis_col is None:
                     self.y2_axis_col = f'my_y2_{self.widget_id}'
