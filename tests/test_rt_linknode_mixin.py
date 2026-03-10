@@ -142,8 +142,15 @@ class Testrt_liknode_mixin(unittest.TestCase):
         self.params_b9 = {'relationships':[('fm','to')], 'pos':self.pos_b9, 'bounds_percent':0.2, 'link_shape':'curve', 'sm_type':'xy',
                           'sm_params':{'x_field':'x', 'y_field':'y', 'draw_border':False, 'dot_size':'large'}, 'w':384, 'h':384}
 
-
-
+    def test_simpleWithoutPositions(self):
+        self.rt_self.linkNode(self.df_b1,    self.relates_b1).renderSVG()
+        self.rt_self.linkNode(self.df_pl_b1, self.relates_b1).renderSVG()
+        self.rt_self.link    (self.df_pl_b1, self.relates_b1).renderSVG()
+        # ... the following fails when done independent of unit testing...
+        rt2 = rtsvg.RACETrack()
+        df  = pl.DataFrame({'fm':['a','b','c'], 'to':['b','c','a']})
+        _link_ = rt2.link(df, [('fm','to')])
+        _link_._repr_svg_()
 
     def test_simple(self):
         self.rt_self.linkNode(self.df_b1,    self.relates_b1, self.pos_b1).renderSVG()
