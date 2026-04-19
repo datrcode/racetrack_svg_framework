@@ -317,7 +317,8 @@ def fillJSONPathElements(to_fill, myjson):
                         to_eval.append(' '*indent+f'_var{i}_ = myjson{_path_}')
                         vars_set += 1
             for i in range(len(filled_list)):
-                _filled_rest_ = filled_list[i][_index_:]
+                if not filled_list[i].startswith(_star_path_): continue
+                _filled_rest_ = filled_list[i][len(_star_path_):]
                 if _filled_rest_.count('[*]') == 0 and '.' not in _filled_rest_ and len(_filled_rest_) > 0:
                     to_eval.append(' '*indent+f'_var{i}_ = myjson{_path_}' + _filled_rest_)
                     vars_set += 1
