@@ -327,7 +327,7 @@ def fillJSONPathElements(to_fill, myjson):
             for i in range(len(filled_list)):
                 lit_maybe = filled_list[i][len(_star_path_):]
                 if isLiteral(lit_maybe):
-                    to_eval.append(' '*indent+f'if "{lit_maybe}" in myjson{_path_}:')
+                    to_eval.append(' '*indent+f'if myjson{_path_} is not None and "{lit_maybe}" in myjson{_path_}:')
                     to_eval.append(' '*(indent+4)+f'_var{i}_ = myjson{_path_}["{lit_maybe}"]')
                     to_eval.append(' '*indent+f'else: _var{i}_ = None')
                     vars_set += 1
@@ -337,7 +337,7 @@ def fillJSONPathElements(to_fill, myjson):
             if '.' in _rest_:                           l = _rest_.index('.')
             if '[' in _rest_ and _rest_.index('[') < l: l = _rest_.index('[')
             lit = _rest_[:l]
-            to_eval.append(' '*indent+f'if "{lit}" in myjson{_path_}:')
+            to_eval.append(' '*indent+f'if myjson{_path_} is not None and "{lit}" in myjson{_path_}:')
             _path_      += f'["{lit}"]'
             _star_path_ += f'{lit}'
             _index_, indent = _index_+l, indent+4
