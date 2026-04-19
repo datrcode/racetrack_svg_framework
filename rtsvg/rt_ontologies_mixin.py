@@ -304,6 +304,7 @@ def fillJSONPathElements(to_fill, myjson):
            longest_by_star_path.count('.')   <  filled_list[i].count('.'):   longest_by_star_path = filled_list[i]
 
     to_eval, indent, _index_, _loop_vars_, _loop_i_, _path_, _star_path_, vars_set = [], 0, 1, ['i','j','k','l'], 0, '', '$', 0
+    set_var_indices = set()
     while _index_ < len(longest_by_star_path):
         _rest_ = longest_by_star_path[_index_:]
         if   _rest_.startswith('[*]'):
@@ -313,24 +314,42 @@ def fillJSONPathElements(to_fill, myjson):
             _index_, _loop_i_, indent = _index_+3, _loop_i_+1, indent+4
             if _rest_.endswith('[*]'):
                 for i in range(len(filled_list)):
+                    if i in set_var_indices: continue
                     if filled_list[i] == _star_path_:
                         to_eval.append(' '*indent+f'_var{i}_ = myjson{_path_}')
                         vars_set += 1
+                        set_var_indices.add(i)
             for i in range(len(filled_list)):
+                if i in set_var_indices: continue
                 if not filled_list[i].startswith(_star_path_): continue
                 _filled_rest_ = filled_list[i][len(_star_path_):]
                 if _filled_rest_.count('[*]') == 0 and '.' not in _filled_rest_ and len(_filled_rest_) > 0:
                     to_eval.append(' '*indent+f'_var{i}_ = myjson{_path_}' + _filled_rest_)
                     vars_set += 1
+                    set_var_indices.add(i)
+            # sibling paths: share _star_path_ prefix, no more [*], multi-level remainder that the
+            # dot-branch traversal cannot set (isLiteral fails), and not on the main path's branch
+            for i in range(len(filled_list)):
+                if i in set_var_indices: continue
+                if not filled_list[i].startswith(_star_path_): continue
+                _filled_rest_ = filled_list[i][len(_star_path_):]
+                if (_filled_rest_.count('[*]') == 0 and len(_filled_rest_) > 0 and '.' in _filled_rest_
+                        and not isLiteral(_filled_rest_[1:])
+                        and not longest_by_star_path.startswith(filled_list[i])):
+                    to_eval.append(' '*indent+f'_var{i}_ = jsonAbsolutePath("{_filled_rest_}", myjson{_path_})')
+                    vars_set += 1
+                    set_var_indices.add(i)
         elif _rest_[0] == '.':
             _star_path_ += '.'
             for i in range(len(filled_list)):
+                if i in set_var_indices: continue
                 lit_maybe = filled_list[i][len(_star_path_):]
                 if isLiteral(lit_maybe):
                     to_eval.append(' '*indent+f'if myjson{_path_} is not None and "{lit_maybe}" in myjson{_path_}:')
                     to_eval.append(' '*(indent+4)+f'_var{i}_ = myjson{_path_}["{lit_maybe}"]')
                     to_eval.append(' '*indent+f'else: _var{i}_ = None')
                     vars_set += 1
+                    set_var_indices.add(i)
             _index_ += 1
         elif _rest_[0].isalpha() or _rest_[0] == '_':
             l = len(_rest_)
@@ -349,9 +368,11 @@ def fillJSONPathElements(to_fill, myjson):
             _index_, indent = _index_ + _rest_.index(']')+1, indent + 4
             if _index_ == len(longest_by_star_path):
                 for i in range(len(filled_list)):
+                    if i in set_var_indices: continue
                     if filled_list[i] == _star_path_:
                         to_eval.append(' '*indent+f'_var{i}_ = myjson{_path_}')
                         vars_set += 1
+                        set_var_indices.add(i)
         else:
             print('Exception for the following script:\n')
             print(f'_path_      = "{_path_}"')

@@ -67,6 +67,22 @@ class Testrt_ontologies_mixin(unittest.TestCase):
     _results_ = fillJSONPathElements(["$.more-stuff[*].jobs[5]", "$.more-stuff[*].id"], self.my_json)
     self.assertDictEqual(_results_, {'$.more-stuff[*].jobs[5]': [], '$.more-stuff[*].id': []})
 
+  def test_sibling_paths(self):
+    _json_ = {"rounds": [
+        {"hour": "t1",
+         "context": {"event_narrative": "Event A"},
+         "communications": [{"agent_id": "a1"}, {"agent_id": "a2"}]},
+        {"hour": "t2",
+         "context": {"event_narrative": "Event B"},
+         "communications": [{"agent_id": "a3"}]}
+    ]}
+    _results_ = fillJSONPathElements([
+        "$.rounds[*].context.event_narrative",
+        "$.rounds[*].communications[*].agent_id"
+    ], _json_)
+    self.assertEqual(_results_["$.rounds[*].context.event_narrative"], ["Event A", "Event A", "Event B"])
+    self.assertEqual(_results_["$.rounds[*].communications[*].agent_id"], ["a1", "a2", "a3"])
+
   def test_mappingAlgorithm(self):
     _json_txt_ = '''
     {"id":1,
