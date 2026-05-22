@@ -1011,13 +1011,12 @@ class RTOntology(object):
         return parsed_len
 
     #
-    # uniqMixedFieldCandidates() - Phase 1: identify non-uniq UIDs whose raw id matches a known uniq entity
+    # uniqMixedFieldCandidates() - Phase 1: identify UIDs that should resolve to a canonical uniq entity
+    # ... kind='uniq_collision' -- same raw id registered under multiple types, both uniq (e.g. AgentID vs xsd:string)
+    # ... kind='mixed_field'    -- non-uniq UID whose raw id matches a known uniq entity
     # ... returns list of dicts describing each candidate replacement
     #
     def uniqMixedFieldCandidates(self):
-        # Build id → uniq_uid from uid_lu directly (works after fm_files() since id_to_uid_lu is not persisted)
-        id_to_uniq_uid = {tup[0]: uid for uid, tup in self.uid_lu.items() if tup[2] == 'uniq'}
-
         # Count how many times each UID appears in triples as sbj or obj
         uid_counts = {}
         if len(self.df_triples) > 0:
@@ -1026,29 +1025,67 @@ class RTOntology(object):
                 for uid_val, cnt in zip(vc[col].to_list(), vc['count'].to_list()):
                     uid_counts[uid_val] = uid_counts.get(uid_val, 0) + cnt
 
+        # Group all uniq UIDs by raw id value to detect same-id collisions across types
+        uniq_by_raw_id = {}
+        for uid, tup in self.uid_lu.items():
+            if tup[2] == 'uniq':
+                raw_id = tup[0]
+                if raw_id not in uniq_by_raw_id: uniq_by_raw_id[raw_id] = []
+                uniq_by_raw_id[raw_id].append(uid)
+
+        # For each raw id with collisions, pick most-referenced uid as canonical
+        # For unique raw ids, map directly
+        id_to_uniq_uid = {}
+        for raw_id, uids in uniq_by_raw_id.items():
+            id_to_uniq_uid[raw_id] = max(uids, key=lambda u: uid_counts.get(u, 0))
+
         candidates = []
+
+        # kind='uniq_collision': same raw id, multiple uniq UIDs under different types
+        for raw_id, uids in uniq_by_raw_id.items():
+            if len(uids) <= 1: continue
+            canonical_uid = id_to_uniq_uid[raw_id]
+            canonical_tup = self.uid_lu[canonical_uid]
+            for uid in uids:
+                if uid == canonical_uid: continue
+                count = uid_counts.get(uid, 0)
+                if count == 0:          continue
+                tup = self.uid_lu[uid]
+                candidates.append({'mixed_uid':  uid,
+                                    'mixed_id':   tup[0],
+                                    'mixed_type': tup[1],
+                                    'mixed_disp': tup[2],
+                                    'uniq_uid':   canonical_uid,
+                                    'uniq_type':  canonical_tup[1],
+                                    'count':      count,
+                                    'kind':       'uniq_collision'})
+
+        # kind='mixed_field': non-uniq UID whose raw id matches a known uniq entity
         for uid, tup in self.uid_lu.items():
             _id_, _type_, _disp_ = tup
-            if _disp_ == 'uniq':                       continue
-            if _id_ not in id_to_uniq_uid:             continue
+            if _disp_ == 'uniq':               continue
+            if _id_ not in id_to_uniq_uid:     continue
             uniq_uid = id_to_uniq_uid[_id_]
-            if uniq_uid == uid:                        continue
+            if uniq_uid == uid:                continue
             count = uid_counts.get(uid, 0)
-            if count == 0:                             continue
+            if count == 0:                     continue
             candidates.append({'mixed_uid':  uid,
                                 'mixed_id':   _id_,
                                 'mixed_type': _type_,
                                 'mixed_disp': _disp_,
                                 'uniq_uid':   uniq_uid,
                                 'uniq_type':  self.uid_lu[uniq_uid][1],
-                                'count':      count})
+                                'count':      count,
+                                'kind':       'mixed_field'})
         return candidates
 
     #
-    # resolveUniqMixedFields() - Phase 2: apply user-confirmed replacements to df_triples
+    # resolveUniqMixedFields() - Phase 2: apply user-confirmed replacements to df_triples,
+    # ... remove resolved UIDs from all lookup dicts, then verify consistency.
     # ... candidates is the list (or subset) returned by uniqMixedFieldCandidates()
     #
     def resolveUniqMixedFields(self, candidates):
+        # Apply replacements in df_triples
         for c in candidates:
             mixed_uid  = c['mixed_uid']
             uniq_uid   = c['uniq_uid']
@@ -1063,3 +1100,26 @@ class RTOntology(object):
                 pl.when(pl.col('grp') == mixed_uid).then(pl.lit(uniq_uid)).otherwise(pl.col('grp')).alias('grp'),
                 pl.when(pl.col('grp') == mixed_uid).then(pl.lit(uniq_disp)).otherwise(pl.col('gdisp')).alias('gdisp'),
             ])
+
+        # Remove resolved UIDs from all lookup dicts
+        for c in candidates:
+            mixed_uid = c['mixed_uid']
+            if mixed_uid not in self.uid_lu: continue  # already removed (duplicate candidate)
+            _id_, _type_, _disp_ = self.uid_lu[mixed_uid]
+            rev_key = str(_id_) + '|' + str(_type_) + '|' + str(_disp_)
+            del self.uid_lu[mixed_uid]
+            if rev_key in self.rev_uid_lu:                                       del self.rev_uid_lu[rev_key]
+            if _id_ in self.id_to_uid_lu and self.id_to_uid_lu[_id_] == mixed_uid: del self.id_to_uid_lu[_id_]
+
+        # Intersection test: uid_lu keys must exactly match the set of all UIDs referenced in df_triples
+        df_uids = (set(self.df_triples['uid'].to_list()) |
+                   set(self.df_triples['sbj'].to_list()) |
+                   set(self.df_triples['obj'].to_list()) |
+                   set(self.df_triples['grp'].drop_nulls().to_list()))
+        lu_uids = set(self.uid_lu.keys())
+        errors  = []
+        in_df_not_lu = df_uids - lu_uids
+        in_lu_not_df = lu_uids - df_uids
+        if in_df_not_lu: errors.append(f'UIDs in df_triples missing from uid_lu: {in_df_not_lu}')
+        if in_lu_not_df: errors.append(f'UIDs in uid_lu not referenced in df_triples: {in_lu_not_df}')
+        if errors: raise ValueError('\n'.join(errors))

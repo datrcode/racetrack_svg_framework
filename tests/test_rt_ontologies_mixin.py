@@ -120,31 +120,41 @@ _id_                                  --- "isFromCity"       --- '$.people[*].ci
     ofv_simple.parse(_json_simple_)
 
   def test_uniqMixedFieldCandidates(self):
-    # JSON where each item's 'id' is a uniq entity and 'alias' carries the same raw value as a non-uniq field
+    # JSON where:
+    #   - 'id' registers as both ItemID|uniq and OtherID|uniq  → triggers kind='uniq_collision'
+    #   - 'alias' carries the same raw value as a non-uniq field → triggers kind='mixed_field'
     _json_ = {"items": [{"id": "ABC", "alias": "ABC"},
                          {"id": "DEF", "alias": "DEF"},
                          {"id": "GHI", "alias": "GHI"}]}
     _xform_ = '''
-$.items[*].id | ItemID | uniq --- "hasAlias" --- $.items[*].alias | ItemAlias
+$.items[*].id | ItemID  | uniq --- "hasAlias" --- $.items[*].alias | ItemAlias
+$.items[*].id | OtherID | uniq --- "hasOther" --- $.items[*].alias | ItemAlias
 '''
     ofv = self.rt_self.ontologyFrameworkInstance(xform_spec=_xform_)
     ofv.parse(_json_)
 
-    # Phase 1: candidates should flag ItemAlias UIDs whose raw id matches a known uniq ItemID
     candidates = ofv.uniqMixedFieldCandidates()
     self.assertGreater(len(candidates), 0)
-    mixed_uids = {c['mixed_uid'] for c in candidates}
+
+    mixed_field_candidates = [c for c in candidates if c['kind'] == 'mixed_field']
+    collision_candidates   = [c for c in candidates if c['kind'] == 'uniq_collision']
+    self.assertGreater(len(mixed_field_candidates), 0)
+    self.assertGreater(len(collision_candidates), 0)
+
     for c in candidates:
-      self.assertNotEqual(c['mixed_disp'], 'uniq')
+      self.assertIn(c['kind'], ('mixed_field', 'uniq_collision'))
       self.assertIn(c['uniq_uid'], ofv.uid_lu)
       self.assertEqual(ofv.uid_lu[c['uniq_uid']][2], 'uniq')
       self.assertEqual(c['mixed_id'], ofv.uid_lu[c['uniq_uid']][0])
+      if c['kind'] == 'mixed_field':
+        self.assertNotEqual(c['mixed_disp'], 'uniq')
+      else:
+        self.assertEqual(c['mixed_disp'], 'uniq')
 
     # Phase 2: apply all candidates and verify mixed UIDs no longer appear in triples
+    mixed_uids = {c['mixed_uid'] for c in candidates}
     ofv.resolveUniqMixedFields(candidates)
-    all_sbj = set(ofv.df_triples['sbj'].to_list())
-    all_obj = set(ofv.df_triples['obj'].to_list())
-    referenced = all_sbj | all_obj
+    referenced = set(ofv.df_triples['sbj'].to_list()) | set(ofv.df_triples['obj'].to_list())
     for mixed_uid in mixed_uids:
       self.assertNotIn(mixed_uid, referenced)
 
