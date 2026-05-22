@@ -988,3 +988,57 @@ class RTOntology(object):
             if self.df_triples is None or self.df_triples.shape[0] == 0: self.df_triples = concatted_dfs
             else:                                                        self.df_triples = pl.concat([self.df_triples, concatted_dfs])
         return parsed_len
+
+    #
+    # uniqMixedFieldCandidates() - Phase 1: identify non-uniq UIDs whose raw id matches a known uniq entity
+    # ... returns list of dicts describing each candidate replacement
+    #
+    def uniqMixedFieldCandidates(self):
+        # Build id → uniq_uid from uid_lu directly (works after fm_files() since id_to_uid_lu is not persisted)
+        id_to_uniq_uid = {tup[0]: uid for uid, tup in self.uid_lu.items() if tup[2] == 'uniq'}
+
+        # Count how many times each UID appears in triples as sbj or obj
+        uid_counts = {}
+        if len(self.df_triples) > 0:
+            for col in ('sbj', 'obj'):
+                vc = self.df_triples[col].drop_nulls().value_counts()
+                for uid_val, cnt in zip(vc[col].to_list(), vc['count'].to_list()):
+                    uid_counts[uid_val] = uid_counts.get(uid_val, 0) + cnt
+
+        candidates = []
+        for uid, tup in self.uid_lu.items():
+            _id_, _type_, _disp_ = tup
+            if _disp_ == 'uniq':                       continue
+            if _id_ not in id_to_uniq_uid:             continue
+            uniq_uid = id_to_uniq_uid[_id_]
+            if uniq_uid == uid:                        continue
+            count = uid_counts.get(uid, 0)
+            if count == 0:                             continue
+            candidates.append({'mixed_uid':  uid,
+                                'mixed_id':   _id_,
+                                'mixed_type': _type_,
+                                'mixed_disp': _disp_,
+                                'uniq_uid':   uniq_uid,
+                                'uniq_type':  self.uid_lu[uniq_uid][1],
+                                'count':      count})
+        return candidates
+
+    #
+    # resolveUniqMixedFields() - Phase 2: apply user-confirmed replacements to df_triples
+    # ... candidates is the list (or subset) returned by uniqMixedFieldCandidates()
+    #
+    def resolveUniqMixedFields(self, candidates):
+        for c in candidates:
+            mixed_uid  = c['mixed_uid']
+            uniq_uid   = c['uniq_uid']
+            uniq_type, uniq_disp = self.uid_lu[uniq_uid][1], self.uid_lu[uniq_uid][2]
+            self.df_triples = self.df_triples.with_columns([
+                pl.when(pl.col('sbj') == mixed_uid).then(pl.lit(uniq_uid)).otherwise(pl.col('sbj')).alias('sbj'),
+                pl.when(pl.col('sbj') == mixed_uid).then(pl.lit(uniq_type)).otherwise(pl.col('stype')).alias('stype'),
+                pl.when(pl.col('sbj') == mixed_uid).then(pl.lit(uniq_disp)).otherwise(pl.col('sdisp')).alias('sdisp'),
+                pl.when(pl.col('obj') == mixed_uid).then(pl.lit(uniq_uid)).otherwise(pl.col('obj')).alias('obj'),
+                pl.when(pl.col('obj') == mixed_uid).then(pl.lit(uniq_type)).otherwise(pl.col('otype')).alias('otype'),
+                pl.when(pl.col('obj') == mixed_uid).then(pl.lit(uniq_disp)).otherwise(pl.col('odisp')).alias('odisp'),
+                pl.when(pl.col('grp') == mixed_uid).then(pl.lit(uniq_uid)).otherwise(pl.col('grp')).alias('grp'),
+                pl.when(pl.col('grp') == mixed_uid).then(pl.lit(uniq_disp)).otherwise(pl.col('gdisp')).alias('gdisp'),
+            ])

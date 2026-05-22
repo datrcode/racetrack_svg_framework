@@ -119,5 +119,34 @@ _id_                                  --- "isFromCity"       --- '$.people[*].ci
     ofv_simple = self.rt_self.ontologyFrameworkInstance(xform_spec=_xform_simple_, funcs={'concatNames': concatNames, 'combineAddress': combineAddress})
     ofv_simple.parse(_json_simple_)
 
+  def test_uniqMixedFieldCandidates(self):
+    # JSON where each item's 'id' is a uniq entity and 'alias' carries the same raw value as a non-uniq field
+    _json_ = {"items": [{"id": "ABC", "alias": "ABC"},
+                         {"id": "DEF", "alias": "DEF"},
+                         {"id": "GHI", "alias": "GHI"}]}
+    _xform_ = '''
+$.items[*].id | ItemID | uniq --- "hasAlias" --- $.items[*].alias | ItemAlias
+'''
+    ofv = self.rt_self.ontologyFrameworkInstance(xform_spec=_xform_)
+    ofv.parse(_json_)
+
+    # Phase 1: candidates should flag ItemAlias UIDs whose raw id matches a known uniq ItemID
+    candidates = ofv.uniqMixedFieldCandidates()
+    self.assertGreater(len(candidates), 0)
+    mixed_uids = {c['mixed_uid'] for c in candidates}
+    for c in candidates:
+      self.assertNotEqual(c['mixed_disp'], 'uniq')
+      self.assertIn(c['uniq_uid'], ofv.uid_lu)
+      self.assertEqual(ofv.uid_lu[c['uniq_uid']][2], 'uniq')
+      self.assertEqual(c['mixed_id'], ofv.uid_lu[c['uniq_uid']][0])
+
+    # Phase 2: apply all candidates and verify mixed UIDs no longer appear in triples
+    ofv.resolveUniqMixedFields(candidates)
+    all_sbj = set(ofv.df_triples['sbj'].to_list())
+    all_obj = set(ofv.df_triples['obj'].to_list())
+    referenced = all_sbj | all_obj
+    for mixed_uid in mixed_uids:
+      self.assertNotIn(mixed_uid, referenced)
+
 if __name__ == '__main__':
     unittest.main()
