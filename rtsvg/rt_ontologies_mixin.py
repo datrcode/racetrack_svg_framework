@@ -1,4 +1,4 @@
-# Copyright 2024 David Trimm
+# Copyright 2026 David Trimm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,27 @@ __name__ = 'rt_ontologies_mixin'
 
 #
 # Ontologies Mixin
+#
+
+#
+# Notes on post-processing use:
+#
+# uniqMixedFieldCandidates() (Phase 1) — appended after parse() in rt_ontologies_mixin.py:
+#
+#   Builds a id → uniq_uid map directly from uid_lu (so it works after fm_files() load, since id_to_uid_lu isn't persisted)
+#   Counts each UID's appearances in df_triples (sbj + obj)
+#   Returns a list[dict] with mixed_uid, mixed_id, mixed_type, mixed_disp, uniq_uid, uniq_type, count for every non-uniq UID whose raw id value matches a known uniq entity
+#
+# resolveUniqMixedFields(candidates) (Phase 2):
+#
+#   Accepts the full list or any filtered subset from Phase 1
+#   For each candidate, replaces mixed_uid with uniq_uid across sbj/obj/grp columns in df_triples, updating the associated type/disp columns accordingly
+#
+# Typical usage:
+#
+#   candidates = onto.uniqMixedFieldCandidates()
+#   # inspect candidates, filter as desired
+#   onto.resolveUniqMixedFields(candidates)  # or a filtered subset
 #
 class RTOntologiesMixin(object):
     #
